@@ -9,7 +9,10 @@ const options: swaggerJSDoc.Options = {
       description:
         "Backend API for Sports Center Management System – Flow 1 (User & Membership), Flow 2 (Class & Schedule), Flow 3 (Payment & Report)",
     },
-    servers: [{ url: "http://localhost:8080/api/v1", description: "Development Server" }],
+    servers: [
+      { url: "http://localhost:8080/api/v1", description: "Development Server" },
+      { url: "https://sports-center-management-system.onrender.com/api/v1", description: "Production Server (Render)" }
+    ],
     components: {
       securitySchemes: {
         BearerAuth: {
