@@ -115,6 +115,7 @@ router.get("/:id", usersController.getUserById);
  *               gender: { type: string, enum: [MALE, FEMALE, OTHER] }
  *               dateOfBirth: { type: string }
  *               isActive: { type: boolean }
+ *               role: { type: string, enum: [MEMBER, COACH, STAFF, MANAGER] }
  *     responses:
  *       200: { $ref: "#/components/responses/UserOk" }
  *       400: { $ref: "#/components/responses/BadRequest" }

@@ -96,11 +96,25 @@ export async function updateUser(id: string, data: UpdateUserInput) {
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) throw new AppError("User not found", 404);
 
+  const profileUpdate =
+    data.role === "COACH"
+      ? { coachProfile: { upsert: { create: {}, update: {} } } }
+      : data.role === "MANAGER"
+      ? { managerProfile: { upsert: { create: {}, update: {} } } }
+      : data.role === "MEMBER"
+      ? {
+          memberProfile: {
+            upsert: { create: {}, update: {} },
+          },
+        }
+      : {};
+
   return prisma.user.update({
     where: { id },
     data: {
       ...data,
       dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+      ...(data.role && data.role !== user.role ? profileUpdate : {}),
     },
     select: userSelect,
   });

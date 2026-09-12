@@ -19,6 +19,7 @@ export const UpdateUserSchema = z.object({
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
   dateOfBirth: z.string().optional(),
   isActive: z.boolean().optional(),
+  role: z.enum(["MEMBER", "COACH", "STAFF", "MANAGER"]).optional(),
 });
 
 export const UserQuerySchema = z.object({
