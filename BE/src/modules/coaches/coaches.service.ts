@@ -99,12 +99,29 @@ export async function updateCoach(id: string, data: UpdateCoachInput) {
     throw new AppError("Coach not found", 404);
   }
 
+  const { fullName, phone, gender, dateOfBirth, ...profileData } = data;
+  const userFields: any = {};
+  if (fullName !== undefined) userFields.fullName = fullName;
+  if (phone !== undefined) userFields.phone = phone;
+  if (gender !== undefined) userFields.gender = gender;
+  if (dateOfBirth !== undefined) userFields.dateOfBirth = dateOfBirth;
+
+  if (Object.keys(userFields).length > 0) {
+    await prisma.user.update({
+      where: { id },
+      data: {
+        ...userFields,
+        dateOfBirth: userFields.dateOfBirth ? new Date(userFields.dateOfBirth) : undefined,
+      },
+    });
+  }
+
   const updated = await prisma.coachProfile.update({
     where: { id: coachProfile.id },
     data: {
-      ...(data.specialization !== undefined && { specialization: data.specialization }),
-      ...(data.experienceYears !== undefined && { experienceYears: data.experienceYears }),
-      ...(data.bio !== undefined && { bio: data.bio }),
+      ...(profileData.specialization !== undefined && { specialization: profileData.specialization }),
+      ...(profileData.experienceYears !== undefined && { experienceYears: profileData.experienceYears }),
+      ...(profileData.bio !== undefined && { bio: profileData.bio }),
     },
     include: {
       user: {

@@ -104,6 +104,15 @@ router.get("/:id", authenticate, coachController.getCoachById);
  *           schema:
  *             type: object
  *             properties:
+ *               fullName:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               gender:
+ *                 type: string
+ *                 enum: [MALE, FEMALE, OTHER]
+ *               dateOfBirth:
+ *                 type: string
  *               specialization:
  *                 type: string
  *               experienceYears:
