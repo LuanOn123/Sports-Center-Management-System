@@ -75,6 +75,20 @@ router.get(
  *         name: id
  *         required: true
  *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullName: { type: string }
+ *               phone: { type: string }
+ *               gender: { type: string, enum: [MALE, FEMALE, OTHER] }
+ *               dateOfBirth: { type: string }
+ *               fitnessGoal: { type: string }
+ *               trainingLevel: { type: string, enum: [BEGINNER, INTERMEDIATE, ADVANCED] }
+ *               trainingPreference: { type: string }
  *     responses:
  *       200: { $ref: "#/components/responses/MemberOk" }
  *       400: { $ref: "#/components/responses/BadRequest" }

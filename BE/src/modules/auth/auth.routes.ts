@@ -144,6 +144,7 @@ router.get("/me", authenticate, authController.getMe);
  *               fullName: { type: string }
  *               phone: { type: string }
  *               gender: { type: string, enum: [MALE, FEMALE, OTHER] }
+ *               dateOfBirth: { type: string }
  *               fitnessGoal: { type: string }
  *               trainingLevel: { type: string, enum: [BEGINNER, INTERMEDIATE, ADVANCED] }
  *               trainingPreference: { type: string }

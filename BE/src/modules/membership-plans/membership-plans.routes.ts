@@ -93,6 +93,19 @@ router.post(
  *         name: id
  *         required: true
  *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name: { type: string }
+ *               description: { type: string }
+ *               price: { type: number }
+ *               durationDays: { type: integer }
+ *               tier: { type: string, enum: [MEMBERSHIP, PREMIUM] }
+ *               isActive: { type: boolean }
  *     responses:
  *       200: { $ref: "#/components/responses/PlanOk" }
  *       400: { $ref: "#/components/responses/BadRequest" }

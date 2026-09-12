@@ -103,6 +103,18 @@ router.get("/:id", usersController.getUserById);
  *         name: id
  *         required: true
  *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullName: { type: string }
+ *               phone: { type: string }
+ *               gender: { type: string, enum: [MALE, FEMALE, OTHER] }
+ *               dateOfBirth: { type: string }
+ *               isActive: { type: boolean }
  *     responses:
  *       200: { $ref: "#/components/responses/UserOk" }
  *       400: { $ref: "#/components/responses/BadRequest" }
