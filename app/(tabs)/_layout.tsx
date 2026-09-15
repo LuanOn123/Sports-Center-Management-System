@@ -1,12 +1,12 @@
 import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { Colors, FontSize } from '../../constants/theme';
 
-type TabIconProps = { color: string | { toString(): string }; size: number; focused: boolean };
+type TabIconProps = { color: string | { toString(): string }; size: number };
 
-function TabIcon({ name, ...props }: TabIconProps & { name: React.ComponentProps<typeof Ionicons>['name'] }) {
-  return <Ionicons name={name} size={props.size} color={String(props.color)} />;
+function TabIcon({ name, ...props }: TabIconProps & { name: React.ComponentProps<typeof MaterialIcons>['name'] }) {
+  return <MaterialIcons name={name} size={props.size} color={String(props.color)} />;
 }
 
 export default function TabLayout() {
@@ -34,8 +34,8 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Trang chủ',
-          tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon name={focused ? 'home' : 'home-outline'} color={color} size={size} focused={focused} />
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name="home" color={color} size={size} />
           ),
         }}
       />
@@ -43,8 +43,8 @@ export default function TabLayout() {
         name="classes"
         options={{
           title: 'Lớp học',
-          tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon name={focused ? 'barbell' : 'barbell-outline'} color={color} size={size} focused={focused} />
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name="fitness-center" color={color} size={size} />
           ),
         }}
       />
@@ -52,8 +52,8 @@ export default function TabLayout() {
         name="schedule"
         options={{
           title: 'Lịch của tôi',
-          tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon name={focused ? 'calendar' : 'calendar-outline'} color={color} size={size} focused={focused} />
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name="event" color={color} size={size} />
           ),
         }}
       />
@@ -61,8 +61,8 @@ export default function TabLayout() {
         name="training"
         options={{
           title: 'Tập luyện',
-          tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon name={focused ? 'trending-up' : 'trending-up-outline'} color={color} size={size} focused={focused} />
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name="trending-up" color={color} size={size} />
           ),
         }}
       />
@@ -70,8 +70,8 @@ export default function TabLayout() {
         name="notifications"
         options={{
           title: 'Thông báo',
-          tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon name={focused ? 'notifications' : 'notifications-outline'} color={color} size={size} focused={focused} />
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name="notifications" color={color} size={size} />
           ),
         }}
       />
@@ -79,11 +79,12 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Hồ sơ',
-          tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon name={focused ? 'person' : 'person-outline'} color={color} size={size} focused={focused} />
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name="person" color={color} size={size} />
           ),
         }}
       />
     </Tabs>
   );
 }
+

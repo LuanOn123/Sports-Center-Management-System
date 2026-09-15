@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
+import { MaterialIcons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
 import type { Enrollment } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
@@ -105,7 +106,7 @@ export default function ScheduleScreen() {
           refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={Colors.primary} />}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyIcon}>📅</Text>
+              <MaterialIcons name="event-busy" size={48} color={Colors.text.muted} style={{ marginBottom: Spacing.md }} />
               <Text style={styles.emptyText}>Không có lịch nào</Text>
             </View>
           }
@@ -129,7 +130,10 @@ export default function ScheduleScreen() {
                 <View style={styles.cardMain}>
                   <Text style={styles.className}>{item.schedule?.class?.name ?? 'Lớp học'}</Text>
                   {item.schedule?.room && (
-                    <Text style={styles.roomText}>📍 {item.schedule.room.name}</Text>
+                    <View style={styles.roomRow}>
+                      <MaterialIcons name="place" size={14} color={Colors.text.secondary} />
+                      <Text style={styles.roomText}>{item.schedule.room.name}</Text>
+                    </View>
                   )}
                   <Text style={styles.bookedAt}>Đặt lúc: {formatDateTime(item.bookedAt)}</Text>
                 </View>
@@ -174,7 +178,6 @@ const styles = StyleSheet.create({
   filterTabTextActive: { color: Colors.text.inverse, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
   list: { padding: Spacing.xl, gap: Spacing.md },
   empty: { alignItems: 'center', marginTop: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: Spacing.lg },
   emptyText: { fontSize: FontSize.sm, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular' },
   card: {
     backgroundColor: Colors.bg.surface, borderRadius: Radius.xl,
@@ -189,7 +192,8 @@ const styles = StyleSheet.create({
   cardBody: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: Spacing.lg },
   cardMain: { flex: 1, marginRight: Spacing.md },
   className: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginBottom: 4 },
-  roomText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular', marginBottom: 2 },
+  roomRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
+  roomText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
   bookedAt: { fontSize: FontSize.xs, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular' },
   cardRight: { alignItems: 'flex-end', gap: Spacing.sm },
   statusBadge: { borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 3 },
@@ -197,3 +201,4 @@ const styles = StyleSheet.create({
   cancelBtn: { backgroundColor: Colors.status.failed + '20', borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs },
   cancelBtnText: { fontSize: FontSize.xs, color: Colors.status.failed, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
 });
+

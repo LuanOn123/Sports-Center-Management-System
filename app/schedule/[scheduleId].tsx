@@ -5,8 +5,9 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { MaterialIcons } from '@expo/vector-icons';
 import { api, ApiError } from '../../lib/api';
-import type { ClassSchedule, Enrollment } from '../../lib/types';
+import type { ClassSchedule } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
 const STATUS_LABEL: Record<string, string> = { SCHEDULED: 'Đang mở', CANCELLED: 'Đã hủy', COMPLETED: 'Đã hoàn thành' };
@@ -38,7 +39,7 @@ export default function ScheduleDetailScreen() {
     mutationFn: () => api.post('/enrollments', { scheduleId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-enrollments'] });
-      Alert.alert('✅ Đặt lịch thành công!', 'Lịch học đã được thêm vào danh sách của bạn.', [
+      Alert.alert('Đặt lịch thành công', 'Lịch học đã được thêm vào danh sách của bạn.', [
         { text: 'OK', onPress: () => router.push('/(tabs)/schedule') },
       ]);
     },
@@ -73,26 +74,31 @@ export default function ScheduleDetailScreen() {
       {/* Main info */}
       <View style={styles.card}>
         <Text style={styles.className}>{s.class?.name ?? 'Lớp học'}</Text>
-        {s.class?.sport && <Text style={styles.sportText}>🏅 {s.class.sport.name}</Text>}
+        {s.class?.sport && (
+          <View style={styles.iconRow}>
+            <MaterialIcons name="sports" size={16} color={Colors.primary} />
+            <Text style={styles.sportText}>{s.class.sport.name}</Text>
+          </View>
+        )}
 
         <View style={styles.infoGrid}>
           <View style={styles.infoItem}>
-            <Text style={styles.infoIcon}>📅</Text>
+            <MaterialIcons name="calendar-today" size={20} color={Colors.primary} style={styles.infoIcon} />
             <Text style={styles.infoLabel}>Ngày</Text>
             <Text style={styles.infoValue}>{formatDate(s.startTime)}</Text>
           </View>
           <View style={styles.infoItem}>
-            <Text style={styles.infoIcon}>⏰</Text>
+            <MaterialIcons name="access-time" size={20} color={Colors.primary} style={styles.infoIcon} />
             <Text style={styles.infoLabel}>Thời gian</Text>
             <Text style={styles.infoValue}>{formatTime(s.startTime)} – {formatTime(s.endTime)}</Text>
           </View>
           <View style={styles.infoItem}>
-            <Text style={styles.infoIcon}>📍</Text>
+            <MaterialIcons name="place" size={20} color={Colors.primary} style={styles.infoIcon} />
             <Text style={styles.infoLabel}>Phòng tập</Text>
             <Text style={styles.infoValue}>{s.room?.name ?? '—'}</Text>
           </View>
           <View style={styles.infoItem}>
-            <Text style={styles.infoIcon}>👥</Text>
+            <MaterialIcons name="group" size={20} color={Colors.primary} style={styles.infoIcon} />
             <Text style={styles.infoLabel}>Chỗ còn lại</Text>
             <Text style={[styles.infoValue, isFull && { color: Colors.status.cancelled }]}>
               {isFull ? 'Hết chỗ' : `${slotsLeft} chỗ`}
@@ -108,8 +114,18 @@ export default function ScheduleDetailScreen() {
           <View style={styles.roomRow}>
             <Text style={styles.roomName}>{s.room.name}</Text>
           </View>
-          {s.room.location && <Text style={styles.roomDetail}>📍 {s.room.location}</Text>}
-          {s.room.capacity && <Text style={styles.roomDetail}>👥 Sức chứa: {s.room.capacity} người</Text>}
+          {s.room.location && (
+            <View style={styles.iconRow}>
+              <MaterialIcons name="place" size={14} color={Colors.text.secondary} />
+              <Text style={styles.roomDetail}>{s.room.location}</Text>
+            </View>
+          )}
+          {s.room.capacity && (
+            <View style={styles.iconRow}>
+              <MaterialIcons name="group" size={14} color={Colors.text.secondary} />
+              <Text style={styles.roomDetail}>Sức chứa: {s.room.capacity} người</Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -117,8 +133,9 @@ export default function ScheduleDetailScreen() {
       {s.class && (
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Thông Tin Lớp</Text>
-          <TouchableOpacity onPress={() => router.push(`/classes/${s.class!.id}`)}>
-            <Text style={styles.viewClassLink}>Xem chi tiết lớp học →</Text>
+          <TouchableOpacity onPress={() => router.push(`/classes/${s.class!.id}`)} style={styles.classLinkRow}>
+            <Text style={styles.viewClassLink}>Xem chi tiết lớp học</Text>
+            <MaterialIcons name="chevron-right" size={18} color={Colors.primary} />
           </TouchableOpacity>
           {s.class.description && (
             <Text style={styles.classDesc}>{s.class.description}</Text>
@@ -144,14 +161,22 @@ export default function ScheduleDetailScreen() {
           }}
           disabled={isFull || bookMutation.isPending}
         >
-          {bookMutation.isPending
-            ? <ActivityIndicator color={Colors.text.inverse} />
-            : <Text style={styles.bookBtnText}>{isFull ? 'Hết chỗ' : '📅 Đặt lịch học'}</Text>}
+          {bookMutation.isPending ? (
+            <ActivityIndicator color={Colors.text.inverse} />
+          ) : (
+            <View style={styles.btnContentRow}>
+              <MaterialIcons name="event-available" size={22} color={isFull ? Colors.text.muted : Colors.text.inverse} />
+              <Text style={[styles.bookBtnText, isFull && { color: Colors.text.muted }]}>
+                {isFull ? 'Hết chỗ' : 'Đặt lịch học'}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       )}
       {isCancelled && (
         <View style={styles.cancelledNote}>
-          <Text style={styles.cancelledNoteText}>⚠️ Buổi học này đã bị hủy</Text>
+          <MaterialIcons name="warning" size={18} color={Colors.status.cancelled} />
+          <Text style={styles.cancelledNoteText}>Buổi học này đã bị hủy</Text>
         </View>
       )}
     </ScrollView>
@@ -167,21 +192,29 @@ const styles = StyleSheet.create({
   statusText: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
   card: { backgroundColor: Colors.bg.surface, borderRadius: Radius.xl, padding: Spacing.xl, marginBottom: Spacing.lg, borderWidth: 1, borderColor: Colors.border },
   className: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginBottom: Spacing.xs },
-  sportText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular', marginBottom: Spacing.xl },
-  infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
+  iconRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  sportText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
+  infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, marginTop: Spacing.md },
   infoItem: { width: '47%', backgroundColor: Colors.bg.elevated, borderRadius: Radius.lg, padding: Spacing.md },
-  infoIcon: { fontSize: 20, marginBottom: 4 },
+  infoIcon: { marginBottom: 4 },
   infoLabel: { fontSize: FontSize.xs, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular', textTransform: 'uppercase', letterSpacing: 0.5 },
   infoValue: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_600SemiBold', marginTop: 2 },
   sectionTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginBottom: Spacing.md },
   roomRow: { marginBottom: Spacing.sm },
   roomName: { fontSize: FontSize.lg, fontWeight: FontWeight.semibold, color: Colors.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
-  roomDetail: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular', marginBottom: 4 },
-  viewClassLink: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold', marginBottom: Spacing.sm },
+  roomDetail: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
+  classLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: Spacing.sm },
+  viewClassLink: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
   classDesc: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular', lineHeight: 22 },
   bookBtn: { backgroundColor: Colors.primary, borderRadius: Radius.xl, padding: Spacing.lg, alignItems: 'center' },
   bookBtnDisabled: { backgroundColor: Colors.bg.elevated },
+  btnContentRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   bookBtnText: { color: Colors.text.inverse, fontSize: FontSize.lg, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
-  cancelledNote: { backgroundColor: Colors.status.cancelled + '15', borderRadius: Radius.lg, padding: Spacing.lg, alignItems: 'center', borderWidth: 1, borderColor: Colors.status.cancelled + '30' },
+  cancelledNote: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.status.cancelled + '15', borderRadius: Radius.lg,
+    padding: Spacing.lg, justifyContent: 'center', borderWidth: 1, borderColor: Colors.status.cancelled + '30',
+  },
   cancelledNoteText: { color: Colors.status.cancelled, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_500Medium' },
 });
+

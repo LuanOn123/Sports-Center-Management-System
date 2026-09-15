@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
+import { MaterialIcons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
 import type { Class, Sport } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
@@ -48,14 +49,17 @@ export default function ClassesScreen() {
 
       {/* Search */}
       <View style={styles.searchRow}>
-        <TextInput
-          style={styles.search}
-          placeholder="Tìm kiếm lớp học..."
-          placeholderTextColor={Colors.text.muted}
-          value={search}
-          onChangeText={setSearch}
-          returnKeyType="search"
-        />
+        <View style={styles.searchContainer}>
+          <MaterialIcons name="search" size={20} color={Colors.text.muted} style={styles.searchIcon} />
+          <TextInput
+            style={styles.search}
+            placeholder="Tìm kiếm lớp học..."
+            placeholderTextColor={Colors.text.muted}
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+          />
+        </View>
       </View>
 
       {/* Sport filter */}
@@ -105,7 +109,7 @@ export default function ClassesScreen() {
           refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={Colors.primary} />}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyIcon}>🏋️</Text>
+              <MaterialIcons name="fitness-center" size={48} color={Colors.text.muted} style={{ marginBottom: Spacing.md }} />
               <Text style={styles.emptyText}>Không tìm thấy lớp học phù hợp</Text>
             </View>
           }
@@ -123,18 +127,27 @@ export default function ClassesScreen() {
                   </View>
                 </View>
                 {item.sport && (
-                  <Text style={styles.cardSport}>🏅 {item.sport.name}</Text>
+                  <View style={styles.cardSportRow}>
+                    <MaterialIcons name="sports" size={14} color={Colors.primary} />
+                    <Text style={styles.cardSport}>{item.sport.name}</Text>
+                  </View>
                 )}
                 {item.description && (
                   <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
                 )}
               </View>
               <View style={styles.cardBottom}>
-                <Text style={styles.cardInfo}>👥 Sĩ số tối đa: {item.capacity}</Text>
+                <View style={styles.cardInfoItem}>
+                  <MaterialIcons name="group" size={14} color={Colors.text.muted} />
+                  <Text style={styles.cardInfo}>Sĩ số: {item.capacity}</Text>
+                </View>
                 {item.coaches && item.coaches.length > 0 && (
-                  <Text style={styles.cardInfo}>🧑‍🏫 {item.coaches.length} HLV</Text>
+                  <View style={styles.cardInfoItem}>
+                    <MaterialIcons name="person" size={14} color={Colors.text.muted} />
+                    <Text style={styles.cardInfo}>{item.coaches.length} HLV</Text>
+                  </View>
                 )}
-                <Text style={styles.cardArrow}>→</Text>
+                <MaterialIcons name="chevron-right" size={22} color={Colors.primary} style={{ marginLeft: 'auto' }} />
               </View>
             </TouchableOpacity>
           )}
@@ -150,10 +163,15 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
   headerSub: { fontSize: FontSize.sm, color: Colors.text.secondary, marginTop: 2, fontFamily: 'BeVietnamPro_400Regular' },
   searchRow: { paddingHorizontal: Spacing.xl, marginBottom: Spacing.sm },
-  search: {
+  searchContainer: {
+    flexDirection: 'row', alignItems: 'center',
     backgroundColor: Colors.bg.surface, borderRadius: Radius.lg,
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
-    color: Colors.text.primary, fontSize: FontSize.md, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: Spacing.md, borderWidth: 1, borderColor: Colors.border,
+  },
+  searchIcon: { marginRight: Spacing.xs },
+  search: {
+    flex: 1, paddingVertical: Spacing.md,
+    color: Colors.text.primary, fontSize: FontSize.md,
     fontFamily: 'BeVietnamPro_400Regular',
   },
   filterList: { paddingHorizontal: Spacing.xl, gap: Spacing.sm, paddingBottom: Spacing.sm },
@@ -171,7 +189,6 @@ const styles = StyleSheet.create({
   typeBtnTextActive: { color: Colors.primary, fontWeight: FontWeight.semibold },
   list: { padding: Spacing.xl, gap: Spacing.md },
   empty: { alignItems: 'center', marginTop: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: Spacing.lg },
   emptyText: { fontSize: FontSize.sm, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular' },
   card: {
     backgroundColor: Colors.bg.surface, borderRadius: Radius.xl,
@@ -180,13 +197,15 @@ const styles = StyleSheet.create({
   cardTop: { marginBottom: Spacing.md },
   cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.xs },
   cardName: { flex: 1, fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginRight: Spacing.sm },
-  cardSport: { fontSize: FontSize.sm, color: Colors.text.secondary, marginBottom: Spacing.xs, fontFamily: 'BeVietnamPro_400Regular' },
+  cardSportRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: Spacing.xs },
+  cardSport: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
   cardDesc: { fontSize: FontSize.sm, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular' },
   cardBottom: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  cardInfoItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   cardInfo: { fontSize: FontSize.xs, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular' },
-  cardArrow: { marginLeft: 'auto', fontSize: FontSize.lg, color: Colors.primary },
   typeBadge: { borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
   typeRegular: { backgroundColor: Colors.status.scheduled + '20' },
   typePremium: { backgroundColor: Colors.tier.PREMIUM + '20' },
   typeBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_600SemiBold' },
 });
+

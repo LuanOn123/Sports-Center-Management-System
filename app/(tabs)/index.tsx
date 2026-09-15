@@ -1,10 +1,11 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  RefreshControl, ActivityIndicator, Image,
+  RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import type { Enrollment, MembershipStatus } from '../../lib/types';
@@ -63,7 +64,7 @@ export default function HomeScreen() {
       {/* Greeting */}
       <View style={styles.greetingRow}>
         <View>
-          <Text style={styles.greeting}>Xin chào, {user?.fullName?.split(' ').pop()} 👋</Text>
+          <Text style={styles.greeting}>Xin chào, {user?.fullName?.split(' ').pop()}</Text>
           <Text style={styles.greetingSubtitle}>Hôm nay bạn tập gì?</Text>
         </View>
         <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} style={styles.avatar}>
@@ -89,13 +90,19 @@ export default function HomeScreen() {
         </View>
         {status?.activeSubscription && (
           <View style={styles.membershipInfo}>
-            <Text style={styles.membershipInfoText}>
-              📅 Hết hạn: {formatDate(status.activeSubscription.endDate)}
-            </Text>
-            {status.daysRemaining !== undefined && (
+            <View style={styles.infoRow}>
+              <MaterialIcons name="event" size={16} color={Colors.text.secondary} />
               <Text style={styles.membershipInfoText}>
-                ⏳ Còn {status.daysRemaining} ngày
+                Hết hạn: {formatDate(status.activeSubscription.endDate)}
               </Text>
+            </View>
+            {status.daysRemaining !== undefined && (
+              <View style={styles.infoRow}>
+                <MaterialIcons name="schedule" size={16} color={Colors.text.secondary} />
+                <Text style={styles.membershipInfoText}>
+                  Còn {status.daysRemaining} ngày
+                </Text>
+              </View>
             )}
           </View>
         )}
@@ -108,13 +115,13 @@ export default function HomeScreen() {
       {user?.memberProfile?.trainingLevel && (
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statIcon}>🎯</Text>
+            <MaterialIcons name="track-changes" size={20} color={Colors.primary} style={styles.statIcon} />
             <Text style={styles.statLabel}>Trình độ</Text>
             <Text style={styles.statValue}>{LEVEL_LABEL[user.memberProfile.trainingLevel]}</Text>
           </View>
           {user.memberProfile.fitnessGoal && (
             <View style={[styles.statCard, { flex: 2 }]}>
-              <Text style={styles.statIcon}>💪</Text>
+              <MaterialIcons name="fitness-center" size={20} color={Colors.primary} style={styles.statIcon} />
               <Text style={styles.statLabel}>Mục tiêu</Text>
               <Text style={styles.statValue} numberOfLines={2}>{user.memberProfile.fitnessGoal}</Text>
             </View>
@@ -126,8 +133,9 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Lịch sắp tới</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/schedule')}>
-            <Text style={styles.sectionLink}>Xem tất cả →</Text>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/schedule')} style={styles.sectionLinkRow}>
+            <Text style={styles.sectionLink}>Xem tất cả</Text>
+            <MaterialIcons name="arrow-forward" size={16} color={Colors.primary} />
           </TouchableOpacity>
         </View>
 
@@ -135,7 +143,7 @@ export default function HomeScreen() {
           <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.lg }} />
         ) : upcoming.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyIcon}>📅</Text>
+            <MaterialIcons name="event-busy" size={44} color={Colors.text.muted} style={{ marginBottom: Spacing.md }} />
             <Text style={styles.emptyText}>Bạn chưa đăng ký lớp nào</Text>
             <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/(tabs)/classes')}>
               <Text style={styles.emptyBtnText}>Tìm lớp học</Text>
@@ -154,7 +162,10 @@ export default function HomeScreen() {
                   {e.schedule ? `${formatDate(e.schedule.startTime)} • ${formatTime(e.schedule.startTime)} – ${formatTime(e.schedule.endTime)}` : '—'}
                 </Text>
                 {e.schedule?.room && (
-                  <Text style={styles.upcomingRoom}>📍 {e.schedule.room.name}</Text>
+                  <View style={styles.roomRow}>
+                    <MaterialIcons name="place" size={14} color={Colors.text.muted} />
+                    <Text style={styles.upcomingRoom}>{e.schedule.room.name}</Text>
+                  </View>
                 )}
               </View>
               <View style={[styles.statusBadge, { backgroundColor: Colors.status.booked + '20' }]}>
@@ -170,17 +181,19 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>Truy cập nhanh</Text>
         <View style={styles.quickGrid}>
           {[
-            { icon: '🏋️', label: 'Lớp học', route: '/(tabs)/classes' as const },
-            { icon: '📊', label: 'Gói tập', route: '/membership/plans' as const },
-            { icon: '📈', label: 'Lịch sử', route: '/(tabs)/training' as const },
-            { icon: '👤', label: 'Hồ sơ', route: '/(tabs)/profile' as const },
+            { icon: 'fitness-center' as const, label: 'Lớp học', route: '/(tabs)/classes' as const },
+            { icon: 'card-membership' as const, label: 'Gói tập', route: '/membership/plans' as const },
+            { icon: 'timeline' as const, label: 'Lịch sử', route: '/(tabs)/training' as const },
+            { icon: 'person' as const, label: 'Hồ sơ', route: '/(tabs)/profile' as const },
           ].map((item) => (
             <TouchableOpacity
               key={item.label}
               style={styles.quickItem}
               onPress={() => router.push(item.route)}
             >
-              <Text style={styles.quickIcon}>{item.icon}</Text>
+              <View style={styles.quickIconContainer}>
+                <MaterialIcons name={item.icon} size={26} color={Colors.primary} />
+              </View>
               <Text style={styles.quickLabel}>{item.label}</Text>
             </TouchableOpacity>
           ))}
@@ -190,13 +203,15 @@ export default function HomeScreen() {
       {/* AI Shortcut (stub) */}
       <TouchableOpacity style={styles.aiCard}>
         <View style={styles.aiLeft}>
-          <Text style={styles.aiIcon}>🤖</Text>
+          <View style={styles.aiIconWrapper}>
+            <MaterialIcons name="auto-awesome" size={24} color={Colors.primary} />
+          </View>
           <View>
             <Text style={styles.aiTitle}>AI Workout Assistant</Text>
             <Text style={styles.aiSubtitle}>Hỏi AI về bài tập phù hợp</Text>
           </View>
         </View>
-        <Text style={styles.aiArrow}>→</Text>
+        <MaterialIcons name="chevron-right" size={24} color={Colors.primary} />
       </TouchableOpacity>
     </ScrollView>
   );
@@ -224,7 +239,8 @@ const styles = StyleSheet.create({
   membershipTier: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
   membershipBtn: { backgroundColor: Colors.primary + '20', borderRadius: Radius.full, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs },
   membershipBtnText: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
-  membershipInfo: { gap: 4 },
+  membershipInfo: { gap: 6 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   membershipInfoText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
   noMembership: { fontSize: FontSize.sm, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular' },
 
@@ -233,20 +249,20 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: Colors.bg.surface, borderRadius: Radius.lg,
     padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border,
   },
-  statIcon: { fontSize: 20, marginBottom: Spacing.xs },
+  statIcon: { marginBottom: Spacing.xs },
   statLabel: { fontSize: FontSize.xs, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular', textTransform: 'uppercase', letterSpacing: 0.5 },
   statValue: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.primary, marginTop: 2, fontFamily: 'BeVietnamPro_600SemiBold' },
 
   section: { marginBottom: Spacing.xl },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md },
   sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
+  sectionLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   sectionLink: { fontSize: FontSize.sm, color: Colors.primary, fontFamily: 'BeVietnamPro_500Medium' },
 
   emptyCard: {
     backgroundColor: Colors.bg.surface, borderRadius: Radius.xl,
     padding: Spacing.xxxl, alignItems: 'center', borderWidth: 1, borderColor: Colors.border,
   },
-  emptyIcon: { fontSize: 40, marginBottom: Spacing.md },
   emptyText: { color: Colors.text.muted, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_400Regular', marginBottom: Spacing.lg },
   emptyBtn: { backgroundColor: Colors.primary, borderRadius: Radius.md, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
   emptyBtnText: { color: Colors.text.inverse, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
@@ -260,7 +276,8 @@ const styles = StyleSheet.create({
   upcomingLeft: { flex: 1 },
   upcomingClass: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
   upcomingTime: { fontSize: FontSize.xs, color: Colors.text.secondary, marginTop: 2, fontFamily: 'BeVietnamPro_400Regular' },
-  upcomingRoom: { fontSize: FontSize.xs, color: Colors.text.muted, marginTop: 2, fontFamily: 'BeVietnamPro_400Regular' },
+  roomRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  upcomingRoom: { fontSize: FontSize.xs, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular' },
   statusBadge: { borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 3, marginLeft: Spacing.sm },
   statusText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
 
@@ -269,7 +286,11 @@ const styles = StyleSheet.create({
     flex: 1, minWidth: '44%', backgroundColor: Colors.bg.surface, borderRadius: Radius.lg,
     padding: Spacing.lg, alignItems: 'center', borderWidth: 1, borderColor: Colors.border,
   },
-  quickIcon: { fontSize: 28, marginBottom: Spacing.sm },
+  quickIconContainer: {
+    width: 48, height: 48, borderRadius: Radius.md,
+    backgroundColor: Colors.bg.elevated, justifyContent: 'center', alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
   quickLabel: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_500Medium' },
 
   aiCard: {
@@ -278,8 +299,11 @@ const styles = StyleSheet.create({
     alignItems: 'center', borderWidth: 1, borderColor: Colors.primary + '30',
   },
   aiLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  aiIcon: { fontSize: 32 },
+  aiIconWrapper: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: Colors.primary + '20', justifyContent: 'center', alignItems: 'center',
+  },
   aiTitle: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
   aiSubtitle: { fontSize: FontSize.xs, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
-  aiArrow: { fontSize: FontSize.xl, color: Colors.primary },
 });
+
