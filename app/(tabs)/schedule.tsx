@@ -119,11 +119,11 @@ export default function ScheduleScreen() {
               activeOpacity={0.8}
             >
               {/* Date strip */}
-              {item.schedule && (
+              {Boolean(item.schedule) && (
                 <View style={styles.dateStrip}>
-                  <Text style={styles.dateText}>{formatDate(item.schedule.startTime)}</Text>
+                  <Text style={styles.dateText}>{formatDate(item.schedule!.startTime)}</Text>
                   <Text style={styles.timeText}>
-                    {formatTime(item.schedule.startTime)} – {formatTime(item.schedule.endTime)}
+                    {formatTime(item.schedule!.startTime)} – {formatTime(item.schedule!.endTime)}
                   </Text>
                 </View>
               )}
@@ -131,10 +131,10 @@ export default function ScheduleScreen() {
               <View style={styles.cardBody}>
                 <View style={styles.cardMain}>
                   <Text style={styles.className}>{item.schedule?.class?.name ?? 'Lớp học'}</Text>
-                  {item.schedule?.room && (
+                  {Boolean(item.schedule?.room) && (
                     <View style={styles.roomRow}>
                       <MaterialIcons name="place" size={14} color={Colors.text.secondary} />
-                      <Text style={styles.roomText}>{item.schedule.room.name}</Text>
+                      <Text style={styles.roomText}>{item.schedule!.room!.name}</Text>
                     </View>
                   )}
                   <Text style={styles.bookedAt}>Đặt lúc: {formatDateTime(item.bookedAt)}</Text>

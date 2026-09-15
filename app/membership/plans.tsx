@@ -120,16 +120,16 @@ export default function MembershipPlansScreen() {
               {TIER_LABEL[status?.effectiveTier ?? 'FREE']}
             </Text>
           </View>
-          {activeSub ? (
+          {Boolean(activeSub) ? (
             <View style={styles.infoCol}>
               <View style={styles.infoRow}>
                 <MaterialIcons name="event" size={16} color={Colors.text.secondary} />
-                <Text style={styles.currentInfo}>Hết hạn: {formatDate(activeSub.endDate)}</Text>
+                <Text style={styles.currentInfo}>Hết hạn: {formatDate(activeSub!.endDate)}</Text>
               </View>
-              {status?.daysRemaining !== undefined && (
+              {Boolean(status?.daysRemaining !== undefined) && (
                 <View style={styles.infoRow}>
                   <MaterialIcons name="schedule" size={16} color={Colors.text.secondary} />
-                  <Text style={styles.currentInfo}>Còn {status.daysRemaining} ngày</Text>
+                  <Text style={styles.currentInfo}>Còn {status!.daysRemaining} ngày</Text>
                 </View>
               )}
             </View>
@@ -181,21 +181,21 @@ export default function MembershipPlansScreen() {
                     <View style={[styles.planTierBadge, { backgroundColor: Colors.tier[plan.tier] + '20' }]}>
                       <Text style={[styles.planTierText, { color: Colors.tier[plan.tier] }]}>{TIER_LABEL[plan.tier]}</Text>
                     </View>
-                    {isCurrentPlan && (
+                    {Boolean(isCurrentPlan) && (
                       <View style={styles.currentBadge}>
                         <Text style={styles.currentBadgeText}>Đang dùng</Text>
                       </View>
                     )}
                   </View>
                   <Text style={styles.planName}>{plan.name}</Text>
-                  {plan.description && <Text style={styles.planDesc}>{plan.description}</Text>}
+                  {Boolean(plan.description) && <Text style={styles.planDesc}>{plan.description}</Text>}
                 </View>
                 <View style={styles.planMid}>
                   <Text style={styles.planPrice}>{formatPrice(plan.price)}</Text>
                   <Text style={styles.planDuration}>{plan.durationDays} ngày</Text>
                 </View>
                 <View style={styles.planActions}>
-                  {activeSub ? (
+                  {Boolean(activeSub) ? (
                     <TouchableOpacity
                       style={styles.renewBtn}
                       onPress={() => handleRenew(plan)}
@@ -221,7 +221,7 @@ export default function MembershipPlansScreen() {
       </View>
 
       {/* History */}
-      {subs.length > 0 && (
+      {Boolean(subs.length > 0) && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Lịch sử đăng ký</Text>
           {subs.slice(0, 5).map((s) => (
@@ -239,6 +239,7 @@ export default function MembershipPlansScreen() {
           ))}
         </View>
       )}
+
     </ScrollView>
   );
 }

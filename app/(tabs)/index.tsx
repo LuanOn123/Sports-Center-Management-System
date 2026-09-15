@@ -88,15 +88,15 @@ export default function HomeScreen() {
             <Text style={styles.membershipBtnText}>Xem gói</Text>
           </TouchableOpacity>
         </View>
-        {status?.activeSubscription && (
+        {Boolean(status?.activeSubscription) && (
           <View style={styles.membershipInfo}>
             <View style={styles.infoRow}>
               <MaterialIcons name="event" size={16} color={Colors.text.secondary} />
               <Text style={styles.membershipInfoText}>
-                Hết hạn: {formatDate(status.activeSubscription.endDate)}
+                Hết hạn: {formatDate(status!.activeSubscription!.endDate)}
               </Text>
             </View>
-            {status.daysRemaining !== undefined && (
+            {status?.daysRemaining !== undefined && (
               <View style={styles.infoRow}>
                 <MaterialIcons name="schedule" size={16} color={Colors.text.secondary} />
                 <Text style={styles.membershipInfoText}>
@@ -106,24 +106,24 @@ export default function HomeScreen() {
             )}
           </View>
         )}
-        {!status?.activeSubscription && !statusLoading && (
+        {!status?.activeSubscription && !statusLoading ? (
           <Text style={styles.noMembership}>Chưa có gói thành viên đang hoạt động</Text>
-        )}
+        ) : null}
       </View>
 
       {/* Training Level */}
-      {user?.memberProfile?.trainingLevel && (
+      {Boolean(user?.memberProfile?.trainingLevel) && (
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <MaterialIcons name="track-changes" size={20} color={Colors.primary} style={styles.statIcon} />
             <Text style={styles.statLabel}>Trình độ</Text>
-            <Text style={styles.statValue}>{LEVEL_LABEL[user.memberProfile.trainingLevel]}</Text>
+            <Text style={styles.statValue}>{LEVEL_LABEL[user!.memberProfile!.trainingLevel!]}</Text>
           </View>
-          {user.memberProfile.fitnessGoal && (
+          {Boolean(user?.memberProfile?.fitnessGoal) && (
             <View style={[styles.statCard, { flex: 2 }]}>
               <MaterialIcons name="fitness-center" size={20} color={Colors.primary} style={styles.statIcon} />
               <Text style={styles.statLabel}>Mục tiêu</Text>
-              <Text style={styles.statValue} numberOfLines={2}>{user.memberProfile.fitnessGoal}</Text>
+              <Text style={styles.statValue} numberOfLines={2}>{user!.memberProfile!.fitnessGoal}</Text>
             </View>
           )}
         </View>
@@ -154,17 +154,19 @@ export default function HomeScreen() {
             <TouchableOpacity
               key={e.id}
               style={styles.upcomingCard}
-              onPress={() => e.scheduleId && router.push(`/schedule/${e.scheduleId}`)}
+              onPress={() => {
+                if (e.scheduleId) router.push(`/schedule/${e.scheduleId}`);
+              }}
             >
               <View style={styles.upcomingLeft}>
                 <Text style={styles.upcomingClass}>{e.schedule?.class?.name ?? 'Lớp học'}</Text>
                 <Text style={styles.upcomingTime}>
                   {e.schedule ? `${formatDate(e.schedule.startTime)} • ${formatTime(e.schedule.startTime)} – ${formatTime(e.schedule.endTime)}` : '—'}
                 </Text>
-                {e.schedule?.room && (
+                {Boolean(e.schedule?.room) && (
                   <View style={styles.roomRow}>
                     <MaterialIcons name="place" size={14} color={Colors.text.muted} />
-                    <Text style={styles.upcomingRoom}>{e.schedule.room.name}</Text>
+                    <Text style={styles.upcomingRoom}>{e.schedule!.room!.name}</Text>
                   </View>
                 )}
               </View>
@@ -175,6 +177,7 @@ export default function HomeScreen() {
           ))
         )}
       </View>
+
 
       {/* Quick Actions */}
       <View style={styles.section}>

@@ -83,13 +83,13 @@ export default function ClassDetailScreen() {
             <Text style={styles.typeBadgeText}>{TYPE_LABEL[cls.classType]}</Text>
           </View>
         </View>
-        {cls.sport && (
+        {Boolean(cls.sport) && (
           <View style={styles.iconRow}>
             <MaterialIcons name="sports" size={16} color={Colors.primary} />
-            <Text style={styles.classSport}>{cls.sport.name}</Text>
+            <Text style={styles.classSport}>{cls.sport!.name}</Text>
           </View>
         )}
-        {cls.description && <Text style={styles.classDesc}>{cls.description}</Text>}
+        {Boolean(cls.description) && <Text style={styles.classDesc}>{cls.description}</Text>}
         <View style={styles.classStats}>
           <View style={styles.statItem}>
             <Text style={styles.statNum}>{cls.capacity}</Text>
@@ -104,10 +104,10 @@ export default function ClassDetailScreen() {
       </View>
 
       {/* Coaches */}
-      {cls.coaches && cls.coaches.length > 0 && (
+      {Boolean(cls.coaches && cls.coaches.length > 0) && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Huấn Luyện Viên</Text>
-          {cls.coaches.map((c) => (
+          {cls.coaches!.map((c) => (
             <View key={c.coachId} style={styles.coachCard}>
               <View style={styles.coachAvatar}>
                 <Text style={styles.coachAvatarText}>{c.coach?.user?.fullName?.charAt(0) ?? '?'}</Text>
@@ -115,20 +115,20 @@ export default function ClassDetailScreen() {
               <View style={styles.coachInfo}>
                 <View style={styles.coachNameRow}>
                   <Text style={styles.coachName}>{c.coach?.user?.fullName ?? '—'}</Text>
-                  {c.isPrimary && (
+                  {Boolean(c.isPrimary) && (
                     <View style={styles.primaryBadge}>
                       <Text style={styles.primaryText}>Chính</Text>
                     </View>
                   )}
                 </View>
-                {c.coach?.specialization && (
+                {Boolean(c.coach?.specialization) && (
                   <View style={styles.iconRow}>
                     <MaterialIcons name="star-outline" size={14} color={Colors.text.secondary} />
-                    <Text style={styles.coachSpec}>{c.coach.specialization}</Text>
+                    <Text style={styles.coachSpec}>{c.coach!.specialization}</Text>
                   </View>
                 )}
-                {c.coach?.bio && (
-                  <Text style={styles.coachBio} numberOfLines={2}>{c.coach.bio}</Text>
+                {Boolean(c.coach?.bio) && (
+                  <Text style={styles.coachBio} numberOfLines={2}>{c.coach!.bio}</Text>
                 )}
               </View>
             </View>
@@ -156,10 +156,10 @@ export default function ClassDetailScreen() {
                 <View style={styles.scheduleLeft}>
                   <Text style={styles.scheduleDate}>{formatDate(s.startTime)}</Text>
                   <Text style={styles.scheduleTime}>{formatTime(s.startTime)} – {formatTime(s.endTime)}</Text>
-                  {s.room && (
+                  {Boolean(s.room) && (
                     <View style={styles.iconRow}>
                       <MaterialIcons name="place" size={14} color={Colors.text.secondary} />
-                      <Text style={styles.scheduleRoom}>{s.room.name}</Text>
+                      <Text style={styles.scheduleRoom}>{s.room!.name}</Text>
                     </View>
                   )}
                   <View style={styles.iconRow}>
@@ -169,6 +169,7 @@ export default function ClassDetailScreen() {
                     </Text>
                   </View>
                 </View>
+
                 <TouchableOpacity
                   style={[styles.bookBtn, isFull && styles.bookBtnDisabled]}
                   onPress={() => {

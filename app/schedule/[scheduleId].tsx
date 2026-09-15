@@ -76,10 +76,10 @@ export default function ScheduleDetailScreen() {
       {/* Main info */}
       <View style={styles.card}>
         <Text style={styles.className}>{s.class?.name ?? 'Lớp học'}</Text>
-        {s.class?.sport && (
+        {Boolean(s.class?.sport) && (
           <View style={styles.iconRow}>
             <MaterialIcons name="sports" size={16} color={Colors.primary} />
-            <Text style={styles.sportText}>{s.class.sport.name}</Text>
+            <Text style={styles.sportText}>{s.class!.sport!.name}</Text>
           </View>
         )}
 
@@ -110,37 +110,37 @@ export default function ScheduleDetailScreen() {
       </View>
 
       {/* Room details */}
-      {s.room && (
+      {Boolean(s.room) && (
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Thông Tin Phòng</Text>
           <View style={styles.roomRow}>
-            <Text style={styles.roomName}>{s.room.name}</Text>
+            <Text style={styles.roomName}>{s.room!.name}</Text>
           </View>
-          {s.room.location && (
+          {Boolean(s.room!.location) && (
             <View style={styles.iconRow}>
               <MaterialIcons name="place" size={14} color={Colors.text.secondary} />
-              <Text style={styles.roomDetail}>{s.room.location}</Text>
+              <Text style={styles.roomDetail}>{s.room!.location}</Text>
             </View>
           )}
-          {s.room.capacity && (
+          {Boolean(s.room!.capacity) && (
             <View style={styles.iconRow}>
               <MaterialIcons name="group" size={14} color={Colors.text.secondary} />
-              <Text style={styles.roomDetail}>Sức chứa: {s.room.capacity} người</Text>
+              <Text style={styles.roomDetail}>Sức chứa: {s.room!.capacity} người</Text>
             </View>
           )}
         </View>
       )}
 
       {/* Class details */}
-      {s.class && (
+      {Boolean(s.class) && (
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Thông Tin Lớp</Text>
           <TouchableOpacity onPress={() => router.push(`/classes/${s.class!.id}`)} style={styles.classLinkRow}>
             <Text style={styles.viewClassLink}>Xem chi tiết lớp học</Text>
             <MaterialIcons name="chevron-right" size={18} color={Colors.primary} />
           </TouchableOpacity>
-          {s.class.description && (
-            <Text style={styles.classDesc}>{s.class.description}</Text>
+          {Boolean(s.class!.description) && (
+            <Text style={styles.classDesc}>{s.class!.description}</Text>
           )}
         </View>
       )}
@@ -173,14 +173,14 @@ export default function ScheduleDetailScreen() {
             </View>
           )}
         </TouchableOpacity>
-
       )}
-      {isCancelled && (
+      {Boolean(isCancelled) && (
         <View style={styles.cancelledNote}>
           <MaterialIcons name="warning" size={18} color={Colors.status.cancelled} />
           <Text style={styles.cancelledNoteText}>Buổi học này đã bị hủy</Text>
         </View>
       )}
+
     </ScrollView>
   );
 }
