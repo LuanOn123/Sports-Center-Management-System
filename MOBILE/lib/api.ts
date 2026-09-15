@@ -1,8 +1,9 @@
 import { storage } from './storage';
 
-export const BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL ||
-  'https://sports-center-management-system.onrender.com/api/v1';
+if (!process.env.EXPO_PUBLIC_API_BASE_URL) {
+  throw new Error('[api] EXPO_PUBLIC_API_BASE_URL is not set. Please create a .env file (see .env.example).');
+}
+export const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
