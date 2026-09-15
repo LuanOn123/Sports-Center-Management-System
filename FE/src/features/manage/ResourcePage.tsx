@@ -10,10 +10,11 @@ import {
   Trash2,
   UserPlus,
 } from "lucide-react";
-import { api, contract } from "./api";
-import type { RecordData } from "./api";
+import { api, contract } from "../../shared/api";
+import type { RecordData } from "../../shared/api";
 import type { Resource } from "./config";
-import { at, display, money } from "./config";
+import { at, display, money } from "../../shared/config";
+import { useDebouncedValue } from "../../shared/useDebouncedValue";
 import {
   Details,
   Empty,
@@ -22,11 +23,12 @@ import {
   Loading,
   Modal,
   SchemaForm,
-} from "./ui";
+} from "../../shared/ui";
 export function ResourcePage({ resource: r }: { resource: Resource }) {
   const client = useQueryClient();
   const [query, setQuery] = useState<Record<string, string>>({});
   const [page, setPage] = useState(1);
+  const search = useDebouncedValue(query.search);
   const [modal, setModal] = useState<{ kind: string; row?: RecordData } | null>(
     null,
   );
@@ -42,6 +44,7 @@ export function ResourcePage({ resource: r }: { resource: Resource }) {
   );
   const requestQuery = {
     ...query,
+    ...(query.search !== undefined ? { search } : {}),
     ...(r.slug === "staff" ? { role: "STAFF" } : {}),
     ...(paginated ? { page: String(page), limit: "10" } : {}),
   };
@@ -146,7 +149,12 @@ export function ResourcePage({ resource: r }: { resource: Resource }) {
             detail="Thử thay đổi bộ lọc hoặc thêm dữ liệu mới."
           />
         ) : (
-          <div className="table-scroll">
+          <div
+            className="table-scroll"
+            tabIndex={0}
+            role="region"
+            aria-label={`Danh sách ${r.title.toLowerCase()}, có thể cuộn ngang`}
+          >
             <table>
               <thead>
                 <tr>
@@ -310,6 +318,7 @@ export function ResourcePage({ resource: r }: { resource: Resource }) {
       )}
       {modal && (
         <Modal
+          dismissible={!busy}
           title={
             modal.kind === "create"
               ? "Thêm " + r.title.toLowerCase()
@@ -346,6 +355,7 @@ export function ResourcePage({ resource: r }: { resource: Resource }) {
               }
               fixed={modal.kind === "create" && r.role ? { role: r.role } : {}}
               onSuccess={done}
+              onBusyChange={setBusy}
               onCancel={() => setModal(null)}
             />
           ) : modal.kind === "delete" ? (

@@ -23,7 +23,7 @@ describe("API client contract and authentication", () => {
   it("rejects an undocumented endpoint before network access", async () => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
-    const { api } = await import("../src/api");
+    const { api } = await import("../src/shared/api");
     await expect(api("GET /invented")).rejects.toThrow(
       "Undocumented operation",
     );
@@ -32,7 +32,7 @@ describe("API client contract and authentication", () => {
   it("rejects undocumented pagination and encodes path parameters", async () => {
     const fetch = vi.fn().mockResolvedValue(envelope({}));
     vi.stubGlobal("fetch", fetch);
-    const { api } = await import("../src/api");
+    const { api } = await import("../src/shared/api");
     await expect(
       api("GET /membership-plans", { query: { page: "2" } }),
     ).rejects.toThrow("Undocumented query");
@@ -55,7 +55,7 @@ describe("API client contract and authentication", () => {
         : envelope([]);
     });
     vi.stubGlobal("fetch", fetch);
-    const { api } = await import("../src/api");
+    const { api } = await import("../src/shared/api");
     const result = await Promise.all([api("GET /users"), api("GET /rooms")]);
     expect(refreshCalls).toBe(1);
     expect(result.every((r) => r.success)).toBe(true);
@@ -68,7 +68,7 @@ describe("API client contract and authentication", () => {
       "fetch",
       vi.fn(async () => envelope(null, 401)),
     );
-    const { api } = await import("../src/api");
+    const { api } = await import("../src/shared/api");
     await expect(api("GET /users")).rejects.toMatchObject({ status: 401 });
     expect(sessionStorage.getItem("pulse.access")).toBeNull();
     expect(window.dispatchEvent).toHaveBeenCalled();
@@ -88,7 +88,7 @@ describe("API client contract and authentication", () => {
       )
       .mockResolvedValueOnce(envelope(null, 403));
     vi.stubGlobal("fetch", fetch);
-    const { api } = await import("../src/api");
+    const { api } = await import("../src/shared/api");
     await expect(
       api("POST /rooms", { body: { name: "A", capacity: 0 } }),
     ).rejects.toMatchObject({
@@ -105,7 +105,7 @@ describe("API client contract and authentication", () => {
         async () => new Response("<html>Unavailable</html>", { status: 502 }),
       ),
     );
-    const { api } = await import("../src/api");
+    const { api } = await import("../src/shared/api");
     await expect(api("GET /sports")).rejects.toMatchObject({ status: 502 });
   });
 });

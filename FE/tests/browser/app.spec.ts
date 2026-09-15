@@ -60,9 +60,7 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
 }) => {
   await fixtureApi(page);
   await page.goto("/");
-  await page
-    .getByPlaceholder("Email quản lý của bạn")
-    .fill("manager@example.test");
+  await page.getByPlaceholder("Email của bạn").fill("manager@example.test");
   await page.getByPlaceholder("Nhập mật khẩu").fill("test-only-password");
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await expect(
@@ -122,14 +120,10 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
     )
     .toBe(true);
 });
-test("non-manager is denied even after a successful login", async ({
-  page,
-}) => {
+test("member cannot enter manager routes", async ({ page }) => {
   await fixtureApi(page, "MEMBER");
-  await page.goto("/");
-  await page
-    .getByPlaceholder("Email quản lý của bạn")
-    .fill("member@example.test");
+  await page.goto("/manager/dashboard");
+  await page.getByPlaceholder("Email của bạn").fill("member@example.test");
   await page.getByPlaceholder("Nhập mật khẩu").fill("test-password");
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await expect(

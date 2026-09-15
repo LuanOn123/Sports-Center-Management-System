@@ -12,16 +12,16 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { api } from "./api";
-import type { RecordData } from "./api";
+import { api } from "../../shared/api";
+import type { RecordData } from "../../shared/api";
 import type {
   RevenueReportOk,
   MemberReportOk,
   EnrollmentReportOk,
   MembershipReportOk,
-} from "./generated";
-import { display, label, money } from "./config";
-import { Empty, ErrorState, Loading } from "./ui";
+} from "../../shared/generated";
+import { display, label, money } from "../../shared/config";
+import { Empty, ErrorState, Loading } from "../../shared/ui";
 function dateString(d: Date) {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
     .toISOString()

@@ -1,22 +1,22 @@
-# Member01 — Center Manager Web
+# Sports Center Web — Role-based features
 
-Frontend web cho phần việc **Member 1**, không phải Member Mobile. FE ban đầu chỉ có FE.txt rỗng; triển khai mới bằng Vite, React, TypeScript, React Router và TanStack Query. CSS responsive riêng với Lucide icons, bảng màu xanh đậm/lime, họa tiết đường chạy và hỗ trợ reduced motion.
+Frontend gồm manager hiện có, reception thuộc Member03, layout coach và user. Xem [kiến trúc và phạm vi Member03](docs/ARCHITECTURE.md). Sử dụng Vite, React, TypeScript, React Router và TanStack Query. CSS responsive riêng với Lucide icons, bảng màu xanh đậm/lime, họa tiết đường chạy và hỗ trợ reduced motion.
 
 ## Chạy ứng dụng
 
 Yêu cầu Node.js 22+ và npm.
 
 ```powershell
-cd D:\SportsCenterManagementSystem\FE
+cd FE
 npm ci
 npm run dev
 ```
 
-Mở http://127.0.0.1:5173. Đăng nhập bằng tài khoản **MANAGER đang hoạt động** do backend cấp. Không có tài khoản/mật khẩu mặc định trong FE.
+Mở http://127.0.0.1:5173. Đăng nhập bằng tài khoản đang hoạt động do backend cấp; chuyển vào portal theo MANAGER, STAFF, COACH hoặc MEMBER. Không có tài khoản/mật khẩu mặc định trong FE.
 
 Base URL mặc định: `https://sports-center-management-system.onrender.com/api/v1` — đúng Production Server (Render) trong ảnh. Có thể sao chép `.env.example` thành `.env` để cấu hình `VITE_API_BASE_URL`. Không thêm `/api/v1` lần nữa vào endpoint.
 
-## Các màn hình
+## Các màn hình manager hiện có
 
 | Route | Chức năng đã nối API |
 | --- | --- |
@@ -42,15 +42,19 @@ Mỗi truy vấn có loading, empty, error/retry. Mutation có trạng thái ch�
 - Nguồn: OpenAPI 3.0 nhúng trong `https://sports-center-management-system.onrender.com/api/v1/docs/swagger-ui-init.js`.
 - Snapshot đầy đủ: `docs/openapi.json`, 66 operations.
 - `docs/API_INVENTORY.md`: method/path, auth, path/query parameters, required fields, request schema, status codes, response examples, enum, pagination và lỗi của **toàn bộ 66 operations**.
-- `src/operations.json`: metadata cho service, bộ lọc, form và enum; không chứa response mẫu.
-- `src/generated.ts`: request types được tạo từ schema; response types được suy ra từ example vì backend không có `components.schemas`. Đây không phải lời khẳng định schema response đầy đủ.
-- `src/api.ts`: chỉ cho gọi operation và query parameter đã có trong snapshot; mã hóa path ID; Bearer token, refresh đồng thời chỉ một lần, timeout, lỗi field, logout.
+- `src/shared/operations.json`: metadata cho service, bộ lọc, form và enum; không chứa response mẫu.
+- `src/shared/generated.ts`: request types được tạo từ schema; response types được suy ra từ example vì backend không có `components.schemas`. Đây không phải lời khẳng định schema response đầy đủ.
+- `src/shared/api.ts`: chỉ cho gọi operation và query parameter đã có trong snapshot; mã hóa path ID; Bearer token, refresh đồng thời chỉ một lần, timeout, lỗi field, logout.
 - Token lưu trong `sessionStorage` của tab. Vai trò xác minh qua GET /auth/me, không lấy từ việc tự giải mã JWT; backend vẫn phải kiểm tra quyền trên mọi request.
 - Giá gói/thanh toán trong response là chuỗi decimal; request giá là number theo Swagger.
 - Pagination nằm cạnh `data`: `{page, limit, total, totalPages}`. Chỉ gửi page/limit khi operation thực sự khai báo chúng.
 - `coachId` của phân công là **CoachProfile.id**, không phải User.id. Chỉ cho chọn nếu API trả đúng mã hồ sơ; không suy đoán mã từ user ID.
 - Các trường cập nhật thiếu schema được giữ chưa khả dụng. Xem `docs/MISSING_API.md`.
 - Google Fonts dùng Be Vietnam Pro và fallback sans-serif; không dùng ảnh bên thứ ba hoặc image mockup để thay UI.
+
+## Review UI/UX
+
+Xem [báo cáo review và các thay đổi](docs/FRONTEND_REVIEW.md). Khung điều hướng dùng chung, font/control được chuẩn hóa, có kiểm thử responsive ở 8 độ rộng và axe accessibility.
 
 ## Kiểm thử
 
