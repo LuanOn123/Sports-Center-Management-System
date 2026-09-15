@@ -4,13 +4,18 @@ import {
   TouchableOpacity, Alert, ActivityIndicator,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { api, ApiError } from '../../lib/api';
 import type { MembershipPlan, MembershipStatus, Subscription } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
 const TIER_LABEL: Record<string, string> = { FREE: 'Miễn Phí', MEMBERSHIP: 'Tiêu Chuẩn', PREMIUM: 'Cao Cấp' };
-const TIER_ICON: Record<string, string> = { FREE: '🆓', MEMBERSHIP: '⭐', PREMIUM: '💎' };
+const TIER_ICON: Record<string, React.ComponentProps<typeof MaterialIcons>['name']> = {
+  FREE: 'star-border',
+  MEMBERSHIP: 'star',
+  PREMIUM: 'workspace-premium',
+};
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -48,7 +53,7 @@ export default function MembershipPlansScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['membership-status'] });
       queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-      Alert.alert('✅ Đăng ký thành công!', 'Gói thành viên của bạn đã được kích hoạt.');
+      Alert.alert('Đăng ký thành công', 'Gói thành viên của bạn đã được kích hoạt.');
     },
     onError: (e) => {
       Alert.alert('Lỗi', e instanceof ApiError ? e.message : 'Đăng ký thất bại.');
@@ -61,7 +66,7 @@ export default function MembershipPlansScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['membership-status'] });
       queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-      Alert.alert('✅ Gia hạn thành công!', 'Gói thành viên của bạn đã được gia hạn.');
+      Alert.alert('Gia hạn thành công', 'Gói thành viên của bạn đã được gia hạn.');
     },
     onError: (e) => {
       Alert.alert('Lỗi', e instanceof ApiError ? e.message : 'Gia hạn thất bại.');
@@ -106,18 +111,28 @@ export default function MembershipPlansScreen() {
         <View style={[styles.currentCard, { borderColor: Colors.tier[status?.effectiveTier ?? 'FREE'] + '40' }]}>
           <Text style={styles.currentLabel}>Hạng hiện tại</Text>
           <View style={styles.currentRow}>
-            <Text style={styles.currentTierIcon}>{TIER_ICON[status?.effectiveTier ?? 'FREE']}</Text>
+            <MaterialIcons
+              name={TIER_ICON[status?.effectiveTier ?? 'FREE']}
+              size={28}
+              color={Colors.tier[status?.effectiveTier ?? 'FREE']}
+            />
             <Text style={[styles.currentTier, { color: Colors.tier[status?.effectiveTier ?? 'FREE'] }]}>
               {TIER_LABEL[status?.effectiveTier ?? 'FREE']}
             </Text>
           </View>
           {activeSub ? (
-            <>
-              <Text style={styles.currentInfo}>📅 Hết hạn: {formatDate(activeSub.endDate)}</Text>
+            <View style={styles.infoCol}>
+              <View style={styles.infoRow}>
+                <MaterialIcons name="event" size={16} color={Colors.text.secondary} />
+                <Text style={styles.currentInfo}>Hết hạn: {formatDate(activeSub.endDate)}</Text>
+              </View>
               {status?.daysRemaining !== undefined && (
-                <Text style={styles.currentInfo}>⏳ Còn {status.daysRemaining} ngày</Text>
+                <View style={styles.infoRow}>
+                  <MaterialIcons name="schedule" size={16} color={Colors.text.secondary} />
+                  <Text style={styles.currentInfo}>Còn {status.daysRemaining} ngày</Text>
+                </View>
               )}
-            </>
+            </View>
           ) : (
             <Text style={styles.noActive}>Chưa có gói đang hiệu lực</Text>
           )}
@@ -128,17 +143,25 @@ export default function MembershipPlansScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
         <View style={styles.methodRow}>
-          {(['CASH', 'BANK_TRANSFER'] as const).map((m) => (
-            <TouchableOpacity
-              key={m}
-              style={[styles.methodBtn, selectedMethod === m && styles.methodBtnActive]}
-              onPress={() => setSelectedMethod(m)}
-            >
-              <Text style={[styles.methodText, selectedMethod === m && styles.methodTextActive]}>
-                {m === 'CASH' ? '💵 Tiền mặt' : '🏦 Chuyển khoản'}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {(['CASH', 'BANK_TRANSFER'] as const).map((m) => {
+            const isActive = selectedMethod === m;
+            return (
+              <TouchableOpacity
+                key={m}
+                style={[styles.methodBtn, isActive && styles.methodBtnActive]}
+                onPress={() => setSelectedMethod(m)}
+              >
+                <MaterialIcons
+                  name={m === 'CASH' ? 'payments' : 'account-balance'}
+                  size={18}
+                  color={isActive ? Colors.text.inverse : Colors.text.secondary}
+                />
+                <Text style={[styles.methodText, isActive && styles.methodTextActive]}>
+                  {m === 'CASH' ? 'Tiền mặt' : 'Chuyển khoản'}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
 
@@ -154,7 +177,7 @@ export default function MembershipPlansScreen() {
               <View key={plan.id} style={[styles.planCard, isCurrentPlan && styles.planCardActive]}>
                 <View style={styles.planTop}>
                   <View style={styles.planTierRow}>
-                    <Text style={styles.planTierIcon}>{TIER_ICON[plan.tier]}</Text>
+                    <MaterialIcons name={TIER_ICON[plan.tier]} size={20} color={Colors.tier[plan.tier]} />
                     <View style={[styles.planTierBadge, { backgroundColor: Colors.tier[plan.tier] + '20' }]}>
                       <Text style={[styles.planTierText, { color: Colors.tier[plan.tier] }]}>{TIER_LABEL[plan.tier]}</Text>
                     </View>
@@ -178,7 +201,8 @@ export default function MembershipPlansScreen() {
                       onPress={() => handleRenew(plan)}
                       disabled={renewMutation.isPending}
                     >
-                      <Text style={styles.renewBtnText}>🔄 Gia hạn</Text>
+                      <MaterialIcons name="autorenew" size={18} color={Colors.accent} />
+                      <Text style={styles.renewBtnText}>Gia hạn</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
@@ -225,14 +249,19 @@ const styles = StyleSheet.create({
   currentCard: { backgroundColor: Colors.bg.surface, borderRadius: Radius.xl, padding: Spacing.xl, marginBottom: Spacing.xl, borderWidth: 1 },
   currentLabel: { fontSize: FontSize.xs, color: Colors.text.muted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: Spacing.sm, fontFamily: 'BeVietnamPro_400Regular' },
   currentRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.md },
-  currentTierIcon: { fontSize: 32 },
   currentTier: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
-  currentInfo: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular', marginBottom: 4 },
+  infoCol: { gap: 4 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  currentInfo: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
   noActive: { fontSize: FontSize.sm, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular' },
   section: { marginBottom: Spacing.xl },
   sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginBottom: Spacing.md },
   methodRow: { flexDirection: 'row', gap: Spacing.md },
-  methodBtn: { flex: 1, paddingVertical: Spacing.sm, borderRadius: Radius.md, alignItems: 'center', backgroundColor: Colors.bg.surface, borderWidth: 1, borderColor: Colors.border },
+  methodBtn: {
+    flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    gap: 6, paddingVertical: Spacing.sm, borderRadius: Radius.md,
+    backgroundColor: Colors.bg.surface, borderWidth: 1, borderColor: Colors.border,
+  },
   methodBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   methodText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_500Medium' },
   methodTextActive: { color: Colors.text.inverse, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
@@ -240,7 +269,6 @@ const styles = StyleSheet.create({
   planCardActive: { borderColor: Colors.primary },
   planTop: { marginBottom: Spacing.lg },
   planTierRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
-  planTierIcon: { fontSize: 20 },
   planTierBadge: { borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
   planTierText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
   currentBadge: { backgroundColor: Colors.primary + '20', borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
@@ -253,7 +281,11 @@ const styles = StyleSheet.create({
   planActions: {},
   subscribeBtn: { backgroundColor: Colors.primary, borderRadius: Radius.md, padding: Spacing.md, alignItems: 'center' },
   subscribeBtnText: { color: Colors.text.inverse, fontWeight: FontWeight.bold, fontSize: FontSize.md, fontFamily: 'BeVietnamPro_700Bold' },
-  renewBtn: { backgroundColor: Colors.accent + '20', borderRadius: Radius.md, padding: Spacing.md, alignItems: 'center', borderWidth: 1, borderColor: Colors.accent + '40' },
+  renewBtn: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.accent + '20', borderRadius: Radius.md, padding: Spacing.md,
+    borderWidth: 1, borderColor: Colors.accent + '40',
+  },
   renewBtnText: { color: Colors.accent, fontWeight: FontWeight.bold, fontSize: FontSize.md, fontFamily: 'BeVietnamPro_700Bold' },
   histItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.divider },
   histPlan: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_600SemiBold', marginBottom: 2 },
@@ -261,3 +293,4 @@ const styles = StyleSheet.create({
   histStatus: { borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
   histStatusText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
 });
+

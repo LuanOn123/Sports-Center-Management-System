@@ -7,6 +7,7 @@ import { Link } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 import { ApiError } from '../../lib/api';
@@ -46,7 +47,7 @@ export default function RegisterScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Text style={styles.logoIcon}>⚡</Text>
+            <MaterialIcons name="bolt" size={36} color={Colors.text.inverse} />
           </View>
           <Text style={styles.appName}>PulseCenter</Text>
           <Text style={styles.tagline}>Bắt đầu hành trình của bạn</Text>
@@ -136,7 +137,7 @@ export default function RegisterScreen() {
                 )}
               />
               <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPwd(p => !p)}>
-                <Text style={styles.eyeIcon}>{showPwd ? '🙈' : '👁'}</Text>
+                <MaterialIcons name={showPwd ? 'visibility-off' : 'visibility'} size={20} color={Colors.text.secondary} />
               </TouchableOpacity>
             </View>
             {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
@@ -177,7 +178,6 @@ const styles = StyleSheet.create({
     width: 64, height: 64, borderRadius: Radius.xl,
     backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.md,
   },
-  logoIcon: { fontSize: 32 },
   appName: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
   tagline: { fontSize: FontSize.sm, color: Colors.text.secondary, marginTop: 4, fontFamily: 'BeVietnamPro_400Regular' },
   card: {
@@ -197,8 +197,7 @@ const styles = StyleSheet.create({
   inputFlex: { flex: 1 },
   inputError: { borderColor: Colors.status.failed },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  eyeBtn: { padding: Spacing.md, backgroundColor: Colors.bg.elevated, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border },
-  eyeIcon: { fontSize: 16 },
+  eyeBtn: { padding: Spacing.md, backgroundColor: Colors.bg.elevated, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, justifyContent: 'center', alignItems: 'center' },
   errorText: { fontSize: FontSize.xs, color: Colors.status.failed, marginTop: 4, fontFamily: 'BeVietnamPro_400Regular' },
   btn: {
     backgroundColor: Colors.primary, borderRadius: Radius.md,
@@ -210,3 +209,4 @@ const styles = StyleSheet.create({
   footerText: { color: Colors.text.secondary, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_400Regular' },
   link: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
 });
+

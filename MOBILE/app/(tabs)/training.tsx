@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { MaterialIcons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
 import type { Enrollment } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
@@ -66,7 +67,7 @@ export default function TrainingScreen() {
           refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={Colors.primary} />}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyIcon}>📈</Text>
+              <MaterialIcons name="insights" size={48} color={Colors.text.muted} style={{ marginBottom: Spacing.md }} />
               <Text style={styles.emptyTitle}>Chưa có lịch sử</Text>
               <Text style={styles.emptyText}>Hoàn thành một buổi học để bắt đầu theo dõi</Text>
             </View>
@@ -86,18 +87,28 @@ export default function TrainingScreen() {
                 <View style={styles.cardBody}>
                   <Text style={styles.className}>{item.schedule?.class?.name ?? 'Lớp học'}</Text>
                   {item.schedule && (
-                    <Text style={styles.timeText}>
-                      ⏱ {formatTime(item.schedule.startTime)} – {formatTime(item.schedule.endTime)}
-                    </Text>
+                    <View style={styles.iconRow}>
+                      <MaterialIcons name="schedule" size={14} color={Colors.text.secondary} />
+                      <Text style={styles.timeText}>
+                        {formatTime(item.schedule.startTime)} – {formatTime(item.schedule.endTime)}
+                      </Text>
+                    </View>
                   )}
                   {item.schedule?.room && (
-                    <Text style={styles.roomText}>📍 {item.schedule.room.name}</Text>
+                    <View style={styles.iconRow}>
+                      <MaterialIcons name="place" size={14} color={Colors.text.secondary} />
+                      <Text style={styles.roomText}>{item.schedule.room.name}</Text>
+                    </View>
                   )}
                   {item.schedule?.class?.sport && (
-                    <Text style={styles.sportText}>🏅 {item.schedule.class.sport.name}</Text>
+                    <View style={styles.iconRow}>
+                      <MaterialIcons name="sports" size={14} color={Colors.text.secondary} />
+                      <Text style={styles.sportText}>{item.schedule.class.sport.name}</Text>
+                    </View>
                   )}
                   <View style={styles.completedBadge}>
-                    <Text style={styles.completedText}>✓ Hoàn thành</Text>
+                    <MaterialIcons name="check-circle" size={12} color={Colors.status.completed} />
+                    <Text style={styles.completedText}>Hoàn thành</Text>
                   </View>
                 </View>
               </View>
@@ -123,7 +134,6 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: FontSize.xs, color: Colors.text.muted, marginTop: 4, fontFamily: 'BeVietnamPro_400Regular', textAlign: 'center' },
   list: { paddingHorizontal: Spacing.xl, paddingBottom: Spacing.xxxl },
   empty: { alignItems: 'center', marginTop: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: Spacing.lg },
   emptyTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary, marginBottom: Spacing.sm, fontFamily: 'BeVietnamPro_700Bold' },
   emptyText: { fontSize: FontSize.sm, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular', textAlign: 'center' },
   card: { flexDirection: 'row', marginBottom: Spacing.md },
@@ -136,10 +146,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bg.surface, borderRadius: Radius.lg,
     padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.sm,
   },
-  className: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginBottom: 4 },
-  timeText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular', marginBottom: 2 },
-  roomText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular', marginBottom: 2 },
-  sportText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular', marginBottom: Spacing.sm },
-  completedBadge: { backgroundColor: Colors.status.completed + '20', borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2, alignSelf: 'flex-start' },
+  className: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginBottom: 6 },
+  iconRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  timeText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
+  roomText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
+  sportText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
+  completedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.status.completed + '20', borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2, alignSelf: 'flex-start', marginTop: 4 },
   completedText: { fontSize: FontSize.xs, color: Colors.status.completed, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
 });
+
