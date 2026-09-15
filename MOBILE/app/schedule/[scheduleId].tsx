@@ -55,6 +55,7 @@ export default function ScheduleDetailScreen() {
   const slotsUsed = s?._count?.enrollments ?? 0;
   const slotsLeft = s ? (s.class?.capacity ?? 0) - slotsUsed : 0;
   const isFull = slotsLeft <= 0;
+  const isPast = s ? new Date(s.startTime) < new Date() : false;
   const isCancelled = s?.status === 'CANCELLED';
 
   if (isLoading) {
@@ -148,9 +149,9 @@ export default function ScheduleDetailScreen() {
       {/* Book button */}
       {s.status === 'SCHEDULED' && (
         <TouchableOpacity
-          style={[styles.bookBtn, (isFull || bookMutation.isPending) && styles.bookBtnDisabled]}
+          style={[styles.bookBtn, (isFull || isPast || bookMutation.isPending) && styles.bookBtnDisabled]}
           onPress={() => {
-            if (!isFull) {
+            if (!isFull && !isPast) {
               showConfirm(
                 'Xác nhận đặt lịch',
                 `Đặt lớp "${s.class?.name}" lúc ${formatTime(s.startTime)} ngày ${formatDate(s.startTime)}?`,
@@ -160,15 +161,15 @@ export default function ScheduleDetailScreen() {
               );
             }
           }}
-          disabled={isFull || bookMutation.isPending}
+          disabled={isFull || isPast || bookMutation.isPending}
         >
           {bookMutation.isPending ? (
             <ActivityIndicator color={Colors.text.inverse} />
           ) : (
             <View style={styles.btnContentRow}>
-              <MaterialIcons name="event-available" size={22} color={isFull ? Colors.text.muted : Colors.text.inverse} />
-              <Text style={[styles.bookBtnText, isFull && { color: Colors.text.muted }]}>
-                {isFull ? 'Hết chỗ' : 'Đặt lịch học'}
+              <MaterialIcons name={isPast ? "history" : "event-available"} size={22} color={(isFull || isPast) ? Colors.text.muted : Colors.text.inverse} />
+              <Text style={[styles.bookBtnText, (isFull || isPast) && { color: Colors.text.muted }]}>
+                {isPast ? 'Buổi học đã diễn ra' : isFull ? 'Hết chỗ' : 'Đặt lịch học'}
               </Text>
             </View>
           )}
