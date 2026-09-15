@@ -57,7 +57,14 @@ export default function MembershipPlansScreen() {
       showAlert('Đăng ký thành công', 'Gói thành viên của bạn đã được kích hoạt.');
     },
     onError: (e) => {
-      showAlert('Lỗi', e instanceof ApiError ? e.message : 'Đăng ký thất bại.');
+      if (e instanceof ApiError && e.status === 403) {
+        showAlert(
+          'Đăng ký gói thành viên',
+          'Vui lòng liên hệ quầy Lễ tân hoặc chuyển khoản xác nhận với trung tâm để kích hoạt gói thành viên của bạn.'
+        );
+      } else {
+        showAlert('Lỗi', e instanceof ApiError ? e.message : 'Đăng ký thất bại. Vui lòng thử lại.');
+      }
     },
   });
 
@@ -70,7 +77,14 @@ export default function MembershipPlansScreen() {
       showAlert('Gia hạn thành công', 'Gói thành viên của bạn đã được gia hạn.');
     },
     onError: (e) => {
-      showAlert('Lỗi', e instanceof ApiError ? e.message : 'Gia hạn thất bại.');
+      if (e instanceof ApiError && e.status === 403) {
+        showAlert(
+          'Gia hạn gói thành viên',
+          'Vui lòng liên hệ quầy Lễ tân để thanh toán và gia hạn gói thành viên của bạn.'
+        );
+      } else {
+        showAlert('Lỗi', e instanceof ApiError ? e.message : 'Gia hạn thất bại. Vui lòng thử lại.');
+      }
     },
   });
 

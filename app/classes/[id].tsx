@@ -151,6 +151,9 @@ export default function ClassDetailScreen() {
             const slotsUsed = s._count?.enrollments ?? 0;
             const slotsLeft = cls.capacity - slotsUsed;
             const isFull = slotsLeft <= 0;
+            const isPast = new Date(s.startTime) < new Date();
+            const isDisabled = isFull || isPast || bookMutation.isPending;
+
             return (
               <View key={s.id} style={styles.scheduleCard}>
                 <View style={styles.scheduleLeft}>
@@ -163,17 +166,17 @@ export default function ClassDetailScreen() {
                     </View>
                   )}
                   <View style={styles.iconRow}>
-                    <MaterialIcons name="group" size={14} color={isFull ? Colors.status.cancelled : Colors.status.active} />
-                    <Text style={[styles.scheduleSlots, isFull && styles.scheduleSlotsEmpty]}>
-                      {isFull ? 'Hết chỗ' : `Còn ${slotsLeft} chỗ`}
+                    <MaterialIcons name="group" size={14} color={isPast ? Colors.text.muted : isFull ? Colors.status.cancelled : Colors.status.active} />
+                    <Text style={[styles.scheduleSlots, (isFull || isPast) && styles.scheduleSlotsEmpty]}>
+                      {isPast ? 'Đã qua giờ' : isFull ? 'Hết chỗ' : `Còn ${slotsLeft} chỗ`}
                     </Text>
                   </View>
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.bookBtn, isFull && styles.bookBtnDisabled]}
+                  style={[styles.bookBtn, (isFull || isPast) && styles.bookBtnDisabled]}
                   onPress={() => {
-                    if (!isFull) {
+                    if (!isFull && !isPast) {
                       showConfirm(
                         'Xác nhận đặt lịch',
                         `Đặt lớp "${cls.name}" lúc ${formatTime(s.startTime)}?`,
@@ -183,11 +186,13 @@ export default function ClassDetailScreen() {
                       );
                     }
                   }}
-                  disabled={isFull || bookMutation.isPending}
+                  disabled={isDisabled}
                 >
                   {bookMutation.isPending
                     ? <ActivityIndicator color={Colors.text.inverse} size="small" />
-                    : <Text style={styles.bookBtnText}>{isFull ? 'Hết chỗ' : 'Đặt lịch'}</Text>}
+                    : <Text style={[styles.bookBtnText, (isFull || isPast) && { color: Colors.text.muted }]}>
+                        {isPast ? 'Đã diễn ra' : isFull ? 'Hết chỗ' : 'Đặt lịch'}
+                      </Text>}
                 </TouchableOpacity>
 
               </View>
