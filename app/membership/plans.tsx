@@ -60,7 +60,7 @@ export default function MembershipPlansScreen() {
       if (e instanceof ApiError && e.status === 403) {
         showAlert(
           'Đăng ký gói thành viên',
-          'Vui lòng liên hệ quầy Lễ tân hoặc chuyển khoản xác nhận với trung tâm để kích hoạt gói thành viên của bạn.'
+          'Vui lòng liên hệ quầy Lễ tân để kích hoạt gói thành viên của bạn.'
         );
       } else {
         showAlert('Lỗi', e instanceof ApiError ? e.message : 'Đăng ký thất bại. Vui lòng thử lại.');
