@@ -6,7 +6,7 @@ import React, {
   useCallback,
   type ReactNode,
 } from 'react';
-import { api, clearTokens, hasSession, initTokens, saveTokens } from '../lib/api';
+import { api, clearTokens, getRefreshToken, hasSession, initTokens, saveTokens } from '../lib/api';
 import type { LoginTokens, User } from '../lib/types';
 
 interface AuthContextValue {
@@ -66,7 +66,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      await api.post('/auth/logout', {});
+      const refresh = getRefreshToken();
+      if (refresh) {
+        await api.post('/auth/logout', { refreshToken: refresh });
+      }
+    } catch {
+      // Ignore API errors during logout (e.g. expired token, network issues)
     } finally {
       await clearTokens();
       setUser(null);
