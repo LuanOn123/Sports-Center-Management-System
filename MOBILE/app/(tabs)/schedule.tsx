@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Alert, ActivityIndicator, RefreshControl,
+  ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
+import { showAlert, showConfirm } from '../../lib/alert';
 import type { Enrollment } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 import { ApiError } from '../../lib/api';
@@ -55,22 +56,23 @@ export default function ScheduleScreen() {
     },
     onError: (e) => {
       const msg = e instanceof ApiError ? e.message : 'Hủy thất bại. Vui lòng thử lại.';
-      Alert.alert('Lỗi', msg);
+      showAlert('Lỗi', msg);
     },
   });
 
   const enrollments = data?.data ?? [];
 
   const handleCancel = (id: string) => {
-    Alert.alert(
+    showConfirm(
       'Xác nhận hủy',
       'Bạn có chắc muốn hủy đăng ký lớp học này?',
-      [
-        { text: 'Không', style: 'cancel' },
-        { text: 'Hủy đăng ký', style: 'destructive', onPress: () => cancelMutation.mutate(id) },
-      ],
+      () => cancelMutation.mutate(id),
+      undefined,
+      'Hủy đăng ký',
+      true
     );
   };
+
 
   return (
     <View style={styles.container}>

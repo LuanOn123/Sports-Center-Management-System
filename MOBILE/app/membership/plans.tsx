@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, FlatList,
-  TouchableOpacity, Alert, ActivityIndicator,
+  TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { api, ApiError } from '../../lib/api';
+import { showAlert, showConfirm } from '../../lib/alert';
 import type { MembershipPlan, MembershipStatus, Subscription } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
@@ -53,10 +54,10 @@ export default function MembershipPlansScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['membership-status'] });
       queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-      Alert.alert('Đăng ký thành công', 'Gói thành viên của bạn đã được kích hoạt.');
+      showAlert('Đăng ký thành công', 'Gói thành viên của bạn đã được kích hoạt.');
     },
     onError: (e) => {
-      Alert.alert('Lỗi', e instanceof ApiError ? e.message : 'Đăng ký thất bại.');
+      showAlert('Lỗi', e instanceof ApiError ? e.message : 'Đăng ký thất bại.');
     },
   });
 
@@ -66,10 +67,10 @@ export default function MembershipPlansScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['membership-status'] });
       queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-      Alert.alert('Gia hạn thành công', 'Gói thành viên của bạn đã được gia hạn.');
+      showAlert('Gia hạn thành công', 'Gói thành viên của bạn đã được gia hạn.');
     },
     onError: (e) => {
-      Alert.alert('Lỗi', e instanceof ApiError ? e.message : 'Gia hạn thất bại.');
+      showAlert('Lỗi', e instanceof ApiError ? e.message : 'Gia hạn thất bại.');
     },
   });
 
@@ -80,27 +81,26 @@ export default function MembershipPlansScreen() {
 
   const handleSubscribe = (plan: MembershipPlan) => {
     if (!memberId) return;
-    Alert.alert(
+    showConfirm(
       `Đăng ký ${plan.name}`,
       `Giá: ${formatPrice(plan.price)}\nThời hạn: ${plan.durationDays} ngày\nThanh toán: ${selectedMethod === 'CASH' ? 'Tiền mặt' : 'Chuyển khoản'}`,
-      [
-        { text: 'Hủy', style: 'cancel' },
-        { text: 'Xác nhận', onPress: () => subscribeMutation.mutate({ planId: plan.id, memberId }) },
-      ],
+      () => subscribeMutation.mutate({ planId: plan.id, memberId }),
+      undefined,
+      'Xác nhận'
     );
   };
 
   const handleRenew = (plan: MembershipPlan) => {
     if (!activeSub) return;
-    Alert.alert(
+    showConfirm(
       `Gia hạn ${plan.name}`,
       `Giá: ${formatPrice(plan.price)}\nThêm: ${plan.durationDays} ngày`,
-      [
-        { text: 'Hủy', style: 'cancel' },
-        { text: 'Gia hạn', onPress: () => renewMutation.mutate({ subId: activeSub.id, planId: plan.id }) },
-      ],
+      () => renewMutation.mutate({ subId: activeSub.id, planId: plan.id }),
+      undefined,
+      'Gia hạn'
     );
   };
+
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, FlatList,
-  TouchableOpacity, Alert, ActivityIndicator,
+  TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
 import { api, ApiError } from '../../lib/api';
+import { showAlert, showConfirm } from '../../lib/alert';
 import type { Class, ClassSchedule } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
@@ -44,13 +45,14 @@ export default function ClassDetailScreen() {
     mutationFn: (scheduleId: string) => api.post('/enrollments', { scheduleId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-enrollments'] });
-      Alert.alert('Đặt lịch thành công', 'Lịch học đã được thêm vào danh sách của bạn.');
+      showAlert('Đặt lịch thành công', 'Lịch học đã được thêm vào danh sách của bạn.');
     },
     onError: (e) => {
       const msg = e instanceof ApiError ? e.message : 'Đặt lịch thất bại. Vui lòng thử lại.';
-      Alert.alert('Lỗi', msg);
+      showAlert('Lỗi', msg);
     },
   });
+
 
   const cls = classData?.data;
   const schedules = schedulesData?.data ?? [];
@@ -171,10 +173,13 @@ export default function ClassDetailScreen() {
                   style={[styles.bookBtn, isFull && styles.bookBtnDisabled]}
                   onPress={() => {
                     if (!isFull) {
-                      Alert.alert('Xác nhận đặt lịch', `Đặt lớp "${cls.name}" lúc ${formatTime(s.startTime)}?`, [
-                        { text: 'Hủy', style: 'cancel' },
-                        { text: 'Đặt lịch', onPress: () => bookMutation.mutate(s.id) },
-                      ]);
+                      showConfirm(
+                        'Xác nhận đặt lịch',
+                        `Đặt lớp "${cls.name}" lúc ${formatTime(s.startTime)}?`,
+                        () => bookMutation.mutate(s.id),
+                        undefined,
+                        'Đặt lịch'
+                      );
                     }
                   }}
                   disabled={isFull || bookMutation.isPending}
@@ -183,6 +188,7 @@ export default function ClassDetailScreen() {
                     ? <ActivityIndicator color={Colors.text.inverse} size="small" />
                     : <Text style={styles.bookBtnText}>{isFull ? 'Hết chỗ' : 'Đặt lịch'}</Text>}
                 </TouchableOpacity>
+
               </View>
             );
           })
