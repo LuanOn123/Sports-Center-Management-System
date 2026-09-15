@@ -86,24 +86,24 @@ export default function TrainingScreen() {
                 </Text>
                 <View style={styles.cardBody}>
                   <Text style={styles.className}>{item.schedule?.class?.name ?? 'Lớp học'}</Text>
-                  {item.schedule && (
+                  {Boolean(item.schedule) && (
                     <View style={styles.iconRow}>
                       <MaterialIcons name="schedule" size={14} color={Colors.text.secondary} />
                       <Text style={styles.timeText}>
-                        {formatTime(item.schedule.startTime)} – {formatTime(item.schedule.endTime)}
+                        {formatTime(item.schedule!.startTime)} – {formatTime(item.schedule!.endTime)}
                       </Text>
                     </View>
                   )}
-                  {item.schedule?.room && (
+                  {Boolean(item.schedule?.room) && (
                     <View style={styles.iconRow}>
                       <MaterialIcons name="place" size={14} color={Colors.text.secondary} />
-                      <Text style={styles.roomText}>{item.schedule.room.name}</Text>
+                      <Text style={styles.roomText}>{item.schedule!.room!.name}</Text>
                     </View>
                   )}
-                  {item.schedule?.class?.sport && (
+                  {Boolean(item.schedule?.class?.sport) && (
                     <View style={styles.iconRow}>
                       <MaterialIcons name="sports" size={14} color={Colors.text.secondary} />
-                      <Text style={styles.sportText}>{item.schedule.class.sport.name}</Text>
+                      <Text style={styles.sportText}>{item.schedule!.class!.sport!.name}</Text>
                     </View>
                   )}
                   <View style={styles.completedBadge}>
@@ -111,6 +111,7 @@ export default function TrainingScreen() {
                     <Text style={styles.completedText}>Hoàn thành</Text>
                   </View>
                 </View>
+
               </View>
             </View>
           )}

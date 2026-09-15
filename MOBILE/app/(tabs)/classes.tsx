@@ -126,13 +126,13 @@ export default function ClassesScreen() {
                     <Text style={styles.typeBadgeText}>{TYPE_LABEL[item.classType]}</Text>
                   </View>
                 </View>
-                {item.sport && (
+                {Boolean(item.sport) && (
                   <View style={styles.cardSportRow}>
                     <MaterialIcons name="sports" size={14} color={Colors.primary} />
-                    <Text style={styles.cardSport}>{item.sport.name}</Text>
+                    <Text style={styles.cardSport}>{item.sport!.name}</Text>
                   </View>
                 )}
-                {item.description && (
+                {Boolean(item.description) && (
                   <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
                 )}
               </View>
@@ -141,14 +141,15 @@ export default function ClassesScreen() {
                   <MaterialIcons name="group" size={14} color={Colors.text.muted} />
                   <Text style={styles.cardInfo}>Sĩ số: {item.capacity}</Text>
                 </View>
-                {item.coaches && item.coaches.length > 0 && (
+                {Boolean(item.coaches && item.coaches.length > 0) && (
                   <View style={styles.cardInfoItem}>
                     <MaterialIcons name="person" size={14} color={Colors.text.muted} />
-                    <Text style={styles.cardInfo}>{item.coaches.length} HLV</Text>
+                    <Text style={styles.cardInfo}>{item.coaches!.length} HLV</Text>
                   </View>
                 )}
                 <MaterialIcons name="chevron-right" size={22} color={Colors.primary} style={{ marginLeft: 'auto' }} />
               </View>
+
             </TouchableOpacity>
           )}
         />
