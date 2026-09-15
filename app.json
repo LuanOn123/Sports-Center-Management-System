@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "pulse. sports center",
+    "name": "Pulse | Sports Center",
     "slug": "pulse-sports-center",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -22,6 +22,7 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
+      "name": "Pulse | Sports Center",
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
