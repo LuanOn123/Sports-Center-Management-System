@@ -9,6 +9,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import type { Enrollment, MembershipStatus } from '../../lib/types';
+import { Brand } from '../../components/Brand';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../constants/theme';
 
 const TIER_LABEL: Record<string, string> = {
@@ -61,15 +62,18 @@ export default function HomeScreen() {
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
     >
-      {/* Greeting */}
-      <View style={styles.greetingRow}>
-        <View>
-          <Text style={styles.greeting}>Xin chào, {user?.fullName?.split(' ').pop()}</Text>
-          <Text style={styles.greetingSubtitle}>Hôm nay bạn tập gì?</Text>
-        </View>
+      {/* Top Bar with Brand and Avatar */}
+      <View style={styles.topBar}>
+        <Brand size="sm" align="flex-start" />
         <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} style={styles.avatar}>
           <Text style={styles.avatarText}>{user?.fullName?.charAt(0)?.toUpperCase() ?? '?'}</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Greeting */}
+      <View style={styles.greetingSection}>
+        <Text style={styles.greeting}>Xin chào, {user?.fullName?.split(' ').pop()}</Text>
+        <Text style={styles.greetingSubtitle}>Hôm nay bạn tập gì?</Text>
       </View>
 
       {/* Membership Status Card */}
@@ -223,7 +227,8 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg.primary },
   content: { padding: Spacing.xl, paddingBottom: Spacing.xxxl },
-  greetingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.xl },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg },
+  greetingSection: { marginBottom: Spacing.xl },
   greeting: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
   greetingSubtitle: { fontSize: FontSize.sm, color: Colors.text.secondary, marginTop: 2, fontFamily: 'BeVietnamPro_400Regular' },
   avatar: {

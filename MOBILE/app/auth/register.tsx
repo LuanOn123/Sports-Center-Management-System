@@ -11,6 +11,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 import { ApiError } from '../../lib/api';
+import { Brand } from '../../components/Brand';
 import { showAlert } from '../../lib/alert';
 
 const schema = z.object({
@@ -48,10 +49,7 @@ export default function RegisterScreen() {
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <MaterialIcons name="bolt" size={36} color={Colors.text.inverse} />
-          </View>
-          <Text style={styles.appName}>PulseCenter</Text>
+          <Brand size="lg" />
           <Text style={styles.tagline}>Bắt đầu hành trình của bạn</Text>
         </View>
 
@@ -176,12 +174,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg.primary },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: Spacing.xl },
   header: { alignItems: 'center', marginBottom: Spacing.xl },
-  logoContainer: {
-    width: 64, height: 64, borderRadius: Radius.xl,
-    backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.md,
-  },
-  appName: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  tagline: { fontSize: FontSize.sm, color: Colors.text.secondary, marginTop: 4, fontFamily: 'BeVietnamPro_400Regular' },
+  tagline: { fontSize: FontSize.sm, color: Colors.text.secondary, marginTop: Spacing.sm, fontFamily: 'BeVietnamPro_400Regular' },
   card: {
     backgroundColor: Colors.bg.surface, borderRadius: Radius.xl,
     padding: Spacing.xl, borderWidth: 1, borderColor: Colors.border,
