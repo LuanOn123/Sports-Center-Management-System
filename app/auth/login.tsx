@@ -11,11 +11,14 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 import { ApiError } from '../../lib/api';
+import { Brand } from '../../components/Brand';
 import { showAlert } from '../../lib/alert';
 
+// ─── Schema ──────────────────────────────────────────────────────────────────
+
 const schema = z.object({
-  email: z.string().email('Email không hợp lệ'),
-  password: z.string().min(1, 'Vui lòng nhập mật khẩu'),
+  email: z.string().email('Email không đúng định dạng'),
+  password: z.string().min(6, 'Mật khẩu ít nhất 6 ký tự'),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -41,10 +44,7 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {/* Logo / Header */}
         <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <MaterialIcons name="bolt" size={40} color={Colors.text.inverse} />
-          </View>
-          <Text style={styles.appName}>PulseCenter</Text>
+          <Brand size="lg" />
           <Text style={styles.tagline}>Trung tâm thể thao của bạn</Text>
         </View>
 
@@ -132,14 +132,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg.primary },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: Spacing.xl },
   header: { alignItems: 'center', marginBottom: Spacing.xxxl },
-  logoContainer: {
-    width: 72, height: 72, borderRadius: Radius.xl,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center', alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  appName: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  tagline: { fontSize: FontSize.sm, color: Colors.text.secondary, marginTop: 4, fontFamily: 'BeVietnamPro_400Regular' },
+  tagline: { fontSize: FontSize.sm, color: Colors.text.secondary, marginTop: Spacing.sm, fontFamily: 'BeVietnamPro_400Regular' },
   card: {
     backgroundColor: Colors.bg.surface, borderRadius: Radius.xl,
     padding: Spacing.xl, borderWidth: 1, borderColor: Colors.border,

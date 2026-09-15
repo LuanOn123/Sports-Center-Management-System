@@ -18,9 +18,9 @@ export default function TabLayout() {
           backgroundColor: Colors.bg.surface,
           borderTopColor: Colors.border,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 90 : 72,
-          paddingBottom: Platform.OS === 'ios' ? 26 : 8,
-          paddingTop: 6,
+          height: Platform.OS === 'ios' ? 85 : 72,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+          paddingTop: 2,
         },
         tabBarItemStyle: {
           paddingVertical: 4,
@@ -37,7 +37,7 @@ export default function TabLayout() {
           margin: 0,
         },
         tabBarIconStyle: {
-          marginBottom: 2,
+          marginBottom: 1,
         },
       }}
     >

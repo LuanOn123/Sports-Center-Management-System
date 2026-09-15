@@ -1,10 +1,10 @@
-# 📱 Sports Center Mobile App (PulseCenter)
+# Sports Center Mobile App (pulse. SPORTS CENTER)
 
-Ứng dụng di động dành cho Hội viên (Member) và Huấn luyện viên (Coach) của Hệ thống Quản lý Trung tâm Thể thao, phát triển bằng **React Native**, **Expo** và **TypeScript**.
+Ứng dụng di động dành cho Hội viên (Member) và Huấn luyện viên (Coach) của Hệ thống Quản lý Trung tâm Thể thao **pulse. SPORTS CENTER**, phát triển bằng **React Native**, **Expo** và **TypeScript**.
 
 ---
 
-## 🚀 Hướng dẫn cài đặt và chạy ứng dụng
+## Hướng dẫn cài đặt và chạy ứng dụng
 
 ### 1. Yêu cầu môi trường
 - **Node.js**: Phiên bản 18+ hoặc 20+
@@ -63,7 +63,7 @@ Sau khi server Metro Bundler khởi động:
 
 ---
 
-## 📂 Cấu trúc dự án
+## Cấu trúc dự án
 
 ```text
 MOBILE/
@@ -82,7 +82,7 @@ MOBILE/
 
 ---
 
-## 🧪 Kiểm tra TypeScript
+## Kiểm tra TypeScript
 
 Để kiểm tra lỗi type trong toàn bộ dự án:
 
