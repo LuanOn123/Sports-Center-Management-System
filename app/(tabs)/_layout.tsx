@@ -6,7 +6,7 @@ import { Colors, FontSize } from '../../constants/theme';
 type TabIconProps = { color: string | { toString(): string }; size: number };
 
 function TabIcon({ name, ...props }: TabIconProps & { name: React.ComponentProps<typeof MaterialIcons>['name'] }) {
-  return <MaterialIcons name={name} size={22} color={String(props.color)} />;
+  return <MaterialIcons name={name} size={20} color={String(props.color)} />;
 }
 
 export default function TabLayout() {
@@ -18,16 +18,26 @@ export default function TabLayout() {
           backgroundColor: Colors.bg.surface,
           borderTopColor: Colors.border,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 88 : 68,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-          paddingTop: 8,
+          height: Platform.OS === 'ios' ? 90 : 72,
+          paddingBottom: Platform.OS === 'ios' ? 26 : 8,
+          paddingTop: 6,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4,
+          justifyContent: 'center',
+          alignItems: 'center',
         },
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.text.muted,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10.5,
           fontFamily: 'BeVietnamPro_500Medium',
-          marginTop: 2,
+          lineHeight: 14,
+          padding: 0,
+          margin: 0,
+        },
+        tabBarIconStyle: {
+          marginBottom: 2,
         },
       }}
     >
