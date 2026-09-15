@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 // Design System Tokens — Sports Center Mobile
 export const Colors = {
   // Backgrounds
@@ -82,25 +84,34 @@ export const FontWeight = {
 };
 
 export const Shadow = {
-  sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  glow: {
-    shadowColor: '#A3E635',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-} as const;
+  sm: Platform.select({
+    web: { boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.3)' },
+    default: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+  }) as object,
+  md: Platform.select({
+    web: { boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.4)' },
+    default: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.4,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+  }) as object,
+  glow: Platform.select({
+    web: { boxShadow: '0px 0px 12px rgba(163, 230, 53, 0.3)' },
+    default: {
+      shadowColor: '#A3E635',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.3,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+  }) as object,
+};
