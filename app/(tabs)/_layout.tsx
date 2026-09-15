@@ -6,7 +6,7 @@ import { Colors, FontSize } from '../../constants/theme';
 type TabIconProps = { color: string | { toString(): string }; size: number };
 
 function TabIcon({ name, ...props }: TabIconProps & { name: React.ComponentProps<typeof MaterialIcons>['name'] }) {
-  return <MaterialIcons name={name} size={props.size} color={String(props.color)} />;
+  return <MaterialIcons name={name} size={22} color={String(props.color)} />;
 }
 
 export default function TabLayout() {
@@ -18,15 +18,16 @@ export default function TabLayout() {
           backgroundColor: Colors.bg.surface,
           borderTopColor: Colors.border,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 84 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          height: Platform.OS === 'ios' ? 88 : 68,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
           paddingTop: 8,
         },
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.text.muted,
         tabBarLabelStyle: {
-          fontSize: FontSize.xs,
+          fontSize: 11,
           fontFamily: 'BeVietnamPro_500Medium',
+          marginTop: 2,
         },
       }}
     >
@@ -51,7 +52,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="schedule"
         options={{
-          title: 'Lịch của tôi',
+          title: 'Lịch tập',
           tabBarIcon: ({ color, size }) => (
             <TabIcon name="event" color={color} size={size} />
           ),
