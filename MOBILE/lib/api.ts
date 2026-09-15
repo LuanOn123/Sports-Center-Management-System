@@ -57,6 +57,14 @@ export function hasSession() {
   return Boolean(_accessToken || _refreshToken);
 }
 
+export function getAccessToken() {
+  return _accessToken;
+}
+
+export function getRefreshToken() {
+  return _refreshToken;
+}
+
 // ─── Transport ───────────────────────────────────────────────────────────────
 
 async function transport<T>(
