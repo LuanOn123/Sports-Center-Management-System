@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Alert, ActivityIndicator,
+  TextInput, ActivityIndicator,
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { api, ApiError } from '../../lib/api';
+import { showAlert, showConfirm } from '../../lib/alert';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
 const profileSchema = z.object({
@@ -54,10 +55,10 @@ export default function ProfileScreen() {
     mutationFn: (data: ProfileForm) => api.patch('/auth/me', data),
     onSuccess: async () => {
       await refreshUser();
-      Alert.alert('Thành công', 'Hồ sơ đã được cập nhật!');
+      showAlert('Thành công', 'Hồ sơ đã được cập nhật!');
     },
     onError: (e) => {
-      Alert.alert('Lỗi', e instanceof ApiError ? e.message : 'Cập nhật thất bại');
+      showAlert('Lỗi', e instanceof ApiError ? e.message : 'Cập nhật thất bại');
     },
   });
 
@@ -65,10 +66,10 @@ export default function ProfileScreen() {
     mutationFn: (data: PwdForm) => api.patch('/auth/me/change-password', data),
     onSuccess: () => {
       resetPwd();
-      Alert.alert('Thành công', 'Mật khẩu đã được thay đổi!');
+      showAlert('Thành công', 'Mật khẩu đã được thay đổi!');
     },
     onError: (e) => {
-      Alert.alert('Lỗi', e instanceof ApiError ? e.message : 'Đổi mật khẩu thất bại');
+      showAlert('Lỗi', e instanceof ApiError ? e.message : 'Đổi mật khẩu thất bại');
     },
   });
 
@@ -79,16 +80,14 @@ export default function ProfileScreen() {
       setEditingLevel(false);
     },
     onError: (e) => {
-      Alert.alert('Lỗi', e instanceof ApiError ? e.message : 'Cập nhật thất bại');
+      showAlert('Lỗi', e instanceof ApiError ? e.message : 'Cập nhật thất bại');
     },
   });
 
   const handleLogout = () => {
-    Alert.alert('Đăng xuất', 'Bạn có chắc muốn đăng xuất?', [
-      { text: 'Hủy', style: 'cancel' },
-      { text: 'Đăng xuất', style: 'destructive', onPress: logout },
-    ]);
+    showConfirm('Đăng xuất', 'Bạn có chắc muốn đăng xuất?', logout, undefined, 'Đăng xuất', true);
   };
+
 
   const ROLE_LABEL: Record<string, string> = { MEMBER: 'Hội viên', COACH: 'HLV', STAFF: 'Lễ tân', MANAGER: 'Quản lý' };
   const LEVEL_LABEL: Record<string, string> = { BEGINNER: 'Cơ bản', INTERMEDIATE: 'Trung cấp', ADVANCED: 'Nâng cao' };

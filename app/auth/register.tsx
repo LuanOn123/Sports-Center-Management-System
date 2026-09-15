@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -11,6 +11,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 import { ApiError } from '../../lib/api';
+import { showAlert } from '../../lib/alert';
 
 const schema = z.object({
   fullName: z.string().min(2, 'Họ tên ít nhất 2 ký tự'),
@@ -37,9 +38,10 @@ export default function RegisterScreen() {
       });
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : 'Đăng ký thất bại. Vui lòng thử lại.';
-      Alert.alert('Lỗi đăng ký', msg);
+      showAlert('Lỗi đăng ký', msg);
     }
   };
+
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>

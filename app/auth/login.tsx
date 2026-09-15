@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -11,6 +11,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 import { ApiError } from '../../lib/api';
+import { showAlert } from '../../lib/alert';
 
 const schema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -30,9 +31,10 @@ export default function LoginScreen() {
       await login(data.email, data.password);
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : 'Đăng nhập thất bại. Vui lòng thử lại.';
-      Alert.alert('Lỗi đăng nhập', msg);
+      showAlert('Lỗi đăng nhập', msg);
     }
   };
+
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>

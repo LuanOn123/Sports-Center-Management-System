@@ -1,12 +1,13 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, ActivityIndicator,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
 import { api, ApiError } from '../../lib/api';
+import { showAlert, showConfirm } from '../../lib/alert';
 import type { ClassSchedule } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
@@ -39,15 +40,16 @@ export default function ScheduleDetailScreen() {
     mutationFn: () => api.post('/enrollments', { scheduleId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-enrollments'] });
-      Alert.alert('Đặt lịch thành công', 'Lịch học đã được thêm vào danh sách của bạn.', [
-        { text: 'OK', onPress: () => router.push('/(tabs)/schedule') },
-      ]);
+      showAlert('Đặt lịch thành công', 'Lịch học đã được thêm vào danh sách của bạn.', () => {
+        router.push('/(tabs)/schedule');
+      });
     },
     onError: (e) => {
       const msg = e instanceof ApiError ? e.message : 'Đặt lịch thất bại.';
-      Alert.alert('Lỗi', msg);
+      showAlert('Lỗi', msg);
     },
   });
+
 
   const s = schedData?.data;
   const slotsUsed = s?._count?.enrollments ?? 0;
@@ -149,13 +151,12 @@ export default function ScheduleDetailScreen() {
           style={[styles.bookBtn, (isFull || bookMutation.isPending) && styles.bookBtnDisabled]}
           onPress={() => {
             if (!isFull) {
-              Alert.alert(
+              showConfirm(
                 'Xác nhận đặt lịch',
                 `Đặt lớp "${s.class?.name}" lúc ${formatTime(s.startTime)} ngày ${formatDate(s.startTime)}?`,
-                [
-                  { text: 'Hủy', style: 'cancel' },
-                  { text: 'Đặt lịch', onPress: () => bookMutation.mutate() },
-                ],
+                () => bookMutation.mutate(),
+                undefined,
+                'Đặt lịch'
               );
             }
           }}
@@ -172,6 +173,7 @@ export default function ScheduleDetailScreen() {
             </View>
           )}
         </TouchableOpacity>
+
       )}
       {isCancelled && (
         <View style={styles.cancelledNote}>
