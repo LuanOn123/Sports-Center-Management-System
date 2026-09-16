@@ -1829,3 +1829,37 @@ dialog::backdrop {
     scroll-behavior: auto !important;
   }
 }
+
+/* Member Portal Specific Styles */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.mobile-only-btn {
+  display: none !important;
+}
+
+@media (max-width: 899px) {
+  .mobile-only-btn {
+    display: flex !important;
+  }
+  .member-sidebar {
+    position: fixed;
+    top: 64px;
+    bottom: 0;
+    left: -260px;
+    z-index: 40;
+    transition: left 0.25s ease-in-out;
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.1);
+  }
+  .member-sidebar.sidebar-open {
+    left: 0;
+  }
+}
+

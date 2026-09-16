@@ -46,21 +46,30 @@ import { Dashboard } from "./Dashboard";
 import { ResourcePage } from "./ResourcePage";
 import { ErrorState, Loading, SchemaForm } from "./ui";
 import "./styles.css";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ProtectedRoute } from "./routes/ProtectedRoute";
+import { LoginPage } from "./pages/auth/LoginPage";
+import { RegisterPage } from "./pages/auth/RegisterPage";
+import { MemberLayout } from "./layouts/MemberLayout";
+import { DashboardPage } from "./pages/member/DashboardPage";
+import { BrowseClassesPage } from "./pages/member/BrowseClassesPage";
+import { ClassDetailPage } from "./pages/member/ClassDetailPage";
+import { MyClassesPage } from "./pages/member/MyClassesPage";
+import { SchedulePage } from "./pages/member/SchedulePage";
+import { MembershipPage } from "./pages/member/MembershipPage";
+import { ProfilePage } from "./pages/member/ProfilePage";
+import { AttendancePage } from "./pages/member/AttendancePage";
+import { TrainingPage } from "./pages/member/TrainingPage";
+import { NotificationsPage } from "./pages/member/NotificationsPage";
+import { AIAssistantPage } from "./pages/member/AIAssistantPage";
+
 const client = new QueryClient({
   defaultOptions: {
     queries: { retry: 1, staleTime: 30000, refetchOnWindowFocus: false },
     mutations: { retry: 0 },
   },
 });
-export default function App() {
-  return (
-    <QueryClientProvider client={client}>
-      <BrowserRouter>
-        <Session />
-      </BrowserRouter>
-    </QueryClientProvider>
-  );
-}
+
 function Brand() {
   return (
     <span className="brand">
@@ -74,74 +83,34 @@ function Brand() {
     </span>
   );
 }
-function Session() {
-  const cache = useQueryClient();
-  const [session, setSession] = useState(hasSession());
-  const [loginBusy, setLoginBusy] = useState(false);
-  const [error, setError] = useState<unknown>();
-  const q = useQuery({
-    queryKey: ["me"],
-    queryFn: () => authService.me(),
-    enabled: session,
-    retry: false,
-  });
-  useEffect(() => {
-    const expired = () => {
-      setSession(false);
-      cache.clear();
-      setError(
-        new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."),
-      );
-    };
-    window.addEventListener("session-expired", expired);
-    return () => window.removeEventListener("session-expired", expired);
-  }, [cache]);
-  async function login(email: string, password: string) {
-    setLoginBusy(true);
-    setError(undefined);
-    try {
-      const profile = await authService.login({ email, password });
-      cache.setQueryData(["me"], profile);
-      setSession(true);
-    } catch (e) {
-      clearSession();
-      setError(e);
-    } finally {
-      setLoginBusy(false);
-    }
-  }
-  async function logout() {
-    try {
-      await authService.logout();
-    } catch {
-      setError(
-        new Error(
-          "Đã đăng xuất trên trình duyệt. Máy chủ chưa xác nhận thu hồi phiên do lỗi kết nối.",
-        ),
-      );
-    } finally {
-      setSession(false);
-      cache.clear();
-    }
-  }
-  if (!session) return <Login onLogin={login} busy={loginBusy} error={error} />;
-  if (q.isPending)
+
+function RootRedirect() {
+  const { user, loading } = useAuth();
+  if (loading) {
     return (
       <div className="fullscreen">
         <Brand />
         <Loading />
       </div>
     );
-  if (q.isError)
+  }
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === "MANAGER") return <Navigate to="/manager/dashboard" replace />;
+  return <Navigate to="/member/dashboard" replace />;
+}
+
+function ManagerPortal() {
+  const { user, loading, logout } = useAuth();
+  if (loading) {
     return (
       <div className="fullscreen">
-        <ErrorState error={q.error} retry={() => q.refetch()} />
-        <button className="button" onClick={logout}>
-          Quay lại đăng nhập
-        </button>
+        <Brand />
+        <Loading />
       </div>
     );
-  if (q.data.data.role !== "MANAGER" || !q.data.data.isActive)
+  }
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== "MANAGER" || !user.isActive) {
     return (
       <div className="fullscreen">
         <ShieldCheck size={42} />
@@ -152,7 +121,48 @@ function Session() {
         </button>
       </div>
     );
-  return <Shell user={q.data.data} onLogout={logout} />;
+  }
+  return <Shell user={user as unknown as ProfileOk["data"]} onLogout={logout} />;
+}
+
+export default function App() {
+  return (
+    <QueryClientProvider client={client}>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<RootRedirect />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+
+            {/* MEMBER PORTAL ROUTES */}
+            <Route element={<ProtectedRoute allowedRoles={["MEMBER", "MANAGER"]} />}>
+              <Route path="/member" element={<MemberLayout />}>
+                <Route index element={<Navigate to="/member/dashboard" replace />} />
+                <Route path="dashboard" element={<DashboardPage />} />
+                <Route path="membership" element={<MembershipPage />} />
+                <Route path="classes" element={<BrowseClassesPage />} />
+                <Route path="classes/:id" element={<ClassDetailPage />} />
+                <Route path="my-classes" element={<MyClassesPage />} />
+                <Route path="schedule" element={<SchedulePage />} />
+                <Route path="training" element={<TrainingPage />} />
+                <Route path="attendance" element={<AttendancePage />} />
+                <Route path="notifications" element={<NotificationsPage />} />
+                <Route path="profile" element={<ProfilePage />} />
+                <Route path="ai" element={<AIAssistantPage />} />
+              </Route>
+            </Route>
+
+            {/* MANAGER PORTAL ROUTES */}
+            <Route path="/manager/*" element={<ManagerPortal />} />
+
+            {/* FALLBACK */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
 }
 function Login({
   onLogin,
