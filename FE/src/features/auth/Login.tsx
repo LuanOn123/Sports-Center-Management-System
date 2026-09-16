@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { ErrorState } from "../../shared/ui";
 import { Brand } from "../../shared/Brand";
+import { Link } from "react-router-dom";
 export function Login({
   onLogin,
   busy,
@@ -35,7 +36,9 @@ export function Login({
   return (
     <main className="login-layout">
       <section className="login-story">
-        <Brand />
+        <Link to="/" aria-label="Về trang chủ">
+          <Brand />
+        </Link>
         <div className="login-story-copy">
           <span className="hero-kicker">
             <span /> BUILT FOR YOUR NEXT MOVE
@@ -130,6 +133,12 @@ export function Login({
               <ArrowRight size={18} />
             </button>
           </form>
+          <p>
+            Chưa có tài khoản?{" "}
+            <Link to="/register">
+              <strong>Đăng ký hội viên →</strong>
+            </Link>
+          </p>
           <div className="login-help">
             <ShieldCheck size={16} />
             <p>

@@ -12,7 +12,16 @@ npm ci
 npm run dev
 ```
 
-Mở http://127.0.0.1:5173. Đăng nhập bằng tài khoản đang hoạt động do backend cấp; chuyển vào portal theo MANAGER, STAFF, COACH hoặc MEMBER. Không có tài khoản/mật khẩu mặc định trong FE.
+Mở http://127.0.0.1:5173 để xem landing page. `/register` tạo tài khoản hội viên; `/login` đăng nhập và chuyển vào portal theo MANAGER, STAFF, COACH hoặc MEMBER. Người đã đăng nhập được đưa về portal khi mở `/`. Không có tài khoản/mật khẩu mặc định trong FE.
+
+## Landing page và đăng ký
+
+- Landing page tiếng Việt gồm hero, nhóm người dùng, bộ môn, tính năng, bản xem trước tương tác, thống kê cấu trúc nền tảng, lợi ích, góc nhìn cộng đồng, CTA và footer. Theme charcoal/lime, ảnh thể thao từ Unsplash, font Barlow Condensed và Be Vietnam Pro từ Google Fonts; font hệ thống và nền tối dự phòng khi tài nguyên ngoài không tải được.
+- Hiệu ứng reveal bằng IntersectionObserver, parallax bằng requestAnimationFrame, counter khi cuộn tới, hover; tôn trọng `prefers-reduced-motion`. CSS được giới hạn trong `.pulse-public` để giữ giao diện portal.
+- Bản xem trước và lời trích dẫn tình huống được ghi rõ là minh họa, không phải dữ liệu hoặc đánh giá khách hàng thật. Không công bố số lượng khách hàng chưa xác minh.
+- Form gọi `POST /auth/register` bằng API client hiện có. Contract đã đối chiếu với Swagger Render ngày 15/09/2026: `fullName`, `email`, `password` bắt buộc; `phone` tùy chọn; mật khẩu tối thiểu 6 ký tự. Không gửi mật khẩu xác nhận hay vai trò tự chọn. Thành công hiển thị xác nhận và link đăng nhập vì API đăng ký không trả token.
+- Có kiểm tra mật khẩu xác nhận, chặn gửi lặp, trạng thái đang gửi, lỗi field, 409 email trùng và lỗi mạng. Kiểm thử mutation dùng Playwright interception, không tạo tài khoản thử trên production.
+- `npx playwright test public.spec.ts` kiểm tra đăng ký, điều hướng, preview tabs, responsive và axe accessibility ở 375/768/1440px. Ảnh kiểm tra nằm trong `artifacts/landing-*.png` và `artifacts/register-*.png`.
 
 Base URL mặc định: `https://sports-center-management-system.onrender.com/api/v1` — đúng Production Server (Render) trong ảnh. Có thể sao chép `.env.example` thành `.env` để cấu hình `VITE_API_BASE_URL`. Không thêm `/api/v1` lần nữa vào endpoint.
 
@@ -50,7 +59,7 @@ Mỗi truy vấn có loading, empty, error/retry. Mutation có trạng thái ch�
 - Pagination nằm cạnh `data`: `{page, limit, total, totalPages}`. Chỉ gửi page/limit khi operation thực sự khai báo chúng.
 - `coachId` của phân công là **CoachProfile.id**, không phải User.id. Chỉ cho chọn nếu API trả đúng mã hồ sơ; không suy đoán mã từ user ID.
 - Các trường cập nhật thiếu schema được giữ chưa khả dụng. Xem `docs/MISSING_API.md`.
-- Google Fonts dùng Be Vietnam Pro và fallback sans-serif; không dùng ảnh bên thứ ba hoặc image mockup để thay UI.
+- Portal dùng Be Vietnam Pro và fallback sans-serif; landing page bổ sung ảnh thể thao từ Unsplash. Bản xem trước nền tảng được dựng bằng HTML/CSS tương tác.
 
 ## Review UI/UX
 

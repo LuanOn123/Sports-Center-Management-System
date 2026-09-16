@@ -59,7 +59,7 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
   page,
 }) => {
   await fixtureApi(page);
-  await page.goto("/");
+  await page.goto("/login");
   await page.getByPlaceholder("Email của bạn").fill("manager@example.test");
   await page.getByPlaceholder("Nhập mật khẩu").fill("test-only-password");
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();

@@ -93,7 +93,7 @@ describe("API client contract and authentication", () => {
       api("POST /rooms", { body: { name: "A", capacity: 0 } }),
     ).rejects.toMatchObject({
       status: 400,
-      errors: [{ field: "capacity", message: "Must be positive" }],
+      errors: [{ field: "capacity", message: "Giá trị phải lớn hơn 0." }],
     });
     await expect(api("GET /users")).rejects.toMatchObject({ status: 403 });
     expect(fetch).toHaveBeenCalledTimes(2);

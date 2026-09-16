@@ -30,7 +30,7 @@ export type PortalProps = {
 export function RoleRouter(props: PortalProps) {
   const { pathname } = useLocation();
   const home = roleHome(props.user.role);
-  if (["/", "/login", home, home + "/"].includes(pathname))
+  if (["/", "/login", "/register", home, home + "/"].includes(pathname))
     return <Navigate replace to={home + "/dashboard"} />;
   if (pathname !== home && !pathname.startsWith(home + "/"))
     return (

@@ -7,7 +7,11 @@ import { Brand } from "../../shared/Brand";
 import { Login } from "./Login";
 import { RoleRouter } from "../../app/RoleRouter";
 import { roleHome } from "../../app/roles";
+import { useLocation } from "react-router-dom";
+import { Landing } from "../public/Landing";
+import { Register } from "./Register";
 export function Session() {
+  const { pathname } = useLocation();
   const cache = useQueryClient();
   const [session, setSession] = useState(hasSession());
   const [loginBusy, setLoginBusy] = useState(false);
@@ -57,6 +61,8 @@ export function Session() {
       cache.clear();
     }
   }
+  if (pathname === "/" && !session) return <Landing signedIn={false} />;
+  if (!session && pathname === "/register") return <Register />;
   if (!session) return <Login onLogin={login} busy={loginBusy} error={error} />;
   if (q.isPending)
     return (
