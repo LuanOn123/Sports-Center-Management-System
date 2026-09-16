@@ -99,6 +99,8 @@ model User {
   managerProfile ManagerProfile?
   refreshTokens  RefreshToken[]
   createdPayments Payment[]      @relation("PaymentCreatedBy")
+  sentMessages    ChatMessage[]  @relation("SentMessages")
+  receivedMessages ChatMessage[] @relation("ReceivedMessages")
 }
 
 model RefreshToken {
@@ -131,6 +133,8 @@ model MemberProfile {
   enrollments   Enrollment[]
   payments      Payment[]
   invoices      Invoice[]
+  attendances   Attendance[]
+  trainingPlans TrainingPlan[]
 }
 
 model CoachProfile {
@@ -144,6 +148,7 @@ model CoachProfile {
   updatedAt       DateTime @updatedAt
 
   classes ClassMember[]
+  trainingPlans TrainingPlan[]
 }
 
 model ManagerProfile {
@@ -271,6 +276,7 @@ model ClassSchedule {
   updatedAt DateTime       @updatedAt
 
   enrollments Enrollment[]
+  attendances Attendance[]
 
   @@index([classId])
   @@index([roomId])
@@ -348,3 +354,84 @@ model Invoice {
   @@index([memberId])
   @@index([issuedAt])
 }
+
+// ─────────────────────────────────────────
+// CHAT MESSAGE
+// ─────────────────────────────────────────
+
+model ChatMessage {
+  id         String   @id @default(uuid())
+  senderId   String
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId String?
+  receiver   User?    @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  content    String?
+  fileUrl    String?
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────
+// TRAINING & ATTENDANCE (FLOW 4)
+// ─────────────────────────────────────────
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+model Attendance {
+  id          String           @id @default(uuid())
+  scheduleId  String
+  schedule    ClassSchedule    @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  memberId    String
+  member      MemberProfile    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  status      AttendanceStatus @default(PRESENT)
+  note        String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([scheduleId, memberId])
+  @@index([scheduleId])
+  @@index([memberId])
+}
+
+model TrainingPlan {
+  id          String           @id @default(uuid())
+  memberId    String
+  member      MemberProfile    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  coachId     String
+  coach       CoachProfile     @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  results     TrainingResult[]
+
+  @@index([memberId])
+  @@index([coachId])
+}
+
+model TrainingResult {
+  id          String        @id @default(uuid())
+  planId      String
+  plan        TrainingPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  date        DateTime
+  metrics     Json?         // Custom metrics like weight, body fat
+  coachNote   String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([planId])
+}
