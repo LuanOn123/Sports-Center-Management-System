@@ -120,4 +120,44 @@ export const chatService = {
       return timeB - timeA;
     });
   },
+
+  async getContacts(role: string) {
+    // Logic: 
+    // STAFF -> MANAGER, COACH
+    // MEMBER -> COACH
+    // COACH -> MEMBER, STAFF, MANAGER
+    // MANAGER -> STAFF, COACH
+    let allowedRoles: any[] = [];
+    
+    switch (role) {
+      case "MEMBER":
+        allowedRoles = ["COACH"];
+        break;
+      case "COACH":
+        allowedRoles = ["MEMBER", "STAFF", "MANAGER"];
+        break;
+      case "STAFF":
+        allowedRoles = ["MANAGER", "COACH"];
+        break;
+      case "MANAGER":
+        allowedRoles = ["STAFF", "COACH"];
+        break;
+      default:
+        allowedRoles = [];
+    }
+
+    return prisma.user.findMany({
+      where: {
+        role: { in: allowedRoles },
+        isActive: true,
+      },
+      select: {
+        id: true,
+        fullName: true,
+        role: true,
+        email: true,
+      },
+      orderBy: { fullName: "asc" }
+    });
+  }
 };

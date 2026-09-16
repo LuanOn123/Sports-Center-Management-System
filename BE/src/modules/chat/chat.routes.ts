@@ -1,15 +1,12 @@
 import { Router } from "express";
-import { getMessages, sendMessage, markAsRead, getUnreadCount, getConversations } from "./chat.controller.js";
+import { getMessages, sendMessage, markAsRead, getUnreadCount, getConversations, getContacts } from "./chat.controller.js";
 import { authenticate } from "../../middlewares/authenticate.js";
-import { authorize } from "../../middlewares/authorize.js";
 import { upload } from "../../middlewares/upload.js";
-
-import { UserRole } from "@prisma/client";
 
 const router = Router();
 
-// Only allow Manager and Staff
-router.use(authenticate, authorize(UserRole.MANAGER, UserRole.STAFF));
+// Allow all authenticated users (Member, Coach, Staff, Manager) to use chat APIs
+router.use(authenticate);
 
 /**
  * @swagger
@@ -17,6 +14,20 @@ router.use(authenticate, authorize(UserRole.MANAGER, UserRole.STAFF));
  *   name: Chat
  *   description: Real-time messaging and chat history (Manager & Staff)
  */
+
+/**
+ * @swagger
+ * /chat/contacts:
+ *   get:
+ *     summary: Get eligible chat contacts
+ *     description: Retrieves a list of users the current user is allowed to chat with based on their role.
+ *     tags: [Chat]
+ *     responses:
+ *       200:
+ *         description: Contacts retrieved successfully
+ *       401: { $ref: "#/components/responses/Unauthorized" }
+ * */
+router.get("/contacts", getContacts);
 
 /**
  * @swagger
