@@ -87,3 +87,13 @@ export const getConversations = async (req: Request, res: Response, next: NextFu
     next(error);
   }
 };
+
+export const getContacts = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const role = (req as any).user.role;
+    const contacts = await chatService.getContacts(role);
+    res.json({ success: true, data: contacts });
+  } catch (error) {
+    next(error);
+  }
+};
