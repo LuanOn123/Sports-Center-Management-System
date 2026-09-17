@@ -6,11 +6,11 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
-import { api } from '../../../lib/api';
-import { getSocket } from '../../../lib/socket';
-import type { ChatMessage } from '../../../lib/types';
-import { useAuth } from '../../../context/AuthContext';
-import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../../constants/theme';
+import { api } from '../../lib/api';
+import { getSocket } from '../../lib/socket';
+import type { ChatMessage, ChatConversation } from '../../lib/types';
+import { useAuth } from '../../context/AuthContext';
+import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
@@ -110,7 +110,7 @@ export default function ChatScreen() {
   }, [text, user, userId, queryClient]);
 
   // Get partner name from conversations cache
-  const convCache = queryClient.getQueryData<{ data: { user: { fullName: string } }[] }>(['chat-conversations']);
+  const convCache = queryClient.getQueryData<{ data: ChatConversation[] }>(['chat-conversations']);
   const partnerName = convCache?.data?.find(c => c.user.id === userId)?.user.fullName ?? 'Người dùng';
 
   return (
