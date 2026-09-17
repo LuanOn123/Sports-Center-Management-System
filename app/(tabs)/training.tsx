@@ -224,11 +224,12 @@ function CoachTrainingScreen({ coachId }: { coachId: string }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['attendance', selectedSchedule?.id] }),
   });
 
-  const schedules = (enrollData?.data ?? [])
-    .filter(e => e.schedule)
-    .map(e => e.schedule!)
+  const enrollments: Enrollment[] = enrollData?.data ?? [];
+  const schedules: ClassSchedule[] = enrollments
+    .filter((e: Enrollment) => Boolean(e.schedule))
+    .map((e: Enrollment) => e.schedule!)
     // Deduplicate
-    .filter((s, i, arr) => arr.findIndex(x => x.id === s.id) === i);
+    .filter((s: ClassSchedule, i: number, arr: ClassSchedule[]) => arr.findIndex((x: ClassSchedule) => x.id === s.id) === i);
 
   const attendances = attendanceData?.data ?? [];
 
