@@ -6,9 +6,9 @@ import {
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
-import { api } from '../../../lib/api';
-import type { ChatContact } from '../../../lib/types';
-import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../../constants/theme';
+import { api } from '../../lib/api';
+import type { ChatContact } from '../../lib/types';
+import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
 const ROLE_LABEL: Record<string, string> = {
   COACH: 'Huấn luyện viên',
