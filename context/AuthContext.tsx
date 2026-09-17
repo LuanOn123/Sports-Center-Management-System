@@ -7,6 +7,7 @@ import React, {
   type ReactNode,
 } from 'react';
 import { api, clearTokens, getRefreshToken, hasSession, initTokens, saveTokens } from '../lib/api';
+import { connectSocket, disconnectSocket } from '../lib/socket';
 import type { LoginTokens, User } from '../lib/types';
 
 interface AuthContextValue {
@@ -42,6 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (hasSession()) {
           const me = await api.get<User>('/auth/me');
           setUser(me.data);
+          // Connect socket with the restored user session
+          connectSocket(me.data.id);
         }
       } catch {
         await clearTokens();
@@ -56,6 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await saveTokens(r.data.accessToken, r.data.refreshToken);
     const me = await api.get<User>('/auth/me');
     setUser(me.data);
+    // Connect socket after login
+    connectSocket(me.data.id);
   }, []);
 
   const register = useCallback(async (data: RegisterData) => {
@@ -73,6 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Ignore API errors during logout (e.g. expired token, network issues)
     } finally {
+      // Disconnect socket before clearing session
+      disconnectSocket();
       await clearTokens();
       setUser(null);
     }
