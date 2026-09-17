@@ -163,6 +163,78 @@ export interface Enrollment {
   createdAt: string;
 }
 
+// ─── Attendance (Flow 4) ─────────────────────────────────────────────────────
+
+export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
+
+export interface Attendance {
+  id: string;
+  scheduleId: string;
+  schedule?: ClassSchedule;
+  memberId: string;
+  member?: {
+    id: string;
+    user: Pick<User, 'id' | 'fullName' | 'email'>;
+  };
+  status: AttendanceStatus;
+  markedAt: string;
+  createdAt: string;
+}
+
+// ─── Training Plans (Flow 4) ──────────────────────────────────────────────────
+
+export interface TrainingPlan {
+  id: string;
+  memberId: string;
+  coachId: string;
+  coach?: {
+    id: string;
+    user: Pick<User, 'id' | 'fullName'>;
+  };
+  name: string;
+  description?: string;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  results?: TrainingResult[];
+}
+
+export interface TrainingResult {
+  id: string;
+  planId: string;
+  date: string;
+  metrics?: Record<string, unknown>;
+  coachNote?: string;
+  createdAt: string;
+}
+
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+export interface ChatContact {
+  id: string;
+  fullName: string;
+  role: Role;
+  email: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  receiverId?: string | null;
+  content?: string | null;
+  fileUrl?: string | null;
+  isRead: boolean;
+  createdAt: string;
+  sender?: Pick<User, 'id' | 'fullName' | 'role'>;
+  receiver?: Pick<User, 'id' | 'fullName' | 'role'> | null;
+}
+
+export interface ChatConversation {
+  user: ChatContact;
+  latestMessage: ChatMessage | null;
+  unreadCount: number;
+}
+
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 export interface Pagination {
