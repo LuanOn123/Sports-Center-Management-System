@@ -9,11 +9,13 @@ export function Modal({
   children,
   onClose,
   dismissible = true,
+  maxWidth,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   dismissible?: boolean;
+  maxWidth?: number;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const opener = useRef<HTMLElement | null>(null);
@@ -38,6 +40,7 @@ export function Modal({
   }, []);
   return (
     <dialog
+      style={maxWidth ? { maxWidth } : undefined}
       ref={ref}
       aria-labelledby={titleId}
       onCancel={(e) => {
@@ -45,7 +48,17 @@ export function Modal({
         if (dismissible) onClose();
       }}
       onClick={(e) => {
-        if (dismissible && e.target === ref.current) onClose();
+        const bounds = ref.current?.getBoundingClientRect();
+        if (
+          dismissible &&
+          e.target === ref.current &&
+          bounds &&
+          (e.clientX < bounds.left ||
+            e.clientX > bounds.right ||
+            e.clientY < bounds.top ||
+            e.clientY > bounds.bottom)
+        )
+          onClose();
       }}
     >
       <div className="modal-head">

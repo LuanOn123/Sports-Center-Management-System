@@ -126,6 +126,11 @@ test("member cannot enter manager routes", async ({ page }) => {
   await page.getByPlaceholder("Email của bạn").fill("member@example.test");
   await page.getByPlaceholder("Nhập mật khẩu").fill("test-password");
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
+  await expect(page).toHaveURL(/\/member\/dashboard$/);
+  await expect(
+    page.getByRole("heading", { name: "Tổng quan hội viên", exact: true }),
+  ).toBeVisible();
+  await page.goto("/manager/dashboard");
   await expect(
     page.getByRole("heading", { name: "Không có quyền truy cập" }),
   ).toBeVisible();

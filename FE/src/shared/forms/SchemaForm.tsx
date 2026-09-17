@@ -5,7 +5,7 @@ import { Check, LoaderCircle } from "lucide-react";
 import { api, ApiError, contract } from "../api";
 import type { RecordData, Schema } from "../api";
 import { at, label } from "../config";
-import { ErrorState } from "../feedback";
+import { ErrorState, Loading } from "../feedback";
 const lookupPaths: Record<string, string> = {
   sportId: "/sports",
   roomId: "/rooms",
@@ -43,7 +43,9 @@ function Lookup({
   });
   return (
     <>
+      {q.isPending && <Loading variant="field" text="Đang tải lựa chọn…" />}
       <select
+        hidden={q.isPending}
         required={required}
         value={value}
         onChange={(e) => onChange(e.target.value)}

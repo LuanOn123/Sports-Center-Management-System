@@ -60,7 +60,7 @@ export function MembershipPage() {
           <section className="panel reception-section">
             <h2>Trạng thái và thời hạn gói</h2>
             {status.isPending ? (
-              <Loading />
+              <Loading variant="details" />
             ) : status.isError ? (
               <ErrorState error={status.error} retry={() => status.refetch()} />
             ) : (

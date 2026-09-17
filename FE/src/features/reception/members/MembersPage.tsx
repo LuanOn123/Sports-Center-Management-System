@@ -24,7 +24,7 @@ export function MembersPage() {
         <section className="panel reception-section">
           <h2>Thông tin hội viên</h2>
           {detail.isPending ? (
-            <Loading />
+            <Loading variant="details" />
           ) : detail.isError ? (
             <ErrorState error={detail.error} retry={() => detail.refetch()} />
           ) : (

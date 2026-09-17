@@ -51,9 +51,9 @@ export function Login({
             <em>Khởi đầu từ bạn.</em>
           </h1>
           <p>
-            Một không gian quản lý. Kết nối cả cộng đồng.
+            Một tài khoản. Kết nối cả cộng đồng.
             <br />
-            Đưa trung tâm của bạn tiến xa hơn mỗi ngày.
+            Cùng nhau tập luyện và tiến xa hơn mỗi ngày.
           </p>
           <div className="login-sport">
             <div>
@@ -80,7 +80,7 @@ export function Login({
       </section>
       <section className="login-form-side">
         <div className="login-top">
-          <span>KHÔNG GIAN QUẢN LÝ</span>
+          <span>KHÔNG GIAN THỂ THAO CỦA BẠN</span>
           <span className="badge">
             <ShieldCheck size={13} />
             Sports Center
@@ -92,8 +92,8 @@ export function Login({
           </span>
           <div className="eyebrow">CHÀO MỪNG TRỞ LẠI</div>
           <h2>Sẵn sàng giữ nhịp?</h2>
-          <p>Đăng nhập để bắt đầu quản lý trung tâm của bạn.</p>
-          <form onSubmit={submit}>
+          <p>Dành cho hội viên, huấn luyện viên, lễ tân và quản lý.</p>
+          <form onSubmit={submit} aria-busy={busy}>
             <label>
               Email
               <input
@@ -142,7 +142,7 @@ export function Login({
           <div className="login-help">
             <ShieldCheck size={16} />
             <p>
-              Sử dụng tài khoản được cấp bởi trung tâm.
+              Đăng nhập bằng tài khoản của bạn để vào đúng không gian.
               <br />
               Cần hỗ trợ? Liên hệ quản trị viên hệ thống.
             </p>

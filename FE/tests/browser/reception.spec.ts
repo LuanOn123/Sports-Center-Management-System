@@ -7,7 +7,7 @@ async function chooseMember(page: Page) {
 for (const [role, home, title] of [
   ["STAFF", "/receptionist", "Tổng quan lễ tân"],
   ["COACH", "/coach", "Tổng quan huấn luyện viên"],
-  ["MEMBER", "/user", "Tổng quan hội viên"],
+  ["MEMBER", "/member", "Tổng quan hội viên"],
 ]) {
   test(
     role + " lands in its own portal and cannot open manager",

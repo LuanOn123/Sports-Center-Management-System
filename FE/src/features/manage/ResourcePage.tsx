@@ -385,7 +385,7 @@ export function ResourcePage({ resource: r }: { resource: Resource }) {
               </div>
             </>
           ) : detail.isPending ? (
-            <Loading />
+            <Loading variant="details" />
           ) : detail.isError ? (
             <ErrorState error={detail.error} retry={() => detail.refetch()} />
           ) : (

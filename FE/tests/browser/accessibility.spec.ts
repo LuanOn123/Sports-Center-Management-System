@@ -40,7 +40,7 @@ for (const width of [375, 1440])
       await setup(page, role);
       await page.goto(path);
       await expect(page.locator("main h1")).toBeVisible();
-      await expect(page.locator(".loading")).toHaveCount(0);
+      await expect(page.locator(".loading, .skeleton")).toHaveCount(0);
       if (
         role === "STAFF" &&
         [
@@ -53,7 +53,7 @@ for (const width of [375, 1440])
           .getByRole("button", { name: "Chọn", exact: true })
           .first()
           .click();
-        await expect(page.locator(".loading")).toHaveCount(0);
+        await expect(page.locator(".loading, .skeleton")).toHaveCount(0);
       }
       const scan = async () => {
         const result = await new AxeBuilder({ page })
@@ -77,7 +77,7 @@ for (const width of [375, 1440])
           .first()
           .click();
         await expect(page.getByRole("dialog")).toBeVisible();
-        await expect(page.locator(".loading")).toHaveCount(0);
+        await expect(page.locator(".loading, .skeleton")).toHaveCount(0);
         await scan();
       }
       if (path.endsWith("/membership")) {

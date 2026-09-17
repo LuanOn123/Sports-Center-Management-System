@@ -1237,6 +1237,22 @@
     ],
     "parameters": [
       {
+        "name": "page",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
         "in": "query",
         "name": "status",
         "schema": {

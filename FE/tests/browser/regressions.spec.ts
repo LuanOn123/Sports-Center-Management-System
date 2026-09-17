@@ -11,7 +11,7 @@ for (const width of [320, 375, 430, 768, 1024, 1280, 1440, 1920])
       .getByRole("button", { name: "Chọn", exact: true })
       .first()
       .click();
-    await expect(page.locator(".loading")).toHaveCount(0);
+    await expect(page.locator(".loading, .skeleton")).toHaveCount(0);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth + 1,

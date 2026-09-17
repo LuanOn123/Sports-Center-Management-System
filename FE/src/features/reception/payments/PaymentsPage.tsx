@@ -156,7 +156,7 @@ export function PaymentsPage() {
       {paymentId && (
         <Modal title="Chi tiết thanh toán" onClose={() => setPaymentId("")}>
           {payment.isPending ? (
-            <Loading />
+            <Loading variant="details" />
           ) : payment.isError ? (
             <ErrorState error={payment.error} retry={() => payment.refetch()} />
           ) : (
@@ -178,7 +178,7 @@ export function InvoiceDialog({
   return (
     <Modal title="Hóa đơn thanh toán" onClose={onClose}>
       {q.isPending ? (
-        <Loading />
+        <Loading variant="details" />
       ) : q.isError ? (
         <ErrorState error={q.error} retry={() => q.refetch()} />
       ) : (

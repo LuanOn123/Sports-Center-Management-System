@@ -54,7 +54,7 @@ for (const width of [320, 375, 430, 768, 1024, 1280, 1440, 1920])
       for (const route of routes) {
         await page.goto("/" + base + "/" + route);
         await expect(page.locator("main h1")).toBeVisible();
-        await expect(page.locator(".loading")).toHaveCount(0);
+        await expect(page.locator(".loading, .skeleton")).toHaveCount(0);
         const overflow = await page.evaluate(
           () => document.documentElement.scrollWidth > innerWidth + 1,
         );

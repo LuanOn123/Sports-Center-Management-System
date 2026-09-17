@@ -53,7 +53,7 @@ export function clearSession() {
   sessionStorage.removeItem("pulse.access");
   sessionStorage.removeItem("pulse.refresh");
 }
-function saveTokens(tokens: LoginOk["data"]) {
+export function saveTokens(tokens: LoginOk["data"]) {
   accessToken = tokens.accessToken;
   refreshToken = tokens.refreshToken;
   sessionStorage.setItem("pulse.access", accessToken);

@@ -28,8 +28,18 @@ export type PortalProps = {
   onLogout: () => Promise<void>;
 };
 export function RoleRouter(props: PortalProps) {
-  const { pathname } = useLocation();
+  const { pathname, search, hash } = useLocation();
   const home = roleHome(props.user.role);
+  if (
+    props.user.role === "MEMBER" &&
+    (pathname === "/user" || pathname.startsWith("/user/"))
+  )
+    return (
+      <Navigate
+        replace
+        to={pathname.replace(/^\/user/, "/member") + search + hash}
+      />
+    );
   if (["/", "/login", "/register", home, home + "/"].includes(pathname))
     return <Navigate replace to={home + "/dashboard"} />;
   if (pathname !== home && !pathname.startsWith(home + "/"))
@@ -49,7 +59,7 @@ export function RoleRouter(props: PortalProps) {
     <Suspense
       fallback={
         <div className="fullscreen">
-          <Loading />
+          <Loading variant="page" />
         </div>
       }
     >

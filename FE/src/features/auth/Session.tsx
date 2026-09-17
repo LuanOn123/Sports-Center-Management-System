@@ -7,11 +7,12 @@ import { Brand } from "../../shared/Brand";
 import { Login } from "./Login";
 import { RoleRouter } from "../../app/RoleRouter";
 import { roleHome } from "../../app/roles";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Landing } from "../public/Landing";
 import { Register } from "./Register";
 export function Session() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const cache = useQueryClient();
   const [session, setSession] = useState(hasSession());
   const [loginBusy, setLoginBusy] = useState(false);
@@ -38,7 +39,11 @@ export function Session() {
     setError(undefined);
     try {
       const profile = await authService.login({ email, password });
+      await cache.cancelQueries();
+      cache.clear();
       cache.setQueryData(["me"], profile);
+      const home = roleHome(profile.data.role);
+      navigate(home ? `${home}/dashboard` : "/login", { replace: true });
       setSession(true);
     } catch (e) {
       clearSession();
@@ -59,6 +64,7 @@ export function Session() {
     } finally {
       setSession(false);
       cache.clear();
+      navigate("/login", { replace: true });
     }
   }
   if (pathname === "/" && !session) return <Landing signedIn={false} />;
@@ -68,7 +74,7 @@ export function Session() {
     return (
       <div className="fullscreen">
         <Brand />
-        <Loading />
+        <Loading variant="page" />
       </div>
     );
   if (q.isError)

@@ -1,4 +1,4 @@
-import { AlertCircle, Inbox, LoaderCircle } from "lucide-react";
+import { AlertCircle, Inbox } from "lucide-react";
 import { ApiError } from "./api";
 import { label } from "./config";
 export function ErrorState({
@@ -29,10 +29,34 @@ export function ErrorState({
     </div>
   );
 }
-export function Loading() {
+export type SkeletonVariant =
+  "page" | "table" | "details" | "cards" | "chart" | "field";
+export function Loading({
+  variant = "table",
+  text = "Đang tải dữ liệu…",
+}: {
+  variant?: SkeletonVariant;
+  text?: string;
+}) {
   return (
-    <div className="loading" role="status">
-      <LoaderCircle className="spin" /> Đang tải dữ liệu…
+    <div
+      className={`skeleton skeleton-${variant}`}
+      role="status"
+      aria-label={text}
+    >
+      <span className="sr-only">{text}</span>
+      <div aria-hidden="true" className="skeleton-content">
+        {Array.from(
+          { length: variant === "field" ? 1 : variant === "cards" ? 3 : 5 },
+          (_, i) => (
+            <div className="skeleton-row" key={i}>
+              <span className="skeleton-block" />
+              <span className="skeleton-block" />
+              <span className="skeleton-block" />
+            </div>
+          ),
+        )}
+      </div>
     </div>
   );
 }
