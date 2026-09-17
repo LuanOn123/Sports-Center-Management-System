@@ -60,7 +60,7 @@ router.get(
  */
 router.get(
   "/:id",
-  authenticate, authorize("MANAGER", "STAFF", "COACH", "MEMBER"),
+  authenticate, authorize("MANAGER", "STAFF", "COACH"),
   membersController.getMemberById
 );
 
@@ -124,7 +124,7 @@ router.patch(
  */
 router.get(
   "/:id/membership-status",
-  authenticate, authorize("MANAGER", "STAFF", "MEMBER"),
+  authenticate, authorize("MANAGER", "STAFF"),
   membersController.getMembershipStatus
 );
 
