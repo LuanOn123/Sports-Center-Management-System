@@ -54,7 +54,7 @@ function RootLayoutContent() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="classes/[id]" options={{ headerShown: true, headerStyle: { backgroundColor: Colors.bg.surface }, headerTintColor: Colors.text.primary, title: '' }} />
         <Stack.Screen name="schedule/[scheduleId]" options={{ headerShown: true, headerStyle: { backgroundColor: Colors.bg.surface }, headerTintColor: Colors.text.primary, title: '' }} />
-        <Stack.Screen name="membership/plans" options={{ headerShown: true, headerStyle: { backgroundColor: Colors.bg.surface }, headerTintColor: Colors.text.primary, title: 'Gói Thành Viên' }} />
+        <Stack.Screen name="membership/plans" options={{ headerShown: false }} />
       </Stack>
     </>
   );

@@ -1,9 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, FlatList,
-  TouchableOpacity, ActivityIndicator, RefreshControl,
+  TouchableOpacity, ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -29,10 +29,19 @@ function formatPrice(price: string | number) {
 
 export default function MembershipPlansScreen() {
   const { user } = useAuth();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const memberId = user?.memberProfile?.id ?? user?.id;
   const [selectedMethod, setSelectedMethod] = useState<'CASH' | 'BANK_TRANSFER'>('CASH');
   const [pendingRequest, setPendingRequest] = useState<PendingMembershipRequest | null>(null);
+
+  const handleGoBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
+  };
 
   const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useQuery({
     queryKey: ['membership-status', memberId],
@@ -174,11 +183,23 @@ export default function MembershipPlansScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
-    >
+    <View style={styles.screen}>
+      {/* Header with Back and Home buttons */}
+      <View style={styles.topNav}>
+        <TouchableOpacity style={styles.navBtn} onPress={handleGoBack}>
+          <MaterialIcons name="arrow-back" size={24} color={Colors.text.primary} />
+        </TouchableOpacity>
+        <Text style={styles.navTitle}>Gói Thành Viên</Text>
+        <TouchableOpacity style={styles.navBtn} onPress={() => router.replace('/(tabs)')}>
+          <MaterialIcons name="home" size={24} color={Colors.primary} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
+      >
       {/* Current status or Pending card */}
       {statusLoading ? (
         <ActivityIndicator color={Colors.primary} style={{ marginVertical: 20 }} />
@@ -391,10 +412,36 @@ export default function MembershipPlansScreen() {
       )}
 
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: Colors.bg.primary },
+  topNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingTop: Platform.OS === 'ios' ? 52 : (Platform.OS === 'android' ? 42 : 14),
+    paddingBottom: Spacing.sm,
+    backgroundColor: Colors.bg.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  navBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: Radius.full,
+  },
+  navTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+    fontFamily: 'BeVietnamPro_700Bold',
+  },
   container: { flex: 1, backgroundColor: Colors.bg.primary },
   content: { padding: Spacing.xl, paddingBottom: Spacing.xxxl },
   currentCard: { backgroundColor: Colors.bg.surface, borderRadius: Radius.xl, padding: Spacing.xl, marginBottom: Spacing.xl, borderWidth: 1 },
