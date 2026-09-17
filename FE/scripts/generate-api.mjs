@@ -69,9 +69,9 @@ for (const [k, r] of Object.entries(doc.components.responses)) {
   const ex = r.content?.["application/json"]?.schema?.example;
   if (ex) ts += `export type ${k} = ${exampleType(ex)};\n`;
 }
-fs.writeFileSync(new URL("../src/generated.ts", import.meta.url), ts);
+fs.writeFileSync(new URL("../src/shared/generated.ts", import.meta.url), ts);
 fs.writeFileSync(
-  new URL("../src/operations.json", import.meta.url),
+  new URL("../src/shared/operations.json", import.meta.url),
   JSON.stringify(ops, null, 2),
 );
 fs.writeFileSync(new URL("../docs/API_INVENTORY.md", import.meta.url), md);
