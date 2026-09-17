@@ -132,19 +132,28 @@ export default function HomeScreen() {
       {/* Membership Status Card */}
       {Boolean(status.activeSubscription) ? (
         /* ACTIVE MEMBERSHIP */
-        <View style={[styles.membershipCard, { borderColor: Colors.tier[status.effectiveTier] + '50' }]}>
+        <View style={[styles.membershipCard, { borderColor: Colors.tier[status.effectiveTier] + '60' }]}>
           <View style={styles.membershipTop}>
-            <View>
-              <Text style={styles.membershipLabel}>Hạng thành viên</Text>
-              <Text style={[styles.membershipTier, { color: Colors.tier[status.effectiveTier] }]}>
-                {TIER_LABEL[status.effectiveTier]}
+            <View style={{ flex: 1, marginRight: Spacing.sm }}>
+              <View style={styles.tierBadgeRow}>
+                <MaterialIcons
+                  name={status.effectiveTier === 'PREMIUM' ? 'workspace-premium' : 'star'}
+                  size={14}
+                  color={Colors.tier[status.effectiveTier]}
+                />
+                <Text style={[styles.tierBadgeText, { color: Colors.tier[status.effectiveTier] }]}>
+                  {TIER_LABEL[status.effectiveTier].toUpperCase()}
+                </Text>
+              </View>
+              <Text style={styles.activePlanName} numberOfLines={1}>
+                {status.activeSubscription!.plan?.name ?? `Gói ${TIER_LABEL[status.effectiveTier]}`}
               </Text>
             </View>
             <TouchableOpacity
               style={styles.membershipBtn}
               onPress={() => router.push('/membership/plans')}
             >
-              <Text style={styles.membershipBtnText}>Gia hạn / Đổi gói</Text>
+              <Text style={styles.membershipBtnText}>Quản lý gói</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.membershipInfo}>
@@ -158,7 +167,7 @@ export default function HomeScreen() {
               <View style={styles.infoRow}>
                 <MaterialIcons name="schedule" size={16} color={Colors.text.secondary} />
                 <Text style={styles.membershipInfoText}>
-                  Còn {status.daysRemaining} ngày
+                  Còn {status.daysRemaining} ngày sử dụng
                 </Text>
               </View>
             )}
@@ -168,12 +177,12 @@ export default function HomeScreen() {
         /* PENDING MEMBERSHIP CARD */
         <View style={[styles.membershipCard, styles.membershipCardPending]}>
           <View style={styles.membershipTop}>
-            <View>
+            <View style={{ flex: 1, marginRight: Spacing.sm }}>
               <View style={styles.pendingBadgeRow}>
                 <MaterialIcons name="hourglass-top" size={14} color="#D97706" />
                 <Text style={styles.pendingBadgeText}>CHỜ LỄ TÂN DUYỆT</Text>
               </View>
-              <Text style={styles.pendingCardTitle}>{pendingRequest.planName}</Text>
+              <Text style={styles.pendingCardTitle} numberOfLines={1}>{pendingRequest.planName}</Text>
             </View>
             <TouchableOpacity
               style={styles.pendingDetailBtn}
@@ -199,23 +208,23 @@ export default function HomeScreen() {
         </View>
       ) : (
         /* NO ACTIVE MEMBERSHIP */
-        <View style={[styles.membershipCard, { borderColor: Colors.tier['FREE'] + '40' }]}>
+        <View style={[styles.membershipCard, { borderColor: Colors.border }]}>
           <View style={styles.membershipTop}>
-            <View>
+            <View style={{ flex: 1, marginRight: Spacing.sm }}>
               <Text style={styles.membershipLabel}>Hạng thành viên</Text>
-              <Text style={[styles.membershipTier, { color: Colors.tier['FREE'] }]}>
-                {statusLoading ? '—' : 'Miễn Phí'}
+              <Text style={styles.membershipTier}>
+                {statusLoading ? '—' : 'Miễn Phí (FREE)'}
               </Text>
             </View>
             <TouchableOpacity
               style={styles.membershipBtn}
               onPress={() => router.push('/membership/plans')}
             >
-              <Text style={styles.membershipBtnText}>Xem gói</Text>
+              <Text style={styles.membershipBtnText}>Đăng ký gói</Text>
             </TouchableOpacity>
           </View>
           {!statusLoading && (
-            <Text style={styles.noMembership}>Chưa có gói thành viên đang hoạt động</Text>
+            <Text style={styles.noMembership}>Chưa có gói hội viên đang hoạt động</Text>
           )}
         </View>
       )}
@@ -349,6 +358,15 @@ const styles = StyleSheet.create({
   },
   membershipCardPending: {
     borderColor: '#F59E0B',
+  },
+  tierBadgeRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4,
+  },
+  tierBadgeText: {
+    fontSize: FontSize.xs, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold', letterSpacing: 0.5,
+  },
+  activePlanName: {
+    fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold',
   },
   pendingBadgeRow: {
     flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4,
