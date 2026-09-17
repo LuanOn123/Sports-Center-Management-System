@@ -1,15 +1,16 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, FlatList,
   TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
-import { api, ApiError } from '../../lib/api';
+import { api } from '../../lib/api';
 import { showAlert, showConfirm } from '../../lib/alert';
-import type { MembershipPlan, MembershipStatus, Subscription, MembershipTier } from '../../lib/types';
+import { storage } from '../../lib/storage';
+import type { MembershipPlan, MembershipStatus, Subscription, MembershipTier, PendingMembershipRequest } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
 const TIER_LABEL: Record<string, string> = { FREE: 'Miễn Phí', MEMBERSHIP: 'Tiêu Chuẩn', PREMIUM: 'Cao Cấp' };
@@ -31,6 +32,7 @@ export default function MembershipPlansScreen() {
   const queryClient = useQueryClient();
   const memberId = user?.memberProfile?.id ?? user?.id;
   const [selectedMethod, setSelectedMethod] = useState<'CASH' | 'BANK_TRANSFER'>('CASH');
+  const [pendingRequest, setPendingRequest] = useState<PendingMembershipRequest | null>(null);
 
   const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useQuery({
     queryKey: ['membership-status', memberId],
@@ -47,59 +49,6 @@ export default function MembershipPlansScreen() {
     queryKey: ['subscriptions', memberId],
     queryFn: () => api.get<Subscription[]>(`/subscriptions/member/${memberId}`),
     enabled: Boolean(memberId),
-  });
-
-  useFocusEffect(
-    useCallback(() => {
-      refetchStatus();
-      refetchPlans();
-      refetchSubs();
-    }, [refetchStatus, refetchPlans, refetchSubs])
-  );
-
-  const isRefreshing = statusLoading || plansLoading || subsLoading;
-  const onRefresh = async () => {
-    await Promise.all([refetchStatus(), refetchPlans(), refetchSubs()]);
-  };
-
-  const subscribeMutation = useMutation({
-    mutationFn: ({ planId, memberId: mId }: { planId: string; memberId: string }) =>
-      api.post('/subscriptions', { memberId: mId, planId, paymentMethod: selectedMethod }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['membership-status'] });
-      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-      showAlert('Đăng ký thành công', 'Gói thành viên của bạn đã được kích hoạt.');
-    },
-    onError: (e) => {
-      if (e instanceof ApiError && e.status === 403) {
-        showAlert(
-          'Đăng ký gói thành viên',
-          'Vui lòng liên hệ quầy Lễ tân để kích hoạt gói thành viên của bạn.'
-        );
-      } else {
-        showAlert('Lỗi', e instanceof ApiError ? e.message : 'Đăng ký thất bại. Vui lòng thử lại.');
-      }
-    },
-  });
-
-  const renewMutation = useMutation({
-    mutationFn: ({ subId, planId }: { subId: string; planId: string }) =>
-      api.post(`/subscriptions/${subId}/renew`, { planId, paymentMethod: selectedMethod }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['membership-status'] });
-      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-      showAlert('Gia hạn thành công', 'Gói thành viên của bạn đã được gia hạn.');
-    },
-    onError: (e) => {
-      if (e instanceof ApiError && e.status === 403) {
-        showAlert(
-          'Gia hạn gói thành viên',
-          'Vui lòng liên hệ quầy Lễ tân để thanh toán và gia hạn gói thành viên của bạn.'
-        );
-      } else {
-        showAlert('Lỗi', e instanceof ApiError ? e.message : 'Gia hạn thất bại. Vui lòng thử lại.');
-      }
-    },
   });
 
   const plans = plansData?.data ?? [];
@@ -123,28 +72,106 @@ export default function MembershipPlansScreen() {
     daysRemaining: daysRemaining ?? undefined,
   };
 
+  // Sync pending request with storage and check if activated
+  const loadPending = useCallback(async () => {
+    if (!user?.id) return;
+    if (activeSub) {
+      // Activated by staff! Clear pending
+      await storage.clearPendingPlan(user.id);
+      setPendingRequest(null);
+    } else {
+      const stored = await storage.getPendingPlan(user.id);
+      setPendingRequest(stored);
+    }
+  }, [user?.id, activeSub]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchStatus();
+      refetchPlans();
+      refetchSubs();
+      loadPending();
+    }, [refetchStatus, refetchPlans, refetchSubs, loadPending])
+  );
+
+  useEffect(() => {
+    loadPending();
+  }, [loadPending]);
+
+  const isRefreshing = statusLoading || plansLoading || subsLoading;
+  const onRefresh = async () => {
+    await Promise.all([refetchStatus(), refetchPlans(), refetchSubs()]);
+    await loadPending();
+  };
+
   const handleSubscribe = (plan: MembershipPlan) => {
-    if (!memberId) return;
+    if (!user?.id) return;
     showConfirm(
       `Đăng ký ${plan.name}`,
-      `Giá: ${formatPrice(plan.price)}\nThời hạn: ${plan.durationDays} ngày\nThanh toán: ${selectedMethod === 'CASH' ? 'Tiền mặt' : 'Chuyển khoản'}`,
-      () => subscribeMutation.mutate({ planId: plan.id, memberId }),
+      `Giá: ${formatPrice(plan.price)}\nThời hạn: ${plan.durationDays} ngày\nThanh toán: ${selectedMethod === 'CASH' ? 'Tiền mặt tại quầy' : 'Chuyển khoản'}\n\nYêu cầu đăng ký sẽ được gửi tới quầy Lễ tân để xác nhận thanh toán và kích hoạt gói cho bạn.`,
+      async () => {
+        const req: PendingMembershipRequest = {
+          planId: plan.id,
+          planName: plan.name,
+          tier: plan.tier,
+          price: plan.price,
+          durationDays: plan.durationDays,
+          paymentMethod: selectedMethod,
+          requestedAt: new Date().toISOString(),
+        };
+        await storage.setPendingPlan(user.id, req);
+        setPendingRequest(req);
+        showAlert(
+          'Đã gửi yêu cầu đăng ký!',
+          `Gói "${plan.name}" đang ở trạng thái CHỜ LỄ TÂN DUYỆT.\n\nVui lòng hoàn tất thanh toán tại quầy Lễ tân hoặc liên hệ nhân viên để được kích hoạt gói thành viên.`
+        );
+      },
       undefined,
-      'Xác nhận'
+      'Gửi yêu cầu'
     );
   };
 
   const handleRenew = (plan: MembershipPlan) => {
-    if (!activeSub) return;
+    if (!activeSub || !user?.id) return;
     showConfirm(
       `Gia hạn ${plan.name}`,
-      `Giá: ${formatPrice(plan.price)}\nThêm: ${plan.durationDays} ngày`,
-      () => renewMutation.mutate({ subId: activeSub.id, planId: plan.id }),
+      `Giá: ${formatPrice(plan.price)}\nThêm: ${plan.durationDays} ngày\nThanh toán: ${selectedMethod === 'CASH' ? 'Tiền mặt tại quầy' : 'Chuyển khoản'}\n\nYêu cầu gia hạn sẽ được quầy Lễ tân tiếp nhận và xử lý sau khi thanh toán.`,
+      async () => {
+        const req: PendingMembershipRequest = {
+          planId: plan.id,
+          planName: `Gia hạn ${plan.name}`,
+          tier: plan.tier,
+          price: plan.price,
+          durationDays: plan.durationDays,
+          paymentMethod: selectedMethod,
+          requestedAt: new Date().toISOString(),
+        };
+        await storage.setPendingPlan(user.id, req);
+        setPendingRequest(req);
+        showAlert(
+          'Đã gửi yêu cầu gia hạn!',
+          `Yêu cầu gia hạn gói "${plan.name}" đang chờ duyệt.\n\nVui lòng thanh toán tại quầy Lễ tân để kích hoạt thêm ngày sử dụng.`
+        );
+      },
       undefined,
-      'Gia hạn'
+      'Gửi yêu cầu gia hạn'
     );
   };
 
+  const handleCancelPending = () => {
+    if (!user?.id) return;
+    showConfirm(
+      'Hủy yêu cầu đăng ký',
+      'Bạn có chắc chắn muốn hủy yêu cầu đăng ký gói này để chọn gói khác?',
+      async () => {
+        await storage.clearPendingPlan(user.id);
+        setPendingRequest(null);
+        showAlert('Đã hủy', 'Bạn có thể chọn đăng ký gói thành viên khác.');
+      },
+      undefined,
+      'Hủy yêu cầu'
+    );
+  };
 
   return (
     <ScrollView
@@ -152,38 +179,88 @@ export default function MembershipPlansScreen() {
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
     >
-      {/* Current status */}
+      {/* Current status or Pending card */}
       {statusLoading ? (
         <ActivityIndicator color={Colors.primary} style={{ marginVertical: 20 }} />
-      ) : (
-        <View style={[styles.currentCard, { borderColor: Colors.tier[status?.effectiveTier ?? 'FREE'] + '40' }]}>
-          <Text style={styles.currentLabel}>Hạng hiện tại</Text>
+      ) : activeSub ? (
+        /* ACTIVE MEMBERSHIP CARD */
+        <View style={[styles.currentCard, { borderColor: Colors.tier[status.effectiveTier] + '50' }]}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.currentLabel}>Hạng hiện tại</Text>
+            <View style={[styles.activeBadge, { backgroundColor: Colors.tier[status.effectiveTier] + '20' }]}>
+              <Text style={[styles.activeBadgeText, { color: Colors.tier[status.effectiveTier] }]}>ĐANG HOẠT ĐỘNG</Text>
+            </View>
+          </View>
           <View style={styles.currentRow}>
             <MaterialIcons
-              name={TIER_ICON[status?.effectiveTier ?? 'FREE']}
+              name={TIER_ICON[status.effectiveTier]}
               size={28}
-              color={Colors.tier[status?.effectiveTier ?? 'FREE']}
+              color={Colors.tier[status.effectiveTier]}
             />
-            <Text style={[styles.currentTier, { color: Colors.tier[status?.effectiveTier ?? 'FREE'] }]}>
-              {TIER_LABEL[status?.effectiveTier ?? 'FREE']}
+            <Text style={[styles.currentTier, { color: Colors.tier[status.effectiveTier] }]}>
+              {TIER_LABEL[status.effectiveTier]}
             </Text>
           </View>
-          {Boolean(activeSub) ? (
-            <View style={styles.infoCol}>
-              <View style={styles.infoRow}>
-                <MaterialIcons name="event" size={16} color={Colors.text.secondary} />
-                <Text style={styles.currentInfo}>Hết hạn: {formatDate(activeSub!.endDate)}</Text>
-              </View>
-              {Boolean(status?.daysRemaining !== undefined) && (
-                <View style={styles.infoRow}>
-                  <MaterialIcons name="schedule" size={16} color={Colors.text.secondary} />
-                  <Text style={styles.currentInfo}>Còn {status!.daysRemaining} ngày</Text>
-                </View>
-              )}
+          <View style={styles.infoCol}>
+            <View style={styles.infoRow}>
+              <MaterialIcons name="event" size={16} color={Colors.text.secondary} />
+              <Text style={styles.currentInfo}>Hết hạn: {formatDate(activeSub.endDate)}</Text>
             </View>
-          ) : (
-            <Text style={styles.noActive}>Chưa có gói đang hiệu lực</Text>
-          )}
+            {Boolean(status.daysRemaining !== undefined) && (
+              <View style={styles.infoRow}>
+                <MaterialIcons name="schedule" size={16} color={Colors.text.secondary} />
+                <Text style={styles.currentInfo}>Còn {status.daysRemaining} ngày</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      ) : pendingRequest ? (
+        /* PENDING APPROVAL CARD */
+        <View style={styles.pendingCard}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.pendingLabel}>Yêu cầu đăng ký</Text>
+            <View style={styles.pendingBadge}>
+              <MaterialIcons name="hourglass-top" size={12} color="#D97706" />
+              <Text style={styles.pendingBadgeText}>CHỜ LỄ TÂN DUYỆT</Text>
+            </View>
+          </View>
+          <Text style={styles.pendingPlanName}>{pendingRequest.planName}</Text>
+          <Text style={styles.pendingPrice}>
+            {formatPrice(pendingRequest.price)} <Text style={styles.pendingSubText}>/ {pendingRequest.durationDays} ngày</Text>
+          </Text>
+          <View style={styles.pendingInfoBox}>
+            <View style={styles.infoRow}>
+              <MaterialIcons name="payment" size={15} color={Colors.text.secondary} />
+              <Text style={styles.pendingInfoText}>
+                Thanh toán: {pendingRequest.paymentMethod === 'CASH' ? 'Tiền mặt tại quầy' : 'Chuyển khoản ngân hàng'}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <MaterialIcons name="info-outline" size={15} color="#D97706" />
+              <Text style={[styles.pendingInfoText, { color: '#B45309' }]}>
+                Vui lòng gặp Lễ tân để thanh toán & kích hoạt gói
+              </Text>
+            </View>
+          </View>
+          <View style={styles.pendingActions}>
+            <TouchableOpacity style={styles.checkBtn} onPress={onRefresh}>
+              <MaterialIcons name="refresh" size={16} color={Colors.primary} />
+              <Text style={styles.checkBtnText}>Kiểm tra kích hoạt</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelPending}>
+              <Text style={styles.cancelBtnText}>Hủy</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        /* NO ACTIVE MEMBERSHIP */
+        <View style={[styles.currentCard, { borderColor: Colors.border }]}>
+          <Text style={styles.currentLabel}>Hạng hiện tại</Text>
+          <View style={styles.currentRow}>
+            <MaterialIcons name="star-border" size={28} color={Colors.text.muted} />
+            <Text style={[styles.currentTier, { color: Colors.text.muted }]}>Miễn Phí (FREE)</Text>
+          </View>
+          <Text style={styles.noActive}>Chưa có gói thành viên đang hiệu lực. Hãy chọn gói bên dưới để đăng ký!</Text>
         </View>
       )}
 
@@ -205,7 +282,7 @@ export default function MembershipPlansScreen() {
                   color={isActive ? Colors.text.inverse : Colors.text.secondary}
                 />
                 <Text style={[styles.methodText, isActive && styles.methodTextActive]}>
-                  {m === 'CASH' ? 'Tiền mặt' : 'Chuyển khoản'}
+                  {m === 'CASH' ? 'Tiền mặt tại quầy' : 'Chuyển khoản'}
                 </Text>
               </TouchableOpacity>
             );
@@ -221,8 +298,9 @@ export default function MembershipPlansScreen() {
         ) : (
           plans.map((plan) => {
             const isCurrentPlan = activeSub?.planId === plan.id;
+            const isPendingPlan = pendingRequest?.planId === plan.id;
             return (
-              <View key={plan.id} style={[styles.planCard, isCurrentPlan && styles.planCardActive]}>
+              <View key={plan.id} style={[styles.planCard, isCurrentPlan && styles.planCardActive, isPendingPlan && styles.planCardPending]}>
                 <View style={styles.planTop}>
                   <View style={styles.planTierRow}>
                     <MaterialIcons name={TIER_ICON[plan.tier]} size={20} color={Colors.tier[plan.tier]} />
@@ -234,6 +312,11 @@ export default function MembershipPlansScreen() {
                         <Text style={styles.currentBadgeText}>Đang dùng</Text>
                       </View>
                     )}
+                    {Boolean(isPendingPlan && !isCurrentPlan) && (
+                      <View style={styles.pendingBadgeSmall}>
+                        <Text style={styles.pendingBadgeSmallText}>Chờ duyệt</Text>
+                      </View>
+                    )}
                   </View>
                   <Text style={styles.planName}>{plan.name}</Text>
                   {Boolean(plan.description) && <Text style={styles.planDesc}>{plan.description}</Text>}
@@ -243,20 +326,23 @@ export default function MembershipPlansScreen() {
                   <Text style={styles.planDuration}>{plan.durationDays} ngày</Text>
                 </View>
                 <View style={styles.planActions}>
-                  {Boolean(activeSub) ? (
+                  {Boolean(isCurrentPlan) ? (
                     <TouchableOpacity
                       style={styles.renewBtn}
                       onPress={() => handleRenew(plan)}
-                      disabled={renewMutation.isPending}
                     >
                       <MaterialIcons name="autorenew" size={18} color={Colors.accent} />
                       <Text style={styles.renewBtnText}>Gia hạn</Text>
                     </TouchableOpacity>
+                  ) : isPendingPlan ? (
+                    <View style={styles.pendingPlanBtn}>
+                      <MaterialIcons name="hourglass-empty" size={16} color="#D97706" />
+                      <Text style={styles.pendingPlanBtnText}>Đang chờ Lễ tân kích hoạt</Text>
+                    </View>
                   ) : (
                     <TouchableOpacity
                       style={styles.subscribeBtn}
                       onPress={() => handleSubscribe(plan)}
-                      disabled={subscribeMutation.isPending}
                     >
                       <Text style={styles.subscribeBtnText}>Đăng ký ngay</Text>
                     </TouchableOpacity>
@@ -336,6 +422,47 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.accent + '40',
   },
   renewBtnText: { color: Colors.accent, fontWeight: FontWeight.bold, fontSize: FontSize.md, fontFamily: 'BeVietnamPro_700Bold' },
+  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm },
+  activeBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: Radius.full },
+  activeBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
+  pendingCard: {
+    backgroundColor: Colors.bg.surface, borderRadius: Radius.xl, padding: Spacing.xl,
+    marginBottom: Spacing.xl, borderWidth: 1.5, borderColor: '#F59E0B',
+  },
+  pendingLabel: { fontSize: FontSize.xs, color: '#D97706', textTransform: 'uppercase', letterSpacing: 1, fontFamily: 'BeVietnamPro_600SemiBold' },
+  pendingBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#F59E0B20', paddingHorizontal: Spacing.sm, paddingVertical: 3, borderRadius: Radius.full,
+  },
+  pendingBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: '#D97706', fontFamily: 'BeVietnamPro_700Bold' },
+  pendingPlanName: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginTop: Spacing.sm },
+  pendingPrice: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: '#D97706', fontFamily: 'BeVietnamPro_700Bold', marginVertical: 4 },
+  pendingSubText: { fontSize: FontSize.sm, color: Colors.text.muted, fontWeight: FontWeight.regular, fontFamily: 'BeVietnamPro_400Regular' },
+  pendingInfoBox: {
+    backgroundColor: '#F59E0B10', borderRadius: Radius.md, padding: Spacing.md, gap: 6, marginVertical: Spacing.md,
+  },
+  pendingInfoText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_500Medium' },
+  pendingActions: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.xs },
+  checkBtn: {
+    flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.primary + '15', borderRadius: Radius.md, paddingVertical: Spacing.md,
+    borderWidth: 1, borderColor: Colors.primary + '40',
+  },
+  checkBtnText: { color: Colors.primary, fontWeight: FontWeight.bold, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_700Bold' },
+  cancelBtn: {
+    paddingHorizontal: Spacing.lg, justifyContent: 'center', alignItems: 'center',
+    borderRadius: Radius.md, backgroundColor: Colors.bg.elevated,
+  },
+  cancelBtnText: { color: Colors.text.muted, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_500Medium' },
+  planCardPending: { borderColor: '#F59E0B80' },
+  pendingBadgeSmall: { backgroundColor: '#F59E0B20', borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
+  pendingBadgeSmallText: { fontSize: FontSize.xs, color: '#D97706', fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
+  pendingPlanBtn: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6,
+    backgroundColor: '#F59E0B15', borderRadius: Radius.md, padding: Spacing.md,
+    borderWidth: 1, borderColor: '#F59E0B40',
+  },
+  pendingPlanBtnText: { color: '#D97706', fontWeight: FontWeight.bold, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_700Bold' },
   histItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.divider },
   histPlan: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_600SemiBold', marginBottom: 2 },
   histDate: { fontSize: FontSize.xs, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular' },

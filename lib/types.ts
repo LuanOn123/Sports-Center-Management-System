@@ -79,6 +79,16 @@ export interface MembershipStatus {
   daysRemaining?: number;
 }
 
+export interface PendingMembershipRequest {
+  planId: string;
+  planName: string;
+  tier: MembershipTier;
+  price: string | number;
+  durationDays: number;
+  paymentMethod: PaymentMethod;
+  requestedAt: string;
+}
+
 // ─── Member Profile ──────────────────────────────────────────────────────────
 
 export interface Member {

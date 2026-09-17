@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   RefreshControl, ActivityIndicator,
@@ -8,7 +8,8 @@ import { useQuery } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
-import type { Enrollment, MembershipStatus, Subscription, MembershipTier } from '../../lib/types';
+import { storage } from '../../lib/storage';
+import type { Enrollment, MembershipStatus, Subscription, MembershipTier, PendingMembershipRequest } from '../../lib/types';
 import { Brand } from '../../components/Brand';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../constants/theme';
 
@@ -36,6 +37,7 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const memberId = user?.memberProfile?.id ?? user?.id;
+  const [pendingRequest, setPendingRequest] = useState<PendingMembershipRequest | null>(null);
 
   const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useQuery({
     queryKey: ['membership-status', memberId],
@@ -54,17 +56,6 @@ export default function HomeScreen() {
     queryFn: () => api.get<Enrollment[]>('/enrollments/my', { status: 'BOOKED' }),
   });
 
-  // Auto-refresh when HomeScreen gains focus
-  useFocusEffect(
-    useCallback(() => {
-      refetchStatus();
-      refetchSubs();
-      refetchEnroll();
-    }, [refetchStatus, refetchSubs, refetchEnroll])
-  );
-
-  const isRefreshing = statusLoading || subsLoading || enrollLoading;
-  
   // Compute active membership status with fallback to subscriptions list
   const subscriptions: Subscription[] = Array.isArray(subsData?.data) ? subsData.data : [];
   const activeSubFromList = subscriptions.find(
@@ -85,10 +76,37 @@ export default function HomeScreen() {
     daysRemaining: daysRemaining ?? undefined,
   };
 
+  const loadPending = useCallback(async () => {
+    if (!user?.id) return;
+    if (activeSubscription) {
+      await storage.clearPendingPlan(user.id);
+      setPendingRequest(null);
+    } else {
+      const stored = await storage.getPendingPlan(user.id);
+      setPendingRequest(stored);
+    }
+  }, [user?.id, activeSubscription]);
+
+  // Auto-refresh when HomeScreen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      refetchStatus();
+      refetchSubs();
+      refetchEnroll();
+      loadPending();
+    }, [refetchStatus, refetchSubs, refetchEnroll, loadPending])
+  );
+
+  useEffect(() => {
+    loadPending();
+  }, [loadPending]);
+
+  const isRefreshing = statusLoading || subsLoading || enrollLoading;
   const upcoming = enrollmentsData?.data?.slice(0, 3) ?? [];
 
   const onRefresh = async () => {
     await Promise.all([refetchStatus(), refetchSubs(), refetchEnroll()]);
+    await loadPending();
   };
 
   return (
@@ -112,30 +130,31 @@ export default function HomeScreen() {
       </View>
 
       {/* Membership Status Card */}
-      <View style={[styles.membershipCard, { borderColor: Colors.tier[status?.effectiveTier ?? 'FREE'] + '40' }]}>
-        <View style={styles.membershipTop}>
-          <View>
-            <Text style={styles.membershipLabel}>Hạng thành viên</Text>
-            <Text style={[styles.membershipTier, { color: Colors.tier[status?.effectiveTier ?? 'FREE'] }]}>
-              {statusLoading ? '—' : TIER_LABEL[status?.effectiveTier ?? 'FREE']}
-            </Text>
+      {Boolean(status.activeSubscription) ? (
+        /* ACTIVE MEMBERSHIP */
+        <View style={[styles.membershipCard, { borderColor: Colors.tier[status.effectiveTier] + '50' }]}>
+          <View style={styles.membershipTop}>
+            <View>
+              <Text style={styles.membershipLabel}>Hạng thành viên</Text>
+              <Text style={[styles.membershipTier, { color: Colors.tier[status.effectiveTier] }]}>
+                {TIER_LABEL[status.effectiveTier]}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.membershipBtn}
+              onPress={() => router.push('/membership/plans')}
+            >
+              <Text style={styles.membershipBtnText}>Gia hạn / Đổi gói</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={styles.membershipBtn}
-            onPress={() => router.push('/membership/plans')}
-          >
-            <Text style={styles.membershipBtnText}>Xem gói</Text>
-          </TouchableOpacity>
-        </View>
-        {Boolean(status?.activeSubscription) && (
           <View style={styles.membershipInfo}>
             <View style={styles.infoRow}>
               <MaterialIcons name="event" size={16} color={Colors.text.secondary} />
               <Text style={styles.membershipInfoText}>
-                Hết hạn: {formatDate(status!.activeSubscription!.endDate)}
+                Hết hạn: {formatDate(status.activeSubscription!.endDate)}
               </Text>
             </View>
-            {status?.daysRemaining !== undefined && (
+            {status.daysRemaining !== undefined && (
               <View style={styles.infoRow}>
                 <MaterialIcons name="schedule" size={16} color={Colors.text.secondary} />
                 <Text style={styles.membershipInfoText}>
@@ -144,11 +163,62 @@ export default function HomeScreen() {
               </View>
             )}
           </View>
-        )}
-        {!status?.activeSubscription && !statusLoading ? (
-          <Text style={styles.noMembership}>Chưa có gói thành viên đang hoạt động</Text>
-        ) : null}
-      </View>
+        </View>
+      ) : pendingRequest ? (
+        /* PENDING MEMBERSHIP CARD */
+        <View style={[styles.membershipCard, styles.membershipCardPending]}>
+          <View style={styles.membershipTop}>
+            <View>
+              <View style={styles.pendingBadgeRow}>
+                <MaterialIcons name="hourglass-top" size={14} color="#D97706" />
+                <Text style={styles.pendingBadgeText}>CHỜ LỄ TÂN DUYỆT</Text>
+              </View>
+              <Text style={styles.pendingCardTitle}>{pendingRequest.planName}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.pendingDetailBtn}
+              onPress={() => router.push('/membership/plans')}
+            >
+              <Text style={styles.pendingDetailBtnText}>Chi tiết</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.membershipInfo}>
+            <View style={styles.infoRow}>
+              <MaterialIcons name="payment" size={15} color={Colors.text.secondary} />
+              <Text style={styles.membershipInfoText}>
+                Hình thức: {pendingRequest.paymentMethod === 'CASH' ? 'Tiền mặt tại quầy' : 'Chuyển khoản'}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <MaterialIcons name="info-outline" size={15} color="#D97706" />
+              <Text style={[styles.membershipInfoText, { color: '#B45309' }]}>
+                Vui lòng thanh toán tại quầy Lễ tân để kích hoạt
+              </Text>
+            </View>
+          </View>
+        </View>
+      ) : (
+        /* NO ACTIVE MEMBERSHIP */
+        <View style={[styles.membershipCard, { borderColor: Colors.tier['FREE'] + '40' }]}>
+          <View style={styles.membershipTop}>
+            <View>
+              <Text style={styles.membershipLabel}>Hạng thành viên</Text>
+              <Text style={[styles.membershipTier, { color: Colors.tier['FREE'] }]}>
+                {statusLoading ? '—' : 'Miễn Phí'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.membershipBtn}
+              onPress={() => router.push('/membership/plans')}
+            >
+              <Text style={styles.membershipBtnText}>Xem gói</Text>
+            </TouchableOpacity>
+          </View>
+          {!statusLoading && (
+            <Text style={styles.noMembership}>Chưa có gói thành viên đang hoạt động</Text>
+          )}
+        </View>
+      )}
 
       {/* Training Level */}
       {Boolean(user?.memberProfile?.trainingLevel) && (
@@ -276,6 +346,24 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bg.surface, borderRadius: Radius.xl,
     padding: Spacing.xl, marginBottom: Spacing.lg,
     borderWidth: 1, borderColor: Colors.border, ...Shadow.md,
+  },
+  membershipCardPending: {
+    borderColor: '#F59E0B',
+  },
+  pendingBadgeRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4,
+  },
+  pendingBadgeText: {
+    fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: '#D97706', fontFamily: 'BeVietnamPro_700Bold',
+  },
+  pendingCardTitle: {
+    fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold',
+  },
+  pendingDetailBtn: {
+    backgroundColor: '#F59E0B20', borderRadius: Radius.full, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs,
+  },
+  pendingDetailBtnText: {
+    color: '#D97706', fontSize: FontSize.sm, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold',
   },
   membershipTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md },
   membershipLabel: { fontSize: FontSize.xs, color: Colors.text.muted, marginBottom: 4, fontFamily: 'BeVietnamPro_400Regular', textTransform: 'uppercase', letterSpacing: 1 },
