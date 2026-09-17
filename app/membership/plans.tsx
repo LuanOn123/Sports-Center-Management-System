@@ -184,23 +184,25 @@ export default function MembershipPlansScreen() {
         <ActivityIndicator color={Colors.primary} style={{ marginVertical: 20 }} />
       ) : activeSub ? (
         /* ACTIVE MEMBERSHIP CARD */
-        <View style={[styles.currentCard, { borderColor: Colors.tier[status.effectiveTier] + '50' }]}>
+        <View style={[styles.currentCard, { borderColor: Colors.tier[status.effectiveTier] + '60' }]}>
           <View style={styles.cardHeaderRow}>
-            <Text style={styles.currentLabel}>Hạng hiện tại</Text>
+            <View style={styles.tierBadgeRow}>
+              <MaterialIcons
+                name={TIER_ICON[status.effectiveTier]}
+                size={14}
+                color={Colors.tier[status.effectiveTier]}
+              />
+              <Text style={[styles.tierBadgeText, { color: Colors.tier[status.effectiveTier] }]}>
+                HẠNG {TIER_LABEL[status.effectiveTier].toUpperCase()}
+              </Text>
+            </View>
             <View style={[styles.activeBadge, { backgroundColor: Colors.tier[status.effectiveTier] + '20' }]}>
-              <Text style={[styles.activeBadgeText, { color: Colors.tier[status.effectiveTier] }]}>ĐANG HOẠT ĐỘNG</Text>
+              <Text style={[styles.activeBadgeText, { color: Colors.tier[status.effectiveTier] }]}>ĐANG SỬ DỤNG</Text>
             </View>
           </View>
-          <View style={styles.currentRow}>
-            <MaterialIcons
-              name={TIER_ICON[status.effectiveTier]}
-              size={28}
-              color={Colors.tier[status.effectiveTier]}
-            />
-            <Text style={[styles.currentTier, { color: Colors.tier[status.effectiveTier] }]}>
-              {TIER_LABEL[status.effectiveTier]}
-            </Text>
-          </View>
+          <Text style={styles.currentPlanTitle}>
+            {activeSub.plan?.name ?? `Gói ${TIER_LABEL[status.effectiveTier]}`}
+          </Text>
           <View style={styles.infoCol}>
             <View style={styles.infoRow}>
               <MaterialIcons name="event" size={16} color={Colors.text.secondary} />
@@ -209,7 +211,7 @@ export default function MembershipPlansScreen() {
             {Boolean(status.daysRemaining !== undefined) && (
               <View style={styles.infoRow}>
                 <MaterialIcons name="schedule" size={16} color={Colors.text.secondary} />
-                <Text style={styles.currentInfo}>Còn {status.daysRemaining} ngày</Text>
+                <Text style={styles.currentInfo}>Còn {status.daysRemaining} ngày sử dụng</Text>
               </View>
             )}
           </View>
@@ -297,7 +299,13 @@ export default function MembershipPlansScreen() {
           <ActivityIndicator color={Colors.primary} />
         ) : (
           plans.map((plan) => {
-            const isCurrentPlan = activeSub?.planId === plan.id;
+            const isCurrentPlan = Boolean(
+              activeSub && (
+                activeSub.planId === plan.id ||
+                activeSub.plan?.id === plan.id ||
+                (activeSub.plan?.name && activeSub.plan.name.trim().toLowerCase() === plan.name.trim().toLowerCase())
+              )
+            );
             const isPendingPlan = pendingRequest?.planId === plan.id;
             return (
               <View key={plan.id} style={[styles.planCard, isCurrentPlan && styles.planCardActive, isPendingPlan && styles.planCardPending]}>
@@ -309,7 +317,7 @@ export default function MembershipPlansScreen() {
                     </View>
                     {Boolean(isCurrentPlan) && (
                       <View style={styles.currentBadge}>
-                        <Text style={styles.currentBadgeText}>Đang dùng</Text>
+                        <Text style={styles.currentBadgeText}>Đang sử dụng</Text>
                       </View>
                     )}
                     {Boolean(isPendingPlan && !isCurrentPlan) && (
@@ -332,7 +340,15 @@ export default function MembershipPlansScreen() {
                       onPress={() => handleRenew(plan)}
                     >
                       <MaterialIcons name="autorenew" size={18} color={Colors.accent} />
-                      <Text style={styles.renewBtnText}>Gia hạn</Text>
+                      <Text style={styles.renewBtnText}>Gia hạn gói này</Text>
+                    </TouchableOpacity>
+                  ) : activeSub ? (
+                    <TouchableOpacity
+                      style={styles.switchBtn}
+                      onPress={() => handleSubscribe(plan)}
+                    >
+                      <MaterialIcons name="swap-horiz" size={18} color={Colors.primary} />
+                      <Text style={styles.switchBtnText}>Đổi sang gói này</Text>
                     </TouchableOpacity>
                   ) : isPendingPlan ? (
                     <View style={styles.pendingPlanBtn}>
@@ -344,7 +360,7 @@ export default function MembershipPlansScreen() {
                       style={styles.subscribeBtn}
                       onPress={() => handleSubscribe(plan)}
                     >
-                      <Text style={styles.subscribeBtnText}>Đăng ký ngay</Text>
+                      <Text style={styles.subscribeBtnText}>Đăng ký gói này</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -422,9 +438,18 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.accent + '40',
   },
   renewBtnText: { color: Colors.accent, fontWeight: FontWeight.bold, fontSize: FontSize.md, fontFamily: 'BeVietnamPro_700Bold' },
-  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm },
+  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.xs },
+  tierBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  tierBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold', letterSpacing: 0.5 },
+  currentPlanTitle: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginVertical: Spacing.sm },
   activeBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: Radius.full },
   activeBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
+  switchBtn: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.primary + '15', borderRadius: Radius.md, padding: Spacing.md,
+    borderWidth: 1, borderColor: Colors.primary + '30',
+  },
+  switchBtnText: { color: Colors.primary, fontWeight: FontWeight.bold, fontSize: FontSize.md, fontFamily: 'BeVietnamPro_700Bold' },
   pendingCard: {
     backgroundColor: Colors.bg.surface, borderRadius: Radius.xl, padding: Spacing.xl,
     marginBottom: Spacing.xl, borderWidth: 1.5, borderColor: '#F59E0B',
