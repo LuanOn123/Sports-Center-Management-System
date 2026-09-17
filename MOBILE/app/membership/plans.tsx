@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, FlatList,
-  TouchableOpacity, ActivityIndicator,
+  TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -28,25 +29,38 @@ function formatPrice(price: string | number) {
 export default function MembershipPlansScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const memberId = user?.memberProfile?.id;
+  const memberId = user?.memberProfile?.id ?? user?.id;
   const [selectedMethod, setSelectedMethod] = useState<'CASH' | 'BANK_TRANSFER'>('CASH');
 
-  const { data: statusData, isLoading: statusLoading } = useQuery({
+  const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useQuery({
     queryKey: ['membership-status', memberId],
     queryFn: () => api.get<MembershipStatus>(`/members/${memberId}/membership-status`),
     enabled: Boolean(memberId),
   });
 
-  const { data: plansData, isLoading: plansLoading } = useQuery({
+  const { data: plansData, isLoading: plansLoading, refetch: refetchPlans } = useQuery({
     queryKey: ['membership-plans-active'],
     queryFn: () => api.publicGet<MembershipPlan[]>('/membership-plans', { isActive: 'true' }),
   });
 
-  const { data: subsData } = useQuery({
+  const { data: subsData, isLoading: subsLoading, refetch: refetchSubs } = useQuery({
     queryKey: ['subscriptions', memberId],
     queryFn: () => api.get<Subscription[]>(`/subscriptions/member/${memberId}`),
     enabled: Boolean(memberId),
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchStatus();
+      refetchPlans();
+      refetchSubs();
+    }, [refetchStatus, refetchPlans, refetchSubs])
+  );
+
+  const isRefreshing = statusLoading || plansLoading || subsLoading;
+  const onRefresh = async () => {
+    await Promise.all([refetchStatus(), refetchPlans(), refetchSubs()]);
+  };
 
   const subscribeMutation = useMutation({
     mutationFn: ({ planId, memberId: mId }: { planId: string; memberId: string }) =>
@@ -117,7 +131,11 @@ export default function MembershipPlansScreen() {
 
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
+    >
       {/* Current status */}
       {statusLoading ? (
         <ActivityIndicator color={Colors.primary} style={{ marginVertical: 20 }} />

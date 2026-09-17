@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   RefreshControl, ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -35,7 +35,7 @@ function formatTime(iso: string) {
 export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const memberId = user?.memberProfile?.id;
+  const memberId = user?.memberProfile?.id ?? user?.id;
 
   const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useQuery({
     queryKey: ['membership-status', memberId],
@@ -47,6 +47,14 @@ export default function HomeScreen() {
     queryKey: ['my-enrollments-upcoming'],
     queryFn: () => api.get<Enrollment[]>('/enrollments/my', { status: 'BOOKED' }),
   });
+
+  // Auto-refresh when HomeScreen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      refetchStatus();
+      refetchEnroll();
+    }, [refetchStatus, refetchEnroll])
+  );
 
   const isRefreshing = statusLoading || enrollLoading;
   const status = statusData?.data;
