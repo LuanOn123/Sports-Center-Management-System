@@ -64,6 +64,7 @@ export interface Subscription {
   memberId: string;
   planId: string;
   plan?: MembershipPlan;
+  tier?: MembershipTier;
   status: SubscriptionStatus;
   startDate: string;
   endDate: string;

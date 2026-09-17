@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
-import type { Enrollment, MembershipStatus } from '../../lib/types';
+import type { Enrollment, MembershipStatus, Subscription, MembershipTier } from '../../lib/types';
 import { Brand } from '../../components/Brand';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../constants/theme';
 
@@ -43,6 +43,12 @@ export default function HomeScreen() {
     enabled: Boolean(memberId),
   });
 
+  const { data: subsData, isLoading: subsLoading, refetch: refetchSubs } = useQuery({
+    queryKey: ['subscriptions', memberId],
+    queryFn: () => api.get<Subscription[]>(`/subscriptions/member/${memberId}`),
+    enabled: Boolean(memberId),
+  });
+
   const { data: enrollmentsData, isLoading: enrollLoading, refetch: refetchEnroll } = useQuery({
     queryKey: ['my-enrollments-upcoming'],
     queryFn: () => api.get<Enrollment[]>('/enrollments/my', { status: 'BOOKED' }),
@@ -52,16 +58,37 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       refetchStatus();
+      refetchSubs();
       refetchEnroll();
-    }, [refetchStatus, refetchEnroll])
+    }, [refetchStatus, refetchSubs, refetchEnroll])
   );
 
-  const isRefreshing = statusLoading || enrollLoading;
-  const status = statusData?.data;
+  const isRefreshing = statusLoading || subsLoading || enrollLoading;
+  
+  // Compute active membership status with fallback to subscriptions list
+  const subscriptions: Subscription[] = Array.isArray(subsData?.data) ? subsData.data : [];
+  const activeSubFromList = subscriptions.find(
+    s => s.status === 'ACTIVE' && new Date(s.endDate).getTime() >= Date.now()
+  );
+  const rawStatus = statusData?.data;
+  const activeSubscription = rawStatus?.activeSubscription ?? activeSubFromList ?? null;
+  const effectiveTier: MembershipTier = (rawStatus?.effectiveTier && rawStatus.effectiveTier !== 'FREE')
+    ? rawStatus.effectiveTier
+    : (activeSubscription?.tier ?? activeSubscription?.plan?.tier ?? 'FREE');
+  const daysRemaining = rawStatus?.daysRemaining !== undefined && rawStatus?.daysRemaining !== null
+    ? rawStatus.daysRemaining
+    : (activeSubscription ? Math.max(0, Math.ceil((new Date(activeSubscription.endDate).getTime() - Date.now()) / 86400000)) : null);
+
+  const status: MembershipStatus = {
+    effectiveTier,
+    activeSubscription,
+    daysRemaining: daysRemaining ?? undefined,
+  };
+
   const upcoming = enrollmentsData?.data?.slice(0, 3) ?? [];
 
   const onRefresh = async () => {
-    await Promise.all([refetchStatus(), refetchEnroll()]);
+    await Promise.all([refetchStatus(), refetchSubs(), refetchEnroll()]);
   };
 
   return (

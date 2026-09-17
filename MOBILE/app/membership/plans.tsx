@@ -9,7 +9,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { api, ApiError } from '../../lib/api';
 import { showAlert, showConfirm } from '../../lib/alert';
-import type { MembershipPlan, MembershipStatus, Subscription } from '../../lib/types';
+import type { MembershipPlan, MembershipStatus, Subscription, MembershipTier } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
 const TIER_LABEL: Record<string, string> = { FREE: 'Miễn Phí', MEMBERSHIP: 'Tiêu Chuẩn', PREMIUM: 'Cao Cấp' };
@@ -102,10 +102,26 @@ export default function MembershipPlansScreen() {
     },
   });
 
-  const status = statusData?.data;
   const plans = plansData?.data ?? [];
-  const subs = subsData?.data ?? [];
-  const activeSub = status?.activeSubscription;
+  const subs: Subscription[] = Array.isArray(subsData?.data) ? subsData.data : [];
+  const activeSubFromList = subs.find(
+    s => s.status === 'ACTIVE' && new Date(s.endDate).getTime() >= Date.now()
+  );
+
+  const rawStatus = statusData?.data;
+  const activeSub = rawStatus?.activeSubscription ?? activeSubFromList ?? null;
+  const effectiveTier: MembershipTier = (rawStatus?.effectiveTier && rawStatus.effectiveTier !== 'FREE')
+    ? rawStatus.effectiveTier
+    : (activeSub?.tier ?? activeSub?.plan?.tier ?? 'FREE');
+  const daysRemaining = rawStatus?.daysRemaining !== undefined && rawStatus?.daysRemaining !== null
+    ? rawStatus.daysRemaining
+    : (activeSub ? Math.max(0, Math.ceil((new Date(activeSub.endDate).getTime() - Date.now()) / 86400000)) : null);
+
+  const status: MembershipStatus = {
+    effectiveTier,
+    activeSubscription: activeSub,
+    daysRemaining: daysRemaining ?? undefined,
+  };
 
   const handleSubscribe = (plan: MembershipPlan) => {
     if (!memberId) return;
