@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma.js";
+import { createNotification } from "../notifications/notifications.service.js";
 
 export const chatService = {
   async createMessage(data: { senderId: string; receiverId?: string; content?: string; fileUrl?: string }) {
@@ -15,6 +16,18 @@ export const chatService = {
         receiver: { select: { id: true, fullName: true, role: true } },
       },
     });
+
+    // Gửi thông báo cho người nhận (chỉ tin 1-1, không broadcast)
+    if (data.receiverId) {
+      createNotification(
+        data.receiverId,
+        "CHAT_MESSAGE",
+        `Tin nhắn mới từ ${message.sender.fullName}`,
+        data.content ?? "[Tệp đính kèm]",
+        { metadata: { senderId: data.senderId, messageId: message.id } }
+      ).catch(() => {});
+    }
+
     return message;
   },
 
