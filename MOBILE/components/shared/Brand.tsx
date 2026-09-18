@@ -1,7 +1,10 @@
+// components/shared/Brand.tsx
+// Logo nhận diện thương hiệu dùng chung
+
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Colors } from '../constants/theme';
+import { Colors } from '../../constants/theme';
 
 interface BrandProps {
   size?: 'sm' | 'md' | 'lg';

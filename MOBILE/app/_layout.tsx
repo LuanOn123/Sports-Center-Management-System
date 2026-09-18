@@ -7,6 +7,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { Colors } from '../constants/theme';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AlertModal } from '../components';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -82,6 +83,7 @@ export default function RootLayout() {
         <AuthProvider>
           <StatusBar style="light" />
           <RootLayoutContent />
+          <AlertModal />
         </AuthProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

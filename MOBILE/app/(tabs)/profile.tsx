@@ -7,10 +7,11 @@ import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { api, ApiError } from '../../lib/api';
 import { showAlert, showConfirm } from '../../lib/alert';
-import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import { Colors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../constants/theme';
 
 const profileSchema = z.object({
   fullName: z.string().min(2, 'Ít nhất 2 ký tự'),
@@ -31,8 +32,21 @@ const LEVEL_OPTIONS = [
   { value: 'ADVANCED', label: 'Nâng cao' },
 ];
 
+const ROLE_LABEL: Record<string, string> = {
+  MEMBER: 'Hội viên',
+  COACH: 'Huấn luyện viên',
+  STAFF: 'Lễ tân',
+  MANAGER: 'Quản lý',
+};
+const LEVEL_LABEL: Record<string, string> = {
+  BEGINNER: 'Cơ bản',
+  INTERMEDIATE: 'Trung cấp',
+  ADVANCED: 'Nâng cao',
+};
+
 export default function ProfileScreen() {
   const { user, logout, refreshUser } = useAuth();
+  const isCoach = user?.role === 'COACH';
   const [tab, setTab] = useState<'info' | 'security'>('info');
   const [editingLevel, setEditingLevel] = useState(false);
   const queryClient = useQueryClient();
@@ -49,6 +63,10 @@ export default function ProfileScreen() {
 
   const { control: pwdControl, handleSubmit: handlePwd, formState: { errors: pwdErrors, isSubmitting: pwdSubmitting }, reset: resetPwd } = useForm<PwdForm>({
     resolver: zodResolver(pwdSchema),
+    defaultValues: {
+      currentPassword: '',
+      newPassword: '',
+    },
   });
 
   const updateProfile = useMutation({
@@ -88,28 +106,59 @@ export default function ProfileScreen() {
     showConfirm('Đăng xuất', 'Bạn có chắc muốn đăng xuất?', logout, undefined, 'Đăng xuất', true);
   };
 
-
-  const ROLE_LABEL: Record<string, string> = { MEMBER: 'Hội viên', COACH: 'HLV', STAFF: 'Lễ tân', MANAGER: 'Quản lý' };
-  const LEVEL_LABEL: Record<string, string> = { BEGINNER: 'Cơ bản', INTERMEDIATE: 'Trung cấp', ADVANCED: 'Nâng cao' };
-
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Avatar */}
+      {/* Avatar Header */}
       <View style={styles.avatarSection}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{user?.fullName?.charAt(0)?.toUpperCase()}</Text>
         </View>
         <Text style={styles.name}>{user?.fullName}</Text>
         <Text style={styles.email}>{user?.email}</Text>
-        <View style={styles.roleBadge}>
+        <View style={[styles.roleBadge, isCoach && styles.coachRoleBadge]}>
+          <MaterialIcons name={isCoach ? 'sports' : 'person'} size={14} color={Colors.primary} />
           <Text style={styles.roleText}>{ROLE_LABEL[user?.role ?? 'MEMBER']}</Text>
         </View>
       </View>
 
+      {/* Thẻ thông tin riêng cho Huấn luyện viên */}
+      {isCoach && (
+        <View style={styles.coachInfoCard}>
+          <Text style={styles.coachCardTitle}>Thông tin Huấn luyện viên</Text>
+          <View style={styles.coachInfoGrid}>
+            <View style={styles.coachInfoRow}>
+              <MaterialIcons name="fitness-center" size={16} color={Colors.primary} />
+              <Text style={styles.coachInfoLabel}>Chuyên môn:</Text>
+              <Text style={styles.coachInfoValue}>
+                {user?.coachProfile?.specialization || 'Đang cập nhật'}
+              </Text>
+            </View>
+
+            <View style={styles.coachInfoRow}>
+              <MaterialIcons name="workspace-premium" size={16} color="#F59E0B" />
+              <Text style={styles.coachInfoLabel}>Kinh nghiệm:</Text>
+              <Text style={styles.coachInfoValue}>
+                {user?.coachProfile?.experienceYears ? `${user.coachProfile.experienceYears} năm` : 'Đang cập nhật'}
+              </Text>
+            </View>
+
+            {Boolean(user?.coachProfile?.bio) && (
+              <View style={[styles.coachInfoRow, { alignItems: 'flex-start' }]}>
+                <MaterialIcons name="description" size={16} color={Colors.text.secondary} style={{ marginTop: 2 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.coachInfoLabel}>Giới thiệu:</Text>
+                  <Text style={styles.coachBioText}>{user!.coachProfile!.bio}</Text>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
       {/* Tabs */}
       <View style={styles.tabRow}>
         <TouchableOpacity style={[styles.tabBtn, tab === 'info' && styles.tabBtnActive]} onPress={() => setTab('info')}>
-          <Text style={[styles.tabBtnText, tab === 'info' && styles.tabBtnTextActive]}>Thông tin</Text>
+          <Text style={[styles.tabBtnText, tab === 'info' && styles.tabBtnTextActive]}>Thông tin cá nhân</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.tabBtn, tab === 'security' && styles.tabBtnActive]} onPress={() => setTab('security')}>
           <Text style={[styles.tabBtnText, tab === 'security' && styles.tabBtnTextActive]}>Bảo mật</Text>
@@ -126,6 +175,7 @@ export default function ProfileScreen() {
             )} />
             {errors.fullName && <Text style={styles.err}>{errors.fullName.message}</Text>}
           </View>
+
           {/* Phone */}
           <View style={styles.field}>
             <Text style={styles.label}>Số điện thoại</Text>
@@ -133,43 +183,51 @@ export default function ProfileScreen() {
               <TextInput style={styles.input} value={value} onChangeText={onChange} keyboardType="phone-pad" placeholderTextColor={Colors.text.muted} />
             )} />
           </View>
-          {/* Fitness Goal */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Mục tiêu tập luyện</Text>
-            <Controller control={control} name="fitnessGoal" render={({ field: { onChange, value } }) => (
-              <TextInput style={[styles.input, { height: 80 }]} value={value} onChangeText={onChange} multiline placeholder="Mô tả mục tiêu của bạn..." placeholderTextColor={Colors.text.muted} />
-            )} />
-          </View>
-          {/* Training Preference */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Thời gian tập yêu thích</Text>
-            <Controller control={control} name="trainingPreference" render={({ field: { onChange, value } }) => (
-              <TextInput style={styles.input} value={value} onChangeText={onChange} placeholder="VD: Sáng sớm, chiều tối..." placeholderTextColor={Colors.text.muted} />
-            )} />
-          </View>
-          {/* Training Level */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Trình độ</Text>
-            {!editingLevel ? (
-              <TouchableOpacity style={styles.levelRow} onPress={() => setEditingLevel(true)}>
-                <Text style={styles.levelValue}>{LEVEL_LABEL[user?.memberProfile?.trainingLevel ?? ''] ?? '—'}</Text>
-                <Text style={styles.editLink}>Thay đổi</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.levelOptions}>
-                {LEVEL_OPTIONS.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    style={[styles.levelOpt, user?.memberProfile?.trainingLevel === opt.value && styles.levelOptActive]}
-                    onPress={() => updateLevel.mutate(opt.value)}
-                    disabled={updateLevel.isPending}
-                  >
-                    <Text style={[styles.levelOptText, user?.memberProfile?.trainingLevel === opt.value && styles.levelOptTextActive]}>{opt.label}</Text>
-                  </TouchableOpacity>
-                ))}
+
+          {/* Member-specific fields: only show for non-coaches */}
+          {!isCoach && (
+            <>
+              {/* Fitness Goal */}
+              <View style={styles.field}>
+                <Text style={styles.label}>Mục tiêu tập luyện</Text>
+                <Controller control={control} name="fitnessGoal" render={({ field: { onChange, value } }) => (
+                  <TextInput style={[styles.input, { height: 80 }]} value={value} onChangeText={onChange} multiline placeholder="Mô tả mục tiêu của bạn..." placeholderTextColor={Colors.text.muted} />
+                )} />
               </View>
-            )}
-          </View>
+
+              {/* Training Preference */}
+              <View style={styles.field}>
+                <Text style={styles.label}>Thời gian tập yêu thích</Text>
+                <Controller control={control} name="trainingPreference" render={({ field: { onChange, value } }) => (
+                  <TextInput style={styles.input} value={value} onChangeText={onChange} placeholder="VD: Sáng sớm, chiều tối..." placeholderTextColor={Colors.text.muted} />
+                )} />
+              </View>
+
+              {/* Training Level */}
+              <View style={styles.field}>
+                <Text style={styles.label}>Trình độ</Text>
+                {!editingLevel ? (
+                  <TouchableOpacity style={styles.levelRow} onPress={() => setEditingLevel(true)}>
+                    <Text style={styles.levelValue}>{LEVEL_LABEL[user?.memberProfile?.trainingLevel ?? ''] ?? '—'}</Text>
+                    <Text style={styles.editLink}>Thay đổi</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.levelOptions}>
+                    {LEVEL_OPTIONS.map((opt) => (
+                      <TouchableOpacity
+                        key={opt.value}
+                        style={[styles.levelOpt, user?.memberProfile?.trainingLevel === opt.value && styles.levelOptActive]}
+                        onPress={() => updateLevel.mutate(opt.value)}
+                        disabled={updateLevel.isPending}
+                      >
+                        <Text style={[styles.levelOptText, user?.memberProfile?.trainingLevel === opt.value && styles.levelOptTextActive]}>{opt.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            </>
+          )}
 
           <TouchableOpacity
             style={[styles.saveBtn, isSubmitting && styles.saveBtnDisabled]}
@@ -186,14 +244,14 @@ export default function ProfileScreen() {
           <View style={styles.field}>
             <Text style={styles.label}>Mật khẩu hiện tại</Text>
             <Controller control={pwdControl} name="currentPassword" render={({ field: { onChange, value } }) => (
-              <TextInput style={[styles.input, pwdErrors.currentPassword && styles.inputError]} value={value} onChangeText={onChange} secureTextEntry placeholderTextColor={Colors.text.muted} placeholder="••••••••" />
+              <TextInput style={[styles.input, pwdErrors.currentPassword && styles.inputError]} value={value ?? ''} onChangeText={onChange} secureTextEntry placeholderTextColor={Colors.text.muted} placeholder="••••••••" />
             )} />
             {pwdErrors.currentPassword && <Text style={styles.err}>{pwdErrors.currentPassword.message}</Text>}
           </View>
           <View style={styles.field}>
             <Text style={styles.label}>Mật khẩu mới</Text>
             <Controller control={pwdControl} name="newPassword" render={({ field: { onChange, value } }) => (
-              <TextInput style={[styles.input, pwdErrors.newPassword && styles.inputError]} value={value} onChangeText={onChange} secureTextEntry placeholderTextColor={Colors.text.muted} placeholder="Ít nhất 6 ký tự" />
+              <TextInput style={[styles.input, pwdErrors.newPassword && styles.inputError]} value={value ?? ''} onChangeText={onChange} secureTextEntry placeholderTextColor={Colors.text.muted} placeholder="Ít nhất 6 ký tự" />
             )} />
             {pwdErrors.newPassword && <Text style={styles.err}>{pwdErrors.newPassword.message}</Text>}
           </View>
@@ -223,8 +281,68 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: FontSize.xxxl, fontWeight: FontWeight.bold, color: Colors.text.inverse, fontFamily: 'BeVietnamPro_700Bold' },
   name: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
   email: { fontSize: FontSize.sm, color: Colors.text.secondary, marginTop: 2, fontFamily: 'BeVietnamPro_400Regular' },
-  roleBadge: { marginTop: Spacing.sm, backgroundColor: Colors.primary + '20', borderRadius: Radius.full, paddingHorizontal: Spacing.lg, paddingVertical: 3 },
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: Spacing.sm,
+    backgroundColor: Colors.primary + '20',
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 4,
+  },
+  coachRoleBadge: {
+    backgroundColor: Colors.primary + '25',
+    borderWidth: 1,
+    borderColor: Colors.primary + '40',
+  },
   roleText: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
+
+  // Coach Info Card
+  coachInfoCard: {
+    backgroundColor: Colors.bg.surface,
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    marginBottom: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadow.sm,
+  },
+  coachCardTitle: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+    fontFamily: 'BeVietnamPro_700Bold',
+    marginBottom: Spacing.md,
+  },
+  coachInfoGrid: {
+    gap: Spacing.sm,
+  },
+  coachInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  coachInfoLabel: {
+    fontSize: FontSize.sm,
+    color: Colors.text.secondary,
+    fontFamily: 'BeVietnamPro_500Medium',
+  },
+  coachInfoValue: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text.primary,
+    fontFamily: 'BeVietnamPro_600SemiBold',
+    flex: 1,
+  },
+  coachBioText: {
+    fontSize: FontSize.sm,
+    color: Colors.text.primary,
+    fontFamily: 'BeVietnamPro_400Regular',
+    marginTop: 2,
+    lineHeight: 20,
+  },
+
   tabRow: { flexDirection: 'row', gap: Spacing.md, marginBottom: Spacing.lg },
   tabBtn: { flex: 1, paddingVertical: Spacing.sm, borderRadius: Radius.md, alignItems: 'center', backgroundColor: Colors.bg.surface, borderWidth: 1, borderColor: Colors.border },
   tabBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },

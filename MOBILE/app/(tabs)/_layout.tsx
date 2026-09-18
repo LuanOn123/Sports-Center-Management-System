@@ -1,21 +1,25 @@
+// app/(tabs)/_layout.tsx
+// Quản lý điều hướng Bottom Tab Bar theo cấu hình phân quyền vai trò
+
+import React from 'react';
 import { Tabs } from 'expo-router';
 import { Platform, View, Text, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Colors, FontSize } from '../../constants/theme';
+import { Colors } from '../../constants/theme';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
+import { getTabConfigForRole, type MaterialIconName } from '../../navigation';
 
-type TabIconProps = { color: string | { toString(): string }; size: number };
-
-function TabIcon({ name, ...props }: TabIconProps & { name: React.ComponentProps<typeof MaterialIcons>['name'] }) {
-  return <MaterialIcons name={name} size={20} color={String(props.color)} />;
+function TabIcon({ name, color }: { name: MaterialIconName; color: string | any }) {
+  return <MaterialIcons name={name} size={20} color={String(color)} />;
 }
 
-function ChatTabIcon({ color, size }: TabIconProps) {
+function ChatTabIcon({ color }: { color: string | any }) {
   const { data } = useQuery({
     queryKey: ['chat-unread-count'],
     queryFn: () => api.get<number>('/chat/messages/unread-count'),
-    refetchInterval: 30_000, // poll every 30s
+    refetchInterval: 30_000,
   });
 
   const count = data?.data ?? 0;
@@ -33,6 +37,9 @@ function ChatTabIcon({ color, size }: TabIconProps) {
 }
 
 export default function TabLayout() {
+  const { user } = useAuth();
+  const tabs = getTabConfigForRole(user?.role);
+
   return (
     <Tabs
       screenOptions={{
@@ -64,60 +71,22 @@ export default function TabLayout() {
         },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Trang chủ',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="home" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="classes"
-        options={{
-          title: 'Lớp học',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="fitness-center" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="schedule"
-        options={{
-          title: 'Lịch tập',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="event" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="training"
-        options={{
-          title: 'Tập luyện',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="trending-up" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="chat"
-        options={{
-          title: 'Nhắn tin',
-          tabBarIcon: ({ color, size }) => (
-            <ChatTabIcon color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          title: 'Thông báo',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="notifications" color={color} size={size} />
-          ),
-        }}
-      />
+      {tabs.map((tab) => (
+        <Tabs.Screen
+          key={tab.name}
+          name={tab.name}
+          options={{
+            title: tab.title,
+            href: tab.visible ? undefined : null,
+            tabBarIcon: ({ color }) =>
+              tab.isChat ? (
+                <ChatTabIcon color={color} />
+              ) : (
+                <TabIcon name={tab.iconName} color={color} />
+              ),
+          }}
+        />
+      ))}
       <Tabs.Screen
         name="profile"
         options={{

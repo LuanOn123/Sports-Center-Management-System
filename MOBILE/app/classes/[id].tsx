@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
 import { api, ApiError } from '../../lib/api';
 import { showAlert, showConfirm } from '../../lib/alert';
-import type { Class, ClassSchedule } from '../../lib/types';
+import type { Class, ClassSchedule, Enrollment, EnrollmentStatus } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
 const TYPE_LABEL: Record<string, string> = { REGULAR: 'Tiêu Chuẩn', PREMIUM: 'Cao Cấp' };
@@ -41,6 +41,12 @@ export default function ClassDetailScreen() {
     enabled: Boolean(id),
   });
 
+  // Lấy danh sách enrollments của user để check trạng thái từng schedule (BOOKED, CANCELLED)
+  const { data: enrollmentsData } = useQuery({
+    queryKey: ['my-enrollments'],
+    queryFn: () => api.get<Enrollment[]>('/enrollments/my', { limit: '100' }),
+  });
+
   const bookMutation = useMutation({
     mutationFn: (scheduleId: string) => api.post('/enrollments', { scheduleId }),
     onSuccess: () => {
@@ -53,9 +59,15 @@ export default function ClassDetailScreen() {
     },
   });
 
-
   const cls = classData?.data;
   const schedules = schedulesData?.data ?? [];
+  // Map scheduleId -> status ('BOOKED' | 'CANCELLED' | 'COMPLETED')
+  const userEnrollmentMap = new Map<string, EnrollmentStatus>();
+  (enrollmentsData?.data ?? []).forEach((e) => {
+    if (!userEnrollmentMap.has(e.scheduleId) || e.status === 'BOOKED') {
+      userEnrollmentMap.set(e.scheduleId, e.status);
+    }
+  });
 
   if (isLoading) {
     return (
@@ -152,10 +164,20 @@ export default function ClassDetailScreen() {
             const slotsLeft = cls.capacity - slotsUsed;
             const isFull = slotsLeft <= 0;
             const isPast = new Date(s.startTime) < new Date();
-            const isDisabled = isFull || isPast || bookMutation.isPending;
+            const userStatus = userEnrollmentMap.get(s.id);
+            const isBooked = userStatus === 'BOOKED';
+            const isCancelled = userStatus === 'CANCELLED';
+            const isDisabled = isFull || isPast || isBooked || isCancelled || bookMutation.isPending;
 
             return (
-              <View key={s.id} style={styles.scheduleCard}>
+              <View
+                key={s.id}
+                style={[
+                  styles.scheduleCard,
+                  isBooked && styles.scheduleCardBooked,
+                  isCancelled && styles.scheduleCardCancelled,
+                ]}
+              >
                 <View style={styles.scheduleLeft}>
                   <Text style={styles.scheduleDate}>{formatDate(s.startTime)}</Text>
                   <Text style={styles.scheduleTime}>{formatTime(s.startTime)} – {formatTime(s.endTime)}</Text>
@@ -166,34 +188,52 @@ export default function ClassDetailScreen() {
                     </View>
                   )}
                   <View style={styles.iconRow}>
-                    <MaterialIcons name="group" size={14} color={isPast ? Colors.text.muted : isFull ? Colors.status.cancelled : Colors.status.active} />
+                    <MaterialIcons
+                      name="group"
+                      size={14}
+                      color={isPast ? Colors.text.muted : isFull ? Colors.status.cancelled : Colors.status.active}
+                    />
                     <Text style={[styles.scheduleSlots, (isFull || isPast) && styles.scheduleSlotsEmpty]}>
                       {isPast ? 'Đã qua giờ' : isFull ? 'Hết chỗ' : `Còn ${slotsLeft} chỗ`}
                     </Text>
                   </View>
                 </View>
 
-                <TouchableOpacity
-                  style={[styles.bookBtn, (isFull || isPast) && styles.bookBtnDisabled]}
-                  onPress={() => {
-                    if (!isFull && !isPast) {
-                      showConfirm(
-                        'Xác nhận đặt lịch',
-                        `Đặt lớp "${cls.name}" lúc ${formatTime(s.startTime)}?`,
-                        () => bookMutation.mutate(s.id),
-                        undefined,
-                        'Đặt lịch'
-                      );
-                    }
-                  }}
-                  disabled={isDisabled}
-                >
-                  {bookMutation.isPending
-                    ? <ActivityIndicator color={Colors.text.inverse} size="small" />
-                    : <Text style={[styles.bookBtnText, (isFull || isPast) && { color: Colors.text.muted }]}>
-                        {isPast ? 'Đã diễn ra' : isFull ? 'Hết chỗ' : 'Đặt lịch'}
-                      </Text>}
-                </TouchableOpacity>
+                {isBooked ? (
+                  /* ĐÃ ĐẶT — hiển thị badge xanh thay vì nút */
+                  <View style={styles.bookedBadge}>
+                    <MaterialIcons name="check-circle" size={16} color={Colors.status.active} />
+                    <Text style={styles.bookedBadgeText}>Đã đặt</Text>
+                  </View>
+                ) : isCancelled ? (
+                  /* ĐÃ HỦY — hiển thị badge đã hủy, không thể đặt lại */
+                  <View style={styles.cancelledBadge}>
+                    <MaterialIcons name="cancel" size={16} color={Colors.status.cancelled} />
+                    <Text style={styles.cancelledBadgeText}>Đã hủy</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.bookBtn, (isFull || isPast) && styles.bookBtnDisabled]}
+                    onPress={() => {
+                      if (!isFull && !isPast) {
+                        showConfirm(
+                          'Xác nhận đặt lịch',
+                          `Đặt lớp "${cls.name}" lúc ${formatTime(s.startTime)}?`,
+                          () => bookMutation.mutate(s.id),
+                          undefined,
+                          'Đặt lịch'
+                        );
+                      }
+                    }}
+                    disabled={isDisabled}
+                  >
+                    {bookMutation.isPending
+                      ? <ActivityIndicator color={Colors.text.inverse} size="small" />
+                      : <Text style={[styles.bookBtnText, (isFull || isPast) && { color: Colors.text.muted }]}>
+                          {isPast ? 'Đã diễn ra' : isFull ? 'Hết chỗ' : 'Đặt lịch'}
+                        </Text>}
+                  </TouchableOpacity>
+                )}
 
               </View>
             );
@@ -243,6 +283,8 @@ const styles = StyleSheet.create({
   emptySchedule: { backgroundColor: Colors.bg.surface, borderRadius: Radius.lg, padding: Spacing.xl, alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
   emptyScheduleText: { color: Colors.text.muted, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_400Regular' },
   scheduleCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: Colors.bg.surface, borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border },
+  scheduleCardBooked: { borderColor: Colors.status.active + '60', backgroundColor: Colors.status.active + '08' },
+  scheduleCardCancelled: { borderColor: Colors.status.cancelled + '40', backgroundColor: Colors.status.cancelled + '06', opacity: 0.85 },
   scheduleLeft: { flex: 1 },
   scheduleDate: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.primary, fontFamily: 'BeVietnamPro_600SemiBold', marginBottom: 2 },
   scheduleTime: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginBottom: 2 },
@@ -252,5 +294,9 @@ const styles = StyleSheet.create({
   bookBtn: { backgroundColor: Colors.primary, borderRadius: Radius.md, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, minWidth: 80, alignItems: 'center' },
   bookBtnDisabled: { backgroundColor: Colors.bg.elevated },
   bookBtnText: { color: Colors.text.inverse, fontWeight: FontWeight.bold, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_700Bold' },
+  bookedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.status.active + '20', borderRadius: Radius.full, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderWidth: 1, borderColor: Colors.status.active + '40' },
+  bookedBadgeText: { fontSize: FontSize.xs, color: Colors.status.active, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
+  cancelledBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.status.cancelled + '20', borderRadius: Radius.full, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderWidth: 1, borderColor: Colors.status.cancelled + '40' },
+  cancelledBadgeText: { fontSize: FontSize.xs, color: Colors.status.cancelled, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
 });
 

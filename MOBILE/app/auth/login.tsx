@@ -11,7 +11,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 import { ApiError } from '../../lib/api';
-import { Brand } from '../../components/Brand';
+import { Brand } from '../../components';
 import { showAlert } from '../../lib/alert';
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
@@ -27,6 +27,10 @@ export default function LoginScreen() {
   const [showPwd, setShowPwd] = useState(false);
   const { control, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
   });
 
   const onSubmit = async (data: FormData) => {
@@ -51,7 +55,6 @@ export default function LoginScreen() {
         {/* Card */}
         <View style={styles.card}>
           <Text style={styles.title}>Đăng nhập</Text>
-          <Text style={styles.subtitle}>Chào mừng trở lại!</Text>
 
           {/* Email */}
           <View style={styles.fieldContainer}>
@@ -67,7 +70,7 @@ export default function LoginScreen() {
                   autoCapitalize="none"
                   keyboardType="email-address"
                   autoComplete="email"
-                  value={value}
+                  value={value ?? ''}
                   onChangeText={onChange}
                 />
               )}
@@ -78,23 +81,23 @@ export default function LoginScreen() {
           {/* Password */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Mật khẩu</Text>
-            <View style={styles.inputRow}>
+            <View style={[styles.passwordContainer, errors.password && styles.inputError]}>
               <Controller
                 control={control}
                 name="password"
                 render={({ field: { onChange, value } }) => (
                   <TextInput
-                    style={[styles.input, styles.inputFlex, errors.password && styles.inputError]}
+                    style={styles.passwordInput}
                     placeholder="••••••••"
                     placeholderTextColor={Colors.text.muted}
                     secureTextEntry={!showPwd}
                     autoComplete="current-password"
-                    value={value}
+                    value={value ?? ''}
                     onChangeText={onChange}
                   />
                 )}
               />
-              <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPwd(p => !p)}>
+              <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPwd(p => !p)} activeOpacity={0.7}>
                 <MaterialIcons name={showPwd ? 'visibility-off' : 'visibility'} size={20} color={Colors.text.secondary} />
               </TouchableOpacity>
             </View>
@@ -137,8 +140,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bg.surface, borderRadius: Radius.xl,
     padding: Spacing.xl, borderWidth: 1, borderColor: Colors.border,
   },
-  title: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  subtitle: { fontSize: FontSize.sm, color: Colors.text.secondary, marginTop: 4, marginBottom: Spacing.xl, fontFamily: 'BeVietnamPro_400Regular' },
+  title: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginBottom: Spacing.xl, textAlign: 'center' },
   fieldContainer: { marginBottom: Spacing.lg },
   label: { fontSize: FontSize.sm, color: Colors.text.secondary, marginBottom: 6, fontFamily: 'BeVietnamPro_500Medium' },
   input: {
@@ -146,17 +148,36 @@ const styles = StyleSheet.create({
     color: Colors.text.primary, fontSize: FontSize.md, borderWidth: 1, borderColor: Colors.border,
     fontFamily: 'BeVietnamPro_400Regular',
   },
-  inputFlex: { flex: 1 },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.bg.elevated,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingRight: Spacing.sm,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: Spacing.md,
+    color: Colors.text.primary,
+    fontSize: FontSize.md,
+    fontFamily: 'BeVietnamPro_400Regular',
+  },
+  eyeBtn: {
+    padding: Spacing.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   inputError: { borderColor: Colors.status.failed },
-  inputRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  eyeBtn: { padding: Spacing.md, backgroundColor: Colors.bg.elevated, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, justifyContent: 'center', alignItems: 'center' },
   errorText: { fontSize: FontSize.xs, color: Colors.status.failed, marginTop: 4, fontFamily: 'BeVietnamPro_400Regular' },
   btn: {
     backgroundColor: Colors.primary, borderRadius: Radius.md,
-    padding: Spacing.md, alignItems: 'center', marginTop: Spacing.md,
+    padding: Spacing.md, alignItems: 'center', justifyContent: 'center',
+    marginTop: Spacing.md,
   },
   btnDisabled: { opacity: 0.6 },
-  btnText: { color: Colors.text.inverse, fontSize: FontSize.md, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
+  btnText: { color: Colors.text.inverse, fontSize: FontSize.md, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold', textAlign: 'center' },
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: Spacing.xl },
   footerText: { color: Colors.text.secondary, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_400Regular' },
   link: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
