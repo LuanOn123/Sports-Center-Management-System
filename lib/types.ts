@@ -169,6 +169,10 @@ export interface Enrollment {
   scheduleId: string;
   schedule?: ClassSchedule;
   memberId: string;
+  member?: {
+    id: string;
+    user?: Pick<User, 'id' | 'fullName' | 'email' | 'phone'>;
+  };
   status: EnrollmentStatus;
   bookedAt: string;
   createdAt: string;

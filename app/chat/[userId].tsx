@@ -1,16 +1,14 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
-import { api } from '../../lib/api';
-import { getSocket } from '../../lib/socket';
-import type { ChatMessage, ChatConversation } from '../../lib/types';
 import { useAuth } from '../../context/AuthContext';
+import { useChatMessages, usePartnerName } from '../../hooks/shared/useChat';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import type { ChatMessage } from '../../lib/types';
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
@@ -24,95 +22,34 @@ function isSameDay(a: string, b: string) {
 }
 
 export default function ChatScreen() {
-  const { userId } = useLocalSearchParams<{ userId: string }>();
+  const { userId, name } = useLocalSearchParams<{ userId: string; name?: string }>();
   const router = useRouter();
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const flatListRef = useRef<FlatList>(null);
   const [text, setText] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const textRef = useRef('');
 
-  // Load initial history via REST
-  const { isLoading, data } = useQuery({
-    queryKey: ['chat-messages', userId],
-    queryFn: () => api.get<ChatMessage[]>(`/chat/messages?targetId=${userId}`),
-    enabled: Boolean(userId),
-  });
+  // ─── Hooks (logic) ──────────────────────────────────────────────────────────
+  const { messages, isLoading, handleSend } = useChatMessages(userId, user?.id);
+  const partnerName = usePartnerName(userId, name);
 
-  useEffect(() => {
-    if (data?.data) setMessages(data.data);
-  }, [data]);
-
-  // Mark messages as read when opening the screen
-  useEffect(() => {
-    if (!userId) return;
-    api.patch('/chat/messages/read', { targetId: userId }).catch(() => {});
-    queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
-    queryClient.invalidateQueries({ queryKey: ['chat-unread-count'] });
-  }, [userId, queryClient]);
-
-  // Real-time: listen for new messages
-  useEffect(() => {
-    const socket = getSocket();
-    if (!socket) return;
-
-    const handleNewMessage = (msg: ChatMessage) => {
-      // Only add if it belongs to this conversation
-      if (
-        (msg.senderId === userId && msg.receiverId === user?.id) ||
-        (msg.senderId === user?.id && msg.receiverId === userId)
-      ) {
-        setMessages(prev => [...prev, msg]);
-        // Auto-mark read since we're looking at the conversation
-        api.patch('/chat/messages/read', { targetId: userId }).catch(() => {});
-      }
-    };
-
-    const handleSent = (msg: ChatMessage) => {
-      // Replace optimistic message or append confirmed one
-      setMessages(prev => {
-        const exists = prev.find(m => m.id === msg.id);
-        return exists ? prev : [...prev, msg];
-      });
-    };
-
-    socket.on('newMessage', handleNewMessage);
-    socket.on('messageSent', handleSent);
-    return () => {
-      socket.off('newMessage', handleNewMessage);
-      socket.off('messageSent', handleSent);
-    };
-  }, [userId, user?.id]);
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-    }
-  }, [messages.length]);
-
-  // Send via Socket.IO (primary) — fallback to REST
-  const handleSend = useCallback(() => {
-    const content = text.trim();
-    if (!content || !user) return;
+  const onSend = () => {
+    const trimmed = (textRef.current || text).trim();
+    if (!trimmed) return;
+    textRef.current = '';
     setText('');
+    handleSend(trimmed, user);
+  };
 
-    const socket = getSocket();
-    if (socket?.connected) {
-      socket.emit('sendMessage', { senderId: user.id, receiverId: userId, content });
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
     } else {
-      // REST fallback
-      api.post('/chat/messages', { receiverId: userId, content }).then(res => {
-        if (res.data) setMessages(prev => [...prev, res.data as ChatMessage]);
-      }).catch(() => {});
+      router.replace('/(tabs)/chat');
     }
-    queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
-  }, [text, user, userId, queryClient]);
+  };
 
-  // Get partner name from conversations cache
-  const convCache = queryClient.getQueryData<{ data: ChatConversation[] }>(['chat-conversations']);
-  const partnerName = convCache?.data?.find(c => c.user.id === userId)?.user.fullName ?? 'Người dùng';
-
+  // ─── UI ─────────────────────────────────────────────────────────────────────
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -121,7 +58,7 @@ export default function ChatScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
           <MaterialIcons name="arrow-back" size={22} color={Colors.text.primary} />
         </TouchableOpacity>
         <View style={styles.headerAvatar}>
@@ -139,6 +76,8 @@ export default function ChatScreen() {
           data={messages}
           keyExtractor={m => m.id}
           contentContainerStyle={styles.messagesList}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
           renderItem={({ item, index }) => {
             const isMine = item.senderId === user?.id;
@@ -185,19 +124,31 @@ export default function ChatScreen() {
         <TextInput
           style={styles.input}
           value={text}
-          onChangeText={setText}
+          onChangeText={(val) => {
+            setText(val);
+            textRef.current = val;
+          }}
           placeholder="Nhắn tin..."
           placeholderTextColor={Colors.text.muted}
           multiline
           maxLength={1000}
-          returnKeyType="send"
-          onSubmitEditing={handleSend}
           blurOnSubmit={false}
+          returnKeyType="send"
+          onSubmitEditing={onSend}
+          onKeyPress={(e) => {
+            if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter' && !(e.nativeEvent as any).shiftKey) {
+              e.preventDefault();
+              onSend();
+            }
+          }}
         />
         <TouchableOpacity
           style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
-          onPress={handleSend}
+          onPress={onSend}
+          onPressIn={onSend}
           disabled={!text.trim()}
+          activeOpacity={0.7}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <MaterialIcons name="send" size={20} color={text.trim() ? Colors.text.inverse : Colors.text.muted} />
         </TouchableOpacity>

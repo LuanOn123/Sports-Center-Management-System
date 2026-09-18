@@ -4,9 +4,8 @@ import {
   ActivityIndicator, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
-import { api } from '../../lib/api';
+import { useContacts } from '../../hooks/shared/useChat';
 import type { ChatContact } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
@@ -27,12 +26,8 @@ const ROLE_COLOR: Record<string, string> = {
 export default function ChatContactsScreen() {
   const router = useRouter();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['chat-contacts'],
-    queryFn: () => api.get<ChatContact[]>('/chat/contacts'),
-  });
-
-  const contacts = data?.data ?? [];
+  // ─── Hooks (logic) ──────────────────────────────────────────────────────────
+  const { contacts, isLoading } = useContacts();
 
   const byRole = contacts.reduce<Record<string, ChatContact[]>>((acc, c) => {
     const role = c.role ?? 'OTHER';
@@ -43,11 +38,20 @@ export default function ChatContactsScreen() {
 
   const sections = Object.entries(byRole).map(([role, members]) => ({ role, members }));
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/chat');
+    }
+  };
+
+  // ─── UI ─────────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
           <MaterialIcons name="arrow-back" size={22} color={Colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Chọn người nhắn</Text>
@@ -78,7 +82,7 @@ export default function ChatContactsScreen() {
                 <TouchableOpacity
                   key={contact.id}
                   style={styles.contactCard}
-                  onPress={() => router.push(`/chat/${contact.id}` as any)}
+                  onPress={() => router.push({ pathname: '/chat/[userId]', params: { userId: contact.id, name: contact.fullName } } as any)}
                   activeOpacity={0.7}
                 >
                   <View style={[styles.avatar, { borderColor: ROLE_COLOR[contact.role] ?? Colors.border }]}>

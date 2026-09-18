@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
 import { api, ApiError } from '../../lib/api';
 import { showAlert, showConfirm } from '../../lib/alert';
-import type { ClassSchedule } from '../../lib/types';
+import type { ClassSchedule, Enrollment } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
 const STATUS_LABEL: Record<string, string> = { SCHEDULED: 'Đang mở', CANCELLED: 'Đã hủy', COMPLETED: 'Đã hoàn thành' };
@@ -36,6 +36,12 @@ export default function ScheduleDetailScreen() {
     enabled: Boolean(scheduleId),
   });
 
+  // Lấy danh sách enrollments của user (cả BOOKED và CANCELLED) để kiểm tra trạng thái
+  const { data: enrollmentsData } = useQuery({
+    queryKey: ['my-enrollments'],
+    queryFn: () => api.get<Enrollment[]>('/enrollments/my', { limit: '100' }),
+  });
+
   const bookMutation = useMutation({
     mutationFn: () => api.post('/enrollments', { scheduleId }),
     onSuccess: () => {
@@ -50,13 +56,17 @@ export default function ScheduleDetailScreen() {
     },
   });
 
-
   const s = schedData?.data;
   const slotsUsed = s?._count?.enrollments ?? 0;
   const slotsLeft = s ? (s.class?.capacity ?? 0) - slotsUsed : 0;
   const isFull = slotsLeft <= 0;
   const isPast = s ? new Date(s.startTime) < new Date() : false;
-  const isCancelled = s?.status === 'CANCELLED';
+  const isScheduleCancelled = s?.status === 'CANCELLED';
+  
+  // Kiểm tra trạng thái đăng ký của user với schedule này
+  const userEnrollment = (enrollmentsData?.data ?? []).find((e) => e.scheduleId === scheduleId);
+  const isBooked = userEnrollment?.status === 'BOOKED';
+  const isCancelledByMe = userEnrollment?.status === 'CANCELLED';
 
   if (isLoading) {
     return <View style={styles.loading}><ActivityIndicator color={Colors.primary} size="large" /></View>;
@@ -67,12 +77,14 @@ export default function ScheduleDetailScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Status banner */}
-      <View style={[styles.statusBanner, { backgroundColor: STATUS_COLOR[s.status] + '15', borderColor: STATUS_COLOR[s.status] + '40' }]}>
-        <Text style={[styles.statusText, { color: STATUS_COLOR[s.status] }]}>
-          {STATUS_LABEL[s.status]}
-        </Text>
-      </View>
+      {/* Status banner (chỉ hiển thị khi đã hủy hoặc đã hoàn thành) */}
+      {s.status !== 'SCHEDULED' && (
+        <View style={[styles.statusBanner, { backgroundColor: STATUS_COLOR[s.status] + '15', borderColor: STATUS_COLOR[s.status] + '40' }]}>
+          <Text style={[styles.statusText, { color: STATUS_COLOR[s.status] }]}>
+            {STATUS_LABEL[s.status]}
+          </Text>
+        </View>
+      )}
 
       {/* Main info */}
       <View style={styles.card}>
@@ -132,50 +144,84 @@ export default function ScheduleDetailScreen() {
         </View>
       )}
 
-      {/* Class details */}
-      {Boolean(s.class) && (
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Thông Tin Lớp</Text>
-          <TouchableOpacity onPress={() => router.push(`/classes/${s.class!.id}`)} style={styles.classLinkRow}>
-            <Text style={styles.viewClassLink}>Xem chi tiết lớp học</Text>
-            <MaterialIcons name="chevron-right" size={18} color={Colors.primary} />
-          </TouchableOpacity>
-          {Boolean(s.class!.description) && (
-            <Text style={styles.classDesc}>{s.class!.description}</Text>
-          )}
-        </View>
-      )}
-
-      {/* Book button */}
-      {s.status === 'SCHEDULED' && (
-        <TouchableOpacity
-          style={[styles.bookBtn, (isFull || isPast || bookMutation.isPending) && styles.bookBtnDisabled]}
-          onPress={() => {
-            if (!isFull && !isPast) {
-              showConfirm(
-                'Xác nhận đặt lịch',
-                `Đặt lớp "${s.class?.name}" lúc ${formatTime(s.startTime)} ngày ${formatDate(s.startTime)}?`,
-                () => bookMutation.mutate(),
-                undefined,
-                'Đặt lịch'
-              );
-            }
-          }}
-          disabled={isFull || isPast || bookMutation.isPending}
-        >
-          {bookMutation.isPending ? (
-            <ActivityIndicator color={Colors.text.inverse} />
-          ) : (
-            <View style={styles.btnContentRow}>
-              <MaterialIcons name={isPast ? "history" : "event-available"} size={22} color={(isFull || isPast) ? Colors.text.muted : Colors.text.inverse} />
-              <Text style={[styles.bookBtnText, (isFull || isPast) && { color: Colors.text.muted }]}>
-                {isPast ? 'Buổi học đã diễn ra' : isFull ? 'Hết chỗ' : 'Đặt lịch học'}
-              </Text>
+      {/* Coaches */}
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Huấn Luyện Viên</Text>
+        {s.class?.coaches && s.class.coaches.length > 0 ? (
+          s.class.coaches.map((c) => (
+            <View key={c.coachId} style={styles.coachRow}>
+              <View style={styles.coachAvatar}>
+                <Text style={styles.coachAvatarText}>{c.coach?.user?.fullName?.charAt(0) ?? '?'}</Text>
+              </View>
+              <View style={styles.coachInfo}>
+                <View style={styles.coachNameRow}>
+                  <Text style={styles.coachName}>{c.coach?.user?.fullName ?? '—'}</Text>
+                  {Boolean(c.isPrimary) && (
+                    <View style={styles.primaryBadge}>
+                      <Text style={styles.primaryText}>Chính</Text>
+                    </View>
+                  )}
+                </View>
+                {Boolean(c.coach?.specialization) && (
+                  <View style={styles.iconRow}>
+                    <MaterialIcons name="star-outline" size={14} color={Colors.text.secondary} />
+                    <Text style={styles.coachSpec}>{c.coach!.specialization}</Text>
+                  </View>
+                )}
+              </View>
             </View>
-          )}
-        </TouchableOpacity>
+          ))
+        ) : (
+          <Text style={styles.noCoachText}>Chưa phân công huấn luyện viên</Text>
+        )}
+      </View>
+
+      {/* Book button / Booked badge / Cancelled badge */}
+      {s.status === 'SCHEDULED' && (
+        isBooked ? (
+          /* ĐÃ ĐẶT — hiển thị thông báo thay vì nút */
+          <View style={styles.bookedNote}>
+            <MaterialIcons name="check-circle" size={22} color={Colors.status.active} />
+            <Text style={styles.bookedNoteText}>Bạn đã đặt lịch buổi học này</Text>
+          </View>
+        ) : isCancelledByMe ? (
+          /* ĐÃ HỦY — hiển thị thông báo đã hủy, không thể đặt lại */
+          <View style={[styles.bookedNote, styles.cancelledByMeNote]}>
+            <MaterialIcons name="cancel" size={22} color={Colors.status.cancelled} />
+            <Text style={[styles.bookedNoteText, { color: Colors.status.cancelled }]}>
+              Bạn đã hủy lớp học này (không thể đăng ký lại)
+            </Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[styles.bookBtn, (isFull || isPast || bookMutation.isPending) && styles.bookBtnDisabled]}
+            onPress={() => {
+              if (!isFull && !isPast) {
+                showConfirm(
+                  'Xác nhận đặt lịch',
+                  `Đặt lớp "${s.class?.name}" lúc ${formatTime(s.startTime)} ngày ${formatDate(s.startTime)}?`,
+                  () => bookMutation.mutate(),
+                  undefined,
+                  'Đặt lịch'
+                );
+              }
+            }}
+            disabled={isFull || isPast || bookMutation.isPending}
+          >
+            {bookMutation.isPending ? (
+              <ActivityIndicator color={Colors.text.inverse} />
+            ) : (
+              <View style={styles.btnContentRow}>
+                <MaterialIcons name={isPast ? "history" : "event-available"} size={22} color={(isFull || isPast) ? Colors.text.muted : Colors.text.inverse} />
+                <Text style={[styles.bookBtnText, (isFull || isPast) && { color: Colors.text.muted }]}>
+                  {isPast ? 'Buổi học đã diễn ra' : isFull ? 'Hết chỗ' : 'Đặt lịch học'}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )
       )}
-      {Boolean(isCancelled) && (
+      {Boolean(isScheduleCancelled) && (
         <View style={styles.cancelledNote}>
           <MaterialIcons name="warning" size={18} color={Colors.status.cancelled} />
           <Text style={styles.cancelledNoteText}>Buổi học này đã bị hủy</Text>
@@ -206,13 +252,30 @@ const styles = StyleSheet.create({
   roomRow: { marginBottom: Spacing.sm },
   roomName: { fontSize: FontSize.lg, fontWeight: FontWeight.semibold, color: Colors.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
   roomDetail: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
-  classLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: Spacing.sm },
-  viewClassLink: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
-  classDesc: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular', lineHeight: 22 },
+  coachRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bg.elevated, borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.xs },
+  coachAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.primary + '25', justifyContent: 'center', alignItems: 'center', marginRight: Spacing.md },
+  coachAvatarText: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.primary, fontFamily: 'BeVietnamPro_700Bold' },
+  coachInfo: { flex: 1 },
+  coachNameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: 2 },
+  coachName: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
+  primaryBadge: { backgroundColor: Colors.primary + '20', borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
+  primaryText: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
+  coachSpec: { fontSize: FontSize.xs, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
+  noCoachText: { color: Colors.text.muted, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_400Regular', fontStyle: 'italic' },
   bookBtn: { backgroundColor: Colors.primary, borderRadius: Radius.xl, padding: Spacing.lg, alignItems: 'center' },
   bookBtnDisabled: { backgroundColor: Colors.bg.elevated },
   btnContentRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   bookBtnText: { color: Colors.text.inverse, fontSize: FontSize.lg, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
+  bookedNote: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.status.active + '15', borderRadius: Radius.xl,
+    padding: Spacing.lg, justifyContent: 'center', borderWidth: 1.5, borderColor: Colors.status.active + '40',
+  },
+  bookedNoteText: { color: Colors.status.active, fontSize: FontSize.md, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold', textAlign: 'center' },
+  cancelledByMeNote: {
+    backgroundColor: Colors.status.cancelled + '15',
+    borderColor: Colors.status.cancelled + '40',
+  },
   cancelledNote: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: Colors.status.cancelled + '15', borderRadius: Radius.lg,

@@ -3,11 +3,10 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   TextInput, ActivityIndicator, RefreshControl,
 } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { api } from '../../lib/api';
-import type { Class, Sport } from '../../lib/types';
+import { useClasses, useSports } from '../../hooks/shared/useClasses';
+import type { ClassFilters } from '../../services/classService';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
 const TYPE_LABEL: Record<string, string> = { REGULAR: 'Tiêu Chuẩn', PREMIUM: 'Cao Cấp' };
@@ -18,32 +17,24 @@ export default function ClassesScreen() {
   const [selectedSport, setSelectedSport] = useState<string | undefined>();
   const [selectedType, setSelectedType] = useState<string | undefined>();
 
-  const { data: sportsData } = useQuery({
-    queryKey: ['sports-list'],
-    queryFn: () => api.publicGet<Sport[]>('/sports', { isActive: 'true', limit: '50' }),
-  });
-
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['classes', search, selectedSport, selectedType],
-    queryFn: () =>
-      api.get<Class[]>('/classes', {
-        search: search || undefined,
-        sportId: selectedSport,
-        classType: selectedType,
-        isActive: 'true',
-        limit: '20',
-      }),
-    placeholderData: (prev) => prev,
-  });
+  // ─── Hooks (logic) ──────────────────────────────────────────────────────────
+  const { data: sportsData } = useSports();
+  const filters: ClassFilters = {
+    search: search || undefined,
+    sportId: selectedSport,
+    classType: selectedType,
+  };
+  const { data, isLoading, refetch } = useClasses(filters);
 
   const sports = sportsData?.data ?? [];
   const classes = data?.data ?? [];
 
+  // ─── UI ─────────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Lớp Học</Text>
+        <Text style={styles.headerTitle}>Lớp học</Text>
         <Text style={styles.headerSub}>Khám phá các lớp tập phù hợp</Text>
       </View>
 
@@ -149,7 +140,6 @@ export default function ClassesScreen() {
                 )}
                 <MaterialIcons name="chevron-right" size={22} color={Colors.primary} style={{ marginLeft: 'auto' }} />
               </View>
-
             </TouchableOpacity>
           )}
         />
@@ -209,4 +199,3 @@ const styles = StyleSheet.create({
   typePremium: { backgroundColor: Colors.tier.PREMIUM + '20' },
   typeBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_600SemiBold' },
 });
-

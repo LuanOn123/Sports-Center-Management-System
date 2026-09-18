@@ -1,16 +1,15 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, FlatList,
+  View, Text, StyleSheet, ScrollView,
   TouchableOpacity, ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
-import { api } from '../../lib/api';
+import { useMembershipData, usePendingRequest } from '../../hooks/member/useMembership';
 import { showAlert, showConfirm } from '../../lib/alert';
 import { storage } from '../../lib/storage';
-import type { MembershipPlan, MembershipStatus, Subscription, MembershipTier, PendingMembershipRequest } from '../../lib/types';
+import type { MembershipPlan, MembershipTier, PendingMembershipRequest } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
 const TIER_LABEL: Record<string, string> = { FREE: 'Miễn Phí', MEMBERSHIP: 'Tiêu Chuẩn', PREMIUM: 'Cao Cấp' };
@@ -30,69 +29,17 @@ function formatPrice(price: string | number) {
 export default function MembershipPlansScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const memberId = user?.memberProfile?.id ?? user?.id;
   const [selectedMethod, setSelectedMethod] = useState<'CASH' | 'BANK_TRANSFER'>('CASH');
-  const [pendingRequest, setPendingRequest] = useState<PendingMembershipRequest | null>(null);
 
-  const handleGoBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(tabs)');
-    }
-  };
+  // ─── Hooks (logic) ──────────────────────────────────────────────────────────
+  const {
+    activeSub, status, plans, subscriptions: subs,
+    statusLoading, plansLoading,
+    refetchStatus, refetchSubs, refetchPlans, onRefresh: refreshMembership,
+  } = useMembershipData(memberId);
 
-  const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useQuery({
-    queryKey: ['membership-status', memberId],
-    queryFn: () => api.get<MembershipStatus>(`/members/${memberId}/membership-status`),
-    enabled: Boolean(memberId),
-  });
-
-  const { data: plansData, isLoading: plansLoading, refetch: refetchPlans } = useQuery({
-    queryKey: ['membership-plans-active'],
-    queryFn: () => api.publicGet<MembershipPlan[]>('/membership-plans', { isActive: 'true' }),
-  });
-
-  const { data: subsData, isLoading: subsLoading, refetch: refetchSubs } = useQuery({
-    queryKey: ['subscriptions', memberId],
-    queryFn: () => api.get<Subscription[]>(`/subscriptions/member/${memberId}`),
-    enabled: Boolean(memberId),
-  });
-
-  const plans = plansData?.data ?? [];
-  const subs: Subscription[] = Array.isArray(subsData?.data) ? subsData.data : [];
-  const activeSubFromList = subs.find(
-    s => s.status === 'ACTIVE' && new Date(s.endDate).getTime() >= Date.now()
-  );
-
-  const rawStatus = statusData?.data;
-  const activeSub = rawStatus?.activeSubscription ?? activeSubFromList ?? null;
-  const effectiveTier: MembershipTier = (rawStatus?.effectiveTier && rawStatus.effectiveTier !== 'FREE')
-    ? rawStatus.effectiveTier
-    : (activeSub?.tier ?? activeSub?.plan?.tier ?? 'FREE');
-  const daysRemaining = rawStatus?.daysRemaining !== undefined && rawStatus?.daysRemaining !== null
-    ? rawStatus.daysRemaining
-    : (activeSub ? Math.max(0, Math.ceil((new Date(activeSub.endDate).getTime() - Date.now()) / 86400000)) : null);
-
-  const status: MembershipStatus = {
-    effectiveTier,
-    activeSubscription: activeSub,
-    daysRemaining: daysRemaining ?? undefined,
-  };
-
-  // Sync pending request with storage and check if activated
-  const loadPending = useCallback(async () => {
-    if (!user?.id) return;
-    if (activeSub) {
-      // Activated by staff! Clear pending
-      await storage.clearPendingPlan(user.id);
-      setPendingRequest(null);
-    } else {
-      const stored = await storage.getPendingPlan(user.id);
-      setPendingRequest(stored);
-    }
-  }, [user?.id, activeSub]);
+  const { pendingRequest, setPendingRequest, loadPending } = usePendingRequest(user?.id, activeSub);
 
   useFocusEffect(
     useCallback(() => {
@@ -103,16 +50,17 @@ export default function MembershipPlansScreen() {
     }, [refetchStatus, refetchPlans, refetchSubs, loadPending])
   );
 
-  useEffect(() => {
-    loadPending();
-  }, [loadPending]);
-
-  const isRefreshing = statusLoading || plansLoading || subsLoading;
   const onRefresh = async () => {
-    await Promise.all([refetchStatus(), refetchPlans(), refetchSubs()]);
+    await refreshMembership();
     await loadPending();
   };
 
+  const handleGoBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)');
+  };
+
+  // ─── Action handlers ────────────────────────────────────────────────────────
   const handleSubscribe = (plan: MembershipPlan) => {
     if (!user?.id) return;
     showConfirm(
@@ -182,6 +130,7 @@ export default function MembershipPlansScreen() {
     );
   };
 
+  // ─── UI ─────────────────────────────────────────────────────────────────────
   return (
     <View style={styles.screen}>
       {/* Header with Back and Home buttons */}
@@ -189,7 +138,7 @@ export default function MembershipPlansScreen() {
         <TouchableOpacity style={styles.navBtn} onPress={handleGoBack}>
           <MaterialIcons name="arrow-back" size={24} color={Colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.navTitle}>Gói Thành Viên</Text>
+        <Text style={styles.navTitle}>Gói thành viên</Text>
         <TouchableOpacity style={styles.navBtn} onPress={() => router.replace('/(tabs)')}>
           <MaterialIcons name="home" size={24} color={Colors.primary} />
         </TouchableOpacity>
@@ -200,218 +149,208 @@ export default function MembershipPlansScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
-      {/* Current status or Pending card */}
-      {statusLoading ? (
-        <ActivityIndicator color={Colors.primary} style={{ marginVertical: 20 }} />
-      ) : activeSub ? (
-        /* ACTIVE MEMBERSHIP CARD */
-        <View style={[styles.currentCard, { borderColor: Colors.tier[status.effectiveTier] + '60' }]}>
-          <View style={styles.cardHeaderRow}>
-            <View style={styles.tierBadgeRow}>
-              <MaterialIcons
-                name={TIER_ICON[status.effectiveTier]}
-                size={14}
-                color={Colors.tier[status.effectiveTier]}
-              />
-              <Text style={[styles.tierBadgeText, { color: Colors.tier[status.effectiveTier] }]}>
-                HẠNG {TIER_LABEL[status.effectiveTier].toUpperCase()}
-              </Text>
-            </View>
-            <View style={[styles.activeBadge, { backgroundColor: Colors.tier[status.effectiveTier] + '20' }]}>
-              <Text style={[styles.activeBadgeText, { color: Colors.tier[status.effectiveTier] }]}>ĐANG SỬ DỤNG</Text>
-            </View>
-          </View>
-          <Text style={styles.currentPlanTitle}>
-            {activeSub.plan?.name ?? `Gói ${TIER_LABEL[status.effectiveTier]}`}
-          </Text>
-          <View style={styles.infoCol}>
-            <View style={styles.infoRow}>
-              <MaterialIcons name="event" size={16} color={Colors.text.secondary} />
-              <Text style={styles.currentInfo}>Hết hạn: {formatDate(activeSub.endDate)}</Text>
-            </View>
-            {Boolean(status.daysRemaining !== undefined) && (
-              <View style={styles.infoRow}>
-                <MaterialIcons name="schedule" size={16} color={Colors.text.secondary} />
-                <Text style={styles.currentInfo}>Còn {status.daysRemaining} ngày sử dụng</Text>
-              </View>
-            )}
-          </View>
-        </View>
-      ) : pendingRequest ? (
-        /* PENDING APPROVAL CARD */
-        <View style={styles.pendingCard}>
-          <View style={styles.cardHeaderRow}>
-            <Text style={styles.pendingLabel}>Yêu cầu đăng ký</Text>
-            <View style={styles.pendingBadge}>
-              <MaterialIcons name="hourglass-top" size={12} color="#D97706" />
-              <Text style={styles.pendingBadgeText}>CHỜ LỄ TÂN DUYỆT</Text>
-            </View>
-          </View>
-          <Text style={styles.pendingPlanName}>{pendingRequest.planName}</Text>
-          <Text style={styles.pendingPrice}>
-            {formatPrice(pendingRequest.price)} <Text style={styles.pendingSubText}>/ {pendingRequest.durationDays} ngày</Text>
-          </Text>
-          <View style={styles.pendingInfoBox}>
-            <View style={styles.infoRow}>
-              <MaterialIcons name="payment" size={15} color={Colors.text.secondary} />
-              <Text style={styles.pendingInfoText}>
-                Thanh toán: {pendingRequest.paymentMethod === 'CASH' ? 'Tiền mặt tại quầy' : 'Chuyển khoản ngân hàng'}
-              </Text>
-            </View>
-            <View style={styles.infoRow}>
-              <MaterialIcons name="info-outline" size={15} color="#D97706" />
-              <Text style={[styles.pendingInfoText, { color: '#B45309' }]}>
-                Vui lòng gặp Lễ tân để thanh toán & kích hoạt gói
-              </Text>
-            </View>
-          </View>
-          <View style={styles.pendingActions}>
-            <TouchableOpacity style={styles.checkBtn} onPress={onRefresh}>
-              <MaterialIcons name="refresh" size={16} color={Colors.primary} />
-              <Text style={styles.checkBtnText}>Kiểm tra kích hoạt</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelPending}>
-              <Text style={styles.cancelBtnText}>Hủy</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ) : (
-        /* NO ACTIVE MEMBERSHIP */
-        <View style={[styles.currentCard, { borderColor: Colors.border }]}>
-          <Text style={styles.currentLabel}>Hạng hiện tại</Text>
-          <View style={styles.currentRow}>
-            <MaterialIcons name="star-border" size={28} color={Colors.text.muted} />
-            <Text style={[styles.currentTier, { color: Colors.text.muted }]}>Miễn Phí (FREE)</Text>
-          </View>
-          <Text style={styles.noActive}>Chưa có gói thành viên đang hiệu lực. Hãy chọn gói bên dưới để đăng ký!</Text>
-        </View>
-      )}
-
-      {/* Payment method selector */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
-        <View style={styles.methodRow}>
-          {(['CASH', 'BANK_TRANSFER'] as const).map((m) => {
-            const isActive = selectedMethod === m;
-            return (
-              <TouchableOpacity
-                key={m}
-                style={[styles.methodBtn, isActive && styles.methodBtnActive]}
-                onPress={() => setSelectedMethod(m)}
-              >
+        {/* Current status or Pending card */}
+        {statusLoading ? (
+          <ActivityIndicator color={Colors.primary} style={{ marginVertical: 20 }} />
+        ) : activeSub ? (
+          /* ACTIVE MEMBERSHIP CARD */
+          <View style={[styles.currentCard, { borderColor: Colors.tier[status.effectiveTier] + '60' }]}>
+            <View style={styles.cardHeaderRow}>
+              <View style={styles.tierBadgeRow}>
                 <MaterialIcons
-                  name={m === 'CASH' ? 'payments' : 'account-balance'}
-                  size={18}
-                  color={isActive ? Colors.text.inverse : Colors.text.secondary}
+                  name={TIER_ICON[status.effectiveTier]}
+                  size={14}
+                  color={Colors.tier[status.effectiveTier]}
                 />
-                <Text style={[styles.methodText, isActive && styles.methodTextActive]}>
-                  {m === 'CASH' ? 'Tiền mặt tại quầy' : 'Chuyển khoản'}
+                <Text style={[styles.tierBadgeText, { color: Colors.tier[status.effectiveTier] }]}>
+                  HẠNG {TIER_LABEL[status.effectiveTier].toUpperCase()}
                 </Text>
+              </View>
+              <View style={[styles.activeBadge, { backgroundColor: Colors.tier[status.effectiveTier] + '20' }]}>
+                <Text style={[styles.activeBadgeText, { color: Colors.tier[status.effectiveTier] }]}>ĐANG SỬ DỤNG</Text>
+              </View>
+            </View>
+            <Text style={styles.currentPlanTitle}>
+              {activeSub.plan?.name ?? `Gói ${TIER_LABEL[status.effectiveTier]}`}
+            </Text>
+            <View style={styles.infoCol}>
+              <View style={styles.infoRow}>
+                <MaterialIcons name="event" size={16} color={Colors.text.secondary} />
+                <Text style={styles.currentInfo}>Hết hạn: {formatDate(activeSub.endDate)}</Text>
+              </View>
+              {Boolean(status.daysRemaining !== undefined) && (
+                <View style={styles.infoRow}>
+                  <MaterialIcons name="schedule" size={16} color={Colors.text.secondary} />
+                  <Text style={styles.currentInfo}>Còn {status.daysRemaining} ngày sử dụng</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        ) : pendingRequest ? (
+          /* PENDING APPROVAL CARD */
+          <View style={styles.pendingCard}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.pendingLabel}>Yêu cầu đăng ký</Text>
+              <View style={styles.pendingBadge}>
+                <MaterialIcons name="hourglass-top" size={12} color="#D97706" />
+                <Text style={styles.pendingBadgeText}>CHỜ LỄ TÂN DUYỆT</Text>
+              </View>
+            </View>
+            <Text style={styles.pendingPlanName}>{pendingRequest.planName}</Text>
+            <Text style={styles.pendingPrice}>
+              {formatPrice(pendingRequest.price)} <Text style={styles.pendingSubText}>/ {pendingRequest.durationDays} ngày</Text>
+            </Text>
+            <View style={styles.pendingInfoBox}>
+              <View style={styles.infoRow}>
+                <MaterialIcons name="payment" size={15} color={Colors.text.secondary} />
+                <Text style={styles.pendingInfoText}>
+                  Thanh toán: {pendingRequest.paymentMethod === 'CASH' ? 'Tiền mặt tại quầy' : 'Chuyển khoản ngân hàng'}
+                </Text>
+              </View>
+              <View style={styles.infoRow}>
+                <MaterialIcons name="info-outline" size={15} color="#D97706" />
+                <Text style={[styles.pendingInfoText, { color: '#B45309' }]}>
+                  Vui lòng gặp Lễ tân để thanh toán & kích hoạt gói
+                </Text>
+              </View>
+            </View>
+            <View style={styles.pendingActions}>
+              <TouchableOpacity style={styles.checkBtn} onPress={onRefresh}>
+                <MaterialIcons name="refresh" size={16} color={Colors.primary} />
+                <Text style={styles.checkBtnText}>Kiểm tra kích hoạt</Text>
               </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Plans */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Các gói thành viên</Text>
-        {plansLoading ? (
-          <ActivityIndicator color={Colors.primary} />
+              <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelPending}>
+                <Text style={styles.cancelBtnText}>Hủy</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         ) : (
-          plans.map((plan) => {
-            const isCurrentPlan = Boolean(
-              activeSub && (
-                activeSub.planId === plan.id ||
-                activeSub.plan?.id === plan.id ||
-                (activeSub.plan?.name && activeSub.plan.name.trim().toLowerCase() === plan.name.trim().toLowerCase())
-              )
-            );
-            const isPendingPlan = pendingRequest?.planId === plan.id;
-            return (
-              <View key={plan.id} style={[styles.planCard, isCurrentPlan && styles.planCardActive, isPendingPlan && styles.planCardPending]}>
-                <View style={styles.planTop}>
-                  <View style={styles.planTierRow}>
-                    <MaterialIcons name={TIER_ICON[plan.tier]} size={20} color={Colors.tier[plan.tier]} />
-                    <View style={[styles.planTierBadge, { backgroundColor: Colors.tier[plan.tier] + '20' }]}>
-                      <Text style={[styles.planTierText, { color: Colors.tier[plan.tier] }]}>{TIER_LABEL[plan.tier]}</Text>
+          /* NO ACTIVE MEMBERSHIP */
+          <View style={[styles.currentCard, { borderColor: Colors.border }]}>
+            <Text style={styles.currentLabel}>Hạng hiện tại</Text>
+            <View style={styles.currentRow}>
+              <MaterialIcons name="star-border" size={28} color={Colors.text.muted} />
+              <Text style={[styles.currentTier, { color: Colors.text.muted }]}>Miễn Phí (FREE)</Text>
+            </View>
+            <Text style={styles.noActive}>Chưa có gói thành viên đang hiệu lực. Hãy chọn gói bên dưới để đăng ký!</Text>
+          </View>
+        )}
+
+        {/* Payment method selector */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
+          <View style={styles.methodRow}>
+            {(['CASH', 'BANK_TRANSFER'] as const).map((m) => {
+              const isActive = selectedMethod === m;
+              return (
+                <TouchableOpacity
+                  key={m}
+                  style={[styles.methodBtn, isActive && styles.methodBtnActive]}
+                  onPress={() => setSelectedMethod(m)}
+                >
+                  <MaterialIcons
+                    name={m === 'CASH' ? 'payments' : 'account-balance'}
+                    size={18}
+                    color={isActive ? Colors.text.inverse : Colors.text.secondary}
+                  />
+                  <Text style={[styles.methodText, isActive && styles.methodTextActive]}>
+                    {m === 'CASH' ? 'Tiền mặt tại quầy' : 'Chuyển khoản'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Plans */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Các gói thành viên</Text>
+          {plansLoading ? (
+            <ActivityIndicator color={Colors.primary} />
+          ) : (
+            plans.map((plan) => {
+              const isCurrentPlan = Boolean(
+                activeSub && (
+                  activeSub.planId === plan.id ||
+                  activeSub.plan?.id === plan.id ||
+                  (activeSub.plan?.name && activeSub.plan.name.trim().toLowerCase() === plan.name.trim().toLowerCase())
+                )
+              );
+              const isPendingPlan = pendingRequest?.planId === plan.id;
+              return (
+                <View key={plan.id} style={[styles.planCard, isCurrentPlan && styles.planCardActive, isPendingPlan && styles.planCardPending]}>
+                  <View style={styles.planTop}>
+                    <View style={styles.planTierRow}>
+                      <MaterialIcons name={TIER_ICON[plan.tier]} size={20} color={Colors.tier[plan.tier]} />
+                      <View style={[styles.planTierBadge, { backgroundColor: Colors.tier[plan.tier] + '20' }]}>
+                        <Text style={[styles.planTierText, { color: Colors.tier[plan.tier] }]}>{TIER_LABEL[plan.tier]}</Text>
+                      </View>
+                      {Boolean(isCurrentPlan) && (
+                        <View style={styles.currentBadge}>
+                          <Text style={styles.currentBadgeText}>Đang sử dụng</Text>
+                        </View>
+                      )}
+                      {Boolean(isPendingPlan && !isCurrentPlan) && (
+                        <View style={styles.pendingBadgeSmall}>
+                          <Text style={styles.pendingBadgeSmallText}>Chờ duyệt</Text>
+                        </View>
+                      )}
                     </View>
-                    {Boolean(isCurrentPlan) && (
-                      <View style={styles.currentBadge}>
-                        <Text style={styles.currentBadgeText}>Đang sử dụng</Text>
+                    <Text style={styles.planName}>{plan.name}</Text>
+                    {Boolean(plan.description) && <Text style={styles.planDesc}>{plan.description}</Text>}
+                  </View>
+                  <View style={styles.planMid}>
+                    <Text style={styles.planPrice}>{formatPrice(plan.price)}</Text>
+                    <Text style={styles.planDuration}>{plan.durationDays} ngày</Text>
+                  </View>
+                  <View style={styles.planActions}>
+                    {Boolean(isCurrentPlan) ? (
+                      <TouchableOpacity style={styles.renewBtn} onPress={() => handleRenew(plan)}>
+                        <MaterialIcons name="autorenew" size={18} color={Colors.accent} />
+                        <Text style={styles.renewBtnText}>Gia hạn gói này</Text>
+                      </TouchableOpacity>
+                    ) : activeSub ? (
+                      <TouchableOpacity style={styles.switchBtn} onPress={() => handleSubscribe(plan)}>
+                        <MaterialIcons name="swap-horiz" size={18} color={Colors.primary} />
+                        <Text style={styles.switchBtnText}>Đổi sang gói này</Text>
+                      </TouchableOpacity>
+                    ) : isPendingPlan ? (
+                      <View style={styles.pendingPlanBtn}>
+                        <MaterialIcons name="hourglass-empty" size={16} color="#D97706" />
+                        <Text style={styles.pendingPlanBtnText}>Đang chờ Lễ tân kích hoạt</Text>
                       </View>
-                    )}
-                    {Boolean(isPendingPlan && !isCurrentPlan) && (
-                      <View style={styles.pendingBadgeSmall}>
-                        <Text style={styles.pendingBadgeSmallText}>Chờ duyệt</Text>
-                      </View>
+                    ) : (
+                      <TouchableOpacity style={styles.subscribeBtn} onPress={() => handleSubscribe(plan)}>
+                        <Text style={styles.subscribeBtnText}>Đăng ký gói này</Text>
+                      </TouchableOpacity>
                     )}
                   </View>
-                  <Text style={styles.planName}>{plan.name}</Text>
-                  {Boolean(plan.description) && <Text style={styles.planDesc}>{plan.description}</Text>}
                 </View>
-                <View style={styles.planMid}>
-                  <Text style={styles.planPrice}>{formatPrice(plan.price)}</Text>
-                  <Text style={styles.planDuration}>{plan.durationDays} ngày</Text>
-                </View>
-                <View style={styles.planActions}>
-                  {Boolean(isCurrentPlan) ? (
-                    <TouchableOpacity
-                      style={styles.renewBtn}
-                      onPress={() => handleRenew(plan)}
-                    >
-                      <MaterialIcons name="autorenew" size={18} color={Colors.accent} />
-                      <Text style={styles.renewBtnText}>Gia hạn gói này</Text>
-                    </TouchableOpacity>
-                  ) : activeSub ? (
-                    <TouchableOpacity
-                      style={styles.switchBtn}
-                      onPress={() => handleSubscribe(plan)}
-                    >
-                      <MaterialIcons name="swap-horiz" size={18} color={Colors.primary} />
-                      <Text style={styles.switchBtnText}>Đổi sang gói này</Text>
-                    </TouchableOpacity>
-                  ) : isPendingPlan ? (
-                    <View style={styles.pendingPlanBtn}>
-                      <MaterialIcons name="hourglass-empty" size={16} color="#D97706" />
-                      <Text style={styles.pendingPlanBtnText}>Đang chờ Lễ tân kích hoạt</Text>
-                    </View>
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.subscribeBtn}
-                      onPress={() => handleSubscribe(plan)}
-                    >
-                      <Text style={styles.subscribeBtnText}>Đăng ký gói này</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            );
-          })
-        )}
-      </View>
-
-      {/* History */}
-      {Boolean(subs.length > 0) && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Lịch sử đăng ký</Text>
-          {subs.slice(0, 5).map((s) => (
-            <View key={s.id} style={styles.histItem}>
-              <View>
-                <Text style={styles.histPlan}>{s.plan?.name ?? 'Gói tập'}</Text>
-                <Text style={styles.histDate}>{formatDate(s.startDate)} → {formatDate(s.endDate)}</Text>
-              </View>
-              <View style={[styles.histStatus, { backgroundColor: (Colors.status as Record<string, string>)[s.status.toLowerCase()] + '20' }]}>
-                <Text style={[styles.histStatusText, { color: (Colors.status as Record<string, string>)[s.status.toLowerCase()] }]}>
-                  {s.status}
-                </Text>
-              </View>
-            </View>
-          ))}
+              );
+            })
+          )}
         </View>
-      )}
 
-    </ScrollView>
+        {/* History */}
+        {Boolean(subs.length > 0) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Lịch sử đăng ký</Text>
+            {subs.slice(0, 5).map((s) => (
+              <View key={s.id} style={styles.histItem}>
+                <View>
+                  <Text style={styles.histPlan}>{s.plan?.name ?? 'Gói tập'}</Text>
+                  <Text style={styles.histDate}>{formatDate(s.startDate)} → {formatDate(s.endDate)}</Text>
+                </View>
+                <View style={[styles.histStatus, { backgroundColor: (Colors.status as Record<string, string>)[s.status.toLowerCase()] + '20' }]}>
+                  <Text style={[styles.histStatusText, { color: (Colors.status as Record<string, string>)[s.status.toLowerCase()] }]}>
+                    {s.status}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -419,29 +358,14 @@ export default function MembershipPlansScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.bg.primary },
   topNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: Spacing.md,
     paddingTop: Platform.OS === 'ios' ? 52 : (Platform.OS === 'android' ? 42 : 14),
     paddingBottom: Spacing.sm,
-    backgroundColor: Colors.bg.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    backgroundColor: Colors.bg.surface, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  navBtn: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: Radius.full,
-  },
-  navTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.primary,
-    fontFamily: 'BeVietnamPro_700Bold',
-  },
+  navBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: Radius.full },
+  navTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
   container: { flex: 1, backgroundColor: Colors.bg.primary },
   content: { padding: Spacing.xl, paddingBottom: Spacing.xxxl },
   currentCard: { backgroundColor: Colors.bg.surface, borderRadius: Radius.xl, padding: Spacing.xl, marginBottom: Spacing.xl, borderWidth: 1 },
@@ -510,9 +434,7 @@ const styles = StyleSheet.create({
   pendingPlanName: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginTop: Spacing.sm },
   pendingPrice: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: '#D97706', fontFamily: 'BeVietnamPro_700Bold', marginVertical: 4 },
   pendingSubText: { fontSize: FontSize.sm, color: Colors.text.muted, fontWeight: FontWeight.regular, fontFamily: 'BeVietnamPro_400Regular' },
-  pendingInfoBox: {
-    backgroundColor: '#F59E0B10', borderRadius: Radius.md, padding: Spacing.md, gap: 6, marginVertical: Spacing.md,
-  },
+  pendingInfoBox: { backgroundColor: '#F59E0B10', borderRadius: Radius.md, padding: Spacing.md, gap: 6, marginVertical: Spacing.md },
   pendingInfoText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_500Medium' },
   pendingActions: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.xs },
   checkBtn: {
@@ -521,10 +443,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.primary + '40',
   },
   checkBtnText: { color: Colors.primary, fontWeight: FontWeight.bold, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_700Bold' },
-  cancelBtn: {
-    paddingHorizontal: Spacing.lg, justifyContent: 'center', alignItems: 'center',
-    borderRadius: Radius.md, backgroundColor: Colors.bg.elevated,
-  },
+  cancelBtn: { paddingHorizontal: Spacing.lg, justifyContent: 'center', alignItems: 'center', borderRadius: Radius.md, backgroundColor: Colors.bg.elevated },
   cancelBtnText: { color: Colors.text.muted, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_500Medium' },
   planCardPending: { borderColor: '#F59E0B80' },
   pendingBadgeSmall: { backgroundColor: '#F59E0B20', borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
@@ -541,4 +460,3 @@ const styles = StyleSheet.create({
   histStatus: { borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
   histStatusText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
 });
-
