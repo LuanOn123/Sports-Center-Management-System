@@ -125,8 +125,7 @@ router.get("/memberships", validate(DateRangeSchema, "query"), reportsController
  *         name: limit
  *         schema: { type: integer, default: 20 }
  *     responses:
- *       200: 
- *         description: Subscription logs retrieved successfully
+ *       200: { $ref: "#/components/responses/SubscriptionLogListOk" }
  *       400: { $ref: "#/components/responses/BadRequest" }
  *       401: { $ref: "#/components/responses/Unauthorized" }
  *       403: { $ref: "#/components/responses/Forbidden" }
