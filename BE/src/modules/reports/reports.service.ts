@@ -217,3 +217,55 @@ export async function getMembershipReport(startDate: string, endDate: string) {
     totalRevenue: Number(revenueAgg._sum.amount ?? 0),
   };
 }
+
+export async function getSubscriptionLogs(startDate?: string, endDate?: string, pageStr?: string, limitStr?: string) {
+  const page = Math.max(1, parseInt(pageStr ?? "1") || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(limitStr ?? "20") || 20));
+  const skip = (page - 1) * limit;
+
+  const where: any = {};
+  if (startDate && endDate) {
+    const start = new Date(`${startDate}T00:00:00+07:00`);
+    const end = new Date(`${endDate}T23:59:59.999+07:00`);
+    where.createdAt = { gte: start, lte: end };
+  }
+
+  const [total, subs] = await Promise.all([
+    prisma.membershipSubscription.count({ where }),
+    prisma.membershipSubscription.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+      include: {
+        member: { include: { user: { select: { fullName: true, email: true } } } },
+        plan: { select: { name: true, price: true } },
+        payments: { select: { amount: true, status: true, paidAt: true }, take: 1, orderBy: { createdAt: "desc" } }
+      }
+    })
+  ]);
+
+  const formattedLogs = subs.map(sub => ({
+    id: sub.id,
+    action: "Mua / Gia hạn gói", // Action description as requested
+    username: sub.member.user.fullName,
+    email: sub.member.user.email,
+    planName: sub.plan.name,
+    planTier: sub.tier,
+    price: Number(sub.payments[0]?.amount ?? sub.plan.price),
+    paymentStatus: sub.payments[0]?.status ?? "N/A",
+    startDate: sub.startDate,
+    endDate: sub.endDate,
+    purchasedAt: sub.createdAt, // Real-time timestamp
+  }));
+
+  return {
+    data: formattedLogs,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    }
+  };
+}
