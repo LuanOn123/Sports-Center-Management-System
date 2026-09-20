@@ -274,12 +274,12 @@ async function main() {
 
   const yogaClass = await prisma.class.upsert({
     where: { id: "class-yoga-001" },
-    update: {},
+    update: { sports: { set: [{ id: yoga.id }] } },
     create: {
       id: "class-yoga-001",
       name: "Yoga Buổi Sáng",
       description: "Lớp Yoga nhẹ nhàng buổi sáng, phù hợp mọi trình độ.",
-      sportId: yoga.id,
+      sports: { connect: [{ id: yoga.id }] },
       capacity: 15,
       classType: ClassType.REGULAR,
       isActive: true,
@@ -288,12 +288,12 @@ async function main() {
 
   const hiitClass = await prisma.class.upsert({
     where: { id: "class-hiit-001" },
-    update: {},
+    update: { sports: { set: [{ id: hiit.id }] } },
     create: {
       id: "class-hiit-001",
       name: "HIIT Cardio",
       description: "Lớp HIIT cường độ cao, đốt cháy calo tối đa.",
-      sportId: hiit.id,
+      sports: { connect: [{ id: hiit.id }] },
       capacity: 12,
       classType: ClassType.REGULAR,
       isActive: true,
@@ -302,12 +302,12 @@ async function main() {
 
   const premiumYoga = await prisma.class.upsert({
     where: { id: "class-yoga-premium-001" },
-    update: {},
+    update: { sports: { set: [{ id: yoga.id }] } },
     create: {
       id: "class-yoga-premium-001",
       name: "Premium Yoga & Meditation",
       description: "Lớp Yoga Premium với coach 1-1 và thiền định chuyên sâu.",
-      sportId: yoga.id,
+      sports: { connect: [{ id: yoga.id }] },
       capacity: 8,
       classType: ClassType.PREMIUM,
       isActive: true,
