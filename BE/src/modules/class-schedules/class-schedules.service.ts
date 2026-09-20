@@ -85,7 +85,7 @@ export async function listSchedules(query: any) {
     prisma.classSchedule.findMany({
       where, skip, take: limit,
       include: {
-        class: { include: { sport: true } },
+        class: { include: { sports: true } },
         room: true,
         _count: { select: { enrollments: { where: { status: { in: ["BOOKED", "COMPLETED"] } } } } },
       },
@@ -117,7 +117,7 @@ export async function createSchedule(data: any) {
 
   return prisma.classSchedule.create({
     data: { classId: data.classId, roomId: data.roomId, startTime, endTime, status: "SCHEDULED" },
-    include: { class: { include: { sport: true } }, room: true },
+    include: { class: { include: { sports: true } }, room: true },
   });
 }
 
@@ -125,7 +125,7 @@ export async function getScheduleById(id: string) {
   const schedule = await prisma.classSchedule.findUnique({
     where: { id },
     include: {
-      class: { include: { sport: true, coaches: { include: { coach: { include: { user: { select: { fullName: true } } } } } } } },
+      class: { include: { sports: true, coaches: { include: { coach: { include: { user: { select: { fullName: true } } } } } } } },
       room: true,
       _count: { select: { enrollments: { where: { status: { in: ["BOOKED", "COMPLETED"] } } } } },
     },
@@ -178,7 +178,7 @@ export async function updateSchedule(id: string, data: any) {
       return tx.classSchedule.update({
         where: { id },
         data: { ...data, startTime, endTime, roomId },
-        include: { class: { include: { sport: true } }, room: true },
+        include: { class: { include: { sports: true } }, room: true },
       });
     });
   }
@@ -186,7 +186,7 @@ export async function updateSchedule(id: string, data: any) {
   return prisma.classSchedule.update({
     where: { id },
     data: { ...data, startTime, endTime, roomId },
-    include: { class: { include: { sport: true } }, room: true },
+    include: { class: { include: { sports: true } }, room: true },
   });
 }
 
@@ -241,7 +241,7 @@ export async function deleteSchedule(id: string) {
 export async function completeSchedule(id: string) {
   const schedule = await prisma.classSchedule.findUnique({
     where: { id },
-    include: { class: { include: { sport: true } }, room: true },
+    include: { class: { include: { sports: true } }, room: true },
   });
   if (!schedule) throw new AppError("Schedule not found", 404);
   if (schedule.status === "COMPLETED") return schedule; // idempotent
@@ -260,7 +260,7 @@ export async function completeSchedule(id: string) {
     return tx.classSchedule.update({
       where: { id },
       data: { status: "COMPLETED" },
-      include: { class: { include: { sport: true } }, room: true },
+      include: { class: { include: { sports: true } }, room: true },
     });
   });
 }
