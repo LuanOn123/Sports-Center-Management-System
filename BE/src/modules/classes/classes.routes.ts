@@ -110,7 +110,7 @@ router.get("/:id", authenticate, classesController.getClassById);
  *             type: object
  *             required:
  *               - name
- *               - sportId
+ *               - sportIds
  *               - capacity
  *             properties:
  *               name:
@@ -118,8 +118,11 @@ router.get("/:id", authenticate, classesController.getClassById);
  *                 example: "Morning Yoga"
  *               description:
  *                 type: string
- *               sportId:
- *                 type: string
+ *               sportIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
  *               capacity:
  *                 type: integer
  *                 example: 20
@@ -166,8 +169,11 @@ router.post(
  *                 type: string
  *               description:
  *                 type: string
- *               sportId:
- *                 type: string
+ *               sportIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
  *               capacity:
  *                 type: integer
  *               classType:
@@ -222,7 +228,7 @@ router.delete(
  * @swagger
  * /classes/{id}/coaches:
  *   post:
- *     summary: Assign coach to class
+ *     summary: Assign coach to class (Sends COACH_CHANGED notification to enrolled members)
  *     tags: [Classes]
  *     parameters:
  *       - in: path
@@ -267,7 +273,7 @@ router.post(
  * @swagger
  * /classes/{id}/coaches/{coachId}:
  *   delete:
- *     summary: Remove coach from class
+ *     summary: Remove coach from class (Sends COACH_CHANGED notification to enrolled members)
  *     tags: [Classes]
  *     parameters:
  *       - in: path

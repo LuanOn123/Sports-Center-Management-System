@@ -27,6 +27,7 @@ import chatRoutes from "./modules/chat/chat.routes.js";
 import attendanceRoutes from "./modules/attendance/attendance.routes.js";
 import trainingPlanRoutes from "./modules/training-plans/training-plans.routes.js";
 import notificationRoutes from "./modules/notifications/notifications.routes.js";
+import feedbackRoutes from "./modules/feedbacks/feedbacks.routes.js";
 
 const app = express();
 
@@ -75,6 +76,7 @@ app.use(`${v1}/chat`, chatRoutes);
 app.use(`${v1}/attendance`, attendanceRoutes);
 app.use(`${v1}/training-plans`, trainingPlanRoutes);
 app.use(`${v1}/notifications`, notificationRoutes);
+app.use(`${v1}/feedbacks`, feedbackRoutes);
 
 // Static files for uploads
 app.use("/uploads", express.static("uploads"));

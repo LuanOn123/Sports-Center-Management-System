@@ -41,7 +41,7 @@ export async function updateSport(id: string, data: any) {
   if (!sport) throw new AppError("Sport not found", 404);
 
   if (data.isActive === false && sport.isActive === true) {
-    const activeClasses = await prisma.class.count({ where: { sportId: id, isActive: true } });
+    const activeClasses = await prisma.class.count({ where: { sports: { some: { id } }, isActive: true } });
     if (activeClasses > 0) throw new AppError("Cannot deactivate sport with active classes", 400);
   }
 
@@ -51,7 +51,7 @@ export async function updateSport(id: string, data: any) {
 export async function deleteSport(id: string) {
   const sport = await prisma.sport.findUnique({ where: { id } });
   if (!sport) throw new AppError("Sport not found", 404);
-  const activeClasses = await prisma.class.count({ where: { sportId: id, isActive: true } });
+  const activeClasses = await prisma.class.count({ where: { sports: { some: { id } }, isActive: true } });
   if (activeClasses > 0) throw new AppError("Cannot deactivate sport with active classes", 400);
   return prisma.sport.update({ where: { id }, data: { isActive: false } });
 }
