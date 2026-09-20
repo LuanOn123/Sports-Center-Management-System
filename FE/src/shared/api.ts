@@ -1,4 +1,5 @@
 import operations from "./operations.json";
+import { localizeApiError } from "./apiErrors";
 import type { LoginOk, ProfileOk, PostAuthLoginRequest } from "./generated";
 export type RecordData = { [key: string]: unknown };
 export interface Envelope<T> {
@@ -52,7 +53,7 @@ export function clearSession() {
   sessionStorage.removeItem("pulse.access");
   sessionStorage.removeItem("pulse.refresh");
 }
-function saveTokens(tokens: LoginOk["data"]) {
+export function saveTokens(tokens: LoginOk["data"]) {
   accessToken = tokens.accessToken;
   refreshToken = tokens.refreshToken;
   sessionStorage.setItem("pulse.access", accessToken);
@@ -106,12 +107,14 @@ async function transport(
       res.status,
     );
   }
-  if (!res.ok || payload.success === false)
-    throw new ApiError(
-      payload.message || `Yêu cầu thất bại (${res.status})`,
-      res.status,
+  if (!res.ok || payload.success === false) {
+    const localized = localizeApiError(
+      payload.message,
       payload.errors,
+      res.status,
     );
+    throw new ApiError(localized.message, res.status, localized.errors);
+  }
   return payload;
 }
 let refreshing: Promise<void> | null = null;

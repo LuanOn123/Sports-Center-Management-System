@@ -23,7 +23,7 @@ describe("API client contract and authentication", () => {
   it("rejects an undocumented endpoint before network access", async () => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
-    const { api } = await import("../src/api");
+    const { api } = await import("../src/shared/api");
     await expect(api("GET /invented")).rejects.toThrow(
       "Undocumented operation",
     );
@@ -32,7 +32,7 @@ describe("API client contract and authentication", () => {
   it("rejects undocumented pagination and encodes path parameters", async () => {
     const fetch = vi.fn().mockResolvedValue(envelope({}));
     vi.stubGlobal("fetch", fetch);
-    const { api } = await import("../src/api");
+    const { api } = await import("../src/shared/api");
     await expect(
       api("GET /membership-plans", { query: { page: "2" } }),
     ).rejects.toThrow("Undocumented query");
@@ -55,7 +55,7 @@ describe("API client contract and authentication", () => {
         : envelope([]);
     });
     vi.stubGlobal("fetch", fetch);
-    const { api } = await import("../src/api");
+    const { api } = await import("../src/shared/api");
     const result = await Promise.all([api("GET /users"), api("GET /rooms")]);
     expect(refreshCalls).toBe(1);
     expect(result.every((r) => r.success)).toBe(true);
@@ -68,7 +68,7 @@ describe("API client contract and authentication", () => {
       "fetch",
       vi.fn(async () => envelope(null, 401)),
     );
-    const { api } = await import("../src/api");
+    const { api } = await import("../src/shared/api");
     await expect(api("GET /users")).rejects.toMatchObject({ status: 401 });
     expect(sessionStorage.getItem("pulse.access")).toBeNull();
     expect(window.dispatchEvent).toHaveBeenCalled();
@@ -88,12 +88,12 @@ describe("API client contract and authentication", () => {
       )
       .mockResolvedValueOnce(envelope(null, 403));
     vi.stubGlobal("fetch", fetch);
-    const { api } = await import("../src/api");
+    const { api } = await import("../src/shared/api");
     await expect(
       api("POST /rooms", { body: { name: "A", capacity: 0 } }),
     ).rejects.toMatchObject({
       status: 400,
-      errors: [{ field: "capacity", message: "Must be positive" }],
+      errors: [{ field: "capacity", message: "Giá trị phải lớn hơn 0." }],
     });
     await expect(api("GET /users")).rejects.toMatchObject({ status: 403 });
     expect(fetch).toHaveBeenCalledTimes(2);
@@ -105,7 +105,64 @@ describe("API client contract and authentication", () => {
         async () => new Response("<html>Unavailable</html>", { status: 502 }),
       ),
     );
-    const { api } = await import("../src/api");
+    const { api } = await import("../src/shared/api");
     await expect(api("GET /sports")).rejects.toMatchObject({ status: 502 });
+  });
+});
+
+describe("member API uses the shared session transport", () => {
+  it("adapts list envelopes without dropping pagination", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              success: true,
+              data: [{ id: "class-1", name: "Yoga" }],
+              pagination: { page: 2, totalPages: 3 },
+            }),
+            { status: 200 },
+          ),
+        ),
+    );
+    const { classesApi } = await import("../src/api/classes.api");
+    await expect(classesApi.getClasses({ page: 2 })).resolves.toEqual({
+      classes: [{ id: "class-1", name: "Yoga" }],
+      pagination: { page: 2, totalPages: 3 },
+    });
+  });
+  it("accepts enrollment pagination verified against the backend schema", async () => {
+    const fetch = vi.fn().mockResolvedValue(envelope([]));
+    vi.stubGlobal("fetch", fetch);
+    const { enrollmentsApi } = await import("../src/api/enrollments.api");
+    await enrollmentsApi.getMyEnrollments({ status: "BOOKED", limit: 5 });
+    expect(fetch.mock.calls[0][0]).toContain(
+      "/enrollments/my?status=BOOKED&limit=5",
+    );
+  });
+  it("shares token changes with the existing API and localizes member errors", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            success: false,
+            message: "Duplicate value for: phone",
+          }),
+          { status: 409 },
+        ),
+      );
+    vi.stubGlobal("fetch", fetch);
+    const { api } = await import("../src/shared/api");
+    const { setTokens } = await import("../src/api/client");
+    setTokens("member-token", "member-refresh");
+    await expect(
+      api("PATCH /auth/me", { body: { phone: "0900000000" } }),
+    ).rejects.toMatchObject({ message: "Số điện thoại này đã được sử dụng." });
+    expect(fetch.mock.calls[0][1].headers.Authorization).toBe(
+      "Bearer member-token",
+    );
   });
 });

@@ -1,149 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import { useId, useState } from "react";
+import type { FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, Check, Inbox, LoaderCircle, X } from "lucide-react";
-import { api, ApiError, contract } from "./api";
-import type { RecordData, Schema } from "./api";
-import { at, display, label, money } from "./config";
-export function ErrorState({
-  error,
-  retry,
-}: {
-  error: unknown;
-  retry?: () => void;
-}) {
-  return (
-    <div className="error-state" role="alert">
-      <AlertCircle size={21} />
-      <div>
-        <strong>Chưa thể hoàn tất yêu cầu</strong>
-        <p>{error instanceof Error ? error.message : "Đã xảy ra lỗi."}</p>
-        {error instanceof ApiError &&
-          error.errors?.map((e, i) => (
-            <p key={i}>
-              {label(e.field)}: {e.message}
-            </p>
-          ))}
-        {retry && (
-          <button className="button small" onClick={retry}>
-            Thử lại
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-export function Loading() {
-  return (
-    <div className="loading" role="status">
-      <LoaderCircle className="spin" /> Đang tải dữ liệu…
-    </div>
-  );
-}
-export function Empty({
-  text = "Chưa có dữ liệu",
-  detail = "Dữ liệu sẽ xuất hiện tại đây khi trung tâm có hoạt động.",
-}: {
-  text?: string;
-  detail?: string;
-}) {
-  return (
-    <div className="empty">
-      <span>
-        <Inbox size={29} />
-      </span>
-      <h3>{text}</h3>
-      <p>{detail}</p>
-    </div>
-  );
-}
-export function Modal({
-  title,
-  children,
-  onClose,
-}: {
-  title: string;
-  children: ReactNode;
-  onClose: () => void;
-}) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const dialog = ref.current;
-    dialog?.showModal();
-    return () => dialog?.close();
-  }, []);
-  return (
-    <dialog
-      ref={ref}
-      onCancel={onClose}
-      onClick={(e) => {
-        if (e.target === ref.current) onClose();
-      }}
-    >
-      <div className="modal-head">
-        <div>
-          <small>PULSE / QUẢN LÝ TRUNG TÂM</small>
-          <h2>{title}</h2>
-        </div>
-        <button aria-label="Đóng" className="icon-button" onClick={onClose}>
-          <X />
-        </button>
-      </div>
-      {children}
-    </dialog>
-  );
-}
-export function Details({ value }: { value: unknown }) {
-  if (value == null) return <span>—</span>;
-  if (typeof value !== "object") return <span>{display(value)}</span>;
-  if (Array.isArray(value))
-    return value.length ? (
-      <div className="detail-list">
-        {value.map((v, i) => (
-          <div key={i}>
-            <Details value={v} />
-          </div>
-        ))}
-      </div>
-    ) : (
-      <span>Chưa có dữ liệu</span>
-    );
-  return (
-    <dl className="details">
-      {Object.entries(value)
-        .filter(
-          ([k]) =>
-            ![
-              "password",
-              "passwordHash",
-              "accessToken",
-              "refreshToken",
-            ].includes(k),
-        )
-        .map(([k, v]) => (
-          <div key={k}>
-            <dt>{label(k)}</dt>
-            <dd>
-              {typeof v === "object" && v !== null ? (
-                <Details value={v} />
-              ) : [
-                  "price",
-                  "amount",
-                  "totalRevenue",
-                  "total",
-                  "subtotal",
-                  "discount",
-                ].includes(k) ? (
-                money(v)
-              ) : (
-                display(v)
-              )}
-            </dd>
-          </div>
-        ))}
-    </dl>
-  );
-}
+import { Check, LoaderCircle } from "lucide-react";
+import { api, ApiError, contract } from "../api";
+import type { RecordData, Schema } from "../api";
+import { at, label } from "../config";
+import { ErrorState, Loading } from "../feedback";
 const lookupPaths: Record<string, string> = {
   sportId: "/sports",
   roomId: "/rooms",
@@ -181,7 +43,9 @@ function Lookup({
   });
   return (
     <>
+      {q.isPending && <Loading variant="field" text="Đang tải lựa chọn…" />}
       <select
+        hidden={q.isPending}
         required={required}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -215,6 +79,8 @@ export function SchemaForm({
   params,
   initial = {},
   fixed = {},
+  choices = {},
+  onBusyChange,
   onSuccess,
   onCancel,
 }: {
@@ -222,9 +88,12 @@ export function SchemaForm({
   params?: Record<string, string>;
   initial?: RecordData;
   fixed?: RecordData;
+  choices?: Record<string, { value: string; label: string }[]>;
+  onBusyChange?: (busy: boolean) => void;
   onSuccess: () => void;
   onCancel: () => void;
 }) {
+  const errorId = useId();
   const schema = contract[operation]?.body;
   const [values, setValues] = useState<RecordData>(() => ({
     ...Object.fromEntries(
@@ -243,6 +112,7 @@ export function SchemaForm({
     setValues((prev) => ({ ...prev, [k]: v }));
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setError(undefined);
     const body: RecordData = {};
     for (const [k, s] of Object.entries(schema!.properties || {})) {
@@ -258,6 +128,20 @@ export function SchemaForm({
       if (s.format === "date-time") v = new Date(String(v)).toISOString();
       body[k] = typeof v === "string" && !/password/i.test(k) ? v.trim() : v;
     }
+    const missing =
+      schema!.required?.filter(
+        (k) => body[k] === undefined || body[k] === "",
+      ) || [];
+    if (missing.length) {
+      setError(
+        new ApiError(
+          "Vui lòng điền đầy đủ thông tin bắt buộc.",
+          400,
+          missing.map((field) => ({ field, message: "Không được để trống." })),
+        ),
+      );
+      return;
+    }
     if (
       body.startTime &&
       body.endTime &&
@@ -267,6 +151,7 @@ export function SchemaForm({
       return;
     }
     setBusy(true);
+    onBusyChange?.(true);
     try {
       await api(operation, { params, body });
       onSuccess();
@@ -274,11 +159,12 @@ export function SchemaForm({
       setError(e);
     } finally {
       setBusy(false);
+      onBusyChange?.(false);
     }
   }
   return (
-    <form onSubmit={submit}>
-      <div className="form-grid">
+    <form onSubmit={submit} aria-busy={busy}>
+      <fieldset className="form-grid" disabled={busy}>
         {Object.entries(schema.properties || {})
           .filter(([k]) => !(k in fixed))
           .filter(
@@ -299,7 +185,26 @@ export function SchemaForm({
               >
                 {label(k)}
                 {required && <b className="required"> *</b>}
-                {lookupPaths[k] ? (
+                {choices[k] ? (
+                  <select
+                    aria-invalid={
+                      (error instanceof ApiError &&
+                        error.errors?.some((e) => e.field === k)) ||
+                      undefined
+                    }
+                    aria-describedby={error ? errorId : undefined}
+                    required={required}
+                    value={String(value)}
+                    onChange={(e) => change(k, e.target.value)}
+                  >
+                    <option value="">Chọn {label(k).toLowerCase()}</option>
+                    {choices[k].map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : lookupPaths[k] ? (
                   <Lookup
                     name={k}
                     required={required}
@@ -308,8 +213,19 @@ export function SchemaForm({
                   />
                 ) : s.type === "boolean" ? (
                   <select
+                    aria-invalid={
+                      (error instanceof ApiError &&
+                        error.errors?.some((e) => e.field === k)) ||
+                      undefined
+                    }
+                    aria-describedby={error ? errorId : undefined}
                     value={String(value)}
-                    onChange={(e) => change(k, e.target.value === "true")}
+                    onChange={(e) =>
+                      change(
+                        k,
+                        e.target.value === "" ? "" : e.target.value === "true",
+                      )
+                    }
                   >
                     <option value="">Không thay đổi</option>
                     <option value="true">Có</option>
@@ -317,6 +233,12 @@ export function SchemaForm({
                   </select>
                 ) : s.enum ? (
                   <select
+                    aria-invalid={
+                      (error instanceof ApiError &&
+                        error.errors?.some((e) => e.field === k)) ||
+                      undefined
+                    }
+                    aria-describedby={error ? errorId : undefined}
                     required={required}
                     value={String(value)}
                     onChange={(e) => change(k, e.target.value)}
@@ -330,12 +252,24 @@ export function SchemaForm({
                   </select>
                 ) : ["description", "bio", "fitnessGoal"].includes(k) ? (
                   <textarea
+                    aria-invalid={
+                      (error instanceof ApiError &&
+                        error.errors?.some((e) => e.field === k)) ||
+                      undefined
+                    }
+                    aria-describedby={error ? errorId : undefined}
                     value={String(value)}
                     required={required}
                     onChange={(e) => change(k, e.target.value)}
                   />
                 ) : (
                   <input
+                    aria-invalid={
+                      (error instanceof ApiError &&
+                        error.errors?.some((e) => e.field === k)) ||
+                      undefined
+                    }
+                    aria-describedby={error ? errorId : undefined}
                     type={
                       s.format === "date-time"
                         ? "datetime-local"
@@ -343,14 +277,18 @@ export function SchemaForm({
                           ? "password"
                           : k === "email"
                             ? "email"
-                            : s.type === "integer" || s.type === "number"
-                              ? "number"
-                              : "text"
+                            : ["startDate", "dateOfBirth"].includes(k)
+                              ? "date"
+                              : s.type === "integer" || s.type === "number"
+                                ? "number"
+                                : "text"
                     }
                     value={
                       s.format === "date-time" && value
                         ? localDateTime(String(value))
-                        : String(value)
+                        : ["dateOfBirth", "startDate"].includes(k)
+                          ? String(value).slice(0, 10)
+                          : String(value)
                     }
                     onChange={(e) => change(k, e.target.value)}
                     required={required}
@@ -358,7 +296,7 @@ export function SchemaForm({
                     min={
                       ["capacity", "durationDays"].includes(k)
                         ? 1
-                        : ["price", "experienceYears"].includes(k)
+                        : ["price", "experienceYears", "amount"].includes(k)
                           ? 0
                           : undefined
                     }
@@ -377,8 +315,12 @@ export function SchemaForm({
               </label>
             );
           })}
-      </div>
-      {error != null && <ErrorState error={error} />}
+      </fieldset>
+      {error != null && (
+        <div id={errorId}>
+          <ErrorState error={error} />
+        </div>
+      )}
       <div className="modal-footer">
         <button
           className="button"
