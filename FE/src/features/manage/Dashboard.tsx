@@ -12,16 +12,16 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { api } from "./api";
-import type { RecordData } from "./api";
+import { api } from "../../shared/api";
+import type { RecordData } from "../../shared/api";
 import type {
   RevenueReportOk,
   MemberReportOk,
   EnrollmentReportOk,
   MembershipReportOk,
-} from "./generated";
-import { display, label, money } from "./config";
-import { Empty, ErrorState, Loading } from "./ui";
+} from "../../shared/generated";
+import { display, label, money } from "../../shared/config";
+import { Empty, ErrorState, Loading } from "../../shared/ui";
 function dateString(d: Date) {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
     .toISOString()
@@ -261,7 +261,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                     </span>
                   </div>
                   {q.isPending ? (
-                    <Loading />
+                    <Loading variant="field" />
                   ) : q.isError ? (
                     <ErrorState error={q.error} retry={() => q.refetch()} />
                   ) : (
@@ -293,7 +293,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                 <Wallet size={20} />
               </div>
               {revenue.isPending ? (
-                <Loading />
+                <Loading variant="chart" />
               ) : revenue.isError ? (
                 <ErrorState
                   error={revenue.error}
@@ -322,7 +322,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                 <Users size={20} />
               </div>
               {members.isPending ? (
-                <Loading />
+                <Loading variant="chart" />
               ) : members.isError ? (
                 <ErrorState
                   error={members.error}
@@ -466,7 +466,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                       <h2>{String(title)}</h2>
                     </div>
                     {q.isPending ? (
-                      <Loading />
+                    <Loading variant="field" />
                     ) : q.isError ? (
                       <ErrorState error={q.error} retry={() => q.refetch()} />
                     ) : (

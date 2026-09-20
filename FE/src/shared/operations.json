@@ -14,12 +14,7 @@
         "name": "role",
         "schema": {
           "type": "string",
-          "enum": [
-            "MEMBER",
-            "COACH",
-            "STAFF",
-            "MANAGER"
-          ]
+          "enum": ["MEMBER", "COACH", "STAFF", "MANAGER"]
         }
       },
       {
@@ -27,10 +22,7 @@
         "name": "isActive",
         "schema": {
           "type": "string",
-          "enum": [
-            "true",
-            "false"
-          ]
+          "enum": ["true", "false"]
         }
       },
       {
@@ -56,13 +48,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "500"]
   },
   "POST /users": {
     "path": "/users",
@@ -76,12 +62,7 @@
     "parameters": [],
     "body": {
       "type": "object",
-      "required": [
-        "email",
-        "password",
-        "fullName",
-        "role"
-      ],
+      "required": ["email", "password", "fullName", "role"],
       "properties": {
         "email": {
           "type": "string"
@@ -94,12 +75,7 @@
         },
         "role": {
           "type": "string",
-          "enum": [
-            "MEMBER",
-            "COACH",
-            "STAFF",
-            "MANAGER"
-          ]
+          "enum": ["MEMBER", "COACH", "STAFF", "MANAGER"]
         },
         "fitnessGoal": {
           "type": "string",
@@ -107,11 +83,7 @@
         },
         "trainingLevel": {
           "type": "string",
-          "enum": [
-            "BEGINNER",
-            "INTERMEDIATE",
-            "ADVANCED"
-          ],
+          "enum": ["BEGINNER", "INTERMEDIATE", "ADVANCED"],
           "description": "Role MEMBER only"
         },
         "trainingPreference": {
@@ -120,14 +92,7 @@
         }
       }
     },
-    "statusCodes": [
-      "201",
-      "400",
-      "401",
-      "403",
-      "409",
-      "500"
-    ]
+    "statusCodes": ["201", "400", "401", "403", "409", "500"]
   },
   "GET /users/{id}": {
     "path": "/users/{id}",
@@ -149,14 +114,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "PATCH /users/{id}": {
     "path": "/users/{id}",
@@ -178,14 +136,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "DELETE /users/{id}": {
     "path": "/users/{id}",
@@ -207,14 +158,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "POST /subscriptions": {
     "path": "/subscriptions",
@@ -228,11 +172,7 @@
     "parameters": [],
     "body": {
       "type": "object",
-      "required": [
-        "memberId",
-        "planId",
-        "paymentMethod"
-      ],
+      "required": ["memberId", "planId", "paymentMethod"],
       "properties": {
         "memberId": {
           "type": "string"
@@ -245,24 +185,14 @@
         },
         "paymentMethod": {
           "type": "string",
-          "enum": [
-            "CASH",
-            "BANK_TRANSFER"
-          ]
+          "enum": ["CASH", "BANK_TRANSFER"]
         },
         "note": {
           "type": "string"
         }
       }
     },
-    "statusCodes": [
-      "201",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["201", "400", "401", "403", "404", "500"]
   },
   "POST /subscriptions/{id}/renew": {
     "path": "/subscriptions/{id}/renew",
@@ -285,34 +215,21 @@
     ],
     "body": {
       "type": "object",
-      "required": [
-        "planId",
-        "paymentMethod"
-      ],
+      "required": ["planId", "paymentMethod"],
       "properties": {
         "planId": {
           "type": "string"
         },
         "paymentMethod": {
           "type": "string",
-          "enum": [
-            "CASH",
-            "BANK_TRANSFER"
-          ]
+          "enum": ["CASH", "BANK_TRANSFER"]
         },
         "note": {
           "type": "string"
         }
       }
     },
-    "statusCodes": [
-      "201",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["201", "400", "401", "403", "404", "500"]
   },
   "GET /subscriptions/member/{memberId}": {
     "path": "/subscriptions/member/{memberId}",
@@ -337,23 +254,12 @@
         "name": "status",
         "schema": {
           "type": "string",
-          "enum": [
-            "ACTIVE",
-            "EXPIRED",
-            "CANCELLED",
-            "SUSPENDED"
-          ]
+          "enum": ["ACTIVE", "EXPIRED", "CANCELLED", "SUSPENDED"]
         }
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "404", "500"]
   },
   "GET /subscriptions/{id}": {
     "path": "/subscriptions/{id}",
@@ -375,14 +281,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "PATCH /subscriptions/{id}/status": {
     "path": "/subscriptions/{id}/status",
@@ -405,29 +304,15 @@
     ],
     "body": {
       "type": "object",
-      "required": [
-        "status"
-      ],
+      "required": ["status"],
       "properties": {
         "status": {
           "type": "string",
-          "enum": [
-            "ACTIVE",
-            "EXPIRED",
-            "CANCELLED",
-            "SUSPENDED"
-          ]
+          "enum": ["ACTIVE", "EXPIRED", "CANCELLED", "SUSPENDED"]
         }
       }
     },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "GET /sports": {
     "path": "/sports",
@@ -448,10 +333,7 @@
         "name": "isActive",
         "schema": {
           "type": "string",
-          "enum": [
-            "true",
-            "false"
-          ]
+          "enum": ["true", "false"]
         },
         "description": "Filter by active status"
       },
@@ -473,11 +355,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "500"]
   },
   "POST /sports": {
     "path": "/sports",
@@ -491,9 +369,7 @@
     "parameters": [],
     "body": {
       "type": "object",
-      "required": [
-        "name"
-      ],
+      "required": ["name"],
       "properties": {
         "name": {
           "type": "string",
@@ -505,14 +381,7 @@
         }
       }
     },
-    "statusCodes": [
-      "201",
-      "400",
-      "401",
-      "403",
-      "409",
-      "500"
-    ]
+    "statusCodes": ["201", "400", "401", "403", "409", "500"]
   },
   "GET /sports/{id}": {
     "path": "/sports/{id}",
@@ -530,12 +399,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "404", "500"]
   },
   "PATCH /sports/{id}": {
     "path": "/sports/{id}",
@@ -570,14 +434,7 @@
         }
       }
     },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "DELETE /sports/{id}": {
     "path": "/sports/{id}",
@@ -599,14 +456,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "GET /rooms": {
     "path": "/rooms",
@@ -631,10 +481,7 @@
         "name": "isActive",
         "schema": {
           "type": "string",
-          "enum": [
-            "true",
-            "false"
-          ]
+          "enum": ["true", "false"]
         }
       },
       {
@@ -655,12 +502,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "500"]
   },
   "POST /rooms": {
     "path": "/rooms",
@@ -674,10 +516,7 @@
     "parameters": [],
     "body": {
       "type": "object",
-      "required": [
-        "name",
-        "capacity"
-      ],
+      "required": ["name", "capacity"],
       "properties": {
         "name": {
           "type": "string",
@@ -693,14 +532,7 @@
         }
       }
     },
-    "statusCodes": [
-      "201",
-      "400",
-      "401",
-      "403",
-      "409",
-      "500"
-    ]
+    "statusCodes": ["201", "400", "401", "403", "409", "500"]
   },
   "GET /rooms/{id}": {
     "path": "/rooms/{id}",
@@ -722,13 +554,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "404", "500"]
   },
   "PATCH /rooms/{id}": {
     "path": "/rooms/{id}",
@@ -766,14 +592,7 @@
         }
       }
     },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "DELETE /rooms/{id}": {
     "path": "/rooms/{id}",
@@ -795,14 +614,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "GET /reports/revenue": {
     "path": "/reports/revenue",
@@ -834,13 +646,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "500"]
   },
   "GET /reports/members": {
     "path": "/reports/members",
@@ -870,13 +676,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "500"]
   },
   "GET /reports/enrollments": {
     "path": "/reports/enrollments",
@@ -906,13 +706,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "500"]
   },
   "GET /reports/memberships": {
     "path": "/reports/memberships",
@@ -942,13 +736,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "500"]
   },
   "POST /payments": {
     "path": "/payments",
@@ -962,11 +750,7 @@
     "parameters": [],
     "body": {
       "type": "object",
-      "required": [
-        "memberId",
-        "amount",
-        "method"
-      ],
+      "required": ["memberId", "amount", "method"],
       "properties": {
         "memberId": {
           "type": "string"
@@ -979,18 +763,11 @@
         },
         "method": {
           "type": "string",
-          "enum": [
-            "CASH",
-            "BANK_TRANSFER"
-          ]
+          "enum": ["CASH", "BANK_TRANSFER"]
         },
         "status": {
           "type": "string",
-          "enum": [
-            "PENDING",
-            "SUCCESS",
-            "FAILED"
-          ]
+          "enum": ["PENDING", "SUCCESS", "FAILED"]
         },
         "note": {
           "type": "string"
@@ -1000,14 +777,7 @@
         }
       }
     },
-    "statusCodes": [
-      "201",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["201", "400", "401", "403", "404", "500"]
   },
   "GET /payments": {
     "path": "/payments",
@@ -1031,12 +801,7 @@
         "name": "status",
         "schema": {
           "type": "string",
-          "enum": [
-            "PENDING",
-            "SUCCESS",
-            "FAILED",
-            "REFUNDED"
-          ]
+          "enum": ["PENDING", "SUCCESS", "FAILED", "REFUNDED"]
         }
       },
       {
@@ -1044,10 +809,7 @@
         "name": "method",
         "schema": {
           "type": "string",
-          "enum": [
-            "CASH",
-            "BANK_TRANSFER"
-          ]
+          "enum": ["CASH", "BANK_TRANSFER"]
         }
       },
       {
@@ -1066,13 +828,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "500"]
   },
   "GET /payments/{id}": {
     "path": "/payments/{id}",
@@ -1094,14 +850,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "PATCH /payments/{id}/status": {
     "path": "/payments/{id}/status",
@@ -1124,29 +873,15 @@
     ],
     "body": {
       "type": "object",
-      "required": [
-        "status"
-      ],
+      "required": ["status"],
       "properties": {
         "status": {
           "type": "string",
-          "enum": [
-            "PENDING",
-            "SUCCESS",
-            "FAILED",
-            "REFUNDED"
-          ]
+          "enum": ["PENDING", "SUCCESS", "FAILED", "REFUNDED"]
         }
       }
     },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "GET /membership-plans": {
     "path": "/membership-plans",
@@ -1159,10 +894,7 @@
         "name": "tier",
         "schema": {
           "type": "string",
-          "enum": [
-            "MEMBERSHIP",
-            "PREMIUM"
-          ]
+          "enum": ["MEMBERSHIP", "PREMIUM"]
         }
       },
       {
@@ -1170,19 +902,12 @@
         "name": "isActive",
         "schema": {
           "type": "string",
-          "enum": [
-            "true",
-            "false"
-          ]
+          "enum": ["true", "false"]
         }
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "500"]
   },
   "POST /membership-plans": {
     "path": "/membership-plans",
@@ -1196,12 +921,7 @@
     "parameters": [],
     "body": {
       "type": "object",
-      "required": [
-        "name",
-        "price",
-        "durationDays",
-        "tier"
-      ],
+      "required": ["name", "price", "durationDays", "tier"],
       "properties": {
         "name": {
           "type": "string"
@@ -1217,21 +937,11 @@
         },
         "tier": {
           "type": "string",
-          "enum": [
-            "MEMBERSHIP",
-            "PREMIUM"
-          ]
+          "enum": ["MEMBERSHIP", "PREMIUM"]
         }
       }
     },
-    "statusCodes": [
-      "201",
-      "400",
-      "401",
-      "403",
-      "409",
-      "500"
-    ]
+    "statusCodes": ["201", "400", "401", "403", "409", "500"]
   },
   "GET /membership-plans/{id}": {
     "path": "/membership-plans/{id}",
@@ -1249,12 +959,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "404", "500"]
   },
   "PATCH /membership-plans/{id}": {
     "path": "/membership-plans/{id}",
@@ -1276,14 +981,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "DELETE /membership-plans/{id}": {
     "path": "/membership-plans/{id}",
@@ -1305,14 +1003,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "GET /members": {
     "path": "/members",
@@ -1336,11 +1027,7 @@
         "name": "trainingLevel",
         "schema": {
           "type": "string",
-          "enum": [
-            "BEGINNER",
-            "INTERMEDIATE",
-            "ADVANCED"
-          ]
+          "enum": ["BEGINNER", "INTERMEDIATE", "ADVANCED"]
         }
       },
       {
@@ -1359,13 +1046,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "500"]
   },
   "GET /members/{id}": {
     "path": "/members/{id}",
@@ -1387,13 +1068,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "401", "403", "404", "500"]
   },
   "PATCH /members/{id}": {
     "path": "/members/{id}",
@@ -1415,14 +1090,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "GET /members/{id}/membership-status": {
     "path": "/members/{id}/membership-status",
@@ -1444,13 +1112,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "401", "403", "404", "500"]
   },
   "GET /invoices": {
     "path": "/invoices",
@@ -1474,10 +1136,7 @@
         "name": "status",
         "schema": {
           "type": "string",
-          "enum": [
-            "ISSUED",
-            "CANCELLED"
-          ]
+          "enum": ["ISSUED", "CANCELLED"]
         }
       },
       {
@@ -1496,13 +1155,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "500"]
   },
   "GET /invoices/member/{memberId}": {
     "path": "/invoices/member/{memberId}",
@@ -1524,14 +1177,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "GET /invoices/{id}": {
     "path": "/invoices/{id}",
@@ -1553,14 +1199,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "POST /enrollments": {
     "path": "/enrollments",
@@ -1574,9 +1213,7 @@
     "parameters": [],
     "body": {
       "type": "object",
-      "required": [
-        "scheduleId"
-      ],
+      "required": ["scheduleId"],
       "properties": {
         "scheduleId": {
           "type": "string"
@@ -1587,15 +1224,7 @@
         }
       }
     },
-    "statusCodes": [
-      "201",
-      "400",
-      "401",
-      "403",
-      "404",
-      "409",
-      "500"
-    ]
+    "statusCodes": ["201", "400", "401", "403", "404", "409", "500"]
   },
   "GET /enrollments/my": {
     "path": "/enrollments/my",
@@ -1608,26 +1237,32 @@
     ],
     "parameters": [
       {
+        "name": "page",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
         "in": "query",
         "name": "status",
         "schema": {
           "type": "string",
-          "enum": [
-            "BOOKED",
-            "CANCELLED",
-            "COMPLETED"
-          ]
+          "enum": ["BOOKED", "CANCELLED", "COMPLETED"]
         }
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "500"]
   },
   "GET /enrollments/schedule/{scheduleId}": {
     "path": "/enrollments/schedule/{scheduleId}",
@@ -1649,13 +1284,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "500"]
   },
   "DELETE /enrollments/{id}": {
     "path": "/enrollments/{id}",
@@ -1677,14 +1306,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "GET /coaches": {
     "path": "/coaches",
@@ -1730,13 +1352,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "500"]
   },
   "GET /coaches/{id}": {
     "path": "/coaches/{id}",
@@ -1759,13 +1375,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "404", "500"]
   },
   "PATCH /coaches/{id}": {
     "path": "/coaches/{id}",
@@ -1801,14 +1411,7 @@
         }
       }
     },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "GET /classes": {
     "path": "/classes",
@@ -1841,10 +1444,7 @@
         "name": "classType",
         "schema": {
           "type": "string",
-          "enum": [
-            "REGULAR",
-            "PREMIUM"
-          ]
+          "enum": ["REGULAR", "PREMIUM"]
         },
         "description": "Filter by class type"
       },
@@ -1861,10 +1461,7 @@
         "name": "isActive",
         "schema": {
           "type": "string",
-          "enum": [
-            "true",
-            "false"
-          ]
+          "enum": ["true", "false"]
         }
       },
       {
@@ -1885,12 +1482,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "500"]
   },
   "POST /classes": {
     "path": "/classes",
@@ -1904,11 +1496,7 @@
     "parameters": [],
     "body": {
       "type": "object",
-      "required": [
-        "name",
-        "sportId",
-        "capacity"
-      ],
+      "required": ["name", "sportId", "capacity"],
       "properties": {
         "name": {
           "type": "string",
@@ -1926,22 +1514,12 @@
         },
         "classType": {
           "type": "string",
-          "enum": [
-            "REGULAR",
-            "PREMIUM"
-          ],
+          "enum": ["REGULAR", "PREMIUM"],
           "default": "REGULAR"
         }
       }
     },
-    "statusCodes": [
-      "201",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["201", "400", "401", "403", "404", "500"]
   },
   "GET /classes/{id}": {
     "path": "/classes/{id}",
@@ -1963,13 +1541,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "404", "500"]
   },
   "PATCH /classes/{id}": {
     "path": "/classes/{id}",
@@ -2007,24 +1579,14 @@
         },
         "classType": {
           "type": "string",
-          "enum": [
-            "REGULAR",
-            "PREMIUM"
-          ]
+          "enum": ["REGULAR", "PREMIUM"]
         },
         "isActive": {
           "type": "boolean"
         }
       }
     },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "DELETE /classes/{id}": {
     "path": "/classes/{id}",
@@ -2046,14 +1608,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "POST /classes/{id}/coaches": {
     "path": "/classes/{id}/coaches",
@@ -2077,9 +1632,7 @@
     ],
     "body": {
       "type": "object",
-      "required": [
-        "coachId"
-      ],
+      "required": ["coachId"],
       "properties": {
         "coachId": {
           "type": "string",
@@ -2092,14 +1645,7 @@
         }
       }
     },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "DELETE /classes/{id}/coaches/{coachId}": {
     "path": "/classes/{id}/coaches/{coachId}",
@@ -2131,14 +1677,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "GET /class-schedules": {
     "path": "/class-schedules",
@@ -2171,11 +1710,7 @@
         "name": "status",
         "schema": {
           "type": "string",
-          "enum": [
-            "SCHEDULED",
-            "CANCELLED",
-            "COMPLETED"
-          ]
+          "enum": ["SCHEDULED", "CANCELLED", "COMPLETED"]
         }
       },
       {
@@ -2223,12 +1758,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "500"]
   },
   "POST /class-schedules": {
     "path": "/class-schedules",
@@ -2242,12 +1772,7 @@
     "parameters": [],
     "body": {
       "type": "object",
-      "required": [
-        "classId",
-        "roomId",
-        "startTime",
-        "endTime"
-      ],
+      "required": ["classId", "roomId", "startTime", "endTime"],
       "properties": {
         "classId": {
           "type": "string"
@@ -2267,15 +1792,7 @@
         }
       }
     },
-    "statusCodes": [
-      "201",
-      "400",
-      "401",
-      "403",
-      "404",
-      "409",
-      "500"
-    ]
+    "statusCodes": ["201", "400", "401", "403", "404", "409", "500"]
   },
   "GET /class-schedules/{id}": {
     "path": "/class-schedules/{id}",
@@ -2297,13 +1814,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "404", "500"]
   },
   "PATCH /class-schedules/{id}": {
     "path": "/class-schedules/{id}",
@@ -2340,24 +1851,12 @@
         },
         "status": {
           "type": "string",
-          "enum": [
-            "SCHEDULED",
-            "CANCELLED",
-            "COMPLETED"
-          ],
+          "enum": ["SCHEDULED", "CANCELLED", "COMPLETED"],
           "description": "If set to CANCELLED, all BOOKED enrollments are cancelled automatically"
         }
       }
     },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "409",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "409", "500"]
   },
   "DELETE /class-schedules/{id}": {
     "path": "/class-schedules/{id}",
@@ -2379,14 +1878,7 @@
       }
     ],
     "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "403", "404", "500"]
   },
   "POST /auth/register": {
     "path": "/auth/register",
@@ -2396,11 +1888,7 @@
     "parameters": [],
     "body": {
       "type": "object",
-      "required": [
-        "email",
-        "password",
-        "fullName"
-      ],
+      "required": ["email", "password", "fullName"],
       "properties": {
         "email": {
           "type": "string",
@@ -2418,23 +1906,14 @@
         },
         "gender": {
           "type": "string",
-          "enum": [
-            "MALE",
-            "FEMALE",
-            "OTHER"
-          ]
+          "enum": ["MALE", "FEMALE", "OTHER"]
         },
         "dateOfBirth": {
           "type": "string"
         }
       }
     },
-    "statusCodes": [
-      "201",
-      "400",
-      "409",
-      "500"
-    ]
+    "statusCodes": ["201", "400", "409", "500"]
   },
   "POST /auth/login": {
     "path": "/auth/login",
@@ -2444,10 +1923,7 @@
     "parameters": [],
     "body": {
       "type": "object",
-      "required": [
-        "email",
-        "password"
-      ],
+      "required": ["email", "password"],
       "properties": {
         "email": {
           "type": "string",
@@ -2458,12 +1934,7 @@
         }
       }
     },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "500"]
   },
   "POST /auth/logout": {
     "path": "/auth/logout",
@@ -2477,22 +1948,14 @@
     "parameters": [],
     "body": {
       "type": "object",
-      "required": [
-        "refreshToken"
-      ],
+      "required": ["refreshToken"],
       "properties": {
         "refreshToken": {
           "type": "string"
         }
       }
     },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "404", "500"]
   },
   "POST /auth/refresh-token": {
     "path": "/auth/refresh-token",
@@ -2502,21 +1965,14 @@
     "parameters": [],
     "body": {
       "type": "object",
-      "required": [
-        "refreshToken"
-      ],
+      "required": ["refreshToken"],
       "properties": {
         "refreshToken": {
           "type": "string"
         }
       }
     },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "500"]
   },
   "GET /auth/me": {
     "path": "/auth/me",
@@ -2529,12 +1985,7 @@
     ],
     "parameters": [],
     "body": null,
-    "statusCodes": [
-      "200",
-      "401",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "401", "404", "500"]
   },
   "PATCH /auth/me": {
     "path": "/auth/me",
@@ -2557,35 +2008,21 @@
         },
         "gender": {
           "type": "string",
-          "enum": [
-            "MALE",
-            "FEMALE",
-            "OTHER"
-          ]
+          "enum": ["MALE", "FEMALE", "OTHER"]
         },
         "fitnessGoal": {
           "type": "string"
         },
         "trainingLevel": {
           "type": "string",
-          "enum": [
-            "BEGINNER",
-            "INTERMEDIATE",
-            "ADVANCED"
-          ]
+          "enum": ["BEGINNER", "INTERMEDIATE", "ADVANCED"]
         },
         "trainingPreference": {
           "type": "string"
         }
       }
     },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "404", "500"]
   },
   "PATCH /auth/me/change-password": {
     "path": "/auth/me/change-password",
@@ -2599,10 +2036,7 @@
     "parameters": [],
     "body": {
       "type": "object",
-      "required": [
-        "currentPassword",
-        "newPassword"
-      ],
+      "required": ["currentPassword", "newPassword"],
       "properties": {
         "currentPassword": {
           "type": "string"
@@ -2613,12 +2047,6 @@
         }
       }
     },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "404",
-      "500"
-    ]
+    "statusCodes": ["200", "400", "401", "404", "500"]
   }
 }
