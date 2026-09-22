@@ -60,8 +60,8 @@ export const generateQrToken = async (scheduleId: string, user: any) => {
     type: "ATTENDANCE_QR"
   };
   
-  const token = jwt.sign(payload, env.JWT_ACCESS_SECRET, { expiresIn: '1m' });
-  return { qrToken: token, expiresIn: 60 };
+  const token = jwt.sign(payload, env.JWT_ACCESS_SECRET, { expiresIn: '10m' });
+  return { qrToken: token, expiresIn: 600 };
 };
 
 export const scanQr = async (qrToken: string, user: any) => {

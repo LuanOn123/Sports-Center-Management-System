@@ -78,7 +78,12 @@ export async function bookClass(
     );
 
   return prisma.$transaction(async (tx) => {
-    // 3. Capacity check
+    // Serialize booking theo schedule để chống overbooking khi concurrent:
+    // 2 request cùng schedule phải xếp hàng, request sau thấy count mới nhất.
+    // Lock sống trong transaction, tự release khi commit/rollback.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('enrollment:schedule:' || ${scheduleId}::text))`;
+
+    // 3. Capacity check (đếm BOOKED + COMPLETED, khớp _count ở schedule detail).
     const bookedCount = await tx.enrollment.count({
       where: {
         scheduleId,
