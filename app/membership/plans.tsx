@@ -4,11 +4,14 @@ import {
   TouchableOpacity, ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Icon as MaterialIcons } from '../../components/shared/Icon';
 import { useAuth } from '../../context/AuthContext';
-import { useMembershipData, usePendingRequest } from '../../hooks/member/useMembership';
+import {
+  useMembershipData, usePendingRequest, useCancelSubscription, estimateSelfCancelRefund,
+} from '../../hooks/member/useMembership';
 import { showAlert, showConfirm } from '../../lib/alert';
 import { storage } from '../../lib/storage';
+import { ApiError } from '../../lib/api';
 import type { MembershipPlan, MembershipTier, PendingMembershipRequest } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
@@ -40,6 +43,7 @@ export default function MembershipPlansScreen() {
   } = useMembershipData(memberId);
 
   const { pendingRequest, setPendingRequest, loadPending } = usePendingRequest(user?.id, activeSub);
+  const cancelMutation = useCancelSubscription();
 
   useFocusEffect(
     useCallback(() => {
@@ -115,6 +119,36 @@ export default function MembershipPlansScreen() {
     );
   };
 
+  const handleCancelSubscription = () => {
+    if (!activeSub) return;
+    const { daysLeft, refundAmount, willRefund } = estimateSelfCancelRefund(activeSub);
+    const refundNote = willRefund
+      ? `Ước tính hoàn ${formatPrice(refundAmount)} (30%) vì còn ${daysLeft} ngày sử dụng.`
+      : `Không hoàn tiền vì gói chỉ còn ${daysLeft} ngày (≤ 15 ngày).`;
+    showConfirm(
+      'Hủy gói thành viên',
+      `Hủy gói "${activeSub.plan?.name ?? ''}"?\n\n${refundNote} Số tiền hoàn là ước tính, hệ thống sẽ trả kết quả chính thức.\n\nMọi lịch học sắp tới sẽ tự động bị hủy.`,
+      () => {
+        cancelMutation.mutate(
+          { id: activeSub.id },
+          {
+            onSuccess: (res) => {
+              showAlert('Đã hủy gói', res.data.message);
+              refreshMembership();
+            },
+            onError: (e) => {
+              const msg = e instanceof ApiError ? e.message : 'Hủy gói thất bại. Vui lòng thử lại.';
+              showAlert('Lỗi', msg);
+            },
+          }
+        );
+      },
+      undefined,
+      'Hủy gói',
+      true
+    );
+  };
+
   const handleCancelPending = () => {
     if (!user?.id) return;
     showConfirm(
@@ -185,6 +219,20 @@ export default function MembershipPlansScreen() {
                 </View>
               )}
             </View>
+            <TouchableOpacity
+              style={styles.cancelSubBtn}
+              onPress={handleCancelSubscription}
+              disabled={cancelMutation.isPending}
+            >
+              {cancelMutation.isPending ? (
+                <ActivityIndicator color={Colors.status.expired} size="small" />
+              ) : (
+                <>
+                  <MaterialIcons name="cancel" size={16} color={Colors.status.expired} />
+                  <Text style={styles.cancelSubBtnText}>Hủy gói này</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
         ) : pendingRequest ? (
           /* PENDING APPROVAL CARD */
@@ -409,6 +457,12 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.accent + '40',
   },
   renewBtnText: { color: Colors.accent, fontWeight: FontWeight.bold, fontSize: FontSize.md, fontFamily: 'BeVietnamPro_700Bold' },
+  cancelSubBtn: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6,
+    marginTop: Spacing.lg, paddingVertical: Spacing.sm, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.status.expired + '40',
+  },
+  cancelSubBtnText: { color: Colors.status.expired, fontWeight: FontWeight.semibold, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_600SemiBold' },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.xs },
   tierBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   tierBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold', letterSpacing: 0.5 },

@@ -7,7 +7,7 @@ import {
   RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Icon as MaterialIcons } from '../shared/Icon';
 import { Brand } from '../shared/Brand';
 import { useMemberHome } from '../../hooks/member/useMemberHome';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../constants/theme';

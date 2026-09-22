@@ -4,34 +4,50 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Platform, View, Text, StyleSheet } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Icon as MaterialIcons } from '../../components/shared/Icon';
 import { Colors } from '../../constants/theme';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
+import { useUnreadNotificationCount } from '../../hooks/shared/useNotifications';
 import { getTabConfigForRole, type MaterialIconName } from '../../navigation';
 
 function TabIcon({ name, color }: { name: MaterialIconName; color: string | any }) {
   return <MaterialIcons name={name} size={20} color={String(color)} />;
 }
 
+function Badge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <View style={styles.badge}>
+      <Text style={styles.badgeText}>{count > 99 ? '99+' : String(count)}</Text>
+    </View>
+  );
+}
+
 function ChatTabIcon({ color }: { color: string | any }) {
   const { data } = useQuery({
     queryKey: ['chat-unread-count'],
-    queryFn: () => api.get<number>('/chat/messages/unread-count'),
+    // BE trả { unreadCount }, không phải số trần
+    queryFn: () => api.get<{ unreadCount: number }>('/chat/messages/unread-count'),
     refetchInterval: 30_000,
   });
-
-  const count = data?.data ?? 0;
 
   return (
     <View style={{ position: 'relative' }}>
       <MaterialIcons name="chat" size={20} color={String(color)} />
-      {count > 0 && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{count > 99 ? '99+' : String(count)}</Text>
-        </View>
-      )}
+      <Badge count={data?.data?.unreadCount ?? 0} />
+    </View>
+  );
+}
+
+function NotificationsTabIcon({ color }: { color: string | any }) {
+  const count = useUnreadNotificationCount();
+
+  return (
+    <View style={{ position: 'relative' }}>
+      <MaterialIcons name="notifications" size={20} color={String(color)} />
+      <Badge count={count} />
     </View>
   );
 }
@@ -81,6 +97,8 @@ export default function TabLayout() {
             tabBarIcon: ({ color }) =>
               tab.isChat ? (
                 <ChatTabIcon color={color} />
+              ) : tab.isNotifications ? (
+                <NotificationsTabIcon color={color} />
               ) : (
                 <TabIcon name={tab.iconName} color={color} />
               ),

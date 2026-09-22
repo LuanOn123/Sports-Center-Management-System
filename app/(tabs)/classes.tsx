@@ -4,7 +4,8 @@ import {
   TextInput, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Icon as MaterialIcons } from '../../components/shared/Icon';
+import { useAuth } from '../../context/AuthContext';
 import { useClasses, useSports } from '../../hooks/shared/useClasses';
 import type { ClassFilters } from '../../services/classService';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
@@ -13,6 +14,9 @@ const TYPE_LABEL: Record<string, string> = { REGULAR: 'Tiêu Chuẩn', PREMIUM: 
 
 export default function ClassesScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const isCoach = user?.role === 'COACH';
+  const coachId = user?.coachProfile?.id;
   const [search, setSearch] = useState('');
   const [selectedSport, setSelectedSport] = useState<string | undefined>();
   const [selectedType, setSelectedType] = useState<string | undefined>();
@@ -23,8 +27,10 @@ export default function ClassesScreen() {
     search: search || undefined,
     sportId: selectedSport,
     classType: selectedType,
+    // Coach chỉ xem lớp mình phụ trách — không phải toàn bộ lớp của trung tâm
+    coachId: isCoach ? coachId : undefined,
   };
-  const { data, isLoading, refetch } = useClasses(filters);
+  const { data, isLoading, refetch } = useClasses(filters, { enabled: !isCoach || Boolean(coachId) });
 
   const sports = sportsData?.data ?? [];
   const classes = data?.data ?? [];
@@ -34,8 +40,10 @@ export default function ClassesScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Lớp học</Text>
-        <Text style={styles.headerSub}>Khám phá các lớp tập phù hợp</Text>
+        <Text style={styles.headerTitle}>{isCoach ? 'Lớp dạy' : 'Lớp học'}</Text>
+        <Text style={styles.headerSub}>
+          {isCoach ? 'Các lớp bạn đang phụ trách' : 'Khám phá các lớp tập phù hợp'}
+        </Text>
       </View>
 
       {/* Search */}
@@ -44,7 +52,7 @@ export default function ClassesScreen() {
           <MaterialIcons name="search" size={20} color={Colors.text.muted} style={styles.searchIcon} />
           <TextInput
             style={styles.search}
-            placeholder="Tìm kiếm lớp học..."
+            placeholder={isCoach ? 'Tìm trong lớp bạn phụ trách...' : 'Tìm kiếm lớp học...'}
             placeholderTextColor={Colors.text.muted}
             value={search}
             onChangeText={setSearch}
@@ -101,7 +109,9 @@ export default function ClassesScreen() {
           ListEmptyComponent={
             <View style={styles.empty}>
               <MaterialIcons name="fitness-center" size={48} color={Colors.text.muted} style={{ marginBottom: Spacing.md }} />
-              <Text style={styles.emptyText}>Không tìm thấy lớp học phù hợp</Text>
+              <Text style={styles.emptyText}>
+                {isCoach ? 'Bạn chưa được phân công lớp nào phù hợp' : 'Không tìm thấy lớp học phù hợp'}
+              </Text>
             </View>
           }
           renderItem={({ item }) => (
@@ -117,10 +127,10 @@ export default function ClassesScreen() {
                     <Text style={styles.typeBadgeText}>{TYPE_LABEL[item.classType]}</Text>
                   </View>
                 </View>
-                {Boolean(item.sport) && (
+                {Boolean(item.sports?.length) && (
                   <View style={styles.cardSportRow}>
                     <MaterialIcons name="sports" size={14} color={Colors.primary} />
-                    <Text style={styles.cardSport}>{item.sport!.name}</Text>
+                    <Text style={styles.cardSport}>{item.sports!.map((s) => s.name).join(', ')}</Text>
                   </View>
                 )}
                 {Boolean(item.description) && (

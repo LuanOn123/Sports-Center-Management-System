@@ -7,7 +7,7 @@ import {
   RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Icon as MaterialIcons } from '../shared/Icon';
 import { Brand } from '../shared/Brand';
 import { useCoachHome } from '../../hooks/coach/useCoachHome';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../constants/theme';
@@ -121,7 +121,7 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
             >
               <View style={styles.scheduleHeaderRow}>
                 <View style={styles.sportBadge}>
-                  <Text style={styles.sportBadgeText}>{s.class?.sport?.name ?? 'Môn thể thao'}</Text>
+                  <Text style={styles.sportBadgeText}>{s.class?.sports?.map((sp) => sp.name).join(', ') || 'Môn thể thao'}</Text>
                 </View>
                 <View style={styles.timeTag}>
                   <MaterialIcons name="schedule" size={13} color={Colors.primary} />
@@ -194,10 +194,10 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
                   <Text style={styles.coachClassDesc} numberOfLines={2}>{c.description}</Text>
                 ) : null}
                 <View style={styles.coachClassMetaRow}>
-                  {Boolean(c.sport?.name) && (
+                  {Boolean(c.sports?.length) && (
                     <View style={styles.metaChip}>
                       <MaterialIcons name="fitness-center" size={12} color={Colors.text.secondary} />
-                      <Text style={styles.metaChipText}>{c.sport!.name}</Text>
+                      <Text style={styles.metaChipText}>{c.sports!.map((s) => s.name).join(', ')}</Text>
                     </View>
                   )}
                   <View style={styles.metaChip}>

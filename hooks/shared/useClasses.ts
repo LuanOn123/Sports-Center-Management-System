@@ -2,7 +2,7 @@
 // Business logic cho classes & sports — Dùng chung cho Member & Coach
 
 import { useQuery } from '@tanstack/react-query';
-import { getClasses, getClassById, getSports, ClassFilters } from '../../services/classService';
+import { getClasses, getSports, ClassFilters } from '../../services/classService';
 
 export function useSports() {
   return useQuery({
@@ -11,18 +11,11 @@ export function useSports() {
   });
 }
 
-export function useClasses(filters?: ClassFilters) {
+export function useClasses(filters?: ClassFilters, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: ['classes', filters?.search, filters?.sportId, filters?.classType],
+    queryKey: ['classes', filters?.search, filters?.sportId, filters?.classType, filters?.coachId],
     queryFn: () => getClasses({ ...filters, isActive: 'true', limit: '20' }),
     placeholderData: (prev) => prev,
-  });
-}
-
-export function useClassById(id: string | undefined) {
-  return useQuery({
-    queryKey: ['class', id],
-    queryFn: () => getClassById(id!),
-    enabled: Boolean(id),
+    enabled: options?.enabled ?? true,
   });
 }

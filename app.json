@@ -29,7 +29,13 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Pulse cần quyền camera để quét mã QR điểm danh vào lớp học."
+        }
+      ]
     ],
     "extra": {
       "router": {

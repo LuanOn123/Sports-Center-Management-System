@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Icon as MaterialIcons } from '../../components/shared/Icon';
 import { useAuth } from '../../context/AuthContext';
 import { useChatMessages, usePartnerName } from '../../hooks/shared/useChat';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
@@ -34,7 +34,8 @@ export default function ChatScreen() {
   const partnerName = usePartnerName(userId, name);
 
   const onSend = () => {
-    const trimmed = (textRef.current || text).trim();
+    // Dùng textRef để tránh gửi trùng nếu onSend bị gọi liên tiếp
+    const trimmed = textRef.current.trim();
     if (!trimmed) return;
     textRef.current = '';
     setText('');
@@ -145,7 +146,6 @@ export default function ChatScreen() {
         <TouchableOpacity
           style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
           onPress={onSend}
-          onPressIn={onSend}
           disabled={!text.trim()}
           activeOpacity={0.7}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
