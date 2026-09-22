@@ -432,7 +432,7 @@ const options: swaggerJSDoc.Options = {
                           class: {
                             id: "class-yoga-001",
                             name: "Morning Yoga",
-                            sport: { name: "Yoga" },
+                            sports: [{ name: "Yoga" }],
                             schedules: [],
                           },
                         },
@@ -608,6 +608,7 @@ const options: swaggerJSDoc.Options = {
                       id: "c3e1ef3e-0000-4000-8000-000000000001",
                       name: "Yoga",
                       description: "Yoga class improves flexibility",
+                      areaTypes: ["INDOOR"],
                       isActive: true,
                       _count: { classes: 2 },
                     },
@@ -627,7 +628,7 @@ const options: swaggerJSDoc.Options = {
                 example: {
                   success: true,
                   message: "Sport created successfully",
-                  data: { id: "c3e1ef3e-0000-4000-8000-000000000009", name: "Boxing", description: "Boxing classes", isActive: true },
+                  data: { id: "c3e1ef3e-0000-4000-8000-000000000009", name: "Boxing", description: "Boxing classes", areaTypes: ["INDOOR"], isActive: true },
                 },
               },
             },
@@ -642,7 +643,7 @@ const options: swaggerJSDoc.Options = {
                 example: {
                   success: true,
                   message: "Sport retrieved successfully",
-                  data: { id: "c3e1ef3e-0000-4000-8000-000000000001", name: "Yoga", isActive: true, classes: [] },
+                  data: { id: "c3e1ef3e-0000-4000-8000-000000000001", name: "Yoga", areaTypes: ["INDOOR"], isActive: true, classes: [] },
                 },
               },
             },
@@ -657,7 +658,7 @@ const options: swaggerJSDoc.Options = {
                 example: {
                   success: true,
                   message: "Rooms retrieved successfully",
-                  data: [{ id: "c3e1ef3e-0000-4000-8000-000000000101", name: "Yoga Room A", capacity: 20, location: "Floor 1", isActive: true }],
+                  data: [{ id: "c3e1ef3e-0000-4000-8000-000000000101", name: "Yoga Room A", capacity: 20, location: "Floor 1", areaType: "INDOOR", isActive: true }],
                   pagination: { page: 1, limit: 10, total: 2, totalPages: 1 },
                 },
               },
@@ -673,7 +674,7 @@ const options: swaggerJSDoc.Options = {
                 example: {
                   success: true,
                   message: "Room created successfully",
-                  data: { id: "c3e1ef3e-0000-4000-8000-000000000103", name: "Boxing Room", capacity: 12, isActive: true },
+                  data: { id: "c3e1ef3e-0000-4000-8000-000000000103", name: "Boxing Room", capacity: 12, areaType: "INDOOR", isActive: true },
                 },
               },
             },
@@ -688,7 +689,7 @@ const options: swaggerJSDoc.Options = {
                 example: {
                   success: true,
                   message: "Room retrieved successfully",
-                  data: { id: "c3e1ef3e-0000-4000-8000-000000000101", name: "Yoga Room A", capacity: 20, location: "Floor 1", isActive: true },
+                  data: { id: "c3e1ef3e-0000-4000-8000-000000000101", name: "Yoga Room A", capacity: 20, location: "Floor 1", areaType: "INDOOR", isActive: true },
                 },
               },
             },
@@ -709,9 +710,10 @@ const options: swaggerJSDoc.Options = {
                       id: "class-yoga-001",
                       name: "Morning Yoga",
                       description: "Gentle yoga class",
-                      sport: { name: "Yoga" },
+                      sports: [{ name: "Yoga" }],
                       capacity: 15,
                       classType: "REGULAR",
+                      areaType: "INDOOR",
                       isActive: true,
                       coaches: [{ isPrimary: true, coach: { user: { fullName: "Coach One" } } }],
                       _count: { enrollments: 3, schedules: 2 },
@@ -735,9 +737,10 @@ const options: swaggerJSDoc.Options = {
                   data: {
                     id: "class-boxing-001",
                     name: "Boxing Basics",
-                    sport: { name: "Boxing" },
+                    sports: [{ name: "Boxing" }],
                     capacity: 12,
                     classType: "REGULAR",
+                    areaType: "INDOOR",
                   },
                 },
               },
@@ -756,9 +759,10 @@ const options: swaggerJSDoc.Options = {
                   data: {
                     id: "class-yoga-001",
                     name: "Morning Yoga",
-                    sport: { name: "Yoga" },
+                    sports: [{ name: "Yoga" }],
                     capacity: 15,
                     classType: "REGULAR",
+                    areaType: "INDOOR",
                     isActive: true,
                     coaches: [{ isPrimary: true, coach: { user: { fullName: "Coach One" } } }],
                     schedules: [],
@@ -784,8 +788,8 @@ const options: swaggerJSDoc.Options = {
                       startTime: "2026-09-15T07:00:00.000Z",
                       endTime: "2026-09-15T08:00:00.000Z",
                       status: "SCHEDULED",
-                      class: { name: "Morning Yoga", sport: { name: "Yoga" } },
-                      room: { name: "Yoga Room A" },
+                      class: { name: "Morning Yoga", areaType: "INDOOR", sports: [{ name: "Yoga" }] },
+                      room: { name: "Yoga Room A", areaType: "INDOOR" },
                       _count: { enrollments: 2 },
                     },
                   ],
@@ -809,8 +813,8 @@ const options: swaggerJSDoc.Options = {
                     startTime: "2026-09-15T07:00:00.000Z",
                     endTime: "2026-09-15T08:00:00.000Z",
                     status: "SCHEDULED",
-                    class: { name: "Morning Yoga" },
-                    room: { name: "Yoga Room A" },
+                    class: { name: "Morning Yoga", areaType: "INDOOR" },
+                    room: { name: "Yoga Room A", areaType: "INDOOR" },
                   },
                 },
               },
@@ -831,8 +835,8 @@ const options: swaggerJSDoc.Options = {
                     startTime: "2026-09-15T07:00:00.000Z",
                     endTime: "2026-09-15T08:00:00.000Z",
                     status: "SCHEDULED",
-                    class: { name: "Morning Yoga", sport: { name: "Yoga" }, coaches: [] },
-                    room: { name: "Yoga Room A" },
+                    class: { name: "Morning Yoga", areaType: "INDOOR", sports: [{ name: "Yoga" }], coaches: [] },
+                    room: { name: "Yoga Room A", areaType: "INDOOR" },
                     _count: { enrollments: 2 },
                   },
                 },
@@ -857,7 +861,7 @@ const options: swaggerJSDoc.Options = {
                     schedule: {
                       startTime: "2026-09-15T07:00:00.000Z",
                       endTime: "2026-09-15T08:00:00.000Z",
-                      class: { name: "Morning Yoga", sport: { name: "Yoga" } },
+                      class: { name: "Morning Yoga", sports: [{ name: "Yoga" }] },
                       room: { name: "Yoga Room A" },
                     },
                   },
@@ -909,7 +913,7 @@ const options: swaggerJSDoc.Options = {
                     schedule: {
                       startTime: "2026-09-15T07:00:00.000Z",
                       endTime: "2026-09-15T08:00:00.000Z",
-                      class: { name: "Morning Yoga", sport: { name: "Yoga" } },
+                      class: { name: "Morning Yoga", sports: [{ name: "Yoga" }] },
                       room: { name: "Yoga Room A" },
                     },
                   },
@@ -1147,6 +1151,41 @@ const options: swaggerJSDoc.Options = {
             },
           },
         },
+        SubscriptionLogListOk: {
+          description: "Paginated list of subscription logs",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                example: {
+                  success: true,
+                  message: "Subscription logs retrieved successfully",
+                  data: [
+                    {
+                      id: "9643ec65-bacb-4b1b-9442-239bb60bd8fa",
+                      action: "Mua / Gia hạn gói",
+                      username: "Nguyễn Văn A",
+                      email: "nguyenvana@gmail.com",
+                      planName: "Gói Hội viên 1 tháng",
+                      planTier: "MEMBERSHIP",
+                      price: 500000,
+                      paymentStatus: "SUCCESS",
+                      startDate: "2026-09-18T00:00:00.000Z",
+                      endDate: "2026-10-18T00:00:00.000Z",
+                      purchasedAt: "2026-09-18T08:05:00.123Z"
+                    }
+                  ],
+                  pagination: {
+                    page: 1,
+                    limit: 20,
+                    total: 1,
+                    totalPages: 1
+                  }
+                },
+              },
+            },
+          },
+        },
         },
     },
     security: [{ BearerAuth: [] }],
@@ -1169,6 +1208,7 @@ const options: swaggerJSDoc.Options = {
       { name: "Attendance", description: "Class attendance tracking" },
       { name: "Training", description: "Personalized training plans and results" },
       { name: "Notifications", description: "Manage user notifications" },
+      { name: "Feedbacks", description: "Member đánh giá HLV sau buổi học" },
     ],
   },
   apis: ["./src/modules/**/*.routes.ts", "./src/modules/**/*.routes.js"],

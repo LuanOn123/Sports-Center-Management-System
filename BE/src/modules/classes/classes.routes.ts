@@ -41,7 +41,13 @@ const router = Router();
  *         schema:
  *           type: string
  *           enum: [REGULAR, PREMIUM]
- *         description: Filter by class type
+ *         description: Filter by class tier (REGULAR | PREMIUM)
+ *       - in: query
+ *         name: areaType
+ *         schema:
+ *           type: string
+ *           enum: [POOL, INDOOR, OUTDOOR]
+ *         description: Filter by area type (POOL | INDOOR | OUTDOOR)
  *       - in: query
  *         name: coachId
  *         schema:
@@ -110,16 +116,20 @@ router.get("/:id", authenticate, classesController.getClassById);
  *             type: object
  *             required:
  *               - name
- *               - sportId
+ *               - sportIds
  *               - capacity
+ *               - areaType
  *             properties:
  *               name:
  *                 type: string
  *                 example: "Morning Yoga"
  *               description:
  *                 type: string
- *               sportId:
- *                 type: string
+ *               sportIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
  *               capacity:
  *                 type: integer
  *                 example: 20
@@ -127,6 +137,12 @@ router.get("/:id", authenticate, classesController.getClassById);
  *                 type: string
  *                 enum: [REGULAR, PREMIUM]
  *                 default: REGULAR
+ *                 description: "Class tier (REGULAR | PREMIUM). Different from areaType."
+ *               areaType:
+ *                 type: string
+ *                 enum: [POOL, INDOOR, OUTDOOR]
+ *                 example: "INDOOR"
+ *                 description: "Area type required by this class. Every selected sport must support it."
  *     responses:
  *       201: { $ref: "#/components/responses/ClassCreated" }
  *       400: { $ref: "#/components/responses/BadRequest" }
@@ -166,13 +182,20 @@ router.post(
  *                 type: string
  *               description:
  *                 type: string
- *               sportId:
- *                 type: string
+ *               sportIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
  *               capacity:
  *                 type: integer
  *               classType:
  *                 type: string
  *                 enum: [REGULAR, PREMIUM]
+ *               areaType:
+ *                 type: string
+ *                 enum: [POOL, INDOOR, OUTDOOR]
+ *                 description: "New area type. All sports of this class must support it, and upcoming schedules must use a matching Room."
  *               isActive:
  *                 type: boolean
  *     responses:
@@ -222,7 +245,7 @@ router.delete(
  * @swagger
  * /classes/{id}/coaches:
  *   post:
- *     summary: Assign coach to class
+ *     summary: Assign coach to class (Sends COACH_CHANGED notification to enrolled members)
  *     tags: [Classes]
  *     parameters:
  *       - in: path
@@ -267,7 +290,7 @@ router.post(
  * @swagger
  * /classes/{id}/coaches/{coachId}:
  *   delete:
- *     summary: Remove coach from class
+ *     summary: Remove coach from class (Sends COACH_CHANGED notification to enrolled members)
  *     tags: [Classes]
  *     parameters:
  *       - in: path

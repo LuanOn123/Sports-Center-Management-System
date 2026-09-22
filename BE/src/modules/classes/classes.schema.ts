@@ -1,19 +1,23 @@
 import { z } from "zod";
 
+export const AreaTypeEnum = z.enum(["POOL", "INDOOR", "OUTDOOR"]);
+
 export const CreateClassSchema = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
-  sportId: z.string().min(1),
+  sportIds: z.array(z.string().min(1)).min(1, "Must assign at least one sport"),
   capacity: z.number().int().positive().max(200),
   classType: z.enum(["REGULAR", "PREMIUM"]).default("REGULAR"),
+  areaType: AreaTypeEnum,
 });
 
 export const UpdateClassSchema = z.object({
   name: z.string().min(2).optional(),
   description: z.string().optional(),
-  sportId: z.string().optional(),
+  sportIds: z.array(z.string().min(1)).min(1, "Must assign at least one sport").optional(),
   capacity: z.number().int().positive().max(200).optional(),
   classType: z.enum(["REGULAR", "PREMIUM"]).optional(),
+  areaType: AreaTypeEnum.optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -28,6 +32,7 @@ export const ClassQuerySchema = z.object({
   search: z.string().optional(),
   sportId: z.string().optional(),
   classType: z.enum(["REGULAR", "PREMIUM"]).optional(),
+  areaType: AreaTypeEnum.optional(),
   isActive: z.string().optional(),
   coachId: z.string().optional(),
 });

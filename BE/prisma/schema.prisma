@@ -48,6 +48,12 @@ enum ClassType {
   PREMIUM
 }
 
+enum AreaType {
+  POOL
+  INDOOR
+  OUTDOOR
+}
+
 enum ScheduleStatus {
   SCHEDULED
   CANCELLED
@@ -136,6 +142,7 @@ model MemberProfile {
   invoices      Invoice[]
   attendances   Attendance[]
   trainingPlans TrainingPlan[]
+  feedbacks     CoachFeedback[]
 }
 
 model CoachProfile {
@@ -150,6 +157,7 @@ model CoachProfile {
 
   classes ClassMember[]
   trainingPlans TrainingPlan[]
+  feedbacks CoachFeedback[]
 }
 
 model ManagerProfile {
@@ -210,6 +218,7 @@ model Sport {
   id          String   @id @default(uuid())
   name        String   @unique
   description String?
+  areaTypes   AreaType[]
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -222,6 +231,7 @@ model Room {
   name      String   @unique
   capacity  Int
   location  String?
+  areaType  AreaType
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -237,10 +247,15 @@ model Class {
   id          String    @id @default(uuid())
   name        String
   description String?
-  sportId     String
-  sport       Sport     @relation(fields: [sportId], references: [id])
+  
+  // Many-to-Many with Sport
+  sports      Sport[]
+
   capacity    Int
   classType   ClassType @default(REGULAR)
+  // Khu vực mà lớp học yêu cầu (POOL | INDOOR | OUTDOOR).
+  // Khác với classType (REGULAR | PREMIUM là hạng lớp).
+  areaType    AreaType
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -248,8 +263,7 @@ model Class {
   coaches     ClassMember[]
   schedules   ClassSchedule[]
   enrollments Enrollment[]
-
-  @@index([sportId])
+  feedbacks   CoachFeedback[]
 }
 
 // Coach assignment to class (many-to-many)
@@ -445,6 +459,29 @@ model TrainingResult {
 }
 
 // ─────────────────────────────────────────
+// COACH FEEDBACK
+// ─────────────────────────────────────────
+
+model CoachFeedback {
+  id         String        @id @default(uuid())
+  coachId    String
+  coach      CoachProfile  @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  memberId   String
+  member     MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  classId    String?
+  class      Class?        @relation(fields: [classId], references: [id], onDelete: SetNull)
+  rating     Int           // 1-5 sao
+  comment    String?
+  isAnonymous Boolean      @default(false)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@unique([coachId, memberId, classId])
+  @@index([coachId])
+  @@index([memberId])
+}
+
+// ─────────────────────────────────────────
 // NOTIFICATIONS (BR-24)
 // ─────────────────────────────────────────
 
@@ -468,6 +505,8 @@ enum NotificationType {
   TRAINING_PLAN_ASSIGNED  // HLV giao kế hoạch tập mới
   // ── Lớp học ──
   NEW_CLASS               // Lớp học mới được mở
+  COACH_CHANGED           // Đổi HLV cho lớp
+  SCHEDULE_ROOM_CHANGED   // Lịch học đổi phòng (bulk transfer Room hư)
   // ── Thanh toán ──
   PAYMENT_SUCCESS         // Thanh toán thành công
   PAYMENT_REFUNDED        // Hoàn tiền

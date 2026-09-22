@@ -42,13 +42,35 @@ export async function bookClass(
   if (schedule.startTime <= new Date())
     throw new AppError("Cannot book a past class", 400);
 
-  // 2. Tier check
-  const effectiveTier = await getEffectiveTier(memberProfileId);
-  if (effectiveTier === "FREE")
+  // 2. Tier check + Chốt chặn 1: Subscription phải còn hạn đến ngày lớp học diễn ra
+  const activeSub = await prisma.membershipSubscription.findFirst({
+    where: {
+      memberId: memberProfileId,
+      status: "ACTIVE",
+      startDate: { lte: new Date() },
+      endDate: { gte: new Date() },
+    },
+    orderBy: [{ tier: "desc" }, { endDate: "desc" }],
+  });
+
+  if (!activeSub) {
     throw new AppError(
-      "Active membership required to book classes. Please purchase a membership plan.",
+      "Bạn không có gói tập đang hoạt động. Vui lòng mua gói để đặt lịch.",
       403
     );
+  }
+
+  // Gói phải còn hạn đến lúc lớp học bắt đầu
+  if (activeSub.endDate < schedule.startTime) {
+    const expiredDate = activeSub.endDate.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+    const classDate = schedule.startTime.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+    throw new AppError(
+      `Gói tập của bạn sẽ hết hạn ngày ${expiredDate}, trước khi lớp học diễn ra ngày ${classDate}. Vui lòng gia hạn gói để đặt lịch.`,
+      403
+    );
+  }
+
+  const effectiveTier = activeSub.tier;
   if (schedule.class.classType === "PREMIUM" && effectiveTier !== "PREMIUM")
     throw new AppError(
       "Premium membership required to book this class.",
@@ -56,7 +78,12 @@ export async function bookClass(
     );
 
   return prisma.$transaction(async (tx) => {
-    // 3. Capacity check
+    // Serialize booking theo schedule để chống overbooking khi concurrent:
+    // 2 request cùng schedule phải xếp hàng, request sau thấy count mới nhất.
+    // Lock sống trong transaction, tự release khi commit/rollback.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('enrollment:schedule:' || ${scheduleId}::text))`;
+
+    // 3. Capacity check (đếm BOOKED + COMPLETED, khớp _count ở schedule detail).
     const bookedCount = await tx.enrollment.count({
       where: {
         scheduleId,
@@ -99,7 +126,7 @@ export async function bookClass(
         where: { id: existing.id },
         data: { status: "BOOKED", bookedAt: new Date(), cancelledAt: null },
         include: {
-          schedule: { include: { class: { include: { sport: true } }, room: true } },
+          schedule: { include: { class: { include: { sports: true } }, room: true } },
           member: { include: { user: true } },
         },
       });
@@ -112,7 +139,7 @@ export async function bookClass(
           status: "BOOKED",
         },
         include: {
-          schedule: { include: { class: { include: { sport: true } }, room: true } },
+          schedule: { include: { class: { include: { sports: true } }, room: true } },
           member: { include: { user: true } },
         },
       });
@@ -193,7 +220,7 @@ export async function getMyEnrollments(userId: string, query: any) {
       where, skip, take: limit,
       include: {
         schedule: {
-          include: { class: { include: { sport: true } }, room: true },
+          include: { class: { include: { sports: true } }, room: true },
         },
       },
       orderBy: { bookedAt: "desc" },
