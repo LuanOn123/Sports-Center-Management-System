@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { PrismaClient, UserRole, MemberTier, ClassType, PaymentMethod, PaymentStatus } from "@prisma/client";
+import { PrismaClient, UserRole, MemberTier, ClassType, AreaType, PaymentMethod, PaymentStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -204,30 +204,33 @@ async function main() {
   // ─── SPORTS ──────────────────────────────────────────
   const yoga = await prisma.sport.upsert({
     where: { name: "Yoga" },
-    update: {},
+    update: { areaTypes: [AreaType.INDOOR] },
     create: {
       name: "Yoga",
       description: "Lớp Yoga cải thiện sự linh hoạt, cân bằng và tâm trí.",
+      areaTypes: [AreaType.INDOOR],
       isActive: true,
     },
   });
 
   const hiit = await prisma.sport.upsert({
     where: { name: "HIIT" },
-    update: {},
+    update: { areaTypes: [AreaType.INDOOR] },
     create: {
       name: "HIIT",
       description: "High Intensity Interval Training – đốt cháy calo hiệu quả.",
+      areaTypes: [AreaType.INDOOR],
       isActive: true,
     },
   });
 
   const swimming = await prisma.sport.upsert({
     where: { name: "Swimming" },
-    update: {},
+    update: { areaTypes: [AreaType.POOL] },
     create: {
       name: "Swimming",
       description: "Lớp bơi lội cho mọi trình độ.",
+      areaTypes: [AreaType.POOL],
       isActive: true,
     },
   });
@@ -236,33 +239,36 @@ async function main() {
   // ─── ROOMS ───────────────────────────────────────────
   const room1 = await prisma.room.upsert({
     where: { name: "Phòng Yoga A" },
-    update: {},
+    update: { areaType: AreaType.INDOOR },
     create: {
       name: "Phòng Yoga A",
       capacity: 20,
       location: "Tầng 1",
+      areaType: AreaType.INDOOR,
       isActive: true,
     },
   });
 
   const room2 = await prisma.room.upsert({
     where: { name: "Phòng HIIT B" },
-    update: {},
+    update: { areaType: AreaType.INDOOR },
     create: {
       name: "Phòng HIIT B",
       capacity: 15,
       location: "Tầng 2",
+      areaType: AreaType.INDOOR,
       isActive: true,
     },
   });
 
   const room3 = await prisma.room.upsert({
     where: { name: "Hồ Bơi" },
-    update: {},
+    update: { areaType: AreaType.POOL },
     create: {
       name: "Hồ Bơi",
       capacity: 25,
       location: "Tầng Trệt",
+      areaType: AreaType.POOL,
       isActive: true,
     },
   });
@@ -274,21 +280,24 @@ async function main() {
 
   const yogaClass = await prisma.class.upsert({
     where: { id: "class-yoga-001" },
-    update: { sports: { set: [{ id: yoga.id }] } },
+    update: { sports: { set: [{ id: yoga.id }] }, areaType: AreaType.INDOOR },
     create: {
+      // Seed dùng ID custom ổn định (không phải UUID) để test/dev dễ tham chiếu.
+      // API giữ string.min(1), KHÔNG ép uuid để tương thích các ID này.
       id: "class-yoga-001",
       name: "Yoga Buổi Sáng",
       description: "Lớp Yoga nhẹ nhàng buổi sáng, phù hợp mọi trình độ.",
       sports: { connect: [{ id: yoga.id }] },
       capacity: 15,
       classType: ClassType.REGULAR,
+      areaType: AreaType.INDOOR,
       isActive: true,
     },
   });
 
   const hiitClass = await prisma.class.upsert({
     where: { id: "class-hiit-001" },
-    update: { sports: { set: [{ id: hiit.id }] } },
+    update: { sports: { set: [{ id: hiit.id }] }, areaType: AreaType.INDOOR },
     create: {
       id: "class-hiit-001",
       name: "HIIT Cardio",
@@ -296,13 +305,14 @@ async function main() {
       sports: { connect: [{ id: hiit.id }] },
       capacity: 12,
       classType: ClassType.REGULAR,
+      areaType: AreaType.INDOOR,
       isActive: true,
     },
   });
 
   const premiumYoga = await prisma.class.upsert({
     where: { id: "class-yoga-premium-001" },
-    update: { sports: { set: [{ id: yoga.id }] } },
+    update: { sports: { set: [{ id: yoga.id }] }, areaType: AreaType.INDOOR },
     create: {
       id: "class-yoga-premium-001",
       name: "Premium Yoga & Meditation",
@@ -310,6 +320,7 @@ async function main() {
       sports: { connect: [{ id: yoga.id }] },
       capacity: 8,
       classType: ClassType.PREMIUM,
+      areaType: AreaType.INDOOR,
       isActive: true,
     },
   });

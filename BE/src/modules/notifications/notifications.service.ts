@@ -23,6 +23,8 @@ export type NotificationTypeEnum =
   // Lớp học mới
   | "NEW_CLASS"
   | "COACH_CHANGED"
+  // Lịch học đổi phòng (bulk transfer Room hư)
+  | "SCHEDULE_ROOM_CHANGED"
   // Thanh toán
   | "PAYMENT_SUCCESS"
   | "PAYMENT_REFUNDED"
@@ -58,6 +60,10 @@ export async function createNotification(
 /**
  * Gửi notification đến nhiều user (batch).
  * Ví dụ: thông báo lớp mới cho tất cả thành viên.
+ *
+ * Không dedupe ở DB: Notification không có unique constraint nên không dùng
+ * `skipDuplicates` (đã gỡ vì misleading). Dedupe thật (nếu cần) làm ở caller,
+ * ví dụ UPCOMING_CLASS check findFirst theo metadata.scheduleId trong 24h.
  */
 export async function broadcastNotification(
   userIds: string[],
@@ -76,7 +82,6 @@ export async function broadcastNotification(
       reason: options?.reason ?? null,
       metadata: options?.metadata ? (options.metadata as object) : undefined,
     })),
-    skipDuplicates: true,
   });
 }
 

@@ -48,6 +48,12 @@ enum ClassType {
   PREMIUM
 }
 
+enum AreaType {
+  POOL
+  INDOOR
+  OUTDOOR
+}
+
 enum ScheduleStatus {
   SCHEDULED
   CANCELLED
@@ -212,6 +218,7 @@ model Sport {
   id          String   @id @default(uuid())
   name        String   @unique
   description String?
+  areaTypes   AreaType[]
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -224,6 +231,7 @@ model Room {
   name      String   @unique
   capacity  Int
   location  String?
+  areaType  AreaType
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -245,6 +253,9 @@ model Class {
 
   capacity    Int
   classType   ClassType @default(REGULAR)
+  // Khu vực mà lớp học yêu cầu (POOL | INDOOR | OUTDOOR).
+  // Khác với classType (REGULAR | PREMIUM là hạng lớp).
+  areaType    AreaType
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -495,6 +506,7 @@ enum NotificationType {
   // ── Lớp học ──
   NEW_CLASS               // Lớp học mới được mở
   COACH_CHANGED           // Đổi HLV cho lớp
+  SCHEDULE_ROOM_CHANGED   // Lịch học đổi phòng (bulk transfer Room hư)
   // ── Thanh toán ──
   PAYMENT_SUCCESS         // Thanh toán thành công
   PAYMENT_REFUNDED        // Hoàn tiền
