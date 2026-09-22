@@ -6,8 +6,10 @@ import {
   View, Text, StyleSheet, FlatList, ActivityIndicator,
   RefreshControl, TouchableOpacity, Modal,
 } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Icon as MaterialIcons } from '../shared/Icon';
+import QRCode from 'react-native-qrcode-svg';
 import { useCoachTraining } from '../../hooks/coach/useCoachTraining';
+import { useQrAttendance } from '../../hooks/coach/useQrAttendance';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 import type { AttendanceStatus } from '../../lib/types';
 
@@ -48,6 +50,8 @@ export function CoachTrainingView({ coachId }: CoachTrainingViewProps) {
     handleSelectStatus,
     onRefresh,
   } = useCoachTraining(coachId);
+
+  const qr = useQrAttendance(selectedSchedule?.id);
 
   return (
     <View style={styles.container}>
@@ -159,8 +163,14 @@ export function CoachTrainingView({ coachId }: CoachTrainingViewProps) {
               </TouchableOpacity>
 
               <View style={styles.currentScheduleBanner}>
-                <Text style={styles.bannerTitle}>{selectedSchedule.class?.name ?? 'Lớp học'}</Text>
-                <Text style={styles.bannerSub}>{formatDate(selectedSchedule.startTime)} · {formatTime(selectedSchedule.startTime)}–{formatTime(selectedSchedule.endTime)}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.bannerTitle}>{selectedSchedule.class?.name ?? 'Lớp học'}</Text>
+                  <Text style={styles.bannerSub}>{formatDate(selectedSchedule.startTime)} · {formatTime(selectedSchedule.startTime)}–{formatTime(selectedSchedule.endTime)}</Text>
+                </View>
+                <TouchableOpacity style={styles.qrBtn} onPress={qr.open}>
+                  <MaterialIcons name="qr-code-2" size={16} color={Colors.text.inverse} />
+                  <Text style={styles.qrBtnText}>Tạo mã QR</Text>
+                </TouchableOpacity>
               </View>
 
               {enrollmentsLoading || attendanceLoading ? (
@@ -242,6 +252,30 @@ export function CoachTrainingView({ coachId }: CoachTrainingViewProps) {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Modal mã QR điểm danh */}
+      <Modal visible={qr.visible} transparent animationType="fade" onRequestClose={qr.close}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={qr.close}>
+          <TouchableOpacity activeOpacity={1} style={styles.qrCard}>
+            <Text style={styles.modalTitle}>Mã QR điểm danh</Text>
+            <Text style={styles.qrSub}>Hội viên quét mã này để điểm danh vào lớp</Text>
+            <View style={styles.qrBox}>
+              {qr.token ? (
+                <QRCode value={qr.token} size={200} />
+              ) : (
+                <ActivityIndicator color={Colors.primary} size="large" />
+              )}
+            </View>
+            {Boolean(qr.error) && <Text style={styles.qrError}>{qr.error}</Text>}
+            {Boolean(qr.token) && (
+              <Text style={styles.qrCountdown}>Mã tự đổi sau {qr.secondsLeft}s</Text>
+            )}
+            <TouchableOpacity style={styles.qrCloseBtn} onPress={qr.close}>
+              <Text style={styles.qrCloseBtnText}>Đóng</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -275,7 +309,9 @@ const styles = StyleSheet.create({
 
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
   backBtnText: { color: Colors.primary, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_500Medium' },
-  currentScheduleBanner: { backgroundColor: Colors.bg.surface, marginHorizontal: Spacing.xl, borderRadius: Radius.md, padding: Spacing.md, borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.sm },
+  currentScheduleBanner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.bg.surface, marginHorizontal: Spacing.xl, borderRadius: Radius.md, padding: Spacing.md, borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.sm },
+  qrBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.primary, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
+  qrBtnText: { color: Colors.text.inverse, fontSize: FontSize.xs, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
   bannerTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
   bannerSub: { fontSize: FontSize.xs, color: Colors.text.secondary, marginTop: 2, fontFamily: 'BeVietnamPro_400Regular' },
 
@@ -294,4 +330,12 @@ const styles = StyleSheet.create({
   modalOption: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md, paddingHorizontal: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.xs, backgroundColor: Colors.bg.elevated, borderLeftWidth: 4 },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
   modalOptionText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
+
+  qrCard: { backgroundColor: Colors.bg.surface, borderRadius: Radius.xl, padding: Spacing.xl, width: '100%', maxWidth: 320, borderWidth: 1, borderColor: Colors.border, alignItems: 'center' },
+  qrSub: { fontSize: FontSize.xs, color: Colors.text.muted, textAlign: 'center', marginBottom: Spacing.lg, fontFamily: 'BeVietnamPro_400Regular' },
+  qrBox: { width: 200, height: 200, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md },
+  qrError: { fontSize: FontSize.sm, color: Colors.status.expired, textAlign: 'center', marginBottom: Spacing.md, fontFamily: 'BeVietnamPro_400Regular' },
+  qrCountdown: { fontSize: FontSize.sm, color: Colors.text.secondary, marginBottom: Spacing.lg, fontFamily: 'BeVietnamPro_500Medium' },
+  qrCloseBtn: { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.xl, borderRadius: Radius.md, backgroundColor: Colors.bg.elevated },
+  qrCloseBtnText: { color: Colors.text.secondary, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_500Medium' },
 });

@@ -5,9 +5,10 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Icon as MaterialIcons } from '../../components/shared/Icon';
 import { api, ApiError } from '../../lib/api';
 import { showAlert, showConfirm } from '../../lib/alert';
+import { CoachRating } from '../../components/shared/CoachRating';
 import type { Class, ClassSchedule, Enrollment, EnrollmentStatus } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
@@ -60,6 +61,7 @@ export default function ClassDetailScreen() {
   });
 
   const cls = classData?.data;
+  const targetCoach = cls?.coaches?.find((c) => c.isPrimary) ?? cls?.coaches?.[0];
   const schedules = schedulesData?.data ?? [];
   // Map scheduleId -> status ('BOOKED' | 'CANCELLED' | 'COMPLETED')
   const userEnrollmentMap = new Map<string, EnrollmentStatus>();
@@ -95,10 +97,10 @@ export default function ClassDetailScreen() {
             <Text style={styles.typeBadgeText}>{TYPE_LABEL[cls.classType]}</Text>
           </View>
         </View>
-        {Boolean(cls.sport) && (
+        {Boolean(cls.sports?.length) && (
           <View style={styles.iconRow}>
             <MaterialIcons name="sports" size={16} color={Colors.primary} />
-            <Text style={styles.classSport}>{cls.sport!.name}</Text>
+            <Text style={styles.classSport}>{cls.sports!.map((s) => s.name).join(', ')}</Text>
           </View>
         )}
         {Boolean(cls.description) && <Text style={styles.classDesc}>{cls.description}</Text>}
@@ -148,6 +150,14 @@ export default function ClassDetailScreen() {
         </View>
       )}
 
+      {Boolean(targetCoach) && (
+        <CoachRating
+          coachId={targetCoach!.coachId}
+          coachName={targetCoach!.coach?.user?.fullName}
+          classId={cls.id}
+        />
+      )}
+
       {/* Schedules */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Lịch Học Sắp Tới</Text>
@@ -166,8 +176,8 @@ export default function ClassDetailScreen() {
             const isPast = new Date(s.startTime) < new Date();
             const userStatus = userEnrollmentMap.get(s.id);
             const isBooked = userStatus === 'BOOKED';
-            const isCancelled = userStatus === 'CANCELLED';
-            const isDisabled = isFull || isPast || isBooked || isCancelled || bookMutation.isPending;
+            // CANCELLED vẫn cho đặt lại — BE tự reactivate (BR-07)
+            const isDisabled = isFull || isPast || isBooked || bookMutation.isPending;
 
             return (
               <View
@@ -175,7 +185,6 @@ export default function ClassDetailScreen() {
                 style={[
                   styles.scheduleCard,
                   isBooked && styles.scheduleCardBooked,
-                  isCancelled && styles.scheduleCardCancelled,
                 ]}
               >
                 <View style={styles.scheduleLeft}>
@@ -204,12 +213,6 @@ export default function ClassDetailScreen() {
                   <View style={styles.bookedBadge}>
                     <MaterialIcons name="check-circle" size={16} color={Colors.status.active} />
                     <Text style={styles.bookedBadgeText}>Đã đặt</Text>
-                  </View>
-                ) : isCancelled ? (
-                  /* ĐÃ HỦY — hiển thị badge đã hủy, không thể đặt lại */
-                  <View style={styles.cancelledBadge}>
-                    <MaterialIcons name="cancel" size={16} color={Colors.status.cancelled} />
-                    <Text style={styles.cancelledBadgeText}>Đã hủy</Text>
                   </View>
                 ) : (
                   <TouchableOpacity

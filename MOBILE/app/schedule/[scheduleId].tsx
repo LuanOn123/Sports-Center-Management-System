@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Icon as MaterialIcons } from '../../components/shared/Icon';
 import { api, ApiError } from '../../lib/api';
 import { showAlert, showConfirm } from '../../lib/alert';
+import { QrScannerModal } from '../../components/shared/QrScannerModal';
+import { scanAttendanceQr } from '../../services/memberService';
 import type { ClassSchedule, Enrollment } from '../../lib/types';
 import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
 
@@ -29,6 +31,7 @@ export default function ScheduleDetailScreen() {
   const { scheduleId } = useLocalSearchParams<{ scheduleId: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [showScanner, setShowScanner] = useState(false);
 
   const { data: schedData, isLoading } = useQuery({
     queryKey: ['schedule', scheduleId],
@@ -56,6 +59,18 @@ export default function ScheduleDetailScreen() {
     },
   });
 
+  const scanMutation = useMutation({
+    mutationFn: (qrToken: string) => scanAttendanceQr(qrToken),
+    onSuccess: () => {
+      setShowScanner(false);
+      showAlert('Điểm danh thành công', 'Bạn đã được ghi nhận có mặt tại buổi học này.');
+    },
+    onError: (e) => {
+      const msg = e instanceof ApiError ? e.message : 'Điểm danh thất bại. Vui lòng thử lại.';
+      showAlert('Lỗi', msg);
+    },
+  });
+
   const s = schedData?.data;
   const slotsUsed = s?._count?.enrollments ?? 0;
   const slotsLeft = s ? (s.class?.capacity ?? 0) - slotsUsed : 0;
@@ -66,7 +81,7 @@ export default function ScheduleDetailScreen() {
   // Kiểm tra trạng thái đăng ký của user với schedule này
   const userEnrollment = (enrollmentsData?.data ?? []).find((e) => e.scheduleId === scheduleId);
   const isBooked = userEnrollment?.status === 'BOOKED';
-  const isCancelledByMe = userEnrollment?.status === 'CANCELLED';
+  // CANCELLED vẫn cho đặt lại — BE tự reactivate (BR-07)
 
   if (isLoading) {
     return <View style={styles.loading}><ActivityIndicator color={Colors.primary} size="large" /></View>;
@@ -89,10 +104,10 @@ export default function ScheduleDetailScreen() {
       {/* Main info */}
       <View style={styles.card}>
         <Text style={styles.className}>{s.class?.name ?? 'Lớp học'}</Text>
-        {Boolean(s.class?.sport) && (
+        {Boolean(s.class?.sports?.length) && (
           <View style={styles.iconRow}>
             <MaterialIcons name="sports" size={16} color={Colors.primary} />
-            <Text style={styles.sportText}>{s.class!.sport!.name}</Text>
+            <Text style={styles.sportText}>{s.class!.sports!.map((sp) => sp.name).join(', ')}</Text>
           </View>
         )}
 
@@ -179,19 +194,17 @@ export default function ScheduleDetailScreen() {
       {/* Book button / Booked badge / Cancelled badge */}
       {s.status === 'SCHEDULED' && (
         isBooked ? (
-          /* ĐÃ ĐẶT — hiển thị thông báo thay vì nút */
-          <View style={styles.bookedNote}>
-            <MaterialIcons name="check-circle" size={22} color={Colors.status.active} />
-            <Text style={styles.bookedNoteText}>Bạn đã đặt lịch buổi học này</Text>
-          </View>
-        ) : isCancelledByMe ? (
-          /* ĐÃ HỦY — hiển thị thông báo đã hủy, không thể đặt lại */
-          <View style={[styles.bookedNote, styles.cancelledByMeNote]}>
-            <MaterialIcons name="cancel" size={22} color={Colors.status.cancelled} />
-            <Text style={[styles.bookedNoteText, { color: Colors.status.cancelled }]}>
-              Bạn đã hủy lớp học này (không thể đăng ký lại)
-            </Text>
-          </View>
+          /* ĐÃ ĐẶT — hiển thị thông báo + nút điểm danh */
+          <>
+            <View style={styles.bookedNote}>
+              <MaterialIcons name="check-circle" size={22} color={Colors.status.active} />
+              <Text style={styles.bookedNoteText}>Bạn đã đặt lịch buổi học này</Text>
+            </View>
+            <TouchableOpacity style={styles.checkInBtn} onPress={() => setShowScanner(true)}>
+              <MaterialIcons name="qr-code-scanner" size={20} color={Colors.text.inverse} />
+              <Text style={styles.checkInBtnText}>Điểm danh vào lớp</Text>
+            </TouchableOpacity>
+          </>
         ) : (
           <TouchableOpacity
             style={[styles.bookBtn, (isFull || isPast || bookMutation.isPending) && styles.bookBtnDisabled]}
@@ -228,6 +241,12 @@ export default function ScheduleDetailScreen() {
         </View>
       )}
 
+      <QrScannerModal
+        visible={showScanner}
+        onClose={() => setShowScanner(false)}
+        onSubmitCode={(code) => scanMutation.mutate(code)}
+        isSubmitting={scanMutation.isPending}
+      />
     </ScrollView>
   );
 }
@@ -272,6 +291,11 @@ const styles = StyleSheet.create({
     padding: Spacing.lg, justifyContent: 'center', borderWidth: 1.5, borderColor: Colors.status.active + '40',
   },
   bookedNoteText: { color: Colors.status.active, fontSize: FontSize.md, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold', textAlign: 'center' },
+  checkInBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: Colors.primary, borderRadius: Radius.xl, padding: Spacing.lg, marginTop: Spacing.md,
+  },
+  checkInBtnText: { color: Colors.text.inverse, fontSize: FontSize.md, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
   cancelledByMeNote: {
     backgroundColor: Colors.status.cancelled + '15',
     borderColor: Colors.status.cancelled + '40',

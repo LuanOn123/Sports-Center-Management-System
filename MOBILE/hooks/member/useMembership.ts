@@ -2,9 +2,9 @@
 // Business logic cho membership của hội viên — React Query + storage pending
 
 import { useState, useCallback, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
-import { getMembershipStatus, getMembershipPlans, getSubscriptions } from '../../services/membershipService';
+import { getMembershipStatus, getMembershipPlans, getSubscriptions, cancelSubscription } from '../../services/membershipService';
 import { storage } from '../../lib/storage';
 import type { MembershipStatus, MembershipTier, Subscription, PendingMembershipRequest, MembershipPlan } from '../../lib/types';
 
@@ -14,7 +14,9 @@ export function useMembershipStatus(memberId: string | undefined) {
   return useQuery({
     queryKey: ['membership-status', memberId],
     queryFn: () => getMembershipStatus(memberId!),
-    enabled: Boolean(memberId),
+    // BE chỉ cho MANAGER/STAFF gọi API này -> luôn 403 với MEMBER. Tắt hẳn,
+    // dùng fallback tính từ subscriptions trong useMembershipData.
+    enabled: false,
   });
 }
 
@@ -100,12 +102,15 @@ export function useMembershipData(memberId: string | undefined): MembershipDataR
   };
 
   const onRefresh = async () => {
+    // Bỏ statusQuery: .refetch() vẫn bắn request dù enabled:false
     await Promise.all([
-      statusQuery.refetch(),
       plansQuery.refetch(),
       subsQuery.refetch(),
     ]);
   };
+
+  // No-op — statusQuery đã tắt hẳn, giữ chỗ để không đổi shape MembershipDataResult
+  const refetchStatus = useCallback(() => {}, []);
 
   return {
     activeSub,
@@ -118,11 +123,34 @@ export function useMembershipData(memberId: string | undefined): MembershipDataR
     plansLoading: plansQuery.isLoading,
     subsLoading: subsQuery.isLoading,
     isRefreshing: statusQuery.isLoading || plansQuery.isLoading || subsQuery.isLoading,
-    refetchStatus: statusQuery.refetch,
+    refetchStatus,
     refetchSubs: subsQuery.refetch,
     refetchPlans: plansQuery.refetch,
     onRefresh,
   };
+}
+
+// ─── Cancel subscription ──────────────────────────────────────────────────────
+
+const CANCEL_REFUND_THRESHOLD_DAYS = 15;
+const CANCEL_REFUND_RATE = 0.3;
+
+/** Ước tính hoàn tiền phía client trước khi gọi API — BE là nguồn chính thức */
+export function estimateSelfCancelRefund(sub: Subscription) {
+  const daysLeft = Math.max(0, Math.ceil((new Date(sub.endDate).getTime() - Date.now()) / 86_400_000));
+  const amount = Number(sub.plan?.price ?? 0);
+  const refundAmount = daysLeft > CANCEL_REFUND_THRESHOLD_DAYS ? Math.round(amount * CANCEL_REFUND_RATE) : 0;
+  return { daysLeft, refundAmount, willRefund: refundAmount > 0 };
+}
+
+export function useCancelSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) => cancelSubscription(id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+    },
+  });
 }
 
 // ─── Pending request hook ─────────────────────────────────────────────────────

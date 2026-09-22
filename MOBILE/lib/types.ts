@@ -89,6 +89,15 @@ export interface PendingMembershipRequest {
   requestedAt: string;
 }
 
+export interface CancelSubscriptionResult {
+  subscriptionId: string;
+  status: 'CANCELLED';
+  daysLeft: number;
+  refundAmount: number;
+  willRefund: boolean;
+  message: string;
+}
+
 // ─── Member Profile ──────────────────────────────────────────────────────────
 
 export interface Member {
@@ -138,8 +147,8 @@ export interface Class {
   id: string;
   name: string;
   description?: string;
-  sportId: string;
-  sport?: Sport;
+  // BE đổi từ 1 môn (sportId/sport) sang nhiều môn (sports[]) — lớp có thể thuộc nhiều môn
+  sports?: Sport[];
   capacity: number;
   classType: ClassType;
   isActive: boolean;
@@ -196,6 +205,11 @@ export interface Attendance {
   createdAt: string;
 }
 
+export interface GenerateQrResult {
+  qrToken: string;
+  expiresIn: number; // giây
+}
+
 // ─── Training Plans (Flow 4) ──────────────────────────────────────────────────
 
 export interface TrainingPlan {
@@ -248,6 +262,61 @@ export interface ChatConversation {
   user: ChatContact;
   latestMessage: ChatMessage | null;
   unreadCount: number;
+}
+
+// ─── Coach Feedback ────────────────────────────────────────────────────────────
+
+export interface CoachFeedback {
+  id: string;
+  coachId: string;
+  memberId: string;
+  classId?: string | null;
+  rating: number;
+  comment?: string | null;
+  isAnonymous: boolean;
+  createdAt: string;
+  updatedAt: string;
+  member?: { user: Pick<User, 'fullName'> };
+  coach?: { user: Pick<User, 'fullName' | 'email'> };
+  class?: { id: string; name: string } | null;
+}
+
+export interface CoachFeedbackSummary {
+  averageRating: number | null;
+  totalFeedbacks: number;
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export type NotificationType =
+  | 'MEMBER_REGISTERED'
+  | 'CHAT_MESSAGE'
+  | 'SUBSCRIPTION_EXPIRING'
+  | 'SUBSCRIPTION_EXPIRED'
+  | 'SUBSCRIPTION_CANCELLED'
+  | 'UPCOMING_CLASS'
+  | 'SCHEDULE_CANCELLED'
+  | 'SCHEDULE_UPDATED'
+  | 'ENROLLMENT_CONFIRMED'
+  | 'ENROLLMENT_CANCELLED'
+  | 'TRAINING_PLAN_ASSIGNED'
+  | 'NEW_CLASS'
+  | 'COACH_CHANGED'
+  | 'PAYMENT_SUCCESS'
+  | 'PAYMENT_REFUNDED'
+  | 'GENERAL';
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  reason?: string | null;
+  metadata?: Record<string, unknown> | null;
+  isRead: boolean;
+  readAt?: string | null;
+  createdAt: string;
 }
 
 // ─── Pagination ───────────────────────────────────────────────────────────────

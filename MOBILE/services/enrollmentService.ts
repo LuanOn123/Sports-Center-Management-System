@@ -4,14 +4,10 @@
 import { api } from '../lib/api';
 import type { Enrollment } from '../lib/types';
 
-/** GET /enrollments/my?status=... */
-export const getMyEnrollments = (status?: string) =>
-  api.get<Enrollment[]>('/enrollments/my', status ? { status } : undefined);
+/** GET /enrollments/my?status=...&limit=... */
+export const getMyEnrollments = (status?: string, limit?: string) =>
+  api.get<Enrollment[]>('/enrollments/my', { status, limit });
 
 /** DELETE /enrollments/:id */
 export const cancelEnrollment = (id: string) =>
   api.delete(`/enrollments/${id}`);
-
-/** POST /enrollments */
-export const createEnrollment = (body: { scheduleId: string; memberId?: string }) =>
-  api.post<Enrollment>('/enrollments', body);

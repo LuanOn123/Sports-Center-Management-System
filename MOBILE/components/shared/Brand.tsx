@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Icon as MaterialIcons } from './Icon';
 import { Colors } from '../../constants/theme';
 
 interface BrandProps {

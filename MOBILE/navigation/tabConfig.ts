@@ -13,6 +13,7 @@ export interface TabItemConfig {
   iconName: MaterialIconName;
   visible: boolean;
   isChat?: boolean;
+  isNotifications?: boolean;
 }
 
 export function getTabConfigForRole(role: Role | undefined): TabItemConfig[] {
@@ -33,15 +34,15 @@ export function getTabConfigForRole(role: Role | undefined): TabItemConfig[] {
     },
     {
       name: 'schedule',
-      title: 'Lịch học',
+      title: 'Lịch tập',
       iconName: 'event',
       visible: !isCoach, // Chỉ hiện cho Member
     },
     {
       name: 'training',
-      title: isCoach ? 'Điểm danh' : 'Tập luyện',
-      iconName: isCoach ? 'how-to-reg' : 'trending-up',
-      visible: true,
+      title: 'Điểm danh',
+      iconName: 'how-to-reg',
+      visible: isCoach, // Bỏ tab "Tập luyện" của Member — chỉ Coach còn dùng để điểm danh
     },
     {
       name: 'chat',
@@ -55,6 +56,7 @@ export function getTabConfigForRole(role: Role | undefined): TabItemConfig[] {
       title: 'Thông báo',
       iconName: 'notifications',
       visible: true,
+      isNotifications: true,
     },
   ];
 }

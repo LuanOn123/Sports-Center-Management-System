@@ -12,6 +12,7 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Icon } from './Icon';
 import { Colors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../constants/theme';
 import { registerAlertListener, type AlertOptions } from '../../lib/alert';
 
@@ -129,7 +130,7 @@ export function AlertModal() {
             >
               {/* Icon */}
               <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
-                <MaterialIcons name={iconName} size={28} color={iconColor} />
+                <Icon name={iconName} size={28} color={iconColor} />
               </View>
 
               {/* Title & Message */}

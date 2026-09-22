@@ -7,21 +7,34 @@ import { showAlert, showConfirm } from '../../lib/alert';
 import { ApiError } from '../../lib/api';
 import type { Enrollment } from '../../lib/types';
 
-export function useMyEnrollments(status?: string) {
+export function useMyEnrollments(status?: string, limit?: string) {
   return useQuery({
-    queryKey: ['my-enrollments', status],
-    queryFn: () => getMyEnrollments(status),
+    queryKey: ['my-enrollments', status, limit],
+    queryFn: () => getMyEnrollments(status, limit),
     placeholderData: (prev) => prev,
   });
 }
 
-/** Hook dùng cho màn hình Home (chỉ lấy upcoming BOOKED) */
+/**
+ * Hook dùng cho màn hình Home (chỉ lấy upcoming BOOKED).
+ * BE trả về theo `bookedAt` giảm dần (đặt gần đây nhất trước), không phải theo
+ * thời gian buổi học — và enrollment vẫn ở BOOKED mãi nếu chưa ai bấm "hoàn
+ * thành" ca học dù ngày học đã qua. Nên phải lấy nhiều bản ghi hơn rồi tự lọc
+ * theo `schedule.endTime >= now` và sắp lại theo `startTime` mới ra đúng lịch
+ * sắp tới, thay vì tin thẳng vào thứ tự/số lượng BE trả về.
+ */
 export function useUpcomingEnrollments() {
   const query = useQuery({
     queryKey: ['my-enrollments-upcoming'],
-    queryFn: () => getMyEnrollments('BOOKED'),
+    queryFn: () => getMyEnrollments('BOOKED', '50'),
   });
-  const upcoming: Enrollment[] = query.data?.data?.slice(0, 3) ?? [];
+
+  const now = Date.now();
+  const upcoming: Enrollment[] = (query.data?.data ?? [])
+    .filter((e) => e.schedule && new Date(e.schedule.endTime).getTime() >= now)
+    .sort((a, b) => new Date(a.schedule!.startTime).getTime() - new Date(b.schedule!.startTime).getTime())
+    .slice(0, 3);
+
   return { ...query, upcoming };
 }
 

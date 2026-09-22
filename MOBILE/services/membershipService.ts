@@ -2,7 +2,7 @@
 // Tầng gọi API thuần túy — không có state, không có hook
 
 import { api } from '../lib/api';
-import type { MembershipPlan, MembershipStatus, Subscription } from '../lib/types';
+import type { CancelSubscriptionResult, MembershipPlan, MembershipStatus, Subscription } from '../lib/types';
 
 /** GET /members/:memberId/membership-status */
 export const getMembershipStatus = (memberId: string) =>
@@ -15,3 +15,7 @@ export const getMembershipPlans = () =>
 /** GET /subscriptions/member/:memberId */
 export const getSubscriptions = (memberId: string) =>
   api.get<Subscription[]>(`/subscriptions/member/${memberId}`);
+
+/** PATCH /subscriptions/:id/cancel — hội viên tự hủy gói của mình */
+export const cancelSubscription = (id: string, reason?: string) =>
+  api.patch<CancelSubscriptionResult>(`/subscriptions/${id}/cancel`, { reason });
