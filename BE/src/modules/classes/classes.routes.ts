@@ -138,7 +138,7 @@ router.get("/:id", authenticate, classesController.getClassById);
 router.post(
   "/",
   authenticate,
-  authorize("MANAGER"),
+  authorize("MANAGER", "STAFF"),
   validate(CreateClassSchema),
   classesController.createClass
 );
@@ -186,7 +186,7 @@ router.post(
 router.patch(
   "/:id",
   authenticate,
-  authorize("MANAGER"),
+  authorize("MANAGER", "STAFF"),
   validate(UpdateClassSchema),
   classesController.updateClass
 );
@@ -214,7 +214,7 @@ router.patch(
 router.delete(
   "/:id",
   authenticate,
-  authorize("MANAGER"),
+  authorize("MANAGER", "STAFF"),
   classesController.deleteClass
 );
 
@@ -258,7 +258,7 @@ router.delete(
 router.post(
   "/:id/coaches",
   authenticate,
-  authorize("MANAGER"),
+  authorize("MANAGER", "STAFF"),
   validate(AssignCoachSchema),
   classesController.assignCoach
 );
@@ -293,7 +293,7 @@ router.post(
 router.delete(
   "/:id/coaches/:coachId",
   authenticate,
-  authorize("MANAGER"),
+  authorize("MANAGER", "STAFF"),
   classesController.removeCoach
 );
 

@@ -20,7 +20,8 @@ export async function getMemberSubscriptions(req: Request, res: Response, next: 
   try {
     const { subscriptions, pagination } = await subsService.getMemberSubscriptions(
       req.params.memberId as string,
-      req.query
+      req.query,
+      req.user!
     );
     sendSuccess(res, subscriptions, "Subscriptions retrieved successfully", 200, pagination);
   } catch (err) { next(err); }
