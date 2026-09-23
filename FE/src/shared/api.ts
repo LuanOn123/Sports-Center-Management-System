@@ -47,6 +47,7 @@ export const BASE_URL = (
 ).replace(/\/$/, "");
 let accessToken = sessionStorage.getItem("pulse.access") || "";
 let refreshToken = sessionStorage.getItem("pulse.refresh") || "";
+export const getAccessToken = () => accessToken;
 export const hasSession = () => Boolean(accessToken || refreshToken);
 export function clearSession() {
   accessToken = "";

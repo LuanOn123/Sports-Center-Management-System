@@ -1,11 +1,17 @@
 import { allPages } from "../shared/pagedApi";
 import { apiClient } from "./client";
-import type { ClassItem, ClassSchedule, Sport } from "../types/member";
+import type {
+  AreaType,
+  ClassItem,
+  ClassSchedule,
+  Sport,
+} from "../types/member";
 
 export interface ClassQuery {
   search?: string;
   sportId?: string;
   classType?: "REGULAR" | "PREMIUM";
+  areaType?: AreaType;
   isActive?: boolean;
   coachId?: string;
   page?: number;
@@ -19,6 +25,9 @@ export interface ScheduleQuery {
   date?: string;
   startAfter?: string;
   startBefore?: string;
+  from?: string;
+  to?: string;
+  weekdays?: string;
 }
 
 export const classesApi = {
@@ -32,6 +41,7 @@ export const classesApi = {
     if (query.search) params.append("search", query.search);
     if (query.sportId) params.append("sportId", query.sportId);
     if (query.classType) params.append("classType", query.classType);
+    if (query.areaType) params.append("areaType", query.areaType);
     if (query.isActive !== undefined)
       params.append("isActive", String(query.isActive));
     if (query.coachId) params.append("coachId", query.coachId);
@@ -70,6 +80,9 @@ export const classesApi = {
     if (query.date) params.append("date", query.date);
     if (query.startAfter) params.append("startAfter", query.startAfter);
     if (query.startBefore) params.append("startBefore", query.startBefore);
+    if (query.from) params.append("from", query.from);
+    if (query.to) params.append("to", query.to);
+    if (query.weekdays) params.append("weekdays", query.weekdays);
 
     return {
       schedules: (

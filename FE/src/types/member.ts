@@ -4,6 +4,7 @@ export type MemberTier = "FREE" | "MEMBERSHIP" | "PREMIUM";
 export type MembershipStatus = "ACTIVE" | "EXPIRED" | "CANCELLED" | "SUSPENDED";
 export type TrainingLevel = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
 export type ClassType = "REGULAR" | "PREMIUM";
+export type AreaType = "POOL" | "INDOOR" | "OUTDOOR";
 export type ScheduleStatus = "SCHEDULED" | "CANCELLED" | "COMPLETED";
 export type EnrollmentStatus = "BOOKED" | "CANCELLED" | "COMPLETED";
 export type PaymentMethod = "CASH" | "BANK_TRANSFER";
@@ -39,6 +40,7 @@ export interface Sport {
   name: string;
   description?: string | null;
   isActive: boolean;
+  areaTypes?: AreaType[];
   createdAt: string;
   updatedAt: string;
 }
@@ -48,11 +50,14 @@ export interface Room {
   name: string;
   capacity: number;
   location?: string | null;
+  areaType: AreaType;
   isActive: boolean;
 }
 
 export interface CoachInfo {
   id: string;
+  coachId?: string;
+  isPrimary: boolean;
   coach: {
     id: string;
     specialization?: string | null;
@@ -75,6 +80,7 @@ export interface ClassItem {
   sports?: (Sport | { sport: Sport; sportId?: string })[];
   capacity: number;
   classType: ClassType;
+  areaType: AreaType;
   isActive: boolean;
   coaches?: CoachInfo[];
   schedules?: ClassSchedule[];
@@ -97,7 +103,14 @@ export interface ClassSchedule {
   status: ScheduleStatus;
   _count?: {
     enrollments: number;
+    totalEnrollments?: number;
+    BOOKED?: number;
+    COMPLETED?: number;
+    CANCELLED?: number;
   };
+  availableSlots?: number;
+  isFull?: boolean;
+  canBook?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -113,6 +126,22 @@ export interface Enrollment {
   schedule: ClassSchedule;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ConcurrentClassQuota {
+  hasActiveSubscription: boolean;
+  tier: MemberTier | null;
+  limit: number;
+  used: number;
+  remaining: number;
+  classes: Array<{
+    classId: string;
+    className: string;
+    futureBookedScheduleCount: number;
+    scheduleId: string;
+    scheduleStartTime: string;
+    enrollmentId: string;
+  }>;
 }
 
 export interface MembershipPlan {

@@ -83,6 +83,7 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
     "rooms",
     "classes",
     "schedules",
+    "activity-planner",
     "reports",
     "roles",
     "audit-logs",
@@ -92,6 +93,11 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
     await expect(page.locator("main h1")).toBeVisible();
     await expect(page.getByText("Không tìm thấy trang")).toHaveCount(0);
   }
+  await page.goto("/manager/activity-planner");
+  await expect(page.getByRole("heading", { name: "Tạo lịch hoạt động nhanh" })).toBeVisible();
+  await expect(page.getByText(/Học vào các thứ/)).toBeVisible();
+  await page.getByRole("button", { name: "Thêm slot giờ" }).click();
+  await expect(page.getByLabel("Slot 2 bắt đầu")).toBeVisible();
   await page.goto("/manager/rooms");
   await page
     .getByRole("button", { name: "Thêm phòng tập", exact: true })
@@ -106,6 +112,7 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
   expect((await sent).postDataJSON()).toEqual({
     name: "Test Room",
     capacity: 12,
+    areaType: "INDOOR",
   });
   await expect(page.getByRole("status")).toContainText("Đã lưu thay đổi");
   await page.setViewportSize({ width: 390, height: 844 });

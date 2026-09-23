@@ -87,6 +87,24 @@ const messages: Record<string, string> = {
     "Không thể ngừng gói đang có hội viên sử dụng.",
   "cannot deactivate room with upcoming schedules":
     "Không thể ngừng phòng đang có lịch học sắp tới.",
+  "target schedule must belong to the same class as the current enrollment":
+    "Bạn chỉ có thể đổi sang buổi khác trong cùng lớp.",
+  "enrollment is no longer booked (it may have been transferred or cancelled already)":
+    "Chỗ hiện tại đã được đổi hoặc hủy. Danh sách sẽ được tải lại.",
+  "only booked enrollments can be transferred":
+    "Chỉ có thể đổi buổi cho lượt đăng ký đang giữ chỗ.",
+  "cannot transfer to the same schedule": "Hãy chọn một buổi khác.",
+  "support coach is already the primary coach of this class":
+    "Huấn luyện viên này đang là HLV chính của lớp.",
+  "cannot change class area type while upcoming schedules use incompatible rooms":
+    "Không thể đổi khu vực lớp khi lịch sắp tới đang dùng phòng không tương thích.",
+  "cannot change room area type while upcoming schedules use incompatible classes":
+    "Không thể đổi khu vực phòng khi còn lịch sắp tới của lớp không tương thích.",
+  "attendance penalty not found": "Không tìm thấy quyết định chuyên cần.",
+  "appeal window has expired": "Đã quá thời hạn gửi khiếu nại.",
+  "penalty has already been appealed": "Quyết định này đã được khiếu nại.",
+  "invalid or expired manual attendance code":
+    "Mã điểm danh không hợp lệ hoặc đã hết hạn. Hãy xin mã mới từ huấn luyện viên.",
   "cannot deactivate sport with active classes":
     "Không thể ngừng bộ môn đang có lớp hoạt động.",
   "cannot create subscription: user is not an active member":
