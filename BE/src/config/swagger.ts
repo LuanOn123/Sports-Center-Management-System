@@ -82,6 +82,21 @@ const options: swaggerJSDoc.Options = {
             },
           },
         },
+        TooManyRequests: {
+          description: "Too many attempts (rate limited) — e.g. nhập sai mã điểm danh dự phòng quá nhiều lần",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                example: {
+                  success: false,
+                  message:
+                    "Bạn đã nhập sai mã điểm danh quá nhiều lần. Vui lòng thử lại sau hoặc nhờ HLV điểm danh trực tiếp.",
+                },
+              },
+            },
+          },
+        },
         ServerError: {
           description: "Unexpected internal server error",
           content: {
@@ -358,7 +373,11 @@ const options: swaggerJSDoc.Options = {
           },
         },
         MembershipStatusOk: {
-          description: "Effective member tier and active subscription",
+          description:
+            "Effective member tier and active subscription. `effectiveTier` = tier của subscription ACTIVE " +
+            "(FREE | MEMBERSHIP | PREMIUM — FREE chỉ khi member thực sự có gói FREE ACTIVE). " +
+            "Khi member KHÔNG có subscription ACTIVE: `effectiveTier = null`, `activeSubscription = null`, " +
+            "`daysRemaining = null` — nhất quán với GET /enrollments/my/quota (không dùng \"FREE\" để đại diện).",
           content: {
             "application/json": {
               schema: {
@@ -374,6 +393,32 @@ const options: swaggerJSDoc.Options = {
                       plan: { name: "Membership Monthly", tier: "MEMBERSHIP" },
                     },
                     daysRemaining: 21,
+                  },
+                },
+              },
+              examples: {
+                withActiveSubscription: {
+                  summary: "Có gói ACTIVE → effectiveTier = tier của gói",
+                  value: {
+                    success: true,
+                    message: "Membership status retrieved successfully",
+                    data: {
+                      effectiveTier: "FREE",
+                      activeSubscription: {
+                        status: "ACTIVE",
+                        endDate: "2036-09-20T00:00:00.000Z",
+                        plan: { name: "FREE", tier: "FREE" },
+                      },
+                      daysRemaining: 3650,
+                    },
+                  },
+                },
+                noActiveSubscription: {
+                  summary: "Không có gói ACTIVE → effectiveTier = null (KHÔNG phải \"FREE\")",
+                  value: {
+                    success: true,
+                    message: "Membership status retrieved successfully",
+                    data: { effectiveTier: null, activeSubscription: null, daysRemaining: null },
                   },
                 },
               },
@@ -462,6 +507,7 @@ const options: swaggerJSDoc.Options = {
                       price: "300000",
                       durationDays: 30,
                       tier: "MEMBERSHIP",
+                      maxConcurrentClasses: 3,
                       isActive: true,
                     },
                   ],
@@ -486,6 +532,7 @@ const options: swaggerJSDoc.Options = {
                     price: "100000",
                     durationDays: 7,
                     tier: "MEMBERSHIP",
+                    maxConcurrentClasses: 3,
                     isActive: true,
                   },
                 },
@@ -508,6 +555,7 @@ const options: swaggerJSDoc.Options = {
                     price: "300000",
                     durationDays: 30,
                     tier: "MEMBERSHIP",
+                    maxConcurrentClasses: 3,
                     isActive: true,
                   },
                 },
@@ -916,6 +964,54 @@ const options: swaggerJSDoc.Options = {
                       class: { name: "Morning Yoga", sports: [{ name: "Yoga" }] },
                       room: { name: "Yoga Room A" },
                     },
+                  },
+                },
+              },
+            },
+          },
+        },
+        ConcurrentClassQuotaOk: {
+          description:
+            "Quota lớp học song song của chính member đang đăng nhập. " +
+            "`used` = số Class KHÁC NHAU (DISTINCT Class, KHÔNG phải số Schedule) đang có Enrollment BOOKED ở buổi SCHEDULED chưa bắt đầu; " +
+            "`remaining = max(0, limit - used)` với `limit = MembershipPlan.maxConcurrentClasses` của gói ACTIVE. " +
+            "`hasActiveSubscription = true` + `tier` = tier gói khi member có MembershipSubscription ACTIVE " +
+            "(member mới được auto-provision gói FREE nên tier = FREE, limit = 0). " +
+            "Nếu member KHÔNG có subscription ACTIVE: `hasActiveSubscription = false`, `tier = null`, `limit = 0`, `remaining = 0` — " +
+            "KHÔNG dùng tier FREE để đại diện cho trường hợp thiếu subscription. " +
+            "`classes[]` có đúng MỘT entry cho mỗi DISTINCT Class; `futureBookedScheduleCount` là số buổi tương lai đang BOOKED của Class đó " +
+            "và `scheduleId`/`scheduleStartTime`/`enrollmentId` chỉ là buổi ĐẠI DIỆN (gần nhất), không phải toàn bộ buổi.",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                example: {
+                  success: true,
+                  message: "Concurrent class quota retrieved successfully",
+                  data: {
+                    hasActiveSubscription: true,
+                    tier: "MEMBERSHIP",
+                    limit: 3,
+                    used: 2,
+                    remaining: 1,
+                    classes: [
+                      {
+                        classId: "class-1",
+                        className: "Yoga Beginner",
+                        futureBookedScheduleCount: 2,
+                        scheduleId: "schedule-1",
+                        scheduleStartTime: "2026-09-25T18:00:00.000Z",
+                        enrollmentId: "enrollment-1",
+                      },
+                      {
+                        classId: "class-2",
+                        className: "Boxing Basic",
+                        futureBookedScheduleCount: 1,
+                        scheduleId: "schedule-2",
+                        scheduleStartTime: "2026-09-26T09:00:00.000Z",
+                        enrollmentId: "enrollment-2",
+                      },
+                    ],
                   },
                 },
               },

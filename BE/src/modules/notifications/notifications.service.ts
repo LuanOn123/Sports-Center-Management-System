@@ -23,6 +23,10 @@ export type NotificationTypeEnum =
   // Lớp học mới
   | "NEW_CLASS"
   | "COACH_CHANGED"
+  // Chuyên cần (Attendance)
+  | "ATTENDANCE_WARNING"
+  | "ATTENDANCE_PENALTY"
+  | "ATTENDANCE_PENALTY_REVOKED"
   // Lịch học đổi phòng (bulk transfer Room hư)
   | "SCHEDULE_ROOM_CHANGED"
   // Thanh toán

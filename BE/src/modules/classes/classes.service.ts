@@ -155,7 +155,13 @@ export async function updateClass(id: string, data: any) {
   return prisma.class.update({ where: { id }, data: updateData, include: classInclude });
 }
 
-async function notifyCoachChange(classId: string, className: string, coachName: string, action: "ASSIGNED" | "REMOVED") {
+async function notifyCoachChange(
+  classId: string,
+  className: string,
+  coachName: string,
+  action: "ASSIGNED" | "REMOVED",
+  isPrimary = true
+) {
   const upcomingSchedules = await prisma.classSchedule.findMany({
     where: { classId, status: "SCHEDULED", startTime: { gt: new Date() } },
     include: {
@@ -176,8 +182,10 @@ async function notifyCoachChange(classId: string, className: string, coachName: 
   if (userIdsToNotify.size > 0) {
     const title = action === "ASSIGNED" ? `Thay đổi HLV: Lớp ${className}` : `Thay đổi HLV: Lớp ${className}`;
     const body = action === "ASSIGNED" 
-      ? `HLV ${coachName} vừa được phân công phụ trách lớp "${className}" mà bạn đã đặt lịch. Cùng chờ đón các buổi tập sắp tới nhé!`
-      : `HLV ${coachName} sẽ ngừng phụ trách lớp "${className}" của bạn. Quản lý sẽ sớm phân công HLV thay thế.`;
+      ? `${isPrimary ? "HLV" : "HLV hỗ trợ"} ${coachName} vừa được phân công ${isPrimary ? "phụ trách" : "hỗ trợ"} lớp "${className}" mà bạn đã đặt lịch. Cùng chờ đón các buổi tập sắp tới nhé!`
+      : isPrimary
+        ? `HLV ${coachName} sẽ ngừng phụ trách lớp "${className}" của bạn. Quản lý sẽ sớm phân công HLV thay thế.`
+        : `HLV hỗ trợ ${coachName} sẽ ngừng hỗ trợ lớp "${className}". Lớp vẫn diễn ra bình thường với HLV chính.`;
     
     broadcastNotification(
       Array.from(userIdsToNotify),
@@ -189,21 +197,22 @@ async function notifyCoachChange(classId: string, className: string, coachName: 
   }
 }
 
-export async function assignCoach(classId: string, coachId: string, isPrimary: boolean) {
-  const cls = await prisma.class.findUnique({ where: { id: classId } });
-  if (!cls) throw new AppError("Class not found", 404);
-
-  const coach = await prisma.coachProfile.findUnique({ 
+/** HLV hợp lệ để phân công: tồn tại, đúng role COACH và đang hoạt động. */
+async function findAssignableCoach(coachId: string) {
+  const coach = await prisma.coachProfile.findUnique({
     where: { id: coachId },
-    include: { user: true }
+    include: { user: true },
   });
   if (!coach || !coach.user.isActive || coach.user.role !== "COACH") {
     throw new AppError("Active coach not found", 404);
   }
+  return coach;
+}
 
-  // Check for conflicts with existing upcoming schedules
+/** Chặn phân công nếu coach bị trùng lịch với các buổi SCHEDULED sắp tới của Class. */
+async function assertNoUpcomingScheduleConflict(classId: string, coachId: string) {
   const upcomingSchedules = await prisma.classSchedule.findMany({
-    where: { classId, status: "SCHEDULED", startTime: { gt: new Date() } }
+    where: { classId, status: "SCHEDULED", startTime: { gt: new Date() } },
   });
 
   for (const schedule of upcomingSchedules) {
@@ -214,7 +223,7 @@ export async function assignCoach(classId: string, coachId: string, isPrimary: b
         startTime: { lt: schedule.endTime },
         endTime: { gt: schedule.startTime },
         class: { coaches: { some: { coachId } } },
-      }
+      },
     });
     if (conflict) {
       throw new AppError(
@@ -223,6 +232,14 @@ export async function assignCoach(classId: string, coachId: string, isPrimary: b
       );
     }
   }
+}
+
+export async function assignCoach(classId: string, coachId: string, isPrimary: boolean) {
+  const cls = await prisma.class.findUnique({ where: { id: classId } });
+  if (!cls) throw new AppError("Class not found", 404);
+
+  const coach = await findAssignableCoach(coachId);
+  await assertNoUpcomingScheduleConflict(classId, coachId);
 
   // Check if coach is already assigned to determine if we should send ASSIGNED notification
   const existingAssignment = await prisma.classMember.findUnique({
@@ -246,8 +263,47 @@ export async function assignCoach(classId: string, coachId: string, isPrimary: b
   });
 
   if (!existingAssignment) {
-    await notifyCoachChange(classId, cls.name, coach.user.fullName, "ASSIGNED");
+    await notifyCoachChange(classId, cls.name, coach.user.fullName, "ASSIGNED", isPrimary);
   }
+
+  return getClassById(classId);
+}
+
+/**
+ * Phân công HLV hỗ trợ (support coach) cho Class.
+ * Quy ước: mỗi Class chỉ có duy nhất 1 HLV chính (isPrimary = true), HLV hỗ trợ lưu isPrimary = false.
+ * - 400: Class đã ngừng hoạt động.
+ * - 404: Class hoặc HLV đang hoạt động không tồn tại.
+ * - 409: HLV đang là HLV chính của Class, hoặc trùng lịch với buổi SCHEDULED sắp tới.
+ * Idempotent: HLV đã là HLV hỗ trợ thì trả về chi tiết Class và không gửi lại thông báo.
+ */
+export async function assignSupportCoach(classId: string, coachId: string) {
+  const cls = await prisma.class.findUnique({ where: { id: classId } });
+  if (!cls) throw new AppError("Class not found", 404);
+  if (!cls.isActive) throw new AppError("Class is inactive", 400);
+
+  const coach = await findAssignableCoach(coachId);
+
+  const existingAssignment = await prisma.classMember.findUnique({
+    where: { classId_coachId: { classId, coachId } },
+  });
+
+  // HLV chính không kiêm nhiệm HLV hỗ trợ: đổi vai trò phải dùng POST /classes/:id/coaches.
+  if (existingAssignment?.isPrimary) {
+    throw new AppError(
+      "Coach is the primary coach of this class. Reassign roles via POST /classes/:id/coaches",
+      409
+    );
+  }
+
+  // Đã là HLV hỗ trợ: idempotent, không tạo trùng và không gửi lại thông báo.
+  if (existingAssignment) return getClassById(classId);
+
+  await assertNoUpcomingScheduleConflict(classId, coachId);
+
+  await prisma.classMember.create({ data: { classId, coachId, isPrimary: false } });
+
+  await notifyCoachChange(classId, cls.name, coach.user.fullName, "ASSIGNED", false);
 
   return getClassById(classId);
 }
@@ -261,7 +317,7 @@ export async function removeCoach(classId: string, coachId: string) {
   
   await prisma.classMember.delete({ where: { classId_coachId: { classId, coachId } } });
   
-  await notifyCoachChange(classId, cm.class.name, cm.coach.user.fullName, "REMOVED");
+  await notifyCoachChange(classId, cm.class.name, cm.coach.user.fullName, "REMOVED", cm.isPrimary);
 
   return getClassById(classId);
 }

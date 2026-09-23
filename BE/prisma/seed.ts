@@ -1,6 +1,8 @@
 import "dotenv/config";
 import { PrismaClient, UserRole, MemberTier, ClassType, AreaType, PaymentMethod, PaymentStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { FREE_PLAN } from "../src/config/membership.js";
+import { ensureActiveFreeSubscription } from "../src/modules/subscriptions/free-subscription.service.js";
 
 const prisma = new PrismaClient();
 
@@ -168,6 +170,7 @@ async function main() {
       price: 300000,
       durationDays: 30,
       tier: MemberTier.MEMBERSHIP,
+      maxConcurrentClasses: 3,
       isActive: true,
     },
   });
@@ -182,6 +185,7 @@ async function main() {
       price: 800000,
       durationDays: 90,
       tier: MemberTier.MEMBERSHIP,
+      maxConcurrentClasses: 3,
       isActive: true,
     },
   });
@@ -196,6 +200,24 @@ async function main() {
       price: 600000,
       durationDays: 30,
       tier: MemberTier.PREMIUM,
+      maxConcurrentClasses: 6,
+      isActive: true,
+    },
+  });
+
+  // Gói FREE hệ thống — Member mới được auto-provision subscription ACTIVE với plan này (quota 0).
+  // Chỉ MỘT plan FREE duy nhất: upsert theo id cố định, provisioning runtime cũng reuse plan FREE active.
+  await prisma.membershipPlan.upsert({
+    where: { id: "plan-free-001" },
+    update: {},
+    create: {
+      id: "plan-free-001",
+      name: FREE_PLAN.name,
+      description: FREE_PLAN.description,
+      price: FREE_PLAN.price,
+      durationDays: FREE_PLAN.durationDays,
+      tier: MemberTier.FREE,
+      maxConcurrentClasses: 0,
       isActive: true,
     },
   });
@@ -408,7 +430,13 @@ async function main() {
   const member1Profile = member1.memberProfile;
   const member2Profile = member2.memberProfile;
 
-  if (member1Profile) {
+  // Seed chạy lại KHÔNG được tạo subscription trùng: chỉ seed gói trả phí khi member chưa có gói ACTIVE.
+  const hasActiveSubscription = async (memberProfileId: string) =>
+    (await prisma.membershipSubscription.count({
+      where: { memberId: memberProfileId, status: "ACTIVE" },
+    })) > 0;
+
+  if (member1Profile && !(await hasActiveSubscription(member1Profile.id))) {
     const subStartDate = new Date();
     const subEndDate = new Date();
     subEndDate.setDate(subEndDate.getDate() + planBasic.durationDays);
@@ -454,7 +482,7 @@ async function main() {
     console.log("Subscription for member1 created");
   }
 
-  if (member2Profile) {
+  if (member2Profile && !(await hasActiveSubscription(member2Profile.id))) {
     const subStartDate = new Date();
     const subEndDate = new Date();
     subEndDate.setDate(subEndDate.getDate() + planPremium.durationDays);
@@ -497,6 +525,20 @@ async function main() {
     });
 
     console.log("Subscription for member2 created");
+  }
+
+  // ─── AUTO FREE SUBSCRIPTION cho MEMBER chưa có gói ACTIVE ────────────
+  // Member mới luôn phải có subscription ACTIVE (tier FREE, quota 0). Idempotent:
+  // member đã có ACTIVE subscription (member1/member2) sẽ không bị tạo thêm.
+  const memberProfiles = [member1.memberProfile, member2.memberProfile, member3.memberProfile];
+  for (const profile of memberProfiles) {
+    if (!profile) continue;
+    const result = await prisma.$transaction((tx) =>
+      ensureActiveFreeSubscription(tx, profile.id)
+    );
+    console.log(
+      `Member ${profile.id}: ${result.created ? "created ACTIVE FREE subscription" : "already has ACTIVE subscription"}`
+    );
   }
 
   console.log("\nSeeding completed!");
