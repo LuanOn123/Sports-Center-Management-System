@@ -6,6 +6,7 @@ import {
   CreateClassSchema,
   UpdateClassSchema,
   AssignCoachSchema,
+  AssignSupportCoachSchema,
   ClassQuerySchema,
 } from "./classes.schema.js";
 import * as classesController from "./classes.controller.js";
@@ -284,6 +285,53 @@ router.post(
   authorize("MANAGER", "STAFF"),
   validate(AssignCoachSchema),
   classesController.assignCoach
+);
+
+/**
+ * @swagger
+ * /classes/{id}/coaches/support:
+ *   post:
+ *     summary: Assign a support coach to class (Sends COACH_CHANGED notification to enrolled members)
+ *     description: >
+ *       Gán HLV hỗ trợ cho Class. Mỗi Class chỉ có duy nhất 1 HLV chính (isPrimary = true),
+ *       HLV hỗ trợ luôn được lưu với isPrimary = false nên endpoint này không nhận isPrimary.
+ *       Idempotent khi HLV đã là HLV hỗ trợ của Class (không gửi lại thông báo).
+ *       Trả 409 nếu HLV đang là HLV chính của Class hoặc trùng lịch với buổi SCHEDULED sắp tới.
+ *     tags: [Classes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Class ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - coachId
+ *             properties:
+ *               coachId:
+ *                 type: string
+ *                 description: CoachProfile ID
+ *     responses:
+ *       200: { $ref: "#/components/responses/ClassOk" }
+ *       400: { $ref: "#/components/responses/BadRequest" }
+ *       401: { $ref: "#/components/responses/Unauthorized" }
+ *       403: { $ref: "#/components/responses/Forbidden" }
+ *       404: { $ref: "#/components/responses/NotFound" }
+ *       409: { $ref: "#/components/responses/Conflict" }
+ *       500: { $ref: "#/components/responses/ServerError" }
+ */
+router.post(
+  "/:id/coaches/support",
+  authenticate,
+  authorize("MANAGER", "STAFF"),
+  validate(AssignSupportCoachSchema),
+  classesController.assignSupportCoach
 );
 
 /**

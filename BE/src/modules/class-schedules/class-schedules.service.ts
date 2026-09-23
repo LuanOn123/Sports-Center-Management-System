@@ -3,6 +3,8 @@ import { Prisma, EnrollmentStatus } from "@prisma/client";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { broadcastNotification } from "../notifications/notifications.service.js";
+import { ATTENDANCE } from "../../config/attendance.js";
+import { scanAttendanceWarnings } from "../attendance/attendance.service.js";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
@@ -297,7 +299,7 @@ async function cancelScheduleTx(
 export async function updateSchedule(id: string, data: any) {
   const existing = await prisma.classSchedule.findUnique({
     where: { id },
-    include: { class: true },
+    include: { class: true, room: true },
   });
   if (!existing) throw new AppError("Schedule not found", 404);
 
@@ -351,7 +353,7 @@ export async function updateSchedule(id: string, data: any) {
 
   // Đổi room/time: lock old room + new room + coaches rồi re-check trong tx.
   if (timeOrRoomChanged) {
-    return prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx) => {
       const room = await tx.room.findUnique({ where: { id: roomId } });
       if (!room || !room.isActive) throw new AppError("Room not found or inactive", 404);
       if (room.capacity < existing.class.capacity) {
@@ -369,6 +371,40 @@ export async function updateSchedule(id: string, data: any) {
         include: { class: { include: { sports: true } }, room: true },
       });
     });
+
+    // Thông báo cho hội viên đã đặt chỗ khi lịch bị dời giờ/phòng.
+    // (Enum đã có SCHEDULE_UPDATED nhưng trước đây chưa nơi nào phát.)
+    const enrollments = await prisma.enrollment.findMany({
+      where: { scheduleId: id, status: "BOOKED" },
+      include: { member: { select: { userId: true } } },
+    });
+    const userIds = [...new Set(enrollments.map((e) => e.member.userId))];
+    if (userIds.length > 0) {
+      const fmt = (d: Date) => d.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+      const changes: string[] = [];
+      if (
+        updated.startTime.getTime() !== existing.startTime.getTime() ||
+        updated.endTime.getTime() !== existing.endTime.getTime()
+      ) {
+        changes.push(
+          `Thời gian mới: ${fmt(updated.startTime)} – ${fmt(updated.endTime)} (trước đó: ${fmt(existing.startTime)} – ${fmt(existing.endTime)}).`
+        );
+      }
+      if (updated.roomId !== existing.roomId) {
+        changes.push(`Phòng mới: ${updated.room.name} (trước đó: ${existing.room.name}).`);
+      }
+      if (changes.length > 0) {
+        broadcastNotification(
+          userIds,
+          "SCHEDULE_UPDATED",
+          `Lịch học đã thay đổi: ${updated.class.name}`,
+          `Lịch học "${updated.class.name}" mà bạn đã đặt có thay đổi. ${changes.join(" ")} Vui lòng kiểm tra lại lịch của bạn.`,
+          { metadata: { scheduleId: id, classId: updated.classId } }
+        ).catch(() => {});
+      }
+    }
+
+    return updated;
   }
 
   // Không có gì để đổi (ví dụ status=SCHEDULED trong khi đã SCHEDULED): trả hiện tại.
@@ -432,7 +468,33 @@ export async function completeSchedule(id: string) {
     throw new AppError("Cannot complete a schedule that has not ended yet", 400);
   }
 
-  return prisma.$transaction(async (tx) => {
+  const completed = await prisma.$transaction(async (tx) => {
+    // §4: No-show — tạo ABSENT hệ thống cho member BOOKED chưa được điểm danh.
+    // Unique (scheduleId, memberId) + skipDuplicates chống tạo trùng.
+    const booked = await tx.enrollment.findMany({
+      where: { scheduleId: id, status: "BOOKED" },
+      select: { memberId: true },
+    });
+    if (booked.length > 0) {
+      const marked = await tx.attendance.findMany({
+        where: { scheduleId: id },
+        select: { memberId: true },
+      });
+      const markedSet = new Set(marked.map((m) => m.memberId));
+      const missing = booked.filter((b) => !markedSet.has(b.memberId));
+      if (missing.length > 0) {
+        await tx.attendance.createMany({
+          data: missing.map((m) => ({
+            scheduleId: id,
+            memberId: m.memberId,
+            status: "ABSENT" as const,
+            note: ATTENDANCE.SYSTEM_NO_SHOW_NOTE,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    }
+
     // Mark all still-BOOKED enrollments as COMPLETED
     await tx.enrollment.updateMany({
       where: { scheduleId: id, status: "BOOKED" },
@@ -445,4 +507,10 @@ export async function completeSchedule(id: string) {
       include: { class: { include: { sports: true } }, room: true },
     });
   });
+
+  // §7: quét lại chuyên cần của lớp và gửi warning cho các bucket WARN (dedupe theo rate).
+  // Fire-and-forget để không chặn response; không ảnh hưởng kết quả complete.
+  scanAttendanceWarnings(schedule.classId).catch(() => {});
+
+  return completed;
 }
