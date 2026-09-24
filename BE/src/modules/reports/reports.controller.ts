@@ -30,3 +30,24 @@ export async function getMembershipReport(req: Request, res: Response, next: Nex
     sendSuccess(res, report, "Membership report retrieved successfully");
   } catch (err) { next(err); }
 }
+
+export async function getSubscriptionLogs(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { startDate, endDate, page, limit } = req.query as any;
+    const report = await reportsService.getSubscriptionLogs(startDate, endDate, page, limit);
+    sendSuccess(res, report, "Subscription logs retrieved successfully");
+  } catch (err) { next(err); }
+}
+
+export async function getAttendanceReport(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { rows, summary, pagination } = await reportsService.getAttendanceReport(req.query as any);
+    sendSuccess(
+      res,
+      { rows, summary },
+      "Attendance report retrieved successfully",
+      200,
+      pagination
+    );
+  } catch (err) { next(err); }
+}

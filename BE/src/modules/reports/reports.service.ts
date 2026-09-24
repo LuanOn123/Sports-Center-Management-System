@@ -1,4 +1,7 @@
 import { prisma } from "../../config/prisma.js";
+import { buildPaginationMeta } from "../../utils/pagination.js";
+import { computeAttendanceBuckets } from "../attendance/attendance-analytics.service.js";
+import { expireStalePenalties } from "../attendance/attendance-penalties.service.js";
 
 export async function getRevenueReport(startDate: string, endDate: string) {
   // BR-26: Parse as VN business day boundaries (start of startDate, end of endDate in +07:00)
@@ -216,4 +219,121 @@ export async function getMembershipReport(startDate: string, endDate: string) {
     subscriptionsByTier: tierMap,
     totalRevenue: Number(revenueAgg._sum.amount ?? 0),
   };
+}
+
+export async function getSubscriptionLogs(startDate?: string, endDate?: string, pageStr?: string, limitStr?: string) {
+  const page = Math.max(1, parseInt(pageStr ?? "1") || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(limitStr ?? "20") || 20));
+  const skip = (page - 1) * limit;
+
+  const where: any = {};
+  if (startDate && endDate) {
+    const start = new Date(`${startDate}T00:00:00+07:00`);
+    const end = new Date(`${endDate}T23:59:59.999+07:00`);
+    where.createdAt = { gte: start, lte: end };
+  }
+
+  const [total, subs] = await Promise.all([
+    prisma.membershipSubscription.count({ where }),
+    prisma.membershipSubscription.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+      include: {
+        member: { include: { user: { select: { fullName: true, email: true } } } },
+        plan: { select: { name: true, price: true } },
+        payments: { select: { amount: true, status: true, paidAt: true }, take: 1, orderBy: { createdAt: "desc" } }
+      }
+    })
+  ]);
+
+  const formattedLogs = subs.map(sub => ({
+    id: sub.id,
+    action: "Mua / Gia hạn gói", // Action description as requested
+    username: sub.member.user.fullName,
+    email: sub.member.user.email,
+    planName: sub.plan.name,
+    planTier: sub.tier,
+    price: Number(sub.payments[0]?.amount ?? sub.plan.price),
+    paymentStatus: sub.payments[0]?.status ?? "N/A",
+    startDate: sub.startDate,
+    endDate: sub.endDate,
+    purchasedAt: sub.createdAt, // Real-time timestamp
+  }));
+
+  return {
+    data: formattedLogs,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    }
+  };
+}
+
+/**
+ * §6: Báo cáo chuyên cần theo (member × class) cho Manager review trước khi áp dụng hình phạt.
+ * Cửa sổ tính cố định: tối đa 10 buổi đã kết thúc gần nhất (không dùng date range).
+ * status: OK | WARN | RELEASE; kèm penalty đang hiệu lực (nếu có).
+ */
+export async function getAttendanceReport(query: {
+  status?: string;
+  classId?: string;
+  memberId?: string;
+  page?: string;
+  limit?: string;
+}) {
+  await expireStalePenalties();
+
+  const buckets = await computeAttendanceBuckets(prisma);
+  const penalties = await prisma.attendancePenalty.findMany({
+    where: { status: { in: ["PENDING", "APPLIED"] } },
+    select: {
+      id: true,
+      memberId: true,
+      classId: true,
+      status: true,
+      blockedUntil: true,
+      releasedCount: true,
+    },
+  });
+  const penaltyMap = new Map(penalties.map((p) => [`${p.memberId}|${p.classId}`, p]));
+
+  let rows = buckets.map((bucket) => {
+    const penalty = penaltyMap.get(`${bucket.memberId}|${bucket.classId}`);
+    return {
+      ...bucket,
+      activePenalty: penalty
+        ? {
+            id: penalty.id,
+            status: penalty.status,
+            blockedUntil: penalty.blockedUntil,
+            releasedCount: penalty.releasedCount,
+          }
+        : null,
+    };
+  });
+
+  const summary = {
+    total: rows.length,
+    ok: rows.filter((r) => r.status === "OK").length,
+    warn: rows.filter((r) => r.status === "WARN").length,
+    release: rows.filter((r) => r.status === "RELEASE").length,
+  };
+
+  if (query.status) rows = rows.filter((r) => r.status === query.status);
+  if (query.classId) rows = rows.filter((r) => r.classId === query.classId);
+  if (query.memberId) rows = rows.filter((r) => r.memberId === query.memberId);
+
+  // Ưu tiên rủi ro cao trước: rate thấp nhất, rồi tới mẫu lớn hơn.
+  rows.sort((a, b) => a.attendanceRate - b.attendanceRate || b.sampleSize - a.sampleSize);
+
+  const page = Math.max(1, parseInt(query.page ?? "1") || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(query.limit ?? "20") || 20));
+  const total = rows.length;
+  const paged = rows.slice((page - 1) * limit, page * limit);
+
+  return { rows: paged, summary, pagination: buildPaginationMeta(total, page, limit) };
 }
