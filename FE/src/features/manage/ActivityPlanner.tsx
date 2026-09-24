@@ -35,11 +35,13 @@ function PlannerErrorDialog({
   open,
   error,
   validationErrors,
+  partialDataSaved,
   onClose,
 }: {
   open: boolean;
   error?: unknown;
   validationErrors: string[];
+  partialDataSaved: boolean;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -65,7 +67,9 @@ function PlannerErrorDialog({
           <ul>{validationErrors.map((message) => <li key={message}>{message}</li>)}</ul>
         </div>
       ) : error != null ? <ErrorState error={error} /> : null}
-      {error != null && <p className="field-note planner-rollback-note">Không có bộ môn, lớp hay buổi lịch nào của lần gửi này được lưu. Thông tin bạn đã nhập vẫn được giữ nguyên để sửa.</p>}
+      {error != null && <p className="field-note planner-rollback-note">{partialDataSaved
+        ? "Các bước đã hoàn tất trước khi phát sinh lỗi có thể đã được lưu. Hãy kiểm tra danh sách bộ môn, lớp và lịch trước khi tạo lại để tránh trùng dữ liệu."
+        : "Chưa có dữ liệu mới nào được lưu. Thông tin bạn đã nhập vẫn được giữ nguyên để sửa."}</p>}
       <div className="modal-footer">
         <button type="button" className="button primary" onClick={onClose}>Quay lại chỉnh sửa</button>
       </div>
@@ -79,6 +83,7 @@ export function ActivityPlanner({ role }: { role: "MANAGER" | "STAFF" }) {
   const [sportId, setSportId] = useState("");
   const [sportName, setSportName] = useState("");
   const [sportDescription, setSportDescription] = useState("");
+  const [sportAreaType, setSportAreaType] = useState<AreaType>("INDOOR");
   const [className, setClassName] = useState("");
   const [classDescription, setClassDescription] = useState("");
   const [capacity, setCapacity] = useState(20);
@@ -98,6 +103,8 @@ export function ActivityPlanner({ role }: { role: "MANAGER" | "STAFF" }) {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
   const [createdClass, setCreatedClass] = useState<RecordData>();
+  const [creationCompleted, setCreationCompleted] = useState(false);
+  const [partialDataSaved, setPartialDataSaved] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
   const sports = useQuery({ queryKey: ["planner", "sports"], queryFn: ({ signal }) => allPages<RecordData>("GET /sports", { query: { isActive: "true" }, signal }) });
   const rooms = useQuery({ queryKey: ["planner", "rooms"], queryFn: ({ signal }) => allPages<RecordData>("GET /rooms", { query: { isActive: "true" }, signal }) });
@@ -107,10 +114,10 @@ export function ActivityPlanner({ role }: { role: "MANAGER" | "STAFF" }) {
     (room) => room.areaType === areaType && Number(room.capacity) >= capacity,
   );
   const selectedSport = sports.data?.data.find((sport) => sport.id === sportId);
-  const sportCompatible =
-    sportMode === "new" ||
-    !Array.isArray(selectedSport?.areaTypes) ||
-    (selectedSport.areaTypes as unknown[]).includes(areaType);
+  const sportCompatible = sportMode === "new"
+    ? sportAreaType === areaType
+    : !Array.isArray(selectedSport?.areaTypes) ||
+      (selectedSport.areaTypes as unknown[]).includes(areaType);
   const validSlots =
     slots.length > 0 &&
     slots.every((slot) => slot.start < slot.end) &&
@@ -143,8 +150,13 @@ export function ActivityPlanner({ role }: { role: "MANAGER" | "STAFF" }) {
     else if (fromDate && toDate && fromDate <= toDate && !dates.length)
       issues.push("Khoảng ngày đã chọn không chứa thứ học nào.");
     return issues;
-  }, [areaType, capacity, className, coachId, dates.length, fromDate, roomId, selectedDays.length, slots, sportCompatible, sportId, sportMode, sportName, supportCoachId, toDate, validSlots]);
+  }, [areaType, capacity, className, coachId, dates.length, fromDate, roomId, selectedDays.length, slots, sportAreaType, sportCompatible, sportId, sportMode, sportName, supportCoachId, toDate, validSlots]);
   const valid = currentValidationErrors.length === 0;
+  function updateStep(index: number, patch: Partial<Step>) {
+    setSteps((current) => current.map((step, stepIndex) =>
+      stepIndex === index ? { ...step, ...patch } : step,
+    ));
+  }
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
@@ -155,34 +167,97 @@ export function ActivityPlanner({ role }: { role: "MANAGER" | "STAFF" }) {
       return;
     }
     setBusy(true); setError(undefined); setCreatedClass(undefined);
+    setCreationCompleted(false); setPartialDataSaved(false);
     setValidationErrors([]);
-    const labels = ["Kiểm tra toàn bộ thông tin và xung đột", "Tạo lớp và phân công HLV", `Tạo ${totalSchedules} buổi lịch`];
-    setSteps(labels.map((label, index) => ({ label, state: index === 0 ? "running" : "waiting" })));
+    const labels = [
+      sportMode === "new" ? "Tạo bộ môn" : "Dùng bộ môn đã chọn",
+      "Tạo lớp học",
+      "Phân công HLV chính",
+      ...(supportCoachId ? ["Phân công HLV hỗ trợ"] : []),
+      `Tạo ${totalSchedules} buổi lịch`,
+    ];
+    setSteps(labels.map((label, index) => ({
+      label,
+      state: index === 0 ? "running" : "waiting",
+    })));
+    let activeStep = 0;
+    let hasSavedData = false;
     try {
-      const schedules = dates.flatMap((date) => slots.map((slot) => ({
-            startTime: new Date(`${date}T${slot.start}:00+07:00`).toISOString(),
-            endTime: new Date(`${date}T${slot.end}:00+07:00`).toISOString(),
-      })));
-      const result = await api<{ class: RecordData; schedulesCreated: number }>("POST /class-schedules/activity-plan", { body: {
-        sport: sportMode === "new"
-          ? { mode: "new", name: sportName.trim(), description: sportDescription.trim() || undefined }
-          : { mode: "existing", id: sportId },
-        class: { name: className.trim(), description: classDescription.trim() || undefined, capacity, classType, areaType },
-        primaryCoachId: coachId,
-        supportCoachId: supportCoachId || undefined,
-        roomId,
-        schedules,
-      } });
-      setCreatedClass(result.data.class);
-      setSteps(labels.map((label, index) => ({
-        label,
+      let resolvedSportId = sportId;
+      if (sportMode === "new") {
+        const result = await api<RecordData>("POST /sports", {
+          body: {
+            name: sportName.trim(),
+            description: sportDescription.trim() || undefined,
+            areaTypes: [sportAreaType],
+          },
+        });
+        resolvedSportId = String(result.data.id);
+        hasSavedData = true;
+      }
+      updateStep(activeStep++, { state: "done" });
+
+      updateStep(activeStep, { state: "running" });
+      const created = await api<RecordData>("POST /classes", {
+        body: {
+          name: className.trim(),
+          description: classDescription.trim() || undefined,
+          sportIds: [resolvedSportId],
+          capacity,
+          classType,
+          areaType,
+        },
+      });
+      setCreatedClass(created.data);
+      hasSavedData = true;
+      const classId = String(created.data.id);
+      updateStep(activeStep++, { state: "done" });
+
+      updateStep(activeStep, { state: "running" });
+      await api("POST /classes/{id}/coaches", {
+        params: { id: classId },
+        body: { coachId, isPrimary: true },
+      });
+      updateStep(activeStep++, { state: "done" });
+
+      if (supportCoachId) {
+        updateStep(activeStep, { state: "running" });
+        await api("POST /classes/{id}/coaches/support", {
+          params: { id: classId },
+          body: { coachId: supportCoachId },
+        });
+        updateStep(activeStep++, { state: "done" });
+      }
+
+      updateStep(activeStep, {
+        state: "running",
+        detail: `0/${totalSchedules} buổi`,
+      });
+      let createdCount = 0;
+      for (const date of dates) {
+        for (const slot of slots) {
+          await api("POST /class-schedules", {
+            body: {
+              classId,
+              roomId,
+              startTime: new Date(`${date}T${slot.start}:00+07:00`).toISOString(),
+              endTime: new Date(`${date}T${slot.end}:00+07:00`).toISOString(),
+            },
+          });
+          createdCount += 1;
+          updateStep(activeStep, { detail: `${createdCount}/${totalSchedules} buổi` });
+        }
+      }
+      updateStep(activeStep, {
         state: "done",
-        detail: index === 2 ? `${result.data.schedulesCreated}/${totalSchedules} buổi` : undefined,
-      })));
+        detail: `${totalSchedules}/${totalSchedules} buổi`,
+      });
+      setCreationCompleted(true);
       void cache.invalidateQueries({ queryKey: ["resource"] });
       void cache.invalidateQueries({ queryKey: ["planner"] });
     } catch (caught) {
-      setSteps((current) => current.map((step, index) => index === 0 ? { ...step, state: "error" } : step));
+      updateStep(activeStep, { state: "error" });
+      setPartialDataSaved(hasSavedData);
       setError(caught);
       setErrorDialogOpen(true);
     } finally { setBusy(false); }
@@ -193,11 +268,11 @@ export function ActivityPlanner({ role }: { role: "MANAGER" | "STAFF" }) {
   return (
     <div className="workflow-page planner-page">
       <div className="page-heading"><div><div className="eyebrow">MỘT FORM · TRỌN VẸN MỘT LỊCH HOẠT ĐỘNG</div><h1>Tạo lịch hoạt động nhanh</h1><p>Tạo bộ môn (nếu cần), lớp, phân công HLV và toàn bộ lịch lặp chỉ trong một lần nhập.</p></div></div>
-      <form noValidate onSubmit={submit} onInput={() => { if (error != null) setError(undefined); }}>
+      <form noValidate onSubmit={submit}>
         <fieldset disabled={busy} className="planner-grid">
           <section className="panel planner-section"><span className="planner-number">1</span><div><h2>Bộ môn</h2><p>Chọn bộ môn có sẵn hoặc tạo mới.</p></div><div className="form-grid wide">
             <label>Phương án<select value={sportMode} onChange={(event) => setSportMode(event.target.value as "existing" | "new")}><option value="existing">Dùng bộ môn có sẵn</option>{role === "MANAGER" && <option value="new">Tạo bộ môn mới</option>}</select></label>
-            {sportMode === "existing" ? <label>Bộ môn <b className="required">*</b><select value={sportId} onChange={(event) => setSportId(event.target.value)}><option value="">Chọn bộ môn</option>{sports.data.data.map((sport) => <option key={String(sport.id)} value={String(sport.id)}>{display(sport.name)}</option>)}</select></label> : <><label>Tên bộ môn <b className="required">*</b><input value={sportName} minLength={2} onChange={(event) => setSportName(event.target.value)} /></label><label className="wide">Mô tả bộ môn<textarea value={sportDescription} onChange={(event) => setSportDescription(event.target.value)} /></label></>}
+            {sportMode === "existing" ? <label>Bộ môn <b className="required">*</b><select value={sportId} onChange={(event) => setSportId(event.target.value)}><option value="">Chọn bộ môn</option>{sports.data.data.map((sport) => <option key={String(sport.id)} value={String(sport.id)}>{display(sport.name)}</option>)}</select></label> : <><label>Tên bộ môn <b className="required">*</b><input value={sportName} minLength={2} onChange={(event) => setSportName(event.target.value)} /></label><label>Loại khu vực <b className="required">*</b><select value={sportAreaType} onChange={(event) => setSportAreaType(event.target.value as AreaType)}><option value="INDOOR">Trong nhà</option><option value="OUTDOOR">Ngoài trời</option><option value="POOL">Hồ bơi</option></select></label><label className="wide">Mô tả bộ môn<textarea value={sportDescription} onChange={(event) => setSportDescription(event.target.value)} /></label></>}
             {role === "STAFF" && <p className="field-note wide">Lễ tân có thể dùng bộ môn sẵn có. Chỉ quản lý được tạo bộ môn mới.</p>}
           </div></section>
           <section className="panel planner-section"><span className="planner-number">2</span><div><h2>Thông tin lớp</h2><p>Khu vực quyết định phòng nào có thể sử dụng.</p></div><div className="form-grid wide">
@@ -223,10 +298,11 @@ export function ActivityPlanner({ role }: { role: "MANAGER" | "STAFF" }) {
         </fieldset>
         {steps.length > 0 && <section className="panel planner-progress"><h2>Tiến độ tạo dữ liệu</h2>{steps.map((step) => <div key={step.label} className={step.state}>{step.state === "running" ? <LoaderCircle className="spin" size={18} /> : step.state === "done" ? <CheckCircle2 size={18} /> : <Circle size={18} />}<span>{step.label}</span><small>{step.detail}</small></div>)}</section>}
         {error != null && <ErrorState error={error} />}
-        {createdClass && error == null && !busy && <p className="success" role="status">Đã tạo lớp “{display(createdClass.name)}” và {totalSchedules} buổi lịch thành công.</p>}
-        <div className="planner-submit"><div><strong>{totalSchedules} buổi lịch</strong><small>Toàn bộ dữ liệu chỉ được lưu khi không còn lỗi hoặc xung đột.</small></div>{createdClass ? <button type="button" className="button" onClick={() => { setCreatedClass(undefined); setSteps([]); setError(undefined); setClassName(""); setClassDescription(""); setFromDate(""); setToDate(""); setSelectedDays([]); }}>Bắt đầu lịch khác</button> : <button className="button primary" disabled={busy}>{busy ? <><LoaderCircle className="spin" size={17} /> Đang tạo dữ liệu…</> : "Tạo toàn bộ lịch hoạt động"}</button>}</div>
+        {creationCompleted && createdClass && error == null && !busy && <p className="success" role="status">Đã tạo lớp “{display(createdClass.name)}” và {totalSchedules} buổi lịch thành công.</p>}
+        {partialDataSaved && error != null && <p className="field-note">Một số bước trước lỗi đã hoàn tất. Hãy kiểm tra dữ liệu đã tạo trước khi thực hiện lại.</p>}
+        <div className="planner-submit"><div><strong>{totalSchedules} buổi lịch</strong><small>Hệ thống sẽ tạo lần lượt bộ môn, lớp, phân công HLV và từng buổi lịch.</small></div>{creationCompleted || partialDataSaved ? <button type="button" className="button" onClick={() => { setCreatedClass(undefined); setCreationCompleted(false); setPartialDataSaved(false); setSteps([]); setError(undefined); setClassName(""); setClassDescription(""); setFromDate(""); setToDate(""); setSelectedDays([]); }}>Bắt đầu lịch khác</button> : <button className="button primary" disabled={busy}>{busy ? <><LoaderCircle className="spin" size={17} /> Đang tạo dữ liệu…</> : "Tạo toàn bộ lịch hoạt động"}</button>}</div>
       </form>
-      <PlannerErrorDialog open={errorDialogOpen} error={error} validationErrors={validationErrors} onClose={() => setErrorDialogOpen(false)} />
+      <PlannerErrorDialog open={errorDialogOpen} error={error} validationErrors={validationErrors} partialDataSaved={partialDataSaved} onClose={() => setErrorDialogOpen(false)} />
     </div>
   );
 }

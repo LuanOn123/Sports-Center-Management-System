@@ -33,6 +33,7 @@ export const labels: Record<string, string> = {
   capacity: "Sức chứa",
   location: "Vị trí",
   areaType: "Khu vực tập",
+  areaTypes: "Loại khu vực",
   POOL: "Hồ bơi",
   INDOOR: "Trong nhà",
   OUTDOOR: "Ngoài trời",
@@ -160,6 +161,14 @@ export const money = (v: unknown) =>
       }).format(Number(v));
 export function at(row: unknown, path: string): unknown {
   if (path === "sportsLabel") return sportNames(row);
+  if (path === "areaTypesLabel") {
+    const areaTypes = row && typeof row === "object"
+      ? (row as Record<string, unknown>).areaTypes
+      : undefined;
+    return Array.isArray(areaTypes)
+      ? areaTypes.map((value) => label(String(value))).join(", ")
+      : areaTypes;
+  }
   return path
     .split(".")
     .reduce<unknown>(

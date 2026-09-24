@@ -115,17 +115,19 @@ async function transport(
     );
   }
   if (!res.ok || payload.success === false) {
-    const localized = localizeApiError(
-      payload.message,
-      payload.errors,
-      res.status,
-    );
-    throw new ApiError(
+    const rawErrors = (payload as unknown as { errors?: unknown }).errors;
+    const localized = localizeApiError(payload.message, rawErrors, res.status);
+    const error = new ApiError(
       localized.message,
       res.status,
       localized.errors,
       terminalSessionError(String(payload.message || "")),
     );
+    // Bulk course enrollment returns structured blockers instead of field errors.
+    // Preserve that object at runtime so the member flow can render every cause.
+    if (rawErrors && !Array.isArray(rawErrors))
+      (error as unknown as { errors: unknown }).errors = rawErrors;
+    throw error;
   }
   return payload;
 }

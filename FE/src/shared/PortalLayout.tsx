@@ -6,7 +6,7 @@ import type { LucideIcon } from "lucide-react";
 import { useSidebar } from "./useSidebar";
 import { Brand } from "./Brand";
 import type { ProfileOk } from "./generated";
-import { Chat, Notifications } from "./Communication";
+import { Chat, FloatingChat, NotificationBell, Notifications } from "./Communication";
 import { Policies } from "./Policies";
 export type NavigationItem = readonly [
   path: string,
@@ -48,8 +48,6 @@ export function PortalLayout({
     {
       title: "KẾT NỐI",
       items: [
-        ["notifications", "Thông báo"],
-        ["chat", "Tin nhắn"],
         ["policies", "Chính sách sử dụng"],
       ] as NavigationItem[],
     },
@@ -145,17 +143,20 @@ export function PortalLayout({
             </button>
             <strong>{pageTitle}</strong>
           </div>
-          <Link
-            className="profile-link"
-            to={base + "/profile"}
-            aria-label={`Tài khoản của ${user.fullName}`}
-          >
-            <div>
-              <strong>{user.fullName}</strong>
-              <small>{title}</small>
-            </div>
-            <span className="avatar">{user.fullName.slice(0, 1)}</span>
-          </Link>
+          <div className="topbar-actions">
+            <NotificationBell />
+            <Link
+              className="profile-link"
+              to={base + "/profile"}
+              aria-label={`Tài khoản của ${user.fullName}`}
+            >
+              <div>
+                <strong>{user.fullName}</strong>
+                <small>{title}</small>
+              </div>
+              <span className="avatar">{user.fullName.slice(0, 1)}</span>
+            </Link>
+          </div>
         </header>
         <main id="main-content" tabIndex={-1}>
           {location.pathname === `${base}/notifications` ? (
@@ -172,6 +173,7 @@ export function PortalLayout({
           © {new Date().getFullYear()} Pulse Sports Center
         </footer>
       </div>
+      <FloatingChat userId={user.id} />
     </div>
   );
 }

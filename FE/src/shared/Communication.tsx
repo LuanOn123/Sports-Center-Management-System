@@ -7,7 +7,7 @@ import {
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { io, type Socket } from "socket.io-client";
-import { Paperclip, Search, Send, Users, Wifi, WifiOff, X } from "lucide-react";
+import { Bell, CheckCheck, MessageCircle, Paperclip, Search, Send, Users, Wifi, WifiOff, X } from "lucide-react";
 import { api, BASE_URL, getAccessToken, type RecordData } from "./api";
 import { Empty, ErrorState, Loading } from "./ui";
 import { display } from "./config";
@@ -21,6 +21,100 @@ type Notification = {
   isRead: boolean;
   createdAt: string;
 };
+
+export function NotificationBell() {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const cache = useQueryClient();
+  const count = useQuery({
+    queryKey: ["notifications", "count"],
+    queryFn: ({ signal }) =>
+      api<{ unreadCount: number }>("GET /notifications/unread-count", { signal }),
+    refetchInterval: 20_000,
+  });
+  const list = useQuery({
+    queryKey: ["notifications", "popover"],
+    queryFn: ({ signal }) =>
+      api<Notification[]>("GET /notifications", {
+        query: { page: "1", limit: "8" },
+        signal,
+      }),
+    enabled: open,
+  });
+  const markRead = useMutation({
+    mutationFn: (id: string) =>
+      api(
+        id === "all"
+          ? "PATCH /notifications/mark-all-read"
+          : "PATCH /notifications/{id}/read",
+        { params: { id } },
+      ),
+    onSuccess: () => cache.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open]);
+  const unreadCount = count.data?.data.unreadCount || 0;
+  return (
+    <div className="notification-bell" ref={root}>
+      <button
+        type="button"
+        className={`topbar-icon ${unreadCount ? "has-unread attention" : ""}`}
+        aria-label={unreadCount ? `${unreadCount} thông báo chưa đọc` : "Thông báo"}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <Bell size={20} />
+        {unreadCount > 0 && <span className="utility-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>}
+      </button>
+      {open && (
+        <section className="notification-popover" aria-label="Thông báo gần đây">
+          <header>
+            <div><strong>Thông báo</strong><small>{unreadCount} chưa đọc</small></div>
+            <button
+              type="button"
+              className="icon-button"
+              title="Đánh dấu tất cả đã đọc"
+              aria-label="Đánh dấu tất cả đã đọc"
+              disabled={!unreadCount || markRead.isPending}
+              onClick={() => markRead.mutate("all")}
+            ><CheckCheck size={18} /></button>
+          </header>
+          <div className="notification-popover-list">
+            {list.isPending ? <Loading variant="cards" /> : list.error ? (
+              <ErrorState error={list.error} retry={() => list.refetch()} />
+            ) : !list.data.data.length ? <Empty text="Không có thông báo." /> : list.data.data.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                className={`notification-popover-item ${item.isRead ? "" : "unread"}`}
+                onClick={() => {
+                  if (!item.isRead) markRead.mutate(item.id);
+                }}
+              >
+                <span className="notification-dot" />
+                <span><strong>{item.title}</strong><p>{item.body}</p><small>{display(item.createdAt)}</small></span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
 export function Notifications({ role }: { role: string }) {
   const [page, setPage] = useState(1),
     [unread, setUnread] = useState(false);
@@ -186,6 +280,59 @@ type ConversationItem = {
   unreadCount: number;
   latestMessage?: Message;
 };
+
+export function FloatingChat({ userId }: { userId: string }) {
+  const [open, setOpen] = useState(false);
+  const cache = useQueryClient();
+  const unread = useQuery({
+    queryKey: ["chat", "unread-count"],
+    queryFn: ({ signal }) =>
+      api<{ unreadCount: number }>("GET /chat/messages/unread-count", { signal }),
+    refetchInterval: open ? false : 20_000,
+  });
+  useEffect(() => {
+    const socket = io(BASE_URL.replace(/\/api\/v1$/, ""), {
+      transports: ["websocket", "polling"],
+      auth: (done) => done({ token: getAccessToken() }),
+      reconnectionDelay: 800,
+      reconnectionDelayMax: 5000,
+    });
+    socket.on("newMessage", () => {
+      void cache.invalidateQueries({ queryKey: ["chat"] });
+    });
+    socket.on("messagesRead", () => {
+      void cache.invalidateQueries({ queryKey: ["chat"] });
+    });
+    return () => {
+      socket.disconnect();
+    };
+  }, [cache]);
+  const unreadCount = unread.data?.data.unreadCount || 0;
+  return (
+    <div className={`floating-chat ${open ? "open" : ""}`}>
+      {open && (
+        <section className="floating-chat-panel" aria-label="Cửa sổ tin nhắn">
+          <header className="floating-chat-header">
+            <div><MessageCircle size={19} /><strong>Tin nhắn</strong></div>
+            <button type="button" className="icon-button" aria-label="Đóng tin nhắn" onClick={() => setOpen(false)}><X size={18} /></button>
+          </header>
+          <Chat userId={userId} compact />
+        </section>
+      )}
+      <button
+        type="button"
+        className={`floating-chat-button ${unreadCount ? "has-unread attention" : ""}`}
+        aria-label={open ? "Đóng tin nhắn" : unreadCount ? `${unreadCount} tin nhắn chưa đọc` : "Mở tin nhắn"}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {open ? <X size={24} /> : <MessageCircle size={25} />}
+        {!open && unreadCount > 0 && <span className="utility-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>}
+      </button>
+    </div>
+  );
+}
+
 function attachmentUrl(value?: string) {
   if (!value) return null;
   try {
@@ -200,7 +347,7 @@ function attachmentUrl(value?: string) {
     return null;
   }
 }
-export function Chat({ userId }: { userId: string }) {
+export function Chat({ userId, compact = false }: { userId: string; compact?: boolean }) {
   const [target, setTarget] = useState("");
   const [search, setSearch] = useState("");
   const [connected, setConnected] = useState(false);
@@ -288,8 +435,8 @@ export function Chat({ userId }: { userId: string }) {
   }, [contacts.data, conversations.data, search]);
   const selectedContact = contacts.data?.data.find((item) => item.id === target);
   return (
-    <div className="workflow-page chat-page">
-      <div className="page-heading">
+    <div className={`workflow-page chat-page ${compact ? "compact" : ""}`}>
+      {!compact && <div className="page-heading">
         <div>
           <h1>Tin nhắn</h1>
           <p>Trao đổi tức thời với đội ngũ và huấn luyện viên của trung tâm.</p>
@@ -298,7 +445,8 @@ export function Chat({ userId }: { userId: string }) {
           {connected ? <Wifi size={16} /> : <WifiOff size={16} />}
           {connected ? "Đang kết nối realtime" : "Đang kết nối lại…"}
         </span>
-      </div>
+      </div>}
+      {compact && <span className={`chat-connection ${connected ? "online" : ""}`} role="status">{connected ? <Wifi size={14} /> : <WifiOff size={14} />}{connected ? "Realtime" : "Đang kết nối lại…"}</span>}
       {contacts.isPending ? (
         <Loading variant="field" />
       ) : contacts.error ? (
