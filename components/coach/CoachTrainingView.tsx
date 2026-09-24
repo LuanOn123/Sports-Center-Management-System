@@ -20,12 +20,20 @@ const ATTENDANCE_STATUS: { value: AttendanceStatus; label: string; color: string
   { value: 'EXCUSED', label: 'Có phép', color: Colors.status.scheduled },
 ];
 
+const WEEKDAY_SHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
+function pad2(n: number) {
+  return String(n).padStart(2, '0');
+}
+
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+  const d = new Date(iso);
+  return `${WEEKDAY_SHORT[d.getDay()]}, ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  const d = new Date(iso);
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
 interface CoachTrainingViewProps {

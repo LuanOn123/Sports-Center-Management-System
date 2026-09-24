@@ -1,6 +1,4 @@
-// components/member/MemberScheduleView.tsx
-// UI Quản lý lịch học dành riêng cho Hội viên (Member)
-// 2 tab: Lịch tuần (lịch dạng calendar tháng + agenda theo tuần) và Danh sách (buổi đã qua/đã hủy)
+
 
 import React, { useCallback, useMemo, useState } from 'react';
 import {
@@ -30,16 +28,14 @@ const STATUS_LABEL: Record<string, string> = {
   CANCELLED: 'Đã hủy',
 };
 
-// Buổi học đã BOOKED nhưng lễ tân/quản lý chưa bấm "hoàn thành" ca học thì status
-// vẫn nằm nguyên ở BOOKED dù ngày học đã qua — không có gì tự động cập nhật.
-// Nên tự suy ra "đã diễn ra" từ endTime để không hiển thị nhầm như sắp tới.
+
 function isSchedulePast(endTime?: string) {
   return Boolean(endTime) && new Date(endTime!) < new Date();
 }
 
 function startOfWeek(d: Date) {
   const date = new Date(d);
-  const day = date.getDay(); // 0=CN..6=T7
+  const day = date.getDay();
   const diffToMonday = day === 0 ? -6 : 1 - day;
   date.setDate(date.getDate() + diffToMonday);
   date.setHours(0, 0, 0, 0);
@@ -260,73 +256,73 @@ export function MemberScheduleView() {
             contentContainerStyle={styles.weekScroll}
             refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={Colors.primary} />}
           >
-          {weekDays.map((d, i) => {
-            const selected = isSameDay(d, selectedDay);
-            const dayClasses = upcomingBooked
-              .filter((e) => isSameDay(new Date(e.schedule!.startTime), d))
-              .sort((a, b) => new Date(a.schedule!.startTime).getTime() - new Date(b.schedule!.startTime).getTime());
-            const hasClasses = dayClasses.length > 0;
+            {weekDays.map((d, i) => {
+              const selected = isSameDay(d, selectedDay);
+              const dayClasses = upcomingBooked
+                .filter((e) => isSameDay(new Date(e.schedule!.startTime), d))
+                .sort((a, b) => new Date(a.schedule!.startTime).getTime() - new Date(b.schedule!.startTime).getTime());
+              const hasClasses = dayClasses.length > 0;
 
-            return (
-              <View key={d.toISOString()} style={styles.agendaRow}>
-                <View style={styles.agendaDateCol}>
-                  <Text style={[styles.agendaDateNum, selected && styles.agendaDateNumSelected]}>
-                    {pad2(d.getDate())}/{pad2(d.getMonth() + 1)}
-                  </Text>
-                  <Text style={styles.agendaWeekday}>{WEEKDAY_LABELS[i]}</Text>
-                </View>
+              return (
+                <View key={d.toISOString()} style={styles.agendaRow}>
+                  <View style={styles.agendaDateCol}>
+                    <Text style={[styles.agendaDateNum, selected && styles.agendaDateNumSelected]}>
+                      {pad2(d.getDate())}/{pad2(d.getMonth() + 1)}
+                    </Text>
+                    <Text style={styles.agendaWeekday}>{WEEKDAY_LABELS[i]}</Text>
+                  </View>
 
-                {hasClasses && <View style={styles.agendaLine} />}
+                  {hasClasses && <View style={styles.agendaLine} />}
 
-                <View style={styles.agendaContent}>
-                  {!hasClasses ? (
-                    <Text style={styles.restDayText}>Nghỉ tập</Text>
-                  ) : (
-                    dayClasses.map((e) => {
-                      const past = isSchedulePast(e.schedule?.endTime);
-                      return (
-                        <TouchableOpacity
-                          key={e.id}
-                          style={styles.dayChild}
-                          activeOpacity={0.8}
-                          onPress={() => e.scheduleId && router.push(`/schedule/${e.scheduleId}`)}
-                        >
-                          <View style={styles.dayChildBody}>
-                            <Text style={styles.dayChildName} numberOfLines={1}>
-                              {e.schedule?.class?.name ?? 'Lớp học'}
-                            </Text>
-                            <View style={styles.dayChildMetaRow}>
-                              <MaterialIcons name="schedule" size={12} color={Colors.primaryDark} />
-                              <Text style={styles.dayChildTime}>
-                                {formatTime(e.schedule!.startTime)} – {formatTime(e.schedule!.endTime)}
+                  <View style={styles.agendaContent}>
+                    {!hasClasses ? (
+                      <Text style={styles.restDayText}>Nghỉ tập</Text>
+                    ) : (
+                      dayClasses.map((e) => {
+                        const past = isSchedulePast(e.schedule?.endTime);
+                        return (
+                          <TouchableOpacity
+                            key={e.id}
+                            style={styles.dayChild}
+                            activeOpacity={0.8}
+                            onPress={() => e.scheduleId && router.push(`/schedule/${e.scheduleId}`)}
+                          >
+                            <View style={styles.dayChildBody}>
+                              <Text style={styles.dayChildName} numberOfLines={1}>
+                                {e.schedule?.class?.name ?? 'Lớp học'}
                               </Text>
-                            </View>
-                            {Boolean(e.schedule?.room) && (
                               <View style={styles.dayChildMetaRow}>
-                                <MaterialIcons name="place" size={12} color={Colors.primaryDark} />
-                                <Text style={styles.dayChildRoom}>{e.schedule!.room!.name}</Text>
+                                <MaterialIcons name="schedule" size={12} color={Colors.primaryDark} />
+                                <Text style={styles.dayChildTime}>
+                                  {formatTime(e.schedule!.startTime)} – {formatTime(e.schedule!.endTime)}
+                                </Text>
                               </View>
+                              {Boolean(e.schedule?.room) && (
+                                <View style={styles.dayChildMetaRow}>
+                                  <MaterialIcons name="place" size={12} color={Colors.primaryDark} />
+                                  <Text style={styles.dayChildRoom}>{e.schedule!.room!.name}</Text>
+                                </View>
+                              )}
+                            </View>
+                            {past ? (
+                              <Text style={styles.dayChildPastText}>Đã diễn ra</Text>
+                            ) : (
+                              <TouchableOpacity
+                                style={styles.dayChildCancelBtn}
+                                onPress={() => handleCancel(e.id)}
+                                disabled={cancelPending}
+                              >
+                                <Text style={styles.dayChildCancelText}>Hủy</Text>
+                              </TouchableOpacity>
                             )}
-                          </View>
-                          {past ? (
-                            <Text style={styles.dayChildPastText}>Đã diễn ra</Text>
-                          ) : (
-                            <TouchableOpacity
-                              style={styles.dayChildCancelBtn}
-                              onPress={() => handleCancel(e.id)}
-                              disabled={cancelPending}
-                            >
-                              <Text style={styles.dayChildCancelText}>Hủy</Text>
-                            </TouchableOpacity>
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })
-                  )}
+                          </TouchableOpacity>
+                        );
+                      })
+                    )}
+                  </View>
                 </View>
-              </View>
-            );
-          })}
+              );
+            })}
           </ScrollView>
         </>
       ) : (
