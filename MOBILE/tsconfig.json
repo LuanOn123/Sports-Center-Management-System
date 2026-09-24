@@ -3,6 +3,8 @@
   "compilerOptions": {
     "strict": true,
     "skipLibCheck": true,
+    "jsx": "react-jsx",
+    "module": "preserve",
     "moduleResolution": "bundler",
     "paths": {
       "@/*": [
