@@ -1,6 +1,6 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, CheckCircle2, Circle, LoaderCircle, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, CalendarDays, CheckCircle2, Circle, LoaderCircle, Plus, Trash2, X } from "lucide-react";
 import { api, type RecordData } from "../../shared/api";
 import { allPages } from "../../shared/pagedApi";
 import { at, display } from "../../shared/config";
@@ -30,6 +30,49 @@ function datesBetween(from: string, to: string, selected: number[]) {
   }
   return result;
 }
+
+function PlannerErrorDialog({
+  open,
+  error,
+  validationErrors,
+  onClose,
+}: {
+  open: boolean;
+  error?: unknown;
+  validationErrors: string[];
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    if (open && !dialog.open) dialog.showModal();
+    if (!open && dialog.open) dialog.close();
+  }, [open]);
+
+  return (
+    <dialog ref={ref} className="planner-error-dialog" onClose={onClose}>
+      <div className="modal-head">
+        <div>
+          <small>CHƯA THỂ TẠO LỊCH</small>
+          <h2><AlertTriangle size={21} /> Kiểm tra lại thông tin</h2>
+        </div>
+        <button type="button" className="icon-button" aria-label="Đóng" onClick={onClose}><X size={18} /></button>
+      </div>
+      {validationErrors.length > 0 ? (
+        <div className="planner-error-summary" role="alert">
+          <p>Vui lòng bổ sung hoặc sửa các mục sau:</p>
+          <ul>{validationErrors.map((message) => <li key={message}>{message}</li>)}</ul>
+        </div>
+      ) : error != null ? <ErrorState error={error} /> : null}
+      {error != null && <p className="field-note planner-rollback-note">Không có bộ môn, lớp hay buổi lịch nào của lần gửi này được lưu. Thông tin bạn đã nhập vẫn được giữ nguyên để sửa.</p>}
+      <div className="modal-footer">
+        <button type="button" className="button primary" onClick={onClose}>Quay lại chỉnh sửa</button>
+      </div>
+    </dialog>
+  );
+}
+
 export function ActivityPlanner({ role }: { role: "MANAGER" | "STAFF" }) {
   const cache = useQueryClient();
   const [sportMode, setSportMode] = useState<"existing" | "new">("existing");
@@ -52,6 +95,8 @@ export function ActivityPlanner({ role }: { role: "MANAGER" | "STAFF" }) {
   ]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
   const [createdClass, setCreatedClass] = useState<RecordData>();
   const [steps, setSteps] = useState<Step[]>([]);
   const sports = useQuery({ queryKey: ["planner", "sports"], queryFn: ({ signal }) => allPages<RecordData>("GET /sports", { query: { isActive: "true" }, signal }) });
@@ -79,67 +124,67 @@ export function ActivityPlanner({ role }: { role: "MANAGER" | "STAFF" }) {
         ),
     );
   const totalSchedules = dates.length * slots.length;
-  const valid = Boolean(
-    (sportMode === "new" ? sportName.trim().length >= 2 : sportId) &&
-      className.trim().length >= 2 && capacity > 0 && capacity <= 200 &&
-      sportCompatible && coachId && roomId && fromDate && toDate && fromDate <= toDate &&
-      dates.length && validSlots && supportCoachId !== coachId,
-  );
-  function updateStep(index: number, patch: Partial<Step>) {
-    setSteps((current) => current.map((step, i) => i === index ? { ...step, ...patch } : step));
-  }
+  const currentValidationErrors = useMemo(() => {
+    const issues: string[] = [];
+    if (sportMode === "new" ? sportName.trim().length < 2 : !sportId)
+      issues.push(sportMode === "new" ? "Tên bộ môn phải có ít nhất 2 ký tự." : "Chưa chọn bộ môn.");
+    if (className.trim().length < 2) issues.push("Tên lớp phải có ít nhất 2 ký tự.");
+    if (!Number.isInteger(capacity) || capacity < 1 || capacity > 200)
+      issues.push("Sức chứa phải là số nguyên từ 1 đến 200.");
+    if (!sportCompatible) issues.push("Bộ môn không hỗ trợ khu vực đã chọn.");
+    if (!coachId) issues.push("Chưa chọn huấn luyện viên chính.");
+    if (supportCoachId && supportCoachId === coachId)
+      issues.push("Huấn luyện viên hỗ trợ phải khác huấn luyện viên chính.");
+    if (!roomId) issues.push("Chưa chọn phòng tập phù hợp.");
+    if (!fromDate || !toDate) issues.push("Chưa chọn đủ ngày bắt đầu và ngày kết thúc.");
+    else if (fromDate > toDate) issues.push("Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.");
+    if (!validSlots) issues.push("Khung giờ phải hợp lệ và không được chồng lấn.");
+    if (!selectedDays.length) issues.push("Chưa chọn thứ học trong tuần.");
+    else if (fromDate && toDate && fromDate <= toDate && !dates.length)
+      issues.push("Khoảng ngày đã chọn không chứa thứ học nào.");
+    return issues;
+  }, [areaType, capacity, className, coachId, dates.length, fromDate, roomId, selectedDays.length, slots, sportCompatible, sportId, sportMode, sportName, supportCoachId, toDate, validSlots]);
+  const valid = currentValidationErrors.length === 0;
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!valid || busy) return;
+    if (busy) return;
+    if (!valid) {
+      setError(undefined);
+      setValidationErrors(currentValidationErrors);
+      setErrorDialogOpen(true);
+      return;
+    }
     setBusy(true); setError(undefined); setCreatedClass(undefined);
-    const labels = [
-      sportMode === "new" ? "Tạo bộ môn" : "Dùng bộ môn đã chọn",
-      "Tạo lớp học", "Phân công HLV chính",
-      ...(supportCoachId ? ["Phân công HLV hỗ trợ"] : []),
-      `Tạo ${totalSchedules} buổi lịch`,
-    ];
-    setSteps(labels.map((label) => ({ label, state: "waiting" })));
-    let index = 0;
+    setValidationErrors([]);
+    const labels = ["Kiểm tra toàn bộ thông tin và xung đột", "Tạo lớp và phân công HLV", `Tạo ${totalSchedules} buổi lịch`];
+    setSteps(labels.map((label, index) => ({ label, state: index === 0 ? "running" : "waiting" })));
     try {
-      let resolvedSportId = sportId;
-      updateStep(index, { state: "running" });
-      if (sportMode === "new") {
-        const result = await api<RecordData>("POST /sports", { body: { name: sportName.trim(), description: sportDescription.trim() || undefined, areaTypes: [areaType] } });
-        resolvedSportId = String(result.data.id);
-      }
-      updateStep(index++, { state: "done" });
-      updateStep(index, { state: "running" });
-      const created = await api<RecordData>("POST /classes", { body: { name: className.trim(), description: classDescription.trim() || undefined, sportIds: [resolvedSportId], capacity, classType, areaType } });
-      setCreatedClass(created.data);
-      const classId = String(created.data.id);
-      updateStep(index++, { state: "done" });
-      updateStep(index, { state: "running" });
-      await api("POST /classes/{id}/coaches", { params: { id: classId }, body: { coachId, isPrimary: true } });
-      updateStep(index++, { state: "done" });
-      if (supportCoachId) {
-        updateStep(index, { state: "running" });
-        await api("POST /classes/{id}/coaches/support", { params: { id: classId }, body: { coachId: supportCoachId } });
-        updateStep(index++, { state: "done" });
-      }
-      updateStep(index, { state: "running", detail: `0/${totalSchedules} buổi` });
-      let createdCount = 0;
-      for (const date of dates) {
-        for (const slot of slots) {
-          await api("POST /class-schedules", { body: {
-            classId, roomId,
+      const schedules = dates.flatMap((date) => slots.map((slot) => ({
             startTime: new Date(`${date}T${slot.start}:00+07:00`).toISOString(),
             endTime: new Date(`${date}T${slot.end}:00+07:00`).toISOString(),
-          } });
-          createdCount += 1;
-          updateStep(index, { detail: `${createdCount}/${totalSchedules} buổi` });
-        }
-      }
-      updateStep(index, { state: "done", detail: `${totalSchedules}/${totalSchedules} buổi` });
+      })));
+      const result = await api<{ class: RecordData; schedulesCreated: number }>("POST /class-schedules/activity-plan", { body: {
+        sport: sportMode === "new"
+          ? { mode: "new", name: sportName.trim(), description: sportDescription.trim() || undefined }
+          : { mode: "existing", id: sportId },
+        class: { name: className.trim(), description: classDescription.trim() || undefined, capacity, classType, areaType },
+        primaryCoachId: coachId,
+        supportCoachId: supportCoachId || undefined,
+        roomId,
+        schedules,
+      } });
+      setCreatedClass(result.data.class);
+      setSteps(labels.map((label, index) => ({
+        label,
+        state: "done",
+        detail: index === 2 ? `${result.data.schedulesCreated}/${totalSchedules} buổi` : undefined,
+      })));
       void cache.invalidateQueries({ queryKey: ["resource"] });
       void cache.invalidateQueries({ queryKey: ["planner"] });
     } catch (caught) {
-      updateStep(index, { state: "error" });
+      setSteps((current) => current.map((step, index) => index === 0 ? { ...step, state: "error" } : step));
       setError(caught);
+      setErrorDialogOpen(true);
     } finally { setBusy(false); }
   }
   if (sports.isPending || rooms.isPending || coaches.isPending) return <Loading variant="page" text="Đang chuẩn bị dữ liệu cho biểu mẫu…" />;
@@ -148,7 +193,7 @@ export function ActivityPlanner({ role }: { role: "MANAGER" | "STAFF" }) {
   return (
     <div className="workflow-page planner-page">
       <div className="page-heading"><div><div className="eyebrow">MỘT FORM · TRỌN VẸN MỘT LỊCH HOẠT ĐỘNG</div><h1>Tạo lịch hoạt động nhanh</h1><p>Tạo bộ môn (nếu cần), lớp, phân công HLV và toàn bộ lịch lặp chỉ trong một lần nhập.</p></div></div>
-      <form onSubmit={submit}>
+      <form noValidate onSubmit={submit} onInput={() => { if (error != null) setError(undefined); }}>
         <fieldset disabled={busy} className="planner-grid">
           <section className="panel planner-section"><span className="planner-number">1</span><div><h2>Bộ môn</h2><p>Chọn bộ môn có sẵn hoặc tạo mới.</p></div><div className="form-grid wide">
             <label>Phương án<select value={sportMode} onChange={(event) => setSportMode(event.target.value as "existing" | "new")}><option value="existing">Dùng bộ môn có sẵn</option>{role === "MANAGER" && <option value="new">Tạo bộ môn mới</option>}</select></label>
@@ -179,9 +224,9 @@ export function ActivityPlanner({ role }: { role: "MANAGER" | "STAFF" }) {
         {steps.length > 0 && <section className="panel planner-progress"><h2>Tiến độ tạo dữ liệu</h2>{steps.map((step) => <div key={step.label} className={step.state}>{step.state === "running" ? <LoaderCircle className="spin" size={18} /> : step.state === "done" ? <CheckCircle2 size={18} /> : <Circle size={18} />}<span>{step.label}</span><small>{step.detail}</small></div>)}</section>}
         {error != null && <ErrorState error={error} />}
         {createdClass && error == null && !busy && <p className="success" role="status">Đã tạo lớp “{display(createdClass.name)}” và {totalSchedules} buổi lịch thành công.</p>}
-        {createdClass && error != null && <p className="field-note">Lớp đã được tạo nhưng một bước sau đó chưa hoàn tất. Bạn có thể mở Quản lý lớp học/Lịch hoạt động để tiếp tục, dữ liệu đã tạo không bị gửi lại.</p>}
-        <div className="planner-submit"><div><strong>{totalSchedules} buổi lịch</strong><small>BE vẫn kiểm tra trùng phòng, trùng HLV và tính tương thích.</small></div>{createdClass ? <button type="button" className="button" onClick={() => { setCreatedClass(undefined); setSteps([]); setError(undefined); setClassName(""); setClassDescription(""); setFromDate(""); setToDate(""); setSelectedDays([]); }}>Bắt đầu lịch khác</button> : <button className="button primary" disabled={!valid || busy}>{busy ? <><LoaderCircle className="spin" size={17} /> Đang tạo dữ liệu…</> : "Tạo toàn bộ lịch hoạt động"}</button>}</div>
+        <div className="planner-submit"><div><strong>{totalSchedules} buổi lịch</strong><small>Toàn bộ dữ liệu chỉ được lưu khi không còn lỗi hoặc xung đột.</small></div>{createdClass ? <button type="button" className="button" onClick={() => { setCreatedClass(undefined); setSteps([]); setError(undefined); setClassName(""); setClassDescription(""); setFromDate(""); setToDate(""); setSelectedDays([]); }}>Bắt đầu lịch khác</button> : <button className="button primary" disabled={busy}>{busy ? <><LoaderCircle className="spin" size={17} /> Đang tạo dữ liệu…</> : "Tạo toàn bộ lịch hoạt động"}</button>}</div>
       </form>
+      <PlannerErrorDialog open={errorDialogOpen} error={error} validationErrors={validationErrors} onClose={() => setErrorDialogOpen(false)} />
     </div>
   );
 }

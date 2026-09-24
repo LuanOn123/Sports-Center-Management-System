@@ -98,6 +98,14 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
   await expect(page.getByText(/Học vào các thứ/)).toBeVisible();
   await page.getByRole("button", { name: "Thêm slot giờ" }).click();
   await expect(page.getByLabel("Slot 2 bắt đầu")).toBeVisible();
+  await page.getByLabel("Tên lớp").fill("Yoga buổi tối");
+  await page.getByRole("button", { name: "Tạo toàn bộ lịch hoạt động" }).click();
+  const plannerError = page.getByRole("dialog");
+  await expect(plannerError).toBeVisible();
+  await expect(plannerError).toContainText("Chưa chọn bộ môn");
+  await expect(plannerError).toContainText("Chưa chọn huấn luyện viên chính");
+  await plannerError.getByRole("button", { name: "Quay lại chỉnh sửa" }).click();
+  await expect(page.getByLabel("Tên lớp")).toHaveValue("Yoga buổi tối");
   await page.goto("/manager/rooms");
   await page
     .getByRole("button", { name: "Thêm phòng tập", exact: true })

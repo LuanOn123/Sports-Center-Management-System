@@ -134,6 +134,14 @@
 .planner-preview { display:flex; align-items:center; gap:9px; border-radius:10px; padding:11px 13px; background:#f6f8f7; color:#475467; font-size:12px; }
 .planner-progress { display:grid; gap:8px; }.planner-progress > div { display:grid; grid-template-columns:22px minmax(0,1fr) auto; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid #edf2ee; }.planner-progress .done { color:#027a48; }.planner-progress .error { color:#b42318; }
 .planner-submit { position:sticky; bottom:12px; z-index:3; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 18px; border:1px solid #d9e1dc; background:rgba(255,255,255,.96); box-shadow:0 8px 30px rgba(16,24,40,.12); border-radius:14px; backdrop-filter:blur(12px); }.planner-submit > div { display:grid; gap:3px; }.planner-submit small { color:#667085; }
+.planner-error-dialog { width:min(520px, calc(100vw - 32px)); padding:0; }
+.planner-error-dialog .modal-head h2 { display:flex; align-items:center; gap:8px; color:#8d2e2e; }
+.planner-error-summary { margin:18px 22px 4px; padding:14px 16px; border:1px solid #edd3d0; border-radius:10px; background:#fff8f5; color:#7a271a; }
+.planner-error-summary p { margin:0 0 8px; font-weight:700; }
+.planner-error-summary ul { margin:0; padding-left:20px; display:grid; gap:6px; }
+.planner-error-dialog .error-state { margin:18px 22px 4px; }
+.planner-rollback-note { margin:12px 22px 0; }
+.planner-error-dialog .modal-footer { justify-content:flex-end; }
 @media (max-width: 600px) {
   .workflow-card {
     padding: 16px;

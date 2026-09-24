@@ -2,7 +2,7 @@
 
 Source: https://sports-center-management-system.onrender.com/api/v1/docs/swagger-ui-init.js
 
-Snapshot: 2026-09-23. Production base: https://sports-center-management-system.onrender.com/api/v1
+Snapshot: 2026-09-24. Production base: https://sports-center-management-system.onrender.com/api/v1
 
 Response examples are documentation only, never application data. The client sends the documented HTTP Bearer token.
 

@@ -138,6 +138,12 @@ const messages: Record<string, string> = {
   "a plan with this name already exists": "Tên gói tập đã được sử dụng.",
   "room with this name already exists": "Tên phòng đã được sử dụng.",
   "sport with this name already exists": "Tên bộ môn đã được sử dụng.",
+  "only managers can create a new sport":
+    "Chỉ quản lý được phép tạo bộ môn mới.",
+  "support coach must be different from primary coach":
+    "Huấn luyện viên hỗ trợ phải khác huấn luyện viên chính.",
+  "schedules in the activity plan must not overlap":
+    "Các khung giờ trong lịch không được chồng lấn.",
   "validation failed":
     "Thông tin chưa hợp lệ. Vui lòng kiểm tra các trường bên dưới.",
   "invalid email address": "Email không hợp lệ.",
