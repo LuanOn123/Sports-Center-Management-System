@@ -1,6 +1,6 @@
 import { allPages } from "../shared/pagedApi";
 import { apiClient } from "./client";
-import type { Enrollment } from "../types/member";
+import type { ConcurrentClassQuota, Enrollment } from "../types/member";
 
 export interface EnrollmentQuery {
   status?: "BOOKED" | "CANCELLED" | "COMPLETED";
@@ -37,5 +37,18 @@ export const enrollmentsApi = {
 
   async cancelEnrollment(id: string): Promise<Enrollment> {
     return apiClient.delete<Enrollment>(`/enrollments/${id}`);
+  },
+
+  async transferEnrollment(
+    id: string,
+    targetScheduleId: string,
+  ): Promise<Enrollment> {
+    return apiClient.post<Enrollment>(`/enrollments/${id}/transfer`, {
+      targetScheduleId,
+    });
+  },
+
+  async getMyQuota(): Promise<ConcurrentClassQuota> {
+    return apiClient.get<ConcurrentClassQuota>("/enrollments/my/quota");
   },
 };

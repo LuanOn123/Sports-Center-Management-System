@@ -108,6 +108,8 @@ export function SchemaForm({
         initial[k] ??
           (k === "sportIds"
             ? classSports(initial).map((s) => s.id)
+            : k === "areaType" && operation === "POST /rooms"
+              ? "INDOOR"
             : (s.default ?? "")),
       ]),
     ),
