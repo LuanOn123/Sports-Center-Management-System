@@ -286,8 +286,10 @@ export function ClassDetailPage() {
                       {c.coach?.user?.fullName}
                     </div>
                     <div style={{ fontSize: 11, color: "#58695f" }}>
-                      {c.coach?.specialization ||
-                        "Huấn luyện viên chuyên nghiệp"}
+                      {c.isPrimary ? "HLV chính" : "HLV hỗ trợ"}
+                      {c.coach?.specialization
+                        ? ` · ${c.coach.specialization}`
+                        : ""}
                     </div>
                   </div>
                 </div>
@@ -375,8 +377,10 @@ export function ClassDetailPage() {
               const isPast = startTime <= new Date();
 
               const bookedEnrollments = sch._count?.enrollments ?? 0;
-              const remaining = Math.max(0, cls.capacity - bookedEnrollments);
-              const isFull = remaining === 0;
+              const remaining =
+                sch.availableSlots ??
+                Math.max(0, cls.capacity - bookedEnrollments);
+              const isFull = sch.isFull ?? (remaining === 0);
 
               return (
                 <div
@@ -507,6 +511,7 @@ export function ClassDetailPage() {
                       disabled={
                         isPast ||
                         isFull ||
+                        sch.canBook === false ||
                         bookMutation.isPending ||
                         !cls.isActive ||
                         sch.status !== "SCHEDULED"
@@ -520,17 +525,31 @@ export function ClassDetailPage() {
                       style={{
                         padding: "10px 22px",
                         backgroundColor:
-                          isPast || isFull ? "#e4e7e6" : "#203d31",
-                        color: isPast || isFull ? "#8c9b94" : "#ffffff",
+                          isPast || isFull || sch.canBook === false
+                            ? "#e4e7e6"
+                            : "#203d31",
+                        color:
+                          isPast || isFull || sch.canBook === false
+                            ? "#8c9b94"
+                            : "#ffffff",
                         border: "none",
                         borderRadius: 10,
                         fontWeight: 700,
                         fontSize: 13,
-                        cursor: isPast || isFull ? "not-allowed" : "pointer",
+                        cursor:
+                          isPast || isFull || sch.canBook === false
+                            ? "not-allowed"
+                            : "pointer",
                         transition: "background 0.15s",
                       }}
                     >
-                      {isPast ? "Đã qua" : isFull ? "Đã đầy chỗ" : "Đặt ca học"}
+                      {isPast
+                        ? "Đã qua"
+                        : isFull
+                          ? "Đã đầy chỗ"
+                          : sch.canBook === false
+                            ? "Không thể đặt"
+                            : "Đặt ca học"}
                     </button>
                   </div>
                 </div>

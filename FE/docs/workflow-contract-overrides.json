@@ -1114,5 +1114,28 @@
       "403",
       "500"
     ]
+  },
+  "POST /class-schedules/activity-plan": {
+    "path": "/class-schedules/activity-plan",
+    "method": "POST",
+    "summary": "Atomically create a complete activity plan",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [],
+    "body": {
+      "type": "object"
+    },
+    "statusCodes": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
   }
 }

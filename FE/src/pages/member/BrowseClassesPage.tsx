@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { classesApi } from "../../api/classes.api";
+import type { AreaType } from "../../types/member";
 import { Search, Volleyball, Users, Sparkles, ArrowRight } from "lucide-react";
 import {
   LoadingSpinner,
@@ -18,6 +19,7 @@ export function BrowseClassesPage() {
   const [selectedType, setSelectedType] = useState<"REGULAR" | "PREMIUM" | "">(
     "",
   );
+  const [selectedArea, setSelectedArea] = useState<AreaType | "">("");
   const [page, setPage] = useState(1);
 
   // Fetch sports for filtering
@@ -32,12 +34,20 @@ export function BrowseClassesPage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["classes", search, selectedSport, selectedType, page],
+    queryKey: [
+      "classes",
+      search,
+      selectedSport,
+      selectedType,
+      selectedArea,
+      page,
+    ],
     queryFn: () =>
       classesApi.getClasses({
         search: search || undefined,
         sportId: selectedSport || undefined,
         classType: selectedType || undefined,
+        areaType: selectedArea || undefined,
         isActive: true,
         page,
         limit: 12,
@@ -153,12 +163,29 @@ export function BrowseClassesPage() {
           </select>
         </div>
 
-        {(search || selectedSport || selectedType) && (
+        <div style={{ flex: "0 1 180px" }}>
+          <select
+            aria-label="Lọc theo khu vực tập"
+            value={selectedArea}
+            onChange={(e) => {
+              setSelectedArea(e.target.value as AreaType | "");
+              setPage(1);
+            }}
+          >
+            <option value="">Tất cả khu vực</option>
+            <option value="INDOOR">Trong nhà</option>
+            <option value="OUTDOOR">Ngoài trời</option>
+            <option value="POOL">Hồ bơi</option>
+          </select>
+        </div>
+
+        {(search || selectedSport || selectedType || selectedArea) && (
           <button
             onClick={() => {
               setSearch("");
               setSelectedSport("");
               setSelectedType("");
+              setSelectedArea("");
               setPage(1);
             }}
             style={{
@@ -201,7 +228,8 @@ export function BrowseClassesPage() {
         >
           {classes.map((c) => {
             const coaches = c.coaches || [];
-            const primaryCoach = coaches[0]?.coach?.user?.fullName;
+            const primaryCoach = coaches.find((coach) => coach.isPrimary)
+              ?.coach?.user?.fullName;
 
             return (
               <div

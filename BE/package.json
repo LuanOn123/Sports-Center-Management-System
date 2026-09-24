@@ -16,7 +16,8 @@
     "db:generate": "prisma generate",
     "test:e2e": "tsx tests/enrollment-quota.e2e.ts",
     "test:e2e:attendance": "tsx tests/attendance-manual-code.e2e.ts",
-    "test:e2e:all": "npm run test:e2e && npm run test:e2e:attendance"
+    "test:e2e:course": "tsx tests/course-enrollment.e2e.ts",
+    "test:e2e:all": "npm run test:e2e && npm run test:e2e:attendance && npm run test:e2e:course"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

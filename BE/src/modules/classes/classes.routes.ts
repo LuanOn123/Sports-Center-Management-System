@@ -105,6 +105,44 @@ router.get("/:id", authenticate, classesController.getClassById);
 
 /**
  * @swagger
+ * /classes/{id}/course-plan:
+ *   get:
+ *     summary: View a class as ONE course (grouped recurring timetable) + whole-course enrollment eligibility
+ *     description: |
+ *       **"Nguyên cái lịch trình" của một Class** — dùng cho màn hình chi tiết lớp của hội viên.
+ *
+ *       Thay vì liệt kê từng buổi rời rạc, BE gom TẤT CẢ buổi `SCHEDULED` chưa bắt đầu thành:
+ *       - `course.slots[]`: khung lịch lặp lại theo (Thứ + giờ + phòng), ví dụ "Thứ 2 · 18:00–19:30 · Phòng Yoga",
+ *         kèm `sessionCount`, `firstSessionStart`, `lastSessionStart`, `sessionIds`.
+ *       - `course`: tổng số buổi, buổi đầu/cuối, các thứ, các phòng, `timeSlots`, `availability`
+ *         (`minRemainingSlots` = chỗ trống ít nhất qua các buổi, `fullSessionCount`, `isFullyBookable`).
+ *       - `sessions[]`: từng buổi kèm `weekdayLabel`/`timeLabel` (giờ VN), `remainingSlots`, `isFull`,
+ *         `canBook`, `myEnrollmentStatus` của chính hội viên (nếu caller là MEMBER).
+ *       - `registration` (chỉ MEMBER): preview điều kiện **đăng ký trọn khóa** theo đúng bộ luật
+ *         all-or-nothing của `POST /enrollments/bulk` — `eligible`, `blockers[]` (code + message + sessionId),
+ *         `subscription`, `quota`, `penalty`, `registeredSessions`, `isFullyRegistered`.
+ *
+ *       Thứ/giờ được tính theo múi giờ **Asia/Ho_Chi_Minh**, không phụ thuộc timezone của server.
+ *     tags: [Classes]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Class ID
+ *     responses:
+ *       200: { $ref: "#/components/responses/ClassOk" }
+ *       401: { $ref: "#/components/responses/Unauthorized" }
+ *       404: { $ref: "#/components/responses/NotFound" }
+ *       500: { $ref: "#/components/responses/ServerError" }
+ */
+router.get("/:id/course-plan", authenticate, classesController.getClassCoursePlan);
+
+/**
+ * @swagger
  * /classes:
  *   post:
  *     summary: Create a new class
