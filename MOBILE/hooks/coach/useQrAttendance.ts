@@ -1,17 +1,20 @@
 // hooks/coach/useQrAttendance.ts
-// Tạo mã QR điểm danh cho 1 ca học — tự đổi mã trước khi hết hạn, dừng khi đóng modal
+// Tạo mã QR điểm danh + mã dự phòng cho 1 ca học — tự đổi mã định kỳ, dừng khi đóng modal
 
 import { useCallback, useEffect, useState } from 'react';
 import { generateAttendanceQr } from '../../services/coachService';
 import { ApiError } from '../../lib/api';
 
-const REFRESH_MS = 55_000; // BE cấp token sống 60s, đổi mã sớm hơn 1 chút cho an toàn
+// BE tự tài liệu: "FE tự làm mới mã mỗi 55 giây" — QR JWT sống 600s nhưng mã dự
+// phòng chỉ sống 90s, nên phải đổi mã đều đặn để mã dự phòng luôn còn hiệu lực.
+const REFRESH_MS = 55_000;
 
 export function useQrAttendance(scheduleId: string | undefined) {
   const [visible, setVisible] = useState(false);
   const [token, setToken] = useState<string | null>(null);
-  const [expiresAt, setExpiresAt] = useState<number | null>(null);
-  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [manualCode, setManualCode] = useState<string | null>(null);
+  const [manualCodeExpiresAt, setManualCodeExpiresAt] = useState<number | null>(null);
+  const [manualCodeSecondsLeft, setManualCodeSecondsLeft] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const generate = useCallback(async () => {
@@ -20,7 +23,8 @@ export function useQrAttendance(scheduleId: string | undefined) {
       setError(null);
       const res = await generateAttendanceQr(scheduleId);
       setToken(res.data.qrToken);
-      setExpiresAt(Date.now() + res.data.expiresIn * 1000);
+      setManualCode(res.data.manualCode);
+      setManualCodeExpiresAt(Date.now() + res.data.manualCodeExpiresIn * 1000);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Không tạo được mã QR. Vui lòng thử lại.');
     }
@@ -30,7 +34,8 @@ export function useQrAttendance(scheduleId: string | undefined) {
   const close = useCallback(() => {
     setVisible(false);
     setToken(null);
-    setExpiresAt(null);
+    setManualCode(null);
+    setManualCodeExpiresAt(null);
   }, []);
 
   // Tạo mã lần đầu + tự đổi mã định kỳ khi modal đang mở
@@ -41,14 +46,14 @@ export function useQrAttendance(scheduleId: string | undefined) {
     return () => clearInterval(id);
   }, [visible, generate]);
 
-  // Đếm ngược hiển thị — chỉ để UI, không tự gọi lại API
+  // Đếm ngược mã dự phòng — chỉ để UI, không tự gọi lại API
   useEffect(() => {
-    if (!visible || !expiresAt) return;
+    if (!visible || !manualCodeExpiresAt) return;
     const id = setInterval(() => {
-      setSecondsLeft(Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)));
+      setManualCodeSecondsLeft(Math.max(0, Math.ceil((manualCodeExpiresAt - Date.now()) / 1000)));
     }, 1000);
     return () => clearInterval(id);
-  }, [visible, expiresAt]);
+  }, [visible, manualCodeExpiresAt]);
 
-  return { visible, token, secondsLeft, error, open, close };
+  return { visible, token, manualCode, manualCodeSecondsLeft, error, open, close };
 }

@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator,
+  View, Text, ScrollView, TouchableOpacity,
+  ActivityIndicator, Platform,
 } from 'react-native';
+import clsx from 'clsx';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Icon as MaterialIcons } from '../../components/shared/Icon';
+import { Icon } from '../../components/shared/Icon';
 import { api, ApiError } from '../../lib/api';
 import { showAlert, showConfirm } from '../../lib/alert';
 import { QrScannerModal } from '../../components/shared/QrScannerModal';
-import { scanAttendanceQr } from '../../services/memberService';
+import { scanAttendanceQr, type AttendanceCredential } from '../../services/memberService';
 import type { ClassSchedule, Enrollment } from '../../lib/types';
-import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import { Colors } from '../../constants/theme';
 
 const STATUS_LABEL: Record<string, string> = { SCHEDULED: 'Đang mở', CANCELLED: 'Đã hủy', COMPLETED: 'Đã hoàn thành' };
 const STATUS_COLOR: Record<string, string> = {
@@ -20,11 +21,19 @@ const STATUS_COLOR: Record<string, string> = {
   COMPLETED: Colors.status.completed,
 };
 
+// toLocaleDateString('vi-VN', ...) không đáng tin trên RN/Hermes — ICU của máy
+// có thể trả dấu "-" thay vì "/" giữa ngày/tháng. Tự ghép chuỗi cho chắc.
+const WEEKDAY_LONG = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+function pad2(n: number) {
+  return String(n).padStart(2, '0');
+}
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+  const d = new Date(iso);
+  return `${WEEKDAY_LONG[d.getDay()]}, ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  const d = new Date(iso);
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
 export default function ScheduleDetailScreen() {
@@ -60,7 +69,7 @@ export default function ScheduleDetailScreen() {
   });
 
   const scanMutation = useMutation({
-    mutationFn: (qrToken: string) => scanAttendanceQr(qrToken),
+    mutationFn: (credential: AttendanceCredential) => scanAttendanceQr(credential),
     onSuccess: () => {
       setShowScanner(false);
       showAlert('Điểm danh thành công', 'Bạn đã được ghi nhận có mặt tại buổi học này.');
@@ -77,60 +86,100 @@ export default function ScheduleDetailScreen() {
   const isFull = slotsLeft <= 0;
   const isPast = s ? new Date(s.startTime) < new Date() : false;
   const isScheduleCancelled = s?.status === 'CANCELLED';
-  
+
   // Kiểm tra trạng thái đăng ký của user với schedule này
   const userEnrollment = (enrollmentsData?.data ?? []).find((e) => e.scheduleId === scheduleId);
   const isBooked = userEnrollment?.status === 'BOOKED';
   // CANCELLED vẫn cho đặt lại — BE tự reactivate (BR-07)
 
+  const handleGoBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/schedule');
+  };
+
+  const topNav = (
+    <View
+      className={clsx(
+        'flex-row items-center px-md pb-sm bg-bg-surface border-b border-border',
+        Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
+      )}
+    >
+      <TouchableOpacity className="w-10 h-10 justify-center items-center rounded-full" onPress={handleGoBack}>
+        <Icon name="arrow-back" size={24} color={Colors.text.primary} />
+      </TouchableOpacity>
+      <Text className="text-lg font-bold font-bevn-bold text-text-primary ml-sm" numberOfLines={1}>
+        {s?.class?.name ?? 'Chi tiết buổi học'}
+      </Text>
+    </View>
+  );
+
   if (isLoading) {
-    return <View style={styles.loading}><ActivityIndicator color={Colors.primary} size="large" /></View>;
+    return (
+      <View className="flex-1 bg-bg-primary">
+        {topNav}
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator color={Colors.primary} size="large" />
+        </View>
+      </View>
+    );
   }
   if (!s) {
-    return <View style={styles.loading}><Text style={styles.errorText}>Không tìm thấy lịch học</Text></View>;
+    return (
+      <View className="flex-1 bg-bg-primary">
+        {topNav}
+        <View className="flex-1 justify-center items-center">
+          <Text className="text-text-muted text-md font-bevn-regular">Không tìm thấy lịch học</Text>
+        </View>
+      </View>
+    );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <View className="flex-1 bg-bg-primary">
+      {topNav}
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
       {/* Status banner (chỉ hiển thị khi đã hủy hoặc đã hoàn thành) */}
       {s.status !== 'SCHEDULED' && (
-        <View style={[styles.statusBanner, { backgroundColor: STATUS_COLOR[s.status] + '15', borderColor: STATUS_COLOR[s.status] + '40' }]}>
-          <Text style={[styles.statusText, { color: STATUS_COLOR[s.status] }]}>
+        <View
+          className="rounded-lg p-md mb-lg border items-center"
+          style={{ backgroundColor: STATUS_COLOR[s.status] + '15', borderColor: STATUS_COLOR[s.status] + '40' }}
+        >
+          <Text className="text-sm font-bold font-bevn-bold" style={{ color: STATUS_COLOR[s.status] }}>
             {STATUS_LABEL[s.status]}
           </Text>
         </View>
       )}
 
       {/* Main info */}
-      <View style={styles.card}>
-        <Text style={styles.className}>{s.class?.name ?? 'Lớp học'}</Text>
+      <View className="bg-bg-surface rounded-xl p-xl mb-lg border border-border">
+        <Text className="text-xxl font-bold font-bevn-bold text-text-primary mb-xs">{s.class?.name ?? 'Lớp học'}</Text>
         {Boolean(s.class?.sports?.length) && (
-          <View style={styles.iconRow}>
-            <MaterialIcons name="sports" size={16} color={Colors.primary} />
-            <Text style={styles.sportText}>{s.class!.sports!.map((sp) => sp.name).join(', ')}</Text>
+          <View className="flex-row items-center gap-1.5 mb-1">
+            <Icon name="sports" size={16} color={Colors.primary} />
+            <Text className="text-sm text-text-secondary font-bevn-regular">{s.class!.sports!.map((sp) => sp.name).join(', ')}</Text>
           </View>
         )}
 
-        <View style={styles.infoGrid}>
-          <View style={styles.infoItem}>
-            <MaterialIcons name="calendar-today" size={20} color={Colors.primary} style={styles.infoIcon} />
-            <Text style={styles.infoLabel}>Ngày</Text>
-            <Text style={styles.infoValue}>{formatDate(s.startTime)}</Text>
+        <View className="flex-row flex-wrap gap-md mt-md">
+          <View className="w-[47%] bg-bg-elevated rounded-lg p-md">
+            <Icon name="calendar-today" size={20} color={Colors.primary} style={{ marginBottom: 4 }} />
+            <Text className="text-xs text-text-muted font-bevn-regular uppercase tracking-wide">Ngày</Text>
+            <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mt-0.5">{formatDate(s.startTime)}</Text>
           </View>
-          <View style={styles.infoItem}>
-            <MaterialIcons name="access-time" size={20} color={Colors.primary} style={styles.infoIcon} />
-            <Text style={styles.infoLabel}>Thời gian</Text>
-            <Text style={styles.infoValue}>{formatTime(s.startTime)} – {formatTime(s.endTime)}</Text>
+          <View className="w-[47%] bg-bg-elevated rounded-lg p-md">
+            <Icon name="access-time" size={20} color={Colors.primary} style={{ marginBottom: 4 }} />
+            <Text className="text-xs text-text-muted font-bevn-regular uppercase tracking-wide">Thời gian</Text>
+            <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mt-0.5">{formatTime(s.startTime)} – {formatTime(s.endTime)}</Text>
           </View>
-          <View style={styles.infoItem}>
-            <MaterialIcons name="place" size={20} color={Colors.primary} style={styles.infoIcon} />
-            <Text style={styles.infoLabel}>Phòng tập</Text>
-            <Text style={styles.infoValue}>{s.room?.name ?? '—'}</Text>
+          <View className="w-[47%] bg-bg-elevated rounded-lg p-md">
+            <Icon name="place" size={20} color={Colors.primary} style={{ marginBottom: 4 }} />
+            <Text className="text-xs text-text-muted font-bevn-regular uppercase tracking-wide">Phòng tập</Text>
+            <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mt-0.5">{s.room?.name ?? '—'}</Text>
           </View>
-          <View style={styles.infoItem}>
-            <MaterialIcons name="group" size={20} color={Colors.primary} style={styles.infoIcon} />
-            <Text style={styles.infoLabel}>Chỗ còn lại</Text>
-            <Text style={[styles.infoValue, isFull && { color: Colors.status.cancelled }]}>
+          <View className="w-[47%] bg-bg-elevated rounded-lg p-md">
+            <Icon name="group" size={20} color={Colors.primary} style={{ marginBottom: 4 }} />
+            <Text className="text-xs text-text-muted font-bevn-regular uppercase tracking-wide">Chỗ còn lại</Text>
+            <Text className={clsx('text-sm font-semibold font-bevn-semibold mt-0.5', isFull ? 'text-status-cancelled' : 'text-text-primary')}>
               {isFull ? 'Hết chỗ' : `${slotsLeft} chỗ`}
             </Text>
           </View>
@@ -139,55 +188,55 @@ export default function ScheduleDetailScreen() {
 
       {/* Room details */}
       {Boolean(s.room) && (
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Thông Tin Phòng</Text>
-          <View style={styles.roomRow}>
-            <Text style={styles.roomName}>{s.room!.name}</Text>
+        <View className="bg-bg-surface rounded-xl p-xl mb-lg border border-border">
+          <Text className="text-md font-bold font-bevn-bold text-text-primary mb-md">Thông Tin Phòng</Text>
+          <View className="mb-sm">
+            <Text className="text-lg font-semibold font-bevn-semibold text-primary">{s.room!.name}</Text>
           </View>
           {Boolean(s.room!.location) && (
-            <View style={styles.iconRow}>
-              <MaterialIcons name="place" size={14} color={Colors.text.secondary} />
-              <Text style={styles.roomDetail}>{s.room!.location}</Text>
+            <View className="flex-row items-center gap-1.5 mb-1">
+              <Icon name="place" size={14} color={Colors.text.secondary} />
+              <Text className="text-sm text-text-secondary font-bevn-regular">{s.room!.location}</Text>
             </View>
           )}
           {Boolean(s.room!.capacity) && (
-            <View style={styles.iconRow}>
-              <MaterialIcons name="group" size={14} color={Colors.text.secondary} />
-              <Text style={styles.roomDetail}>Sức chứa: {s.room!.capacity} người</Text>
+            <View className="flex-row items-center gap-1.5 mb-1">
+              <Icon name="group" size={14} color={Colors.text.secondary} />
+              <Text className="text-sm text-text-secondary font-bevn-regular">Sức chứa: {s.room!.capacity} người</Text>
             </View>
           )}
         </View>
       )}
 
       {/* Coaches */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Huấn Luyện Viên</Text>
+      <View className="bg-bg-surface rounded-xl p-xl mb-lg border border-border">
+        <Text className="text-md font-bold font-bevn-bold text-text-primary mb-md">Huấn Luyện Viên</Text>
         {s.class?.coaches && s.class.coaches.length > 0 ? (
           s.class.coaches.map((c) => (
-            <View key={c.coachId} style={styles.coachRow}>
-              <View style={styles.coachAvatar}>
-                <Text style={styles.coachAvatarText}>{c.coach?.user?.fullName?.charAt(0) ?? '?'}</Text>
+            <View key={c.coachId} className="flex-row items-center bg-bg-elevated rounded-lg p-md mb-xs">
+              <View className="w-10 h-10 rounded-full bg-[#A3E63525] justify-center items-center mr-md">
+                <Text className="text-lg font-bold font-bevn-bold text-primary">{c.coach?.user?.fullName?.charAt(0) ?? '?'}</Text>
               </View>
-              <View style={styles.coachInfo}>
-                <View style={styles.coachNameRow}>
-                  <Text style={styles.coachName}>{c.coach?.user?.fullName ?? '—'}</Text>
+              <View className="flex-1">
+                <View className="flex-row items-center gap-sm mb-0.5">
+                  <Text className="text-md font-bold font-bevn-bold text-text-primary">{c.coach?.user?.fullName ?? '—'}</Text>
                   {Boolean(c.isPrimary) && (
-                    <View style={styles.primaryBadge}>
-                      <Text style={styles.primaryText}>Chính</Text>
+                    <View className="bg-[#A3E63520] rounded-full px-sm py-0.5">
+                      <Text className="text-xs text-primary font-semibold font-bevn-semibold">Chính</Text>
                     </View>
                   )}
                 </View>
                 {Boolean(c.coach?.specialization) && (
-                  <View style={styles.iconRow}>
-                    <MaterialIcons name="star-outline" size={14} color={Colors.text.secondary} />
-                    <Text style={styles.coachSpec}>{c.coach!.specialization}</Text>
+                  <View className="flex-row items-center gap-1.5 mb-1">
+                    <Icon name="star-outline" size={14} color={Colors.text.secondary} />
+                    <Text className="text-xs text-text-secondary font-bevn-regular">{c.coach!.specialization}</Text>
                   </View>
                 )}
               </View>
             </View>
           ))
         ) : (
-          <Text style={styles.noCoachText}>Chưa phân công huấn luyện viên</Text>
+          <Text className="text-text-muted text-sm font-bevn-regular italic">Chưa phân công huấn luyện viên</Text>
         )}
       </View>
 
@@ -196,18 +245,18 @@ export default function ScheduleDetailScreen() {
         isBooked ? (
           /* ĐÃ ĐẶT — hiển thị thông báo + nút điểm danh */
           <>
-            <View style={styles.bookedNote}>
-              <MaterialIcons name="check-circle" size={22} color={Colors.status.active} />
-              <Text style={styles.bookedNoteText}>Bạn đã đặt lịch buổi học này</Text>
+            <View className="flex-row items-center gap-2.5 bg-[#A3E63515] rounded-xl p-lg justify-center border-[1.5px] border-[#A3E63540]">
+              <Icon name="check-circle" size={22} color={Colors.status.active} />
+              <Text className="text-status-active text-md font-bold font-bevn-bold text-center">Bạn đã đặt lịch buổi học này</Text>
             </View>
-            <TouchableOpacity style={styles.checkInBtn} onPress={() => setShowScanner(true)}>
-              <MaterialIcons name="qr-code-scanner" size={20} color={Colors.text.inverse} />
-              <Text style={styles.checkInBtnText}>Điểm danh vào lớp</Text>
+            <TouchableOpacity className="flex-row items-center justify-center gap-2 bg-primary rounded-xl p-lg mt-md" onPress={() => setShowScanner(true)}>
+              <Icon name="qr-code-scanner" size={20} color={Colors.text.inverse} />
+              <Text className="text-text-inverse text-md font-bold font-bevn-bold">Điểm danh vào lớp</Text>
             </TouchableOpacity>
           </>
         ) : (
           <TouchableOpacity
-            style={[styles.bookBtn, (isFull || isPast || bookMutation.isPending) && styles.bookBtnDisabled]}
+            className={clsx('rounded-xl p-lg items-center', (isFull || isPast || bookMutation.isPending) ? 'bg-bg-elevated' : 'bg-primary')}
             onPress={() => {
               if (!isFull && !isPast) {
                 showConfirm(
@@ -224,9 +273,9 @@ export default function ScheduleDetailScreen() {
             {bookMutation.isPending ? (
               <ActivityIndicator color={Colors.text.inverse} />
             ) : (
-              <View style={styles.btnContentRow}>
-                <MaterialIcons name={isPast ? "history" : "event-available"} size={22} color={(isFull || isPast) ? Colors.text.muted : Colors.text.inverse} />
-                <Text style={[styles.bookBtnText, (isFull || isPast) && { color: Colors.text.muted }]}>
+              <View className="flex-row items-center gap-2">
+                <Icon name={isPast ? 'history' : 'event-available'} size={22} color={(isFull || isPast) ? Colors.text.muted : Colors.text.inverse} />
+                <Text className={clsx('text-lg font-bold font-bevn-bold', (isFull || isPast) ? 'text-text-muted' : 'text-text-inverse')}>
                   {isPast ? 'Buổi học đã diễn ra' : isFull ? 'Hết chỗ' : 'Đặt lịch học'}
                 </Text>
               </View>
@@ -235,76 +284,19 @@ export default function ScheduleDetailScreen() {
         )
       )}
       {Boolean(isScheduleCancelled) && (
-        <View style={styles.cancelledNote}>
-          <MaterialIcons name="warning" size={18} color={Colors.status.cancelled} />
-          <Text style={styles.cancelledNoteText}>Buổi học này đã bị hủy</Text>
+        <View className="flex-row items-center gap-2 bg-[#6B728015] rounded-lg p-lg justify-center border border-[#6B728030]">
+          <Icon name="warning" size={18} color={Colors.status.cancelled} />
+          <Text className="text-status-cancelled text-sm font-bevn-medium">Buổi học này đã bị hủy</Text>
         </View>
       )}
 
       <QrScannerModal
         visible={showScanner}
         onClose={() => setShowScanner(false)}
-        onSubmitCode={(code) => scanMutation.mutate(code)}
+        onSubmitCredential={(credential) => scanMutation.mutate(credential)}
         isSubmitting={scanMutation.isPending}
       />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg.primary },
-  content: { padding: Spacing.xl, paddingBottom: Spacing.xxxl },
-  loading: { flex: 1, backgroundColor: Colors.bg.primary, justifyContent: 'center', alignItems: 'center' },
-  errorText: { color: Colors.text.muted, fontSize: FontSize.md, fontFamily: 'BeVietnamPro_400Regular' },
-  statusBanner: { borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.lg, borderWidth: 1, alignItems: 'center' },
-  statusText: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
-  card: { backgroundColor: Colors.bg.surface, borderRadius: Radius.xl, padding: Spacing.xl, marginBottom: Spacing.lg, borderWidth: 1, borderColor: Colors.border },
-  className: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginBottom: Spacing.xs },
-  iconRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  sportText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
-  infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, marginTop: Spacing.md },
-  infoItem: { width: '47%', backgroundColor: Colors.bg.elevated, borderRadius: Radius.lg, padding: Spacing.md },
-  infoIcon: { marginBottom: 4 },
-  infoLabel: { fontSize: FontSize.xs, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular', textTransform: 'uppercase', letterSpacing: 0.5 },
-  infoValue: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_600SemiBold', marginTop: 2 },
-  sectionTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginBottom: Spacing.md },
-  roomRow: { marginBottom: Spacing.sm },
-  roomName: { fontSize: FontSize.lg, fontWeight: FontWeight.semibold, color: Colors.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
-  roomDetail: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
-  coachRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bg.elevated, borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.xs },
-  coachAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.primary + '25', justifyContent: 'center', alignItems: 'center', marginRight: Spacing.md },
-  coachAvatarText: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  coachInfo: { flex: 1 },
-  coachNameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: 2 },
-  coachName: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  primaryBadge: { backgroundColor: Colors.primary + '20', borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
-  primaryText: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
-  coachSpec: { fontSize: FontSize.xs, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
-  noCoachText: { color: Colors.text.muted, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_400Regular', fontStyle: 'italic' },
-  bookBtn: { backgroundColor: Colors.primary, borderRadius: Radius.xl, padding: Spacing.lg, alignItems: 'center' },
-  bookBtnDisabled: { backgroundColor: Colors.bg.elevated },
-  btnContentRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  bookBtnText: { color: Colors.text.inverse, fontSize: FontSize.lg, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
-  bookedNote: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: Colors.status.active + '15', borderRadius: Radius.xl,
-    padding: Spacing.lg, justifyContent: 'center', borderWidth: 1.5, borderColor: Colors.status.active + '40',
-  },
-  bookedNoteText: { color: Colors.status.active, fontSize: FontSize.md, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold', textAlign: 'center' },
-  checkInBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: Colors.primary, borderRadius: Radius.xl, padding: Spacing.lg, marginTop: Spacing.md,
-  },
-  checkInBtnText: { color: Colors.text.inverse, fontSize: FontSize.md, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
-  cancelledByMeNote: {
-    backgroundColor: Colors.status.cancelled + '15',
-    borderColor: Colors.status.cancelled + '40',
-  },
-  cancelledNote: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: Colors.status.cancelled + '15', borderRadius: Radius.lg,
-    padding: Spacing.lg, justifyContent: 'center', borderWidth: 1, borderColor: Colors.status.cancelled + '30',
-  },
-  cancelledNoteText: { color: Colors.status.cancelled, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_500Medium' },
-});
-

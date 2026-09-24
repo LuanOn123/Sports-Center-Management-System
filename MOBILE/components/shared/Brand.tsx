@@ -2,9 +2,9 @@
 // Logo nhận diện thương hiệu dùng chung
 
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Icon as MaterialIcons } from './Icon';
-import { Colors } from '../../constants/theme';
+import { View, Text } from 'react-native';
+import clsx from 'clsx';
+import { Icon } from './Icon';
 
 interface BrandProps {
   size?: 'sm' | 'md' | 'lg';
@@ -15,41 +15,34 @@ export function Brand({ size = 'md', align = 'center' }: BrandProps) {
   const isSm = size === 'sm';
   const isLg = size === 'lg';
 
-  const markWidth = isLg ? 44 : isSm ? 30 : 38;
-  const markHeight = isLg ? 48 : isSm ? 34 : 42;
   const iconSize = isLg ? 28 : isSm ? 18 : 24;
-  const fontSize = isLg ? 36 : isSm ? 22 : 30;
-  const subSize = isLg ? 8.5 : isSm ? 6.5 : 7.5;
-  const subLetterSpacing = isLg ? 2.8 : isSm ? 1.8 : 2.3;
 
   return (
-    <View style={[styles.container, { alignItems: align }]}>
-      <View style={styles.brandRow}>
+    <View className="justify-center" style={{ alignItems: align }}>
+      <View className="flex-row items-center gap-[10px]">
         <View
-          style={[
-            styles.brandMark,
-            {
-              width: markWidth,
-              height: markHeight,
-              borderRadius: isSm ? 8 : 12,
-            },
-          ]}
+          className={clsx(
+            'items-center justify-center bg-primary -skew-x-6',
+            isLg ? 'w-11 h-12 rounded-md' : isSm ? 'w-[30px] h-[34px] rounded-lg' : 'w-[38px] h-[42px] rounded-lg'
+          )}
         >
-          <MaterialIcons name="show-chart" size={iconSize} color="#223528" />
+          <Icon name="show-chart" size={iconSize} color="#223528" />
         </View>
 
-        <View style={styles.textCol}>
-          <Text style={[styles.pulseText, { fontSize }]}>
-            pulse<Text style={styles.brandDot}>.</Text>
+        <View className="justify-center">
+          <Text
+            className={clsx(
+              'font-extrabold font-bevn-extrabold text-[#F3F7F1] -tracking-[1.5px]',
+              isLg ? 'text-[36px]' : isSm ? 'text-[22px]' : 'text-[30px]'
+            )}
+          >
+            pulse<Text className="text-primary">.</Text>
           </Text>
           <Text
-            style={[
-              styles.subText,
-              {
-                fontSize: subSize,
-                letterSpacing: subLetterSpacing,
-              },
-            ]}
+            className={clsx(
+              'font-semibold font-bevn-semibold text-[#A1B0A4] mt-0.5',
+              isLg ? 'text-[8.5px] tracking-[2.8px]' : isSm ? 'text-[6.5px] tracking-[1.8px]' : 'text-[7.5px] tracking-[2.3px]'
+            )}
           >
             SPORTS CENTER
           </Text>
@@ -58,39 +51,3 @@ export function Brand({ size = 'md', align = 'center' }: BrandProps) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    justifyContent: 'center',
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  brandMark: {
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: [{ skewX: '-6deg' }],
-  },
-  textCol: {
-    justifyContent: 'center',
-  },
-  pulseText: {
-    fontWeight: '800',
-    color: '#F3F7F1',
-    letterSpacing: -1.5,
-    lineHeight: undefined,
-    fontFamily: 'BeVietnamPro_800ExtraBold',
-  },
-  brandDot: {
-    color: Colors.primary,
-  },
-  subText: {
-    fontWeight: '600',
-    color: '#A1B0A4',
-    fontFamily: 'BeVietnamPro_600SemiBold',
-    marginTop: 2,
-  },
-});

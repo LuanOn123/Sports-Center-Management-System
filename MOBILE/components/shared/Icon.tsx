@@ -1,8 +1,8 @@
 // components/shared/Icon.tsx
 // Bộ icon dùng chung — cùng bộ lucide mà FE web đang dùng (lucide-react).
-// Nhận đúng tên icon kiểu MaterialIcons (name="place", name="chevron-right"...) để
-// không phải sửa lại từng chỗ gọi <MaterialIcons name="..." />, chỉ đổi import.
-// Icon nào lucide không có tương đương phù hợp thì rơi về MaterialIcons gốc.
+// Nhận tên icon kiểu MaterialIcons cũ (name="place", name="chevron-right"...) để
+// map sang lucide tương ứng. Icon nào lucide không có tương đương phù hợp thì
+// rơi về MaterialIcons gốc (@expo/vector-icons) làm fallback.
 
 import React from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
@@ -103,7 +103,6 @@ export interface IconProps {
   style?: StyleProp<ViewStyle>;
 }
 
-/** Alias làm `MaterialIcons` ở nơi gọi — xem hướng dẫn import ở đầu file này. */
 export function Icon({ name, size = 24, color = '#000', style }: IconProps) {
   const LucideIcon = ICON_MAP[name];
   if (LucideIcon) return <LucideIcon size={size} color={color} style={style} />;

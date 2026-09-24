@@ -3,14 +3,15 @@
 
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, ScrollView, TouchableOpacity,
   RefreshControl, ActivityIndicator,
 } from 'react-native';
+import clsx from 'clsx';
 import { useRouter } from 'expo-router';
-import { Icon as MaterialIcons } from '../shared/Icon';
+import { Icon } from '../shared/Icon';
 import { Brand } from '../shared/Brand';
 import { useMemberHome } from '../../hooks/member/useMemberHome';
-import { Colors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../constants/theme';
+import { Colors } from '../../constants/theme';
 import type { User, MembershipTier, Enrollment } from '../../lib/types';
 
 const TIER_LABEL: Record<MembershipTier, string> = {
@@ -25,12 +26,19 @@ const LEVEL_LABEL: Record<string, string> = {
   ADVANCED: 'Nâng cao',
 };
 
+// toLocaleDateString('vi-VN', ...) không đáng tin trên RN/Hermes — ICU của máy
+// có thể trả dấu "-" thay vì "/" giữa ngày/tháng. Tự ghép chuỗi cho chắc.
+function pad2(n: number) {
+  return String(n).padStart(2, '0');
+}
 function formatShortDate(iso: string) {
-  return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const d = new Date(iso);
+  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  const d = new Date(iso);
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
 interface MemberHomeViewProps {
@@ -54,59 +62,59 @@ export function MemberHomeView({ user }: MemberHomeViewProps) {
 
   return (
     <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
+      className="flex-1 bg-bg-primary"
+      contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
       refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
     >
       {/* Top Bar */}
-      <View style={styles.topBar}>
+      <View className="flex-row justify-between items-center mb-lg">
         <Brand size="sm" align="flex-start" />
-        <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} style={styles.avatar}>
-          <Text style={styles.avatarText}>{user?.fullName?.charAt(0)?.toUpperCase() ?? '?'}</Text>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} className="w-11 h-11 rounded-full bg-primary justify-center items-center">
+          <Text className="text-lg font-bold font-bevn-bold text-text-inverse">{user?.fullName?.charAt(0)?.toUpperCase() ?? '?'}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Greeting */}
-      <View style={styles.greetingSection}>
-        <Text style={styles.greeting}>Xin chào, {user?.fullName?.split(' ').pop()}</Text>
-        <Text style={styles.greetingSubtitle}>Hôm nay bạn tập gì?</Text>
+      <View className="mb-xl">
+        <Text className="text-xl font-bold font-bevn-bold text-text-primary">Xin chào, {user?.fullName?.split(' ').pop()}</Text>
+        <Text className="text-sm text-text-secondary mt-0.5 font-bevn-regular">Hôm nay bạn tập gì?</Text>
       </View>
 
       {/* Membership Status Card */}
       {Boolean(status.activeSubscription) ? (
         /* ACTIVE MEMBERSHIP */
-        <View style={[styles.membershipCard, { borderColor: Colors.tier[effectiveTier] + '60' }]}>
-          <View style={styles.membershipTop}>
-            <View style={{ flex: 1, marginRight: Spacing.sm }}>
-              <View style={styles.tierBadgeRow}>
-                <MaterialIcons
+        <View className="bg-bg-surface rounded-xl p-xl mb-lg border shadow-md" style={{ borderColor: Colors.tier[effectiveTier] + '60' }}>
+          <View className="flex-row justify-between items-start mb-md">
+            <View className="flex-1 mr-sm">
+              <View className="flex-row items-center gap-1 mb-1">
+                <Icon
                   name={effectiveTier === 'PREMIUM' ? 'workspace-premium' : 'star'}
                   size={14}
                   color={Colors.tier[effectiveTier]}
                 />
-                <Text style={[styles.tierBadgeText, { color: Colors.tier[effectiveTier] }]}>
+                <Text className="text-xs font-bold font-bevn-bold tracking-wide" style={{ color: Colors.tier[effectiveTier] }}>
                   {TIER_LABEL[effectiveTier].toUpperCase()}
                 </Text>
               </View>
-              <Text style={styles.activePlanName} numberOfLines={1}>
+              <Text className="text-xl font-bold font-bevn-bold text-text-primary" numberOfLines={1}>
                 {status.activeSubscription!.plan?.name ?? `Gói ${TIER_LABEL[effectiveTier]}`}
               </Text>
             </View>
-            <TouchableOpacity style={styles.membershipBtn} onPress={() => router.push('/membership/plans')}>
-              <Text style={styles.membershipBtnText}>Quản lý gói</Text>
+            <TouchableOpacity className="bg-[#A3E63520] rounded-full px-md py-xs" onPress={() => router.push('/membership/plans')}>
+              <Text className="text-primary text-sm font-semibold font-bevn-semibold">Quản lý gói</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.membershipInfo}>
-            <View style={styles.infoRow}>
-              <MaterialIcons name="event" size={16} color={Colors.text.secondary} />
-              <Text style={styles.membershipInfoText}>
+          <View className="gap-1.5">
+            <View className="flex-row items-center gap-1.5">
+              <Icon name="event" size={16} color={Colors.text.secondary} />
+              <Text className="text-sm text-text-secondary font-bevn-regular">
                 Hết hạn: {formatShortDate(status.activeSubscription!.endDate)}
               </Text>
             </View>
             {status.daysRemaining !== undefined && (
-              <View style={styles.infoRow}>
-                <MaterialIcons name="schedule" size={16} color={Colors.text.secondary} />
-                <Text style={styles.membershipInfoText}>
+              <View className="flex-row items-center gap-1.5">
+                <Icon name="schedule" size={16} color={Colors.text.secondary} />
+                <Text className="text-sm text-text-secondary font-bevn-regular">
                   Còn {status.daysRemaining} ngày sử dụng
                 </Text>
               </View>
@@ -115,29 +123,29 @@ export function MemberHomeView({ user }: MemberHomeViewProps) {
         </View>
       ) : pendingRequest ? (
         /* PENDING MEMBERSHIP CARD */
-        <View style={[styles.membershipCard, styles.membershipCardPending]}>
-          <View style={styles.membershipTop}>
-            <View style={{ flex: 1, marginRight: Spacing.sm }}>
-              <View style={styles.pendingBadgeRow}>
-                <MaterialIcons name="hourglass-top" size={14} color="#D97706" />
-                <Text style={styles.pendingBadgeText}>CHỜ LỄ TÂN DUYỆT</Text>
+        <View className="bg-bg-surface rounded-xl p-xl mb-lg border-[1.5px] border-[#F59E0B]">
+          <View className="flex-row justify-between items-start mb-md">
+            <View className="flex-1 mr-sm">
+              <View className="flex-row items-center gap-1 mb-1">
+                <Icon name="hourglass-top" size={14} color="#D97706" />
+                <Text className="text-xs font-bold font-bevn-bold text-[#D97706]">CHỜ LỄ TÂN DUYỆT</Text>
               </View>
-              <Text style={styles.pendingCardTitle} numberOfLines={1}>{pendingRequest.planName}</Text>
+              <Text className="text-lg font-bold font-bevn-bold text-text-primary" numberOfLines={1}>{pendingRequest.planName}</Text>
             </View>
-            <TouchableOpacity style={styles.pendingDetailBtn} onPress={() => router.push('/membership/plans')}>
-              <Text style={styles.pendingDetailBtnText}>Chi tiết</Text>
+            <TouchableOpacity className="bg-[#F59E0B20] rounded-full px-md py-xs" onPress={() => router.push('/membership/plans')}>
+              <Text className="text-[#D97706] text-sm font-semibold font-bevn-semibold">Chi tiết</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.membershipInfo}>
-            <View style={styles.infoRow}>
-              <MaterialIcons name="payment" size={15} color={Colors.text.secondary} />
-              <Text style={styles.membershipInfoText}>
+          <View className="gap-1.5">
+            <View className="flex-row items-center gap-1.5">
+              <Icon name="payment" size={15} color={Colors.text.secondary} />
+              <Text className="text-sm text-text-secondary font-bevn-regular">
                 Hình thức: {pendingRequest.paymentMethod === 'CASH' ? 'Tiền mặt tại quầy' : 'Chuyển khoản'}
               </Text>
             </View>
-            <View style={styles.infoRow}>
-              <MaterialIcons name="info-outline" size={15} color="#D97706" />
-              <Text style={[styles.membershipInfoText, { color: '#B45309' }]}>
+            <View className="flex-row items-center gap-1.5">
+              <Icon name="info-outline" size={15} color="#D97706" />
+              <Text className="text-sm font-bevn-regular text-[#B45309]">
                 Vui lòng thanh toán tại quầy Lễ tân để kích hoạt
               </Text>
             </View>
@@ -145,85 +153,85 @@ export function MemberHomeView({ user }: MemberHomeViewProps) {
         </View>
       ) : (
         /* NO ACTIVE MEMBERSHIP */
-        <View style={[styles.membershipCard, { borderColor: Colors.border }]}>
-          <View style={styles.membershipTop}>
-            <View style={{ flex: 1, marginRight: Spacing.sm }}>
-              <Text style={styles.membershipLabel}>Hạng thành viên</Text>
-              <Text style={styles.membershipTier}>
+        <View className="bg-bg-surface rounded-xl p-xl mb-lg border border-border">
+          <View className="flex-row justify-between items-start mb-md">
+            <View className="flex-1 mr-sm">
+              <Text className="text-xs text-text-muted mb-1 font-bevn-regular uppercase tracking-wide">Hạng thành viên</Text>
+              <Text className="text-xxl font-bold font-bevn-bold text-text-primary">
                 {statusLoading ? '—' : 'Miễn Phí (FREE)'}
               </Text>
             </View>
-            <TouchableOpacity style={styles.membershipBtn} onPress={() => router.push('/membership/plans')}>
-              <Text style={styles.membershipBtnText}>Đăng ký gói</Text>
+            <TouchableOpacity className="bg-[#A3E63520] rounded-full px-md py-xs" onPress={() => router.push('/membership/plans')}>
+              <Text className="text-primary text-sm font-semibold font-bevn-semibold">Đăng ký gói</Text>
             </TouchableOpacity>
           </View>
           {!statusLoading && (
-            <Text style={styles.noMembership}>Chưa có gói hội viên đang hoạt động</Text>
+            <Text className="text-sm text-text-muted font-bevn-regular">Chưa có gói hội viên đang hoạt động</Text>
           )}
         </View>
       )}
 
       {/* Training Level & Goal */}
       {Boolean(user?.memberProfile?.trainingLevel) && (
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <MaterialIcons name="track-changes" size={20} color={Colors.primary} style={styles.statIcon} />
-            <Text style={styles.statLabel}>Trình độ</Text>
-            <Text style={styles.statValue}>{LEVEL_LABEL[user!.memberProfile!.trainingLevel!]}</Text>
+        <View className="flex-row gap-md mb-lg">
+          <View className="flex-1 bg-bg-surface rounded-lg p-lg border border-border">
+            <Icon name="track-changes" size={20} color={Colors.primary} style={{ marginBottom: 4 }} />
+            <Text className="text-xs text-text-muted font-bevn-regular uppercase tracking-wide">Trình độ</Text>
+            <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mt-0.5">{LEVEL_LABEL[user!.memberProfile!.trainingLevel!]}</Text>
           </View>
           {Boolean(user?.memberProfile?.fitnessGoal) && (
-            <View style={[styles.statCard, { flex: 2 }]}>
-              <MaterialIcons name="fitness-center" size={20} color={Colors.primary} style={styles.statIcon} />
-              <Text style={styles.statLabel}>Mục tiêu</Text>
-              <Text style={styles.statValue} numberOfLines={2}>{user!.memberProfile!.fitnessGoal}</Text>
+            <View className="flex-[2] bg-bg-surface rounded-lg p-lg border border-border">
+              <Icon name="fitness-center" size={20} color={Colors.primary} style={{ marginBottom: 4 }} />
+              <Text className="text-xs text-text-muted font-bevn-regular uppercase tracking-wide">Mục tiêu</Text>
+              <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mt-0.5" numberOfLines={2}>{user!.memberProfile!.fitnessGoal}</Text>
             </View>
           )}
         </View>
       )}
 
       {/* Upcoming Classes */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Lịch sắp tới</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/schedule')} style={styles.sectionLinkRow}>
-            <Text style={styles.sectionLink}>Xem tất cả</Text>
-            <MaterialIcons name="arrow-forward" size={16} color={Colors.primary} />
+      <View className="mb-xl">
+        <View className="flex-row justify-between items-center mb-md">
+          <Text className="text-lg font-bold font-bevn-bold text-text-primary">Lịch sắp tới</Text>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/schedule')} className="flex-row items-center gap-1">
+            <Text className="text-sm text-primary font-bevn-medium">Xem tất cả</Text>
+            <Icon name="arrow-forward" size={16} color={Colors.primary} />
           </TouchableOpacity>
         </View>
 
         {enrollLoading ? (
-          <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.lg }} />
+          <ActivityIndicator color={Colors.primary} style={{ marginTop: 16 }} />
         ) : upcoming.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <MaterialIcons name="event-busy" size={44} color={Colors.text.muted} style={{ marginBottom: Spacing.md }} />
-            <Text style={styles.emptyText}>Bạn chưa đăng ký lớp nào</Text>
-            <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/(tabs)/classes')}>
-              <Text style={styles.emptyBtnText}>Tìm lớp học</Text>
+          <View className="bg-bg-surface rounded-xl p-xxxl items-center border border-border">
+            <Icon name="event-busy" size={44} color={Colors.text.muted} style={{ marginBottom: 12 }} />
+            <Text className="text-text-muted text-sm font-bevn-regular mb-lg">Bạn chưa đăng ký lớp nào</Text>
+            <TouchableOpacity className="bg-primary rounded-md px-xl py-sm" onPress={() => router.push('/(tabs)/classes')}>
+              <Text className="text-text-inverse font-bold font-bevn-bold">Tìm lớp học</Text>
             </TouchableOpacity>
           </View>
         ) : (
           upcoming.map((e: Enrollment) => (
             <TouchableOpacity
               key={e.id}
-              style={styles.upcomingCard}
+              className="bg-bg-surface rounded-lg p-lg mb-sm flex-row justify-between items-center border border-border"
               onPress={() => { if (e.scheduleId) router.push(`/schedule/${e.scheduleId}`); }}
             >
-              <View style={styles.upcomingLeft}>
-                <Text style={styles.upcomingClass}>{e.schedule?.class?.name ?? 'Lớp học'}</Text>
-                <Text style={styles.upcomingTime}>
+              <View className="flex-1">
+                <Text className="text-md font-semibold font-bevn-semibold text-text-primary">{e.schedule?.class?.name ?? 'Lớp học'}</Text>
+                <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular">
                   {e.schedule
                     ? `${formatShortDate(e.schedule.startTime)} • ${formatTime(e.schedule.startTime)} – ${formatTime(e.schedule.endTime)}`
                     : '—'}
                 </Text>
                 {Boolean(e.schedule?.room) && (
-                  <View style={styles.roomRow}>
-                    <MaterialIcons name="place" size={14} color={Colors.text.secondary} />
-                    <Text style={styles.upcomingRoom}>{e.schedule!.room!.name}</Text>
+                  <View className="flex-row items-center gap-1 mt-1">
+                    <Icon name="place" size={14} color={Colors.text.secondary} />
+                    <Text className="text-xs text-text-muted font-bevn-regular">{e.schedule!.room!.name}</Text>
                   </View>
                 )}
               </View>
-              <View style={[styles.statusBadge, { backgroundColor: Colors.status.booked + '20' }]}>
-                <Text style={[styles.statusText, { color: Colors.status.booked }]}>Đã đặt</Text>
+              <View className="bg-[#8B5CF620] rounded-full px-sm py-[3px] ml-sm">
+                <Text className="text-xs font-semibold font-bevn-semibold text-status-booked">Đã đặt</Text>
               </View>
             </TouchableOpacity>
           ))
@@ -231,144 +239,42 @@ export function MemberHomeView({ user }: MemberHomeViewProps) {
       </View>
 
       {/* Quick Actions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Truy cập nhanh</Text>
-        <View style={styles.quickGrid}>
+      <View className="mb-xl">
+        <Text className="text-lg font-bold font-bevn-bold text-text-primary">Truy cập nhanh</Text>
+        <View className="flex-row flex-wrap gap-md mt-sm">
           {[
             { icon: 'fitness-center' as const, label: 'Lớp học', route: '/(tabs)/classes' as const },
             { icon: 'card-membership' as const, label: 'Gói tập', route: '/membership/plans' as const },
-            { icon: 'timeline' as const, label: 'Lịch sử', route: '/(tabs)/training' as const },
+            { icon: 'timeline' as const, label: 'Chuyên cần', route: '/attendance/my' as const },
             { icon: 'person' as const, label: 'Hồ sơ', route: '/(tabs)/profile' as const },
           ].map((item) => (
             <TouchableOpacity
               key={item.label}
-              style={styles.quickItem}
+              className="flex-1 min-w-[44%] bg-bg-surface rounded-lg p-lg items-center border border-border"
               onPress={() => router.push(item.route)}
             >
-              <View style={styles.quickIconContainer}>
-                <MaterialIcons name={item.icon} size={26} color={Colors.primary} />
+              <View className="w-12 h-12 rounded-md bg-bg-elevated justify-center items-center mb-sm">
+                <Icon name={item.icon} size={26} color={Colors.primary} />
               </View>
-              <Text style={styles.quickLabel}>{item.label}</Text>
+              <Text className="text-sm text-text-secondary font-bevn-medium">{item.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
       {/* AI Shortcut (stub) */}
-      <TouchableOpacity style={styles.aiCard}>
-        <View style={styles.aiLeft}>
-          <View style={styles.aiIconWrapper}>
-            <MaterialIcons name="auto-awesome" size={24} color={Colors.primary} />
+      <TouchableOpacity className="bg-[#A3E63515] rounded-xl p-xl flex-row justify-between items-center border border-[#A3E63530]">
+        <View className="flex-row items-center gap-md">
+          <View className="w-11 h-11 rounded-full bg-[#A3E63520] justify-center items-center">
+            <Icon name="auto-awesome" size={24} color={Colors.primary} />
           </View>
           <View>
-            <Text style={styles.aiTitle}>AI Workout Assistant</Text>
-            <Text style={styles.aiSubtitle}>Hỏi AI về bài tập phù hợp</Text>
+            <Text className="text-md font-semibold font-bevn-semibold text-primary">AI Workout Assistant</Text>
+            <Text className="text-xs text-text-secondary font-bevn-regular">Hỏi AI về bài tập phù hợp</Text>
           </View>
         </View>
-        <MaterialIcons name="chevron-right" size={24} color={Colors.primary} />
+        <Icon name="chevron-right" size={24} color={Colors.primary} />
       </TouchableOpacity>
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg.primary },
-  content: { padding: Spacing.xl, paddingBottom: Spacing.xxxl },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg },
-  greetingSection: { marginBottom: Spacing.xl },
-  greeting: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  greetingSubtitle: { fontSize: FontSize.sm, color: Colors.text.secondary, marginTop: 2, fontFamily: 'BeVietnamPro_400Regular' },
-  avatar: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center',
-  },
-  avatarText: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.inverse, fontFamily: 'BeVietnamPro_700Bold' },
-
-  membershipCard: {
-    backgroundColor: Colors.bg.surface, borderRadius: Radius.xl,
-    padding: Spacing.xl, marginBottom: Spacing.lg,
-    borderWidth: 1, borderColor: Colors.border, ...Shadow.md,
-  },
-  membershipCardPending: { borderColor: '#F59E0B' },
-  tierBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
-  tierBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold', letterSpacing: 0.5 },
-  activePlanName: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  pendingBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
-  pendingBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: '#D97706', fontFamily: 'BeVietnamPro_700Bold' },
-  pendingCardTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  pendingDetailBtn: { backgroundColor: '#F59E0B20', borderRadius: Radius.full, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs },
-  pendingDetailBtnText: { color: '#D97706', fontSize: FontSize.sm, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
-  membershipTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md },
-  membershipLabel: { fontSize: FontSize.xs, color: Colors.text.muted, marginBottom: 4, fontFamily: 'BeVietnamPro_400Regular', textTransform: 'uppercase', letterSpacing: 1 },
-  membershipTier: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
-  membershipBtn: { backgroundColor: Colors.primary + '20', borderRadius: Radius.full, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs },
-  membershipBtnText: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
-  membershipInfo: { gap: 6 },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  membershipInfoText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
-  noMembership: { fontSize: FontSize.sm, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular' },
-
-  statsRow: { flexDirection: 'row', gap: Spacing.md, marginBottom: Spacing.lg },
-  statCard: {
-    flex: 1, backgroundColor: Colors.bg.surface, borderRadius: Radius.lg,
-    padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border,
-  },
-  statIcon: { marginBottom: Spacing.xs },
-  statLabel: { fontSize: FontSize.xs, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular', textTransform: 'uppercase', letterSpacing: 0.5 },
-  statValue: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.primary, marginTop: 2, fontFamily: 'BeVietnamPro_600SemiBold' },
-
-  section: { marginBottom: Spacing.xl },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md },
-  sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  sectionLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  sectionLink: { fontSize: FontSize.sm, color: Colors.primary, fontFamily: 'BeVietnamPro_500Medium' },
-
-  emptyCard: {
-    backgroundColor: Colors.bg.surface, borderRadius: Radius.xl,
-    padding: Spacing.xxxl, alignItems: 'center', borderWidth: 1, borderColor: Colors.border,
-  },
-  emptyText: { color: Colors.text.muted, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_400Regular', marginBottom: Spacing.lg },
-  emptyBtn: { backgroundColor: Colors.primary, borderRadius: Radius.md, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
-  emptyBtnText: { color: Colors.text.inverse, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
-
-  // Member Upcoming card
-  upcomingCard: {
-    backgroundColor: Colors.bg.surface, borderRadius: Radius.lg,
-    padding: Spacing.lg, marginBottom: Spacing.sm, flexDirection: 'row',
-    justifyContent: 'space-between', alignItems: 'center',
-    borderWidth: 1, borderColor: Colors.border,
-  },
-  upcomingLeft: { flex: 1 },
-  upcomingClass: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
-  upcomingTime: { fontSize: FontSize.xs, color: Colors.text.secondary, marginTop: 2, fontFamily: 'BeVietnamPro_400Regular' },
-  roomRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  upcomingRoom: { fontSize: FontSize.xs, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular' },
-  statusBadge: { borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 3, marginLeft: Spacing.sm },
-  statusText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
-
-  // Quick grid
-  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, marginTop: Spacing.sm },
-  quickItem: {
-    flex: 1, minWidth: '44%', backgroundColor: Colors.bg.surface, borderRadius: Radius.lg,
-    padding: Spacing.lg, alignItems: 'center', borderWidth: 1, borderColor: Colors.border,
-  },
-  quickIconContainer: {
-    width: 48, height: 48, borderRadius: Radius.md,
-    backgroundColor: Colors.bg.elevated, justifyContent: 'center', alignItems: 'center',
-    marginBottom: Spacing.sm,
-  },
-  quickLabel: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_500Medium' },
-
-  aiCard: {
-    backgroundColor: Colors.primary + '15', borderRadius: Radius.xl,
-    padding: Spacing.xl, flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', borderWidth: 1, borderColor: Colors.primary + '30',
-  },
-  aiLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  aiIconWrapper: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: Colors.primary + '20', justifyContent: 'center', alignItems: 'center',
-  },
-  aiTitle: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
-  aiSubtitle: { fontSize: FontSize.xs, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
-});

@@ -2,21 +2,21 @@
 // Đánh giá HLV — hiển thị điểm trung bình, danh sách đánh giá và form gửi/sửa của Member
 
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
-import { Icon as MaterialIcons } from './Icon';
+import { View, Text, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { Icon } from './Icon';
 import { useAuth } from '../../context/AuthContext';
 import {
   useCoachFeedbacks, useMyFeedbacks, useSubmitFeedback, useDeleteFeedback,
 } from '../../hooks/shared/useFeedback';
 import { showAlert, showConfirm } from '../../lib/alert';
 import { ApiError } from '../../lib/api';
-import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import { Colors } from '../../constants/theme';
 
 function Stars({ value, size = 16 }: { value: number; size?: number }) {
   return (
-    <View style={{ flexDirection: 'row', gap: 2 }}>
+    <View className="flex-row gap-0.5">
       {[1, 2, 3, 4, 5].map((i) => (
-        <MaterialIcons key={i} name={i <= value ? 'star' : 'star-border'} size={size} color={Colors.tier.PREMIUM} />
+        <Icon key={i} name={i <= value ? 'star' : 'star-border'} size={size} color={Colors.tier.PREMIUM} />
       ))}
     </View>
   );
@@ -24,22 +24,28 @@ function Stars({ value, size = 16 }: { value: number; size?: number }) {
 
 function StarInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
-    <View style={{ flexDirection: 'row', gap: 6 }}>
+    <View className="flex-row gap-1.5">
       {[1, 2, 3, 4, 5].map((i) => (
         <TouchableOpacity key={i} onPress={() => onChange(i)} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
-          <MaterialIcons name={i <= value ? 'star' : 'star-border'} size={28} color={Colors.tier.PREMIUM} />
+          <Icon name={i <= value ? 'star' : 'star-border'} size={28} color={Colors.tier.PREMIUM} />
         </TouchableOpacity>
       ))}
     </View>
   );
 }
 
+// toLocaleDateString('vi-VN', ...) không đáng tin trên RN/Hermes — ICU của máy
+// có thể trả dấu "-" thay vì "/" giữa ngày/tháng. Tự ghép chuỗi cho chắc.
+function pad2(n: number) {
+  return String(n).padStart(2, '0');
+}
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
   const days = Math.floor(diff / 86_400_000);
   if (days < 1) return 'Hôm nay';
   if (days < 30) return `${days} ngày trước`;
-  return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const d = new Date(iso);
+  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
 interface CoachRatingProps {
@@ -114,13 +120,13 @@ export function CoachRating({ coachId, coachName, classId }: CoachRatingProps) {
   };
 
   return (
-    <View style={styles.section}>
-      <View style={styles.headerRow}>
-        <Text style={styles.sectionTitle}>Đánh Giá {coachName ? `· ${coachName}` : 'Huấn Luyện Viên'}</Text>
+    <View className="mb-xl">
+      <View className="flex-row justify-between items-center">
+        <Text className="text-lg font-bold font-bevn-bold text-text-primary mb-md">Đánh Giá {coachName ? `· ${coachName}` : 'Huấn Luyện Viên'}</Text>
         {summary.totalFeedbacks > 0 && (
-          <View style={styles.summaryRow}>
+          <View className="flex-row items-center gap-1.5">
             <Stars value={Math.round(summary.averageRating ?? 0)} />
-            <Text style={styles.summaryText}>
+            <Text className="text-sm font-bevn-semibold text-text-secondary">
               {summary.averageRating?.toFixed(1)} ({summary.totalFeedbacks})
             </Text>
           </View>
@@ -128,12 +134,12 @@ export function CoachRating({ coachId, coachName, classId }: CoachRatingProps) {
       </View>
 
       {isMember && (
-        <View style={styles.myBox}>
+        <View className="bg-bg-elevated rounded-lg p-lg mb-md border border-border">
           {editing ? (
-            <View style={{ gap: Spacing.sm }}>
+            <View className="gap-sm">
               <StarInput value={rating} onChange={setRating} />
               <TextInput
-                style={styles.input}
+                className="bg-bg-surface rounded-md p-md text-text-primary font-bevn-regular text-sm min-h-[60px] border border-border"
                 value={comment}
                 onChangeText={setComment}
                 placeholder="Nhận xét (không bắt buộc)"
@@ -141,102 +147,71 @@ export function CoachRating({ coachId, coachName, classId }: CoachRatingProps) {
                 multiline
                 maxLength={1000}
               />
-              <TouchableOpacity style={styles.anonRow} onPress={() => setIsAnonymous((v) => !v)}>
-                <MaterialIcons
+              <TouchableOpacity className="flex-row items-center gap-1.5" onPress={() => setIsAnonymous((v) => !v)}>
+                <Icon
                   name={isAnonymous ? 'check-box' : 'check-box-outline-blank'}
                   size={20}
                   color={Colors.primary}
                 />
-                <Text style={styles.anonText}>Ẩn danh</Text>
+                <Text className="text-sm font-bevn-regular text-text-secondary">Ẩn danh</Text>
               </TouchableOpacity>
-              <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+              <View className="flex-row gap-sm">
                 <TouchableOpacity
-                  style={[styles.submitBtn, { flex: 1 }]}
+                  className="flex-1 bg-primary rounded-md py-sm items-center"
                   onPress={handleSubmit}
                   disabled={submitMutation.isPending}
                 >
                   {submitMutation.isPending ? (
                     <ActivityIndicator color={Colors.text.inverse} size="small" />
                   ) : (
-                    <Text style={styles.submitBtnText}>{myExisting ? 'Cập nhật' : 'Gửi đánh giá'}</Text>
+                    <Text className="text-text-inverse font-bold font-bevn-bold text-sm">{myExisting ? 'Cập nhật' : 'Gửi đánh giá'}</Text>
                   )}
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.cancelEditBtn} onPress={() => setEditing(false)}>
-                  <Text style={styles.cancelEditText}>Hủy</Text>
+                <TouchableOpacity
+                  className="px-lg justify-center items-center rounded-md bg-bg-surface border border-border"
+                  onPress={() => setEditing(false)}
+                >
+                  <Text className="text-text-muted text-sm font-bevn-medium">Hủy</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ) : myExisting ? (
             <View>
-              <View style={styles.headerRow}>
-                <Text style={styles.myLabel}>Đánh giá của bạn</Text>
+              <View className="flex-row justify-between items-center">
+                <Text className="text-sm font-semibold font-bevn-semibold text-text-primary">Đánh giá của bạn</Text>
                 <Stars value={myExisting.rating} />
               </View>
-              {Boolean(myExisting.comment) && <Text style={styles.myComment}>{myExisting.comment}</Text>}
-              <View style={{ flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.sm }}>
-                <TouchableOpacity onPress={startEdit}><Text style={styles.linkText}>Sửa</Text></TouchableOpacity>
-                <TouchableOpacity onPress={handleDelete}><Text style={[styles.linkText, { color: Colors.status.expired }]}>Xóa</Text></TouchableOpacity>
+              {Boolean(myExisting.comment) && <Text className="text-sm text-text-secondary mt-1 font-bevn-regular">{myExisting.comment}</Text>}
+              <View className="flex-row gap-md mt-sm">
+                <TouchableOpacity onPress={startEdit}><Text className="text-sm text-primary font-bevn-semibold">Sửa</Text></TouchableOpacity>
+                <TouchableOpacity onPress={handleDelete}><Text className="text-sm font-bevn-semibold text-status-expired">Xóa</Text></TouchableOpacity>
               </View>
             </View>
           ) : (
-            <TouchableOpacity style={styles.rateBtn} onPress={startEdit}>
-              <MaterialIcons name="star-border" size={18} color={Colors.primary} />
-              <Text style={styles.rateBtnText}>Đánh giá HLV này</Text>
+            <TouchableOpacity className="flex-row items-center justify-center gap-1.5 py-sm" onPress={startEdit}>
+              <Icon name="star-border" size={18} color={Colors.primary} />
+              <Text className="text-primary text-sm font-semibold font-bevn-semibold">Đánh giá HLV này</Text>
             </TouchableOpacity>
           )}
         </View>
       )}
 
       {isLoading ? (
-        <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.md }} />
+        <ActivityIndicator color={Colors.primary} style={{ marginTop: 12 }} />
       ) : feedbacks.length === 0 ? (
-        <Text style={styles.emptyText}>Chưa có đánh giá nào.</Text>
+        <Text className="text-sm text-text-muted font-bevn-regular italic">Chưa có đánh giá nào.</Text>
       ) : (
         feedbacks.map((f) => (
-          <View key={f.id} style={styles.reviewCard}>
-            <View style={styles.headerRow}>
-              <Text style={styles.reviewerName}>{f.isAnonymous ? 'Ẩn danh' : f.member?.user?.fullName ?? 'Hội viên'}</Text>
+          <View key={f.id} className="bg-bg-surface rounded-lg p-md mt-sm border border-border">
+            <View className="flex-row justify-between items-center">
+              <Text className="text-sm font-semibold font-bevn-semibold text-text-primary">{f.isAnonymous ? 'Ẩn danh' : f.member?.user?.fullName ?? 'Hội viên'}</Text>
               <Stars value={f.rating} size={13} />
             </View>
-            {Boolean(f.comment) && <Text style={styles.reviewComment}>{f.comment}</Text>}
-            <Text style={styles.reviewTime}>{timeAgo(f.createdAt)}</Text>
+            {Boolean(f.comment) && <Text className="text-sm text-text-secondary mt-1 font-bevn-regular">{f.comment}</Text>}
+            <Text className="text-xs text-text-muted mt-1 font-bevn-regular">{timeAgo(f.createdAt)}</Text>
           </View>
         ))
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  section: { marginBottom: Spacing.xl },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginBottom: Spacing.md },
-  summaryRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  summaryText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_600SemiBold' },
-
-  myBox: { backgroundColor: Colors.bg.elevated, borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.md, borderWidth: 1, borderColor: Colors.border },
-  myLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
-  myComment: { fontSize: FontSize.sm, color: Colors.text.secondary, marginTop: 4, fontFamily: 'BeVietnamPro_400Regular' },
-  linkText: { fontSize: FontSize.sm, color: Colors.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
-
-  rateBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: Spacing.sm },
-  rateBtnText: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
-
-  input: {
-    backgroundColor: Colors.bg.surface, borderRadius: Radius.md, padding: Spacing.md,
-    color: Colors.text.primary, fontFamily: 'BeVietnamPro_400Regular', fontSize: FontSize.sm,
-    minHeight: 60, borderWidth: 1, borderColor: Colors.border,
-  },
-  anonRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  anonText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
-  submitBtn: { backgroundColor: Colors.primary, borderRadius: Radius.md, paddingVertical: Spacing.sm, alignItems: 'center' },
-  submitBtnText: { color: Colors.text.inverse, fontWeight: FontWeight.bold, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_700Bold' },
-  cancelEditBtn: { paddingHorizontal: Spacing.lg, justifyContent: 'center', alignItems: 'center', borderRadius: Radius.md, backgroundColor: Colors.bg.surface, borderWidth: 1, borderColor: Colors.border },
-  cancelEditText: { color: Colors.text.muted, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_500Medium' },
-
-  emptyText: { fontSize: FontSize.sm, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular', fontStyle: 'italic' },
-  reviewCard: { backgroundColor: Colors.bg.surface, borderRadius: Radius.lg, padding: Spacing.md, marginTop: Spacing.sm, borderWidth: 1, borderColor: Colors.border },
-  reviewerName: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
-  reviewComment: { fontSize: FontSize.sm, color: Colors.text.secondary, marginTop: 4, fontFamily: 'BeVietnamPro_400Regular' },
-  reviewTime: { fontSize: FontSize.xs, color: Colors.text.muted, marginTop: 4, fontFamily: 'BeVietnamPro_400Regular' },
-});

@@ -201,13 +201,61 @@ export interface Attendance {
     user: Pick<User, 'id' | 'fullName' | 'email'>;
   };
   status: AttendanceStatus;
+  note?: string | null;
   markedAt: string;
   createdAt: string;
 }
 
 export interface GenerateQrResult {
   qrToken: string;
-  expiresIn: number; // giây
+  expiresIn: number; // giây — QR JWT sống 600s
+  manualCode: string; // mã dự phòng 6 ký tự cho member không quét được QR
+  manualCodeExpiresIn: number; // giây — mã dự phòng sống ngắn hơn QR (90s)
+}
+
+export type AttendanceBucketStatus = 'OK' | 'WARN' | 'RELEASE';
+
+export interface AttendanceBucket {
+  classId: string;
+  className: string;
+  sampleSize: number;
+  presentCount: number;
+  lateCount: number;
+  absentCount: number;
+  noShowCount: number;
+  excusedCount: number;
+  attendanceRate: number;
+  status: AttendanceBucketStatus;
+}
+
+export type AttendancePenaltyStatus = 'PENDING' | 'APPLIED' | 'REVOKED' | 'EXPIRED';
+
+export interface AttendancePenalty {
+  id: string;
+  classId: string;
+  className: string;
+  status: AttendancePenaltyStatus;
+  reason: string;
+  attendanceRate: number;
+  sampleSize: number;
+  releasedCount?: number;
+  blockedUntil?: string | null;
+  canAppeal: boolean;
+  appealedAt?: string | null;
+  appealReason?: string | null;
+}
+
+export interface AttendanceSummary {
+  memberId: string;
+  memberName?: string;
+  thresholds: {
+    minSample: number;
+    warnBelow: number;
+    releaseBelow: number;
+    appealWindowHours: number;
+  };
+  buckets: AttendanceBucket[];
+  penalties: AttendancePenalty[];
 }
 
 // ─── Training Plans (Flow 4) ──────────────────────────────────────────────────
@@ -302,6 +350,10 @@ export type NotificationType =
   | 'TRAINING_PLAN_ASSIGNED'
   | 'NEW_CLASS'
   | 'COACH_CHANGED'
+  | 'ATTENDANCE_WARNING'
+  | 'ATTENDANCE_PENALTY'
+  | 'ATTENDANCE_PENALTY_REVOKED'
+  | 'SCHEDULE_ROOM_CHANGED'
   | 'PAYMENT_SUCCESS'
   | 'PAYMENT_REFUNDED'
   | 'GENERAL';

@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  View, Text, FlatList, TouchableOpacity, TextInput,
   ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
+import clsx from 'clsx';
 import { useRouter } from 'expo-router';
-import { Icon as MaterialIcons } from '../../components/shared/Icon';
+import { Icon } from '../../components/shared/Icon';
 import { useAuth } from '../../context/AuthContext';
-import { useConversations } from '../../hooks/shared/useChat';
-import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import { useConversations, useContacts } from '../../hooks/shared/useChat';
+import { Colors } from '../../constants/theme';
+import type { ChatConversation } from '../../lib/types';
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -37,90 +39,136 @@ const ROLE_COLOR: Record<string, string> = {
 export default function ChatTabScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const [search, setSearch] = useState('');
 
   // ─── Hooks (logic) ──────────────────────────────────────────────────────────
-  const { conversations, isLoading, refetch } = useConversations(user?.id);
+  const { conversations, isLoading: conversationsLoading, refetch: refetchConversations } = useConversations(user?.id);
+  const { contacts, isLoading: contactsLoading, refetch: refetchContacts } = useContacts();
+  const isLoading = conversationsLoading || contactsLoading;
+
+  const onRefresh = () => {
+    refetchConversations();
+    refetchContacts();
+  };
+
+  // Gộp toàn bộ liên hệ được phép nhắn (BE: GET /chat/contacts) với hội thoại đã
+  // có (BE: GET /chat/conversations) thành 1 danh sách duy nhất — không cần vào
+  // màn "Nhắn tin mới" riêng nữa, ai cũng hiện thẳng ở đây.
+  const rows: ChatConversation[] = useMemo(() => {
+    const conversationById = new Map(conversations.map((c) => [c.user.id, c]));
+    const merged = contacts.map((contact) => conversationById.get(contact.id) ?? {
+      user: contact,
+      latestMessage: null,
+      unreadCount: 0,
+    });
+    return merged.sort((a, b) => {
+      const aTime = a.latestMessage ? new Date(a.latestMessage.createdAt).getTime() : 0;
+      const bTime = b.latestMessage ? new Date(b.latestMessage.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
+  }, [contacts, conversations]);
+
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => `${r.user.fullName} ${r.user.email ?? ''}`.toLowerCase().includes(q));
+  }, [rows, search]);
 
   // ─── UI ─────────────────────────────────────────────────────────────────────
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-bg-primary">
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Nhắn Tin</Text>
-        <Text style={styles.headerSub}>Liên lạc với huấn luyện viên & đội ngũ</Text>
+      <View className={clsx('p-xl pb-md', Platform.OS === 'ios' ? 'pt-[56px]' : 'pt-xl')}>
+        <Text className="text-xxl font-bold font-bevn-bold text-text-primary">Nhắn Tin</Text>
+        <Text className="text-sm text-text-secondary mt-0.5 font-bevn-regular">Liên lạc với huấn luyện viên & đội ngũ</Text>
+      </View>
+
+      {/* Tìm kiếm theo tên/email — lọc client-side trên danh sách đã gộp */}
+      <View className="px-xl pb-sm">
+        <View className="flex-row items-center bg-bg-surface rounded-lg px-md border border-border">
+          <Icon name="search" size={18} color={Colors.text.muted} style={{ marginRight: 8 }} />
+          <TextInput
+            className="flex-1 py-sm text-text-primary text-md font-bevn-regular"
+            placeholder="Tìm theo tên hoặc email..."
+            placeholderTextColor={Colors.text.muted}
+            value={search}
+            onChangeText={setSearch}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
+          {Boolean(search) && (
+            <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Icon name="close" size={18} color={Colors.text.muted} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {isLoading ? (
         <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} size="large" />
       ) : (
         <FlatList
-          data={conversations}
+          data={filteredRows}
           keyExtractor={c => c.user.id}
-          contentContainerStyle={styles.list}
-          refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={Colors.primary} />}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
+          refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <MaterialIcons name="chat-bubble-outline" size={52} color={Colors.text.muted} style={{ marginBottom: Spacing.md }} />
-              <Text style={styles.emptyTitle}>Chưa có cuộc trò chuyện</Text>
-              <Text style={styles.emptyText}>Nhắn tin với huấn luyện viên để bắt đầu</Text>
-              <TouchableOpacity
-                style={styles.newChatBtn}
-                onPress={() => router.push('/chat/contacts' as any)}
-              >
-                <MaterialIcons name="add" size={18} color={Colors.text.inverse} />
-                <Text style={styles.newChatBtnText}>Tìm người để nhắn</Text>
-              </TouchableOpacity>
+            <View className="items-center mt-[60px] px-xl">
+              <Icon name="chat-bubble-outline" size={52} color={Colors.text.muted} style={{ marginBottom: 12 }} />
+              <Text className="text-lg font-bold font-bevn-bold text-text-primary mb-sm">
+                {search ? 'Không tìm thấy liên hệ' : 'Chưa có ai để nhắn tin'}
+              </Text>
+              <Text className="text-sm text-text-muted font-bevn-regular text-center">
+                {search ? `Không có ai khớp với "${search}"` : 'Chưa có huấn luyện viên/đội ngũ phù hợp'}
+              </Text>
             </View>
-          }
-          ListHeaderComponent={
-            conversations.length > 0 ? (
-              <TouchableOpacity
-                style={styles.newContactBtn}
-                onPress={() => router.push('/chat/contacts' as any)}
-              >
-                <MaterialIcons name="person-add" size={18} color={Colors.primary} />
-                <Text style={styles.newContactText}>Nhắn tin mới</Text>
-              </TouchableOpacity>
-            ) : null
           }
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={[styles.convCard, item.unreadCount > 0 && styles.convCardUnread]}
+              className={clsx(
+                'flex-row items-center gap-md rounded-lg p-lg border mb-sm',
+                item.unreadCount > 0 ? 'border-[#A3E63550] bg-bg-elevated' : 'bg-bg-surface border-border'
+              )}
               onPress={() => router.push({ pathname: '/chat/[userId]', params: { userId: item.user.id, name: item.user.fullName } } as any)}
               activeOpacity={0.7}
             >
               {/* Avatar */}
-              <View style={[styles.avatar, { borderColor: ROLE_COLOR[item.user.role] ?? Colors.border }]}>
-                <Text style={styles.avatarText}>{item.user.fullName[0]?.toUpperCase()}</Text>
+              <View className="w-12 h-12 rounded-full bg-bg-elevated justify-center items-center border-2" style={{ borderColor: ROLE_COLOR[item.user.role] ?? Colors.border }}>
+                <Text className="text-lg font-bold font-bevn-bold text-text-primary">{item.user.fullName[0]?.toUpperCase()}</Text>
               </View>
 
               {/* Content */}
-              <View style={styles.convContent}>
-                <View style={styles.convTopRow}>
-                  <Text style={styles.convName} numberOfLines={1}>{item.user.fullName}</Text>
+              <View className="flex-1">
+                <View className="flex-row justify-between items-center mb-1">
+                  <Text className="text-md font-bold font-bevn-bold text-text-primary flex-1" numberOfLines={1}>{item.user.fullName}</Text>
                   {item.latestMessage && (
-                    <Text style={styles.convTime}>{timeAgo(item.latestMessage.createdAt)}</Text>
+                    <Text className="text-xs text-text-muted font-bevn-regular ml-2">{timeAgo(item.latestMessage.createdAt)}</Text>
                   )}
                 </View>
-                <View style={styles.convBottomRow}>
-                  <View style={[styles.roleBadge, { backgroundColor: (ROLE_COLOR[item.user.role] ?? Colors.text.muted) + '25' }]}>
-                    <Text style={[styles.roleText, { color: ROLE_COLOR[item.user.role] ?? Colors.text.muted }]}>
+                <View className="flex-row items-center gap-sm mb-1">
+                  <View className="rounded-full px-sm py-0.5" style={{ backgroundColor: (ROLE_COLOR[item.user.role] ?? Colors.text.muted) + '25' }}>
+                    <Text className="text-[10px] font-bevn-semibold" style={{ color: ROLE_COLOR[item.user.role] ?? Colors.text.muted }}>
                       {ROLE_LABEL[item.user.role] ?? item.user.role}
                     </Text>
                   </View>
                   {item.unreadCount > 0 && (
-                    <View style={styles.unreadBadge}>
-                      <Text style={styles.unreadText}>{item.unreadCount > 99 ? '99+' : item.unreadCount}</Text>
+                    <View className="bg-primary rounded-full min-w-[20px] h-5 justify-center items-center px-1.5">
+                      <Text className="text-[10px] font-bold font-bevn-bold text-text-inverse">{item.unreadCount > 99 ? '99+' : item.unreadCount}</Text>
                     </View>
                   )}
                 </View>
                 {item.latestMessage?.content ? (
-                  <Text style={[styles.convPreview, item.unreadCount > 0 && styles.convPreviewBold]} numberOfLines={1}>
+                  <Text
+                    className={clsx('text-sm font-bevn-regular', item.unreadCount > 0 ? 'text-text-secondary font-bevn-semibold' : 'text-text-muted')}
+                    numberOfLines={1}
+                  >
                     {item.latestMessage.content}
                   </Text>
                 ) : item.latestMessage?.fileUrl ? (
-                  <Text style={styles.convPreview} numberOfLines={1}>📎 Tệp đính kèm</Text>
-                ) : null}
+                  <Text className="text-sm text-text-muted font-bevn-regular" numberOfLines={1}>📎 Tệp đính kèm</Text>
+                ) : (
+                  <Text className="text-sm text-text-muted font-bevn-regular italic" numberOfLines={1}>Chưa có tin nhắn — bấm để bắt đầu</Text>
+                )}
               </View>
             </TouchableOpacity>
           )}
@@ -129,40 +177,3 @@ export default function ChatTabScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg.primary },
-  header: { padding: Spacing.xl, paddingBottom: Spacing.md, paddingTop: Platform.OS === 'ios' ? 56 : Spacing.xl },
-  headerTitle: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  headerSub: { fontSize: FontSize.sm, color: Colors.text.secondary, marginTop: 2, fontFamily: 'BeVietnamPro_400Regular' },
-
-  list: { paddingHorizontal: Spacing.xl, paddingBottom: 120 },
-  empty: { alignItems: 'center', marginTop: 60, paddingHorizontal: Spacing.xl },
-  emptyTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginBottom: Spacing.sm },
-  emptyText: { fontSize: FontSize.sm, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular', textAlign: 'center', marginBottom: Spacing.xl },
-
-  newChatBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: Colors.primary, borderRadius: Radius.full, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg },
-  newChatBtnText: { fontSize: FontSize.sm, color: Colors.text.inverse, fontFamily: 'BeVietnamPro_700Bold' },
-  newContactBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderWidth: 1, borderColor: Colors.primary, borderRadius: Radius.lg, paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg, marginBottom: Spacing.lg, alignSelf: 'flex-start' },
-  newContactText: { fontSize: FontSize.sm, color: Colors.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
-
-  convCard: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.bg.surface, borderRadius: Radius.lg, padding: Spacing.lg,
-    borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.sm,
-  },
-  convCardUnread: { borderColor: Colors.primary + '50', backgroundColor: Colors.bg.elevated },
-  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: Colors.bg.elevated, justifyContent: 'center', alignItems: 'center', borderWidth: 2 },
-  avatarText: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  convContent: { flex: 1 },
-  convTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  convName: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', flex: 1 },
-  convTime: { fontSize: FontSize.xs, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular', marginLeft: 8 },
-  convBottomRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: 4 },
-  roleBadge: { borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
-  roleText: { fontSize: 10, fontFamily: 'BeVietnamPro_600SemiBold' },
-  unreadBadge: { backgroundColor: Colors.primary, borderRadius: Radius.full, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
-  unreadText: { fontSize: 10, fontWeight: FontWeight.bold, color: Colors.text.inverse, fontFamily: 'BeVietnamPro_700Bold' },
-  convPreview: { fontSize: FontSize.sm, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular' },
-  convPreviewBold: { color: Colors.text.secondary, fontFamily: 'BeVietnamPro_600SemiBold' },
-});
