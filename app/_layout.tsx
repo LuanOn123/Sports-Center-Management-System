@@ -1,3 +1,4 @@
+import '../global.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts, BeVietnamPro_400Regular, BeVietnamPro_500Medium, BeVietnamPro_600SemiBold, BeVietnamPro_700Bold } from '@expo-google-fonts/be-vietnam-pro';
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -53,8 +54,8 @@ function RootLayoutContent() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg.primary } }}>
         <Stack.Screen name="auth" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="classes/[id]" options={{ headerShown: true, headerStyle: { backgroundColor: Colors.bg.surface }, headerTintColor: Colors.text.primary, title: '' }} />
-        <Stack.Screen name="schedule/[scheduleId]" options={{ headerShown: true, headerStyle: { backgroundColor: Colors.bg.surface }, headerTintColor: Colors.text.primary, title: '' }} />
+        <Stack.Screen name="classes/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="schedule/[scheduleId]" options={{ headerShown: false }} />
         <Stack.Screen name="membership/plans" options={{ headerShown: false }} />
       </Stack>
     </>

@@ -3,14 +3,15 @@
 
 import React from 'react';
 import {
-  View, Text, StyleSheet, FlatList, ActivityIndicator,
+  View, Text, FlatList, ActivityIndicator,
   RefreshControl, TouchableOpacity, Modal,
 } from 'react-native';
-import { Icon as MaterialIcons } from '../shared/Icon';
+import clsx from 'clsx';
+import { Icon } from '../shared/Icon';
 import QRCode from 'react-native-qrcode-svg';
 import { useCoachTraining } from '../../hooks/coach/useCoachTraining';
 import { useQrAttendance } from '../../hooks/coach/useQrAttendance';
-import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import { Colors } from '../../constants/theme';
 import type { AttendanceStatus } from '../../lib/types';
 
 const ATTENDANCE_STATUS: { value: AttendanceStatus; label: string; color: string }[] = [
@@ -62,28 +63,28 @@ export function CoachTrainingView({ coachId }: CoachTrainingViewProps) {
   const qr = useQrAttendance(selectedSchedule?.id);
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-bg-primary">
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Quản Lý Giảng Dạy</Text>
-        <Text style={styles.headerSub}>Điểm danh học viên & theo dõi ca dạy</Text>
+      <View className="px-xl pt-xl pb-md">
+        <Text className="text-xxl font-bold font-bevn-bold text-text-primary">Quản Lý Giảng Dạy</Text>
+        <Text className="text-sm text-text-secondary mt-0.5 font-bevn-regular">Điểm danh học viên & theo dõi ca dạy</Text>
       </View>
 
       {/* Tabs */}
-      <View style={styles.tabRow}>
+      <View className="flex-row px-xl mb-md gap-sm">
         <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'schedule' && styles.tabBtnActive]}
+          className={clsx('flex-1 py-sm rounded-md items-center border', activeTab === 'schedule' ? 'bg-primary border-primary' : 'bg-bg-surface border-border')}
           onPress={() => { setActiveTab('schedule'); setSelectedSchedule(null); }}
         >
-          <Text style={[styles.tabBtnText, activeTab === 'schedule' && styles.tabBtnTextActive]}>
+          <Text className={clsx('text-sm font-bevn-medium', activeTab === 'schedule' ? 'text-text-inverse font-bold font-bevn-bold' : 'text-text-secondary')}>
             Lịch Dạy
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'attendance' && styles.tabBtnActive]}
+          className={clsx('flex-1 py-sm rounded-md items-center border', activeTab === 'attendance' ? 'bg-primary border-primary' : 'bg-bg-surface border-border')}
           onPress={() => setActiveTab('attendance')}
         >
-          <Text style={[styles.tabBtnText, activeTab === 'attendance' && styles.tabBtnTextActive]}>
+          <Text className={clsx('text-sm font-bevn-medium', activeTab === 'attendance' ? 'text-text-inverse font-bold font-bevn-bold' : 'text-text-secondary')}>
             Điểm Danh
           </Text>
         </TouchableOpacity>
@@ -97,32 +98,32 @@ export function CoachTrainingView({ coachId }: CoachTrainingViewProps) {
           <FlatList
             data={schedules}
             keyExtractor={s => s.id}
-            contentContainerStyle={styles.list}
+            contentContainerStyle={{ padding: 20, gap: 12, paddingBottom: 32 }}
             refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
             ListEmptyComponent={
-              <View style={styles.empty}>
-                <MaterialIcons name="event-busy" size={48} color={Colors.text.muted} style={{ marginBottom: Spacing.md }} />
-                <Text style={styles.emptyTitle}>Không có ca dạy</Text>
-                <Text style={styles.emptyText}>Chưa có lịch dạy nào sắp tới</Text>
+              <View className="items-center justify-center py-[60px]">
+                <Icon name="event-busy" size={48} color={Colors.text.muted} style={{ marginBottom: 12 }} />
+                <Text className="text-md font-semibold font-bevn-semibold text-text-secondary mb-1">Không có ca dạy</Text>
+                <Text className="text-xs text-text-muted font-bevn-regular">Chưa có lịch dạy nào sắp tới</Text>
               </View>
             }
             renderItem={({ item }) => (
-              <View style={styles.scheduleCard}>
-                <View style={styles.scheduleLeft}>
-                  <Text style={styles.scheduleTime}>{formatTime(item.startTime)}</Text>
-                  <Text style={styles.scheduleTimeSub}>{formatTime(item.endTime)}</Text>
+              <View className="bg-bg-surface rounded-lg p-lg flex-row gap-lg border border-border">
+                <View className="items-center justify-center border-r border-border pr-lg">
+                  <Text className="text-md font-bold font-bevn-bold text-primary">{formatTime(item.startTime)}</Text>
+                  <Text className="text-xs text-text-muted font-bevn-regular">{formatTime(item.endTime)}</Text>
                 </View>
-                <View style={styles.scheduleRight}>
-                  <Text style={styles.scheduleName}>{item.class?.name ?? 'Lớp học'}</Text>
+                <View className="flex-1 justify-center">
+                  <Text className="text-md font-semibold font-bevn-semibold text-text-primary">{item.class?.name ?? 'Lớp học'}</Text>
                   {item.room && (
-                    <View style={styles.iconRow}>
-                      <MaterialIcons name="place" size={13} color={Colors.text.secondary} />
-                      <Text style={styles.infoText}>{item.room.name}</Text>
+                    <View className="flex-row items-center gap-1 mt-1">
+                      <Icon name="place" size={13} color={Colors.text.secondary} />
+                      <Text className="text-xs text-text-secondary font-bevn-regular">{item.room.name}</Text>
                     </View>
                   )}
-                  <View style={styles.iconRow}>
-                    <MaterialIcons name="date-range" size={13} color={Colors.text.secondary} />
-                    <Text style={styles.infoText}>{formatDate(item.startTime)}</Text>
+                  <View className="flex-row items-center gap-1 mt-1">
+                    <Icon name="date-range" size={13} color={Colors.text.secondary} />
+                    <Text className="text-xs text-text-secondary font-bevn-regular">{formatDate(item.startTime)}</Text>
                   </View>
                 </View>
               </View>
@@ -133,30 +134,30 @@ export function CoachTrainingView({ coachId }: CoachTrainingViewProps) {
 
       {/* Tab: Điểm Danh */}
       {activeTab === 'attendance' && (
-        <View style={{ flex: 1 }}>
+        <View className="flex-1">
           {!selectedSchedule ? (
-            <View style={{ flex: 1 }}>
-              <Text style={styles.sectionLabel}>Chọn ca học để điểm danh:</Text>
+            <View className="flex-1">
+              <Text className="text-sm font-semibold font-bevn-semibold text-text-secondary px-xl mt-xs">Chọn ca học để điểm danh:</Text>
               {isScheduleListLoading ? (
                 <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
               ) : (
                 <FlatList
                   data={schedules}
                   keyExtractor={s => s.id}
-                  contentContainerStyle={styles.list}
+                  contentContainerStyle={{ padding: 20, gap: 12, paddingBottom: 32 }}
                   ListEmptyComponent={
-                    <View style={styles.empty}>
-                      <MaterialIcons name="event-note" size={48} color={Colors.text.muted} style={{ marginBottom: Spacing.md }} />
-                      <Text style={styles.emptyTitle}>Không có ca học</Text>
+                    <View className="items-center justify-center py-[60px]">
+                      <Icon name="event-note" size={48} color={Colors.text.muted} style={{ marginBottom: 12 }} />
+                      <Text className="text-md font-semibold font-bevn-semibold text-text-secondary mb-1">Không có ca học</Text>
                     </View>
                   }
                   renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.selectScheduleCard} onPress={() => setSelectedSchedule(item)}>
+                    <TouchableOpacity className="bg-bg-surface rounded-lg p-lg flex-row justify-between items-center border border-border mb-sm" onPress={() => setSelectedSchedule(item)}>
                       <View>
-                        <Text style={styles.scheduleName}>{item.class?.name ?? 'Lớp học'}</Text>
-                        <Text style={styles.infoText}>{formatDate(item.startTime)} · {formatTime(item.startTime)}–{formatTime(item.endTime)}</Text>
+                        <Text className="text-md font-semibold font-bevn-semibold text-text-primary">{item.class?.name ?? 'Lớp học'}</Text>
+                        <Text className="text-xs text-text-secondary font-bevn-regular">{formatDate(item.startTime)} · {formatTime(item.startTime)}–{formatTime(item.endTime)}</Text>
                       </View>
-                      <MaterialIcons name="chevron-right" size={22} color={Colors.primary} />
+                      <Icon name="chevron-right" size={22} color={Colors.primary} />
                     </TouchableOpacity>
                   )}
                 />
@@ -164,20 +165,20 @@ export function CoachTrainingView({ coachId }: CoachTrainingViewProps) {
             </View>
           ) : (
             /* Attendance list for selected schedule */
-            <View style={{ flex: 1 }}>
-              <TouchableOpacity style={styles.backBtn} onPress={() => setSelectedSchedule(null)}>
-                <MaterialIcons name="arrow-back" size={20} color={Colors.primary} />
-                <Text style={styles.backBtnText}>Chọn ca khác</Text>
+            <View className="flex-1">
+              <TouchableOpacity className="flex-row items-center gap-1.5 px-xl py-sm" onPress={() => setSelectedSchedule(null)}>
+                <Icon name="arrow-back" size={20} color={Colors.primary} />
+                <Text className="text-primary text-sm font-bevn-medium">Chọn ca khác</Text>
               </TouchableOpacity>
 
-              <View style={styles.currentScheduleBanner}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.bannerTitle}>{selectedSchedule.class?.name ?? 'Lớp học'}</Text>
-                  <Text style={styles.bannerSub}>{formatDate(selectedSchedule.startTime)} · {formatTime(selectedSchedule.startTime)}–{formatTime(selectedSchedule.endTime)}</Text>
+              <View className="flex-row items-center gap-md bg-bg-surface mx-xl rounded-md p-md border border-border mb-sm">
+                <View className="flex-1">
+                  <Text className="text-md font-bold font-bevn-bold text-text-primary">{selectedSchedule.class?.name ?? 'Lớp học'}</Text>
+                  <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular">{formatDate(selectedSchedule.startTime)} · {formatTime(selectedSchedule.startTime)}–{formatTime(selectedSchedule.endTime)}</Text>
                 </View>
-                <TouchableOpacity style={styles.qrBtn} onPress={qr.open}>
-                  <MaterialIcons name="qr-code-2" size={16} color={Colors.text.inverse} />
-                  <Text style={styles.qrBtnText}>Tạo mã QR</Text>
+                <TouchableOpacity className="flex-row items-center gap-1 bg-primary rounded-md px-md py-sm" onPress={qr.open}>
+                  <Icon name="qr-code-2" size={16} color={Colors.text.inverse} />
+                  <Text className="text-text-inverse text-xs font-bold font-bevn-bold">Tạo mã QR</Text>
                 </TouchableOpacity>
               </View>
 
@@ -187,12 +188,12 @@ export function CoachTrainingView({ coachId }: CoachTrainingViewProps) {
                 <FlatList
                   data={enrollments}
                   keyExtractor={e => e.id}
-                  contentContainerStyle={styles.list}
+                  contentContainerStyle={{ padding: 20, gap: 12, paddingBottom: 32 }}
                   refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
                   ListEmptyComponent={
-                    <View style={styles.empty}>
-                      <MaterialIcons name="group-off" size={48} color={Colors.text.muted} style={{ marginBottom: Spacing.md }} />
-                      <Text style={styles.emptyTitle}>Chưa có học viên đăng ký</Text>
+                    <View className="items-center justify-center py-[60px]">
+                      <Icon name="group-off" size={48} color={Colors.text.muted} style={{ marginBottom: 12 }} />
+                      <Text className="text-md font-semibold font-bevn-semibold text-text-secondary mb-1">Chưa có học viên đăng ký</Text>
                     </View>
                   }
                   renderItem={({ item: enrollment }) => {
@@ -202,30 +203,31 @@ export function CoachTrainingView({ coachId }: CoachTrainingViewProps) {
                     const memberContact = enrollment.member?.user?.phone || enrollment.member?.user?.email;
 
                     return (
-                      <View style={styles.memberRow}>
-                        <View style={styles.memberAvatar}>
-                          <Text style={styles.avatarLetter}>
+                      <View className="bg-bg-surface rounded-lg p-md flex-row items-center gap-md border border-border">
+                        <View className="w-[38px] h-[38px] rounded-full bg-[#A3E63525] items-center justify-center">
+                          <Text className="text-sm font-bold font-bevn-bold text-primary">
                             {memberName.charAt(0).toUpperCase()}
                           </Text>
                         </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.memberName}>{memberName}</Text>
-                          <Text style={styles.memberSub}>
+                        <View className="flex-1">
+                          <Text className="text-sm font-semibold font-bevn-semibold text-text-primary">{memberName}</Text>
+                          <Text className="text-xs text-text-muted mt-0.5 font-bevn-regular">
                             {att ? `Trạng thái: ${attConfig?.label}` : 'Chưa điểm danh'}
                             {memberContact ? ` • ${memberContact}` : ''}
                           </Text>
                         </View>
                         <TouchableOpacity
-                          style={[
-                            styles.statusBtn,
-                            attConfig ? { backgroundColor: attConfig.color + '20', borderColor: attConfig.color } : styles.statusBtnUnmarked,
-                          ]}
+                          className={clsx(
+                            'flex-row items-center gap-0.5 px-sm py-1 rounded-md border',
+                            !attConfig && 'bg-bg-elevated border-border'
+                          )}
+                          style={attConfig ? { backgroundColor: attConfig.color + '20', borderColor: attConfig.color } : undefined}
                           onPress={() => handleMarkAttendance(enrollment.memberId, att?.id, att?.status)}
                         >
-                          <Text style={[styles.statusBtnText, attConfig ? { color: attConfig.color } : { color: Colors.text.muted }]}>
+                          <Text className="text-xs font-semibold font-bevn-semibold" style={{ color: attConfig ? attConfig.color : Colors.text.muted }}>
                             {attConfig ? attConfig.label : 'Điểm danh'}
                           </Text>
-                          <MaterialIcons name="arrow-drop-down" size={16} color={attConfig ? attConfig.color : Colors.text.muted} />
+                          <Icon name="arrow-drop-down" size={16} color={attConfig ? attConfig.color : Colors.text.muted} />
                         </TouchableOpacity>
                       </View>
                     );
@@ -244,17 +246,18 @@ export function CoachTrainingView({ coachId }: CoachTrainingViewProps) {
         animationType="fade"
         onRequestClose={() => setShowStatusModal(false)}
       >
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowStatusModal(false)}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Chọn trạng thái điểm danh</Text>
+        <TouchableOpacity className="flex-1 bg-[#00000080] justify-center items-center p-xl" activeOpacity={1} onPress={() => setShowStatusModal(false)}>
+          <View className="bg-bg-surface rounded-xl p-xl w-full max-w-[320px] border border-border">
+            <Text className="text-md font-bold font-bevn-bold text-text-primary mb-lg">Chọn trạng thái điểm danh</Text>
             {ATTENDANCE_STATUS.map(s => (
               <TouchableOpacity
                 key={s.value}
-                style={[styles.modalOption, { borderLeftColor: s.color }]}
+                className="flex-row items-center gap-md py-md px-md rounded-md mb-xs bg-bg-elevated border-l-4"
+                style={{ borderLeftColor: s.color }}
                 onPress={() => handleSelectStatus(s.value)}
               >
-                <View style={[styles.statusDot, { backgroundColor: s.color }]} />
-                <Text style={styles.modalOptionText}>{s.label}</Text>
+                <View className="w-2.5 h-2.5 rounded-[5px]" style={{ backgroundColor: s.color }} />
+                <Text className="text-sm font-semibold font-bevn-semibold text-text-primary">{s.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -263,23 +266,27 @@ export function CoachTrainingView({ coachId }: CoachTrainingViewProps) {
 
       {/* Modal mã QR điểm danh */}
       <Modal visible={qr.visible} transparent animationType="fade" onRequestClose={qr.close}>
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={qr.close}>
-          <TouchableOpacity activeOpacity={1} style={styles.qrCard}>
-            <Text style={styles.modalTitle}>Mã QR điểm danh</Text>
-            <Text style={styles.qrSub}>Hội viên quét mã này để điểm danh vào lớp</Text>
-            <View style={styles.qrBox}>
+        <TouchableOpacity className="flex-1 bg-[#00000080] justify-center items-center p-xl" activeOpacity={1} onPress={qr.close}>
+          <TouchableOpacity activeOpacity={1} className="bg-bg-surface rounded-xl p-xl w-full max-w-[320px] border border-border items-center">
+            <Text className="text-md font-bold font-bevn-bold text-text-primary mb-lg">Mã QR điểm danh</Text>
+            <Text className="text-xs text-text-muted text-center mb-lg font-bevn-regular">Hội viên quét mã này để điểm danh vào lớp</Text>
+            <View className="w-[200px] h-[200px] items-center justify-center mb-md">
               {qr.token ? (
                 <QRCode value={qr.token} size={200} />
               ) : (
                 <ActivityIndicator color={Colors.primary} size="large" />
               )}
             </View>
-            {Boolean(qr.error) && <Text style={styles.qrError}>{qr.error}</Text>}
-            {Boolean(qr.token) && (
-              <Text style={styles.qrCountdown}>Mã tự đổi sau {qr.secondsLeft}s</Text>
+            {Boolean(qr.error) && <Text className="text-sm text-status-expired text-center mb-md font-bevn-regular">{qr.error}</Text>}
+            {Boolean(qr.manualCode) && (
+              <View className="w-full items-center bg-bg-elevated rounded-lg p-lg mb-lg border border-border">
+                <Text className="text-xs text-text-muted font-bevn-semibold tracking-wide">MÃ DỰ PHÒNG (không quét được QR)</Text>
+                <Text className="text-xxl font-bold font-bevn-bold text-primary tracking-[6px] mt-1">{qr.manualCode}</Text>
+                <Text className="text-xs text-text-secondary mt-1 font-bevn-medium">Hết hạn sau {qr.manualCodeSecondsLeft}s</Text>
+              </View>
             )}
-            <TouchableOpacity style={styles.qrCloseBtn} onPress={qr.close}>
-              <Text style={styles.qrCloseBtnText}>Đóng</Text>
+            <TouchableOpacity className="py-sm px-xl rounded-md bg-bg-elevated" onPress={qr.close}>
+              <Text className="text-text-secondary text-sm font-bevn-medium">Đóng</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -287,63 +294,3 @@ export function CoachTrainingView({ coachId }: CoachTrainingViewProps) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg.primary },
-  header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.xl, paddingBottom: Spacing.md },
-  headerTitle: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  headerSub: { fontSize: FontSize.sm, color: Colors.text.secondary, marginTop: 2, fontFamily: 'BeVietnamPro_400Regular' },
-  tabRow: { flexDirection: 'row', paddingHorizontal: Spacing.xl, marginBottom: Spacing.md, gap: Spacing.sm },
-  tabBtn: { flex: 1, paddingVertical: Spacing.sm, borderRadius: Radius.md, alignItems: 'center', backgroundColor: Colors.bg.surface, borderWidth: 1, borderColor: Colors.border },
-  tabBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  tabBtnText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_500Medium' },
-  tabBtnTextActive: { color: Colors.text.inverse, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
-  list: { padding: Spacing.xl, gap: Spacing.md, paddingBottom: Spacing.xxxl },
-  empty: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
-  emptyTitle: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_600SemiBold', marginBottom: 4 },
-  emptyText: { fontSize: FontSize.xs, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular' },
-  iconRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  infoText: { fontSize: FontSize.xs, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
-
-  scheduleCard: { backgroundColor: Colors.bg.surface, borderRadius: Radius.lg, padding: Spacing.lg, flexDirection: 'row', gap: Spacing.lg, borderWidth: 1, borderColor: Colors.border },
-  scheduleLeft: { alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderRightColor: Colors.border, paddingRight: Spacing.lg },
-  scheduleTime: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  scheduleTimeSub: { fontSize: FontSize.xs, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular' },
-  scheduleRight: { flex: 1, justifyContent: 'center' },
-  scheduleName: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
-
-  sectionLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.secondary, paddingHorizontal: Spacing.xl, marginTop: Spacing.xs, fontFamily: 'BeVietnamPro_600SemiBold' },
-  selectScheduleCard: { backgroundColor: Colors.bg.surface, borderRadius: Radius.lg, padding: Spacing.lg, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.sm },
-
-  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
-  backBtnText: { color: Colors.primary, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_500Medium' },
-  currentScheduleBanner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.bg.surface, marginHorizontal: Spacing.xl, borderRadius: Radius.md, padding: Spacing.md, borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.sm },
-  qrBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.primary, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
-  qrBtnText: { color: Colors.text.inverse, fontSize: FontSize.xs, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
-  bannerTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  bannerSub: { fontSize: FontSize.xs, color: Colors.text.secondary, marginTop: 2, fontFamily: 'BeVietnamPro_400Regular' },
-
-  memberRow: { backgroundColor: Colors.bg.surface, borderRadius: Radius.lg, padding: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderWidth: 1, borderColor: Colors.border },
-  memberAvatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.primary + '25', alignItems: 'center', justifyContent: 'center' },
-  avatarLetter: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  memberName: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
-  memberSub: { fontSize: FontSize.xs, color: Colors.text.muted, marginTop: 2, fontFamily: 'BeVietnamPro_400Regular' },
-  statusBtn: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radius.md, borderWidth: 1 },
-  statusBtnUnmarked: { backgroundColor: Colors.bg.elevated, borderColor: Colors.border },
-  statusBtnText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
-
-  modalOverlay: { flex: 1, backgroundColor: '#00000080', justifyContent: 'center', alignItems: 'center', padding: Spacing.xl },
-  modalCard: { backgroundColor: Colors.bg.surface, borderRadius: Radius.xl, padding: Spacing.xl, width: '100%', maxWidth: 320, borderWidth: 1, borderColor: Colors.border },
-  modalTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.text.primary, marginBottom: Spacing.lg, fontFamily: 'BeVietnamPro_700Bold' },
-  modalOption: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md, paddingHorizontal: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.xs, backgroundColor: Colors.bg.elevated, borderLeftWidth: 4 },
-  statusDot: { width: 10, height: 10, borderRadius: 5 },
-  modalOptionText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
-
-  qrCard: { backgroundColor: Colors.bg.surface, borderRadius: Radius.xl, padding: Spacing.xl, width: '100%', maxWidth: 320, borderWidth: 1, borderColor: Colors.border, alignItems: 'center' },
-  qrSub: { fontSize: FontSize.xs, color: Colors.text.muted, textAlign: 'center', marginBottom: Spacing.lg, fontFamily: 'BeVietnamPro_400Regular' },
-  qrBox: { width: 200, height: 200, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md },
-  qrError: { fontSize: FontSize.sm, color: Colors.status.expired, textAlign: 'center', marginBottom: Spacing.md, fontFamily: 'BeVietnamPro_400Regular' },
-  qrCountdown: { fontSize: FontSize.sm, color: Colors.text.secondary, marginBottom: Spacing.lg, fontFamily: 'BeVietnamPro_500Medium' },
-  qrCloseBtn: { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.xl, borderRadius: Radius.md, backgroundColor: Colors.bg.elevated },
-  qrCloseBtnText: { color: Colors.text.secondary, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_500Medium' },
-});

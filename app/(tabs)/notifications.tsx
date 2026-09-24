@@ -1,15 +1,16 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  View, Text, FlatList, TouchableOpacity,
   ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
+import clsx from 'clsx';
 import { useRouter } from 'expo-router';
-import { Icon as MaterialIcons } from '../../components/shared/Icon';
+import { Icon } from '../../components/shared/Icon';
 import { useNotifications } from '../../hooks/shared/useNotifications';
-import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import { Colors } from '../../constants/theme';
 import type { AppNotification, NotificationType } from '../../lib/types';
 
-const TYPE_ICON: Record<NotificationType, React.ComponentProps<typeof MaterialIcons>['name']> = {
+const TYPE_ICON: Record<NotificationType, React.ComponentProps<typeof Icon>['name']> = {
   MEMBER_REGISTERED: 'person-add',
   CHAT_MESSAGE: 'chat',
   SUBSCRIPTION_EXPIRING: 'alarm',
@@ -23,6 +24,10 @@ const TYPE_ICON: Record<NotificationType, React.ComponentProps<typeof MaterialIc
   TRAINING_PLAN_ASSIGNED: 'fitness-center',
   NEW_CLASS: 'fiber-new',
   COACH_CHANGED: 'swap-horiz',
+  ATTENDANCE_WARNING: 'warning',
+  ATTENDANCE_PENALTY: 'cancel',
+  ATTENDANCE_PENALTY_REVOKED: 'check-circle',
+  SCHEDULE_ROOM_CHANGED: 'place',
   PAYMENT_SUCCESS: 'payments',
   PAYMENT_REFUNDED: 'currency-exchange',
   GENERAL: 'notifications',
@@ -44,7 +49,8 @@ function resolveNotificationRoute(item: AppNotification): string | null {
     case 'ENROLLMENT_CONFIRMED':
     case 'ENROLLMENT_CANCELLED':
     case 'SCHEDULE_CANCELLED':
-    case 'SCHEDULE_UPDATED': {
+    case 'SCHEDULE_UPDATED':
+    case 'SCHEDULE_ROOM_CHANGED': {
       const scheduleId = metaString(item, 'scheduleId');
       if (scheduleId) return `/schedule/${scheduleId}`;
       const classId = metaString(item, 'classId');
@@ -55,6 +61,11 @@ function resolveNotificationRoute(item: AppNotification): string | null {
       const classId = metaString(item, 'classId');
       return classId ? `/classes/${classId}` : null;
     }
+    // Cảnh báo/hình phạt chuyên cần — mở màn "Chuyên cần & Điểm danh" của Member
+    case 'ATTENDANCE_WARNING':
+    case 'ATTENDANCE_PENALTY':
+    case 'ATTENDANCE_PENALTY_REVOKED':
+      return '/attendance/my';
     // Chưa có màn hình xem kế hoạch tập cho Member (tab "Tập luyện" đã bị bỏ) —
     // chỉ đánh dấu đã đọc, không có trang nào để mở.
     case 'TRAINING_PLAN_ASSIGNED':
@@ -86,20 +97,20 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-bg-primary">
       {/* Header */}
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Thông Báo</Text>
-          <Text style={styles.headerSub}>Cập nhật từ trung tâm</Text>
+      <View className={clsx('flex-row items-start gap-md p-xl pb-md', Platform.OS === 'ios' ? 'pt-[56px]' : 'pt-xl')}>
+        <View className="flex-1">
+          <Text className="text-xxl font-bold font-bevn-bold text-text-primary">Thông Báo</Text>
+          <Text className="text-sm text-text-secondary mt-0.5 font-bevn-regular">Cập nhật từ trung tâm</Text>
         </View>
         {hasUnread && (
           <TouchableOpacity
-            style={styles.markAllBtn}
+            className="px-md py-sm rounded-full border border-primary"
             onPress={() => markAllRead()}
             disabled={isMarkingAllRead}
           >
-            <Text style={styles.markAllText}>Đọc tất cả</Text>
+            <Text className="text-xs text-primary font-bevn-semibold">Đọc tất cả</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -110,33 +121,39 @@ export default function NotificationsScreen() {
         <FlatList
           data={notifications}
           keyExtractor={(n) => n.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
           refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={Colors.primary} />}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <MaterialIcons name="notifications-none" size={52} color={Colors.text.muted} style={{ marginBottom: Spacing.md }} />
-              <Text style={styles.emptyTitle}>Chưa có thông báo</Text>
-              <Text style={styles.emptyText}>Thông báo về lịch học, gói tập và tin nhắn sẽ xuất hiện ở đây</Text>
+            <View className="items-center mt-[60px] px-xl">
+              <Icon name="notifications-none" size={52} color={Colors.text.muted} style={{ marginBottom: 12 }} />
+              <Text className="text-lg font-bold font-bevn-bold text-text-primary mb-sm">Chưa có thông báo</Text>
+              <Text className="text-sm text-text-muted font-bevn-regular text-center">Thông báo về lịch học, gói tập và tin nhắn sẽ xuất hiện ở đây</Text>
             </View>
           }
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={[styles.card, !item.isRead && styles.cardUnread]}
+              className={clsx(
+                'flex-row gap-md rounded-lg p-lg border mb-sm',
+                !item.isRead ? 'border-[#A3E63550] bg-bg-elevated' : 'bg-bg-surface border-border'
+              )}
               onPress={() => handlePress(item)}
               activeOpacity={0.7}
             >
-              <View style={[styles.icon, !item.isRead && styles.iconUnread]}>
-                <MaterialIcons name={TYPE_ICON[item.type] ?? 'notifications'} size={20} color={Colors.primary} />
+              <View className={clsx('w-10 h-10 rounded-lg justify-center items-center', !item.isRead ? 'bg-[#A3E63520]' : 'bg-bg-elevated')}>
+                <Icon name={TYPE_ICON[item.type] ?? 'notifications'} size={20} color={Colors.primary} />
               </View>
-              <View style={{ flex: 1 }}>
-                <View style={styles.cardTopRow}>
-                  <Text style={[styles.cardTitle, !item.isRead && styles.cardTitleUnread]} numberOfLines={1}>
+              <View className="flex-1">
+                <View className="flex-row items-center gap-sm">
+                  <Text
+                    className={clsx('flex-1 text-sm text-text-primary', !item.isRead ? 'font-bevn-bold' : 'font-semibold font-bevn-semibold')}
+                    numberOfLines={1}
+                  >
                     {item.title}
                   </Text>
-                  {!item.isRead && <View style={styles.unreadDot} />}
+                  {!item.isRead && <View className="w-2 h-2 rounded-full bg-primary" />}
                 </View>
-                <Text style={styles.cardBody} numberOfLines={2}>{item.body}</Text>
-                <Text style={styles.cardTime}>{timeAgo(item.createdAt)}</Text>
+                <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular" numberOfLines={2}>{item.body}</Text>
+                <Text className="text-[10px] text-text-muted mt-1 font-bevn-regular">{timeAgo(item.createdAt)}</Text>
               </View>
             </TouchableOpacity>
           )}
@@ -145,35 +162,3 @@ export default function NotificationsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg.primary },
-  header: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md,
-    padding: Spacing.xl, paddingBottom: Spacing.md, paddingTop: Platform.OS === 'ios' ? 56 : Spacing.xl,
-  },
-  headerTitle: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  headerSub: { fontSize: FontSize.sm, color: Colors.text.secondary, marginTop: 2, fontFamily: 'BeVietnamPro_400Regular' },
-  markAllBtn: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.primary },
-  markAllText: { fontSize: FontSize.xs, color: Colors.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
-
-  list: { paddingHorizontal: Spacing.xl, paddingBottom: 120 },
-  empty: { alignItems: 'center', marginTop: 60, paddingHorizontal: Spacing.xl },
-  emptyTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginBottom: Spacing.sm },
-  emptyText: { fontSize: FontSize.sm, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular', textAlign: 'center' },
-
-  card: {
-    flexDirection: 'row', gap: Spacing.md,
-    backgroundColor: Colors.bg.surface, borderRadius: Radius.lg, padding: Spacing.lg,
-    borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.sm,
-  },
-  cardUnread: { borderColor: Colors.primary + '50', backgroundColor: Colors.bg.elevated },
-  icon: { width: 40, height: 40, borderRadius: Radius.lg, backgroundColor: Colors.bg.elevated, justifyContent: 'center', alignItems: 'center' },
-  iconUnread: { backgroundColor: Colors.primary + '20' },
-  cardTopRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  cardTitle: { flex: 1, fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_600SemiBold' },
-  cardTitleUnread: { fontFamily: 'BeVietnamPro_700Bold' },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary },
-  cardBody: { fontSize: FontSize.xs, color: Colors.text.secondary, marginTop: 2, fontFamily: 'BeVietnamPro_400Regular' },
-  cardTime: { fontSize: 10, color: Colors.text.muted, marginTop: 4, fontFamily: 'BeVietnamPro_400Regular' },
-});

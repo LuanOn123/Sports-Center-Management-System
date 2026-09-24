@@ -33,7 +33,7 @@ export function useUpcomingEnrollments() {
   const upcoming: Enrollment[] = (query.data?.data ?? [])
     .filter((e) => e.schedule && new Date(e.schedule.endTime).getTime() >= now)
     .sort((a, b) => new Date(a.schedule!.startTime).getTime() - new Date(b.schedule!.startTime).getTime())
-    .slice(0, 3);
+    .slice(0, 2);
 
   return { ...query, upcoming };
 }

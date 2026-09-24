@@ -5,15 +5,15 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   Modal,
   TouchableOpacity,
   Animated,
   TouchableWithoutFeedback,
 } from 'react-native';
+import clsx from 'clsx';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Icon } from './Icon';
-import { Colors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../constants/theme';
+import { Colors, Spacing, Radius, Shadow } from '../../constants/theme';
 import { registerAlertListener, type AlertOptions } from '../../lib/alert';
 
 export function AlertModal() {
@@ -116,51 +116,68 @@ export function AlertModal() {
       statusBarTranslucent
     >
       <TouchableWithoutFeedback onPress={isConfirmDialog ? undefined : handleClose}>
-        <View style={styles.backdrop}>
-          <Animated.View style={[styles.backdropFill, { opacity: opacityAnim }]} />
+        <View className="flex-1 justify-center items-center p-xl">
+          {/* NativeWind chưa xử lý được className trên Animated.View ở web (RN Native
+              Wind chỉ patch View/Text thường) — dùng style inline trực tiếp cho 2 View
+              động này, còn các View/Text con bên trong vẫn dùng className bình thường. */}
+          <Animated.View
+            style={{
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.75)',
+              opacity: opacityAnim,
+            }}
+          />
           <TouchableWithoutFeedback>
             <Animated.View
-              style={[
-                styles.modalCard,
-                {
-                  opacity: opacityAnim,
-                  transform: [{ scale: scaleAnim }],
-                },
-              ]}
+              style={{
+                width: '100%',
+                maxWidth: 340,
+                backgroundColor: Colors.bg.surface,
+                borderRadius: Radius.xl,
+                padding: Spacing.xl,
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: Colors.border,
+                ...Shadow.md,
+                opacity: opacityAnim,
+                transform: [{ scale: scaleAnim }],
+              }}
             >
               {/* Icon */}
-              <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
+              <View className="w-14 h-14 rounded-full justify-center items-center mb-md" style={{ backgroundColor: iconBg }}>
                 <Icon name={iconName} size={28} color={iconColor} />
               </View>
 
               {/* Title & Message */}
-              <Text style={styles.title}>{options.title}</Text>
-              {Boolean(options.message) && <Text style={styles.message}>{options.message}</Text>}
+              <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center mb-xs">{options.title}</Text>
+              {Boolean(options.message) && (
+                <Text className="text-sm font-bevn-regular text-text-secondary text-center leading-5 mb-lg">{options.message}</Text>
+              )}
 
               {/* Actions */}
-              <View style={styles.btnRow}>
+              <View className="flex-row gap-md w-full mt-xs">
                 {isConfirmDialog ? (
                   <>
                     <TouchableOpacity
-                      style={[styles.btn, styles.cancelBtn]}
+                      className="flex-1 py-3 px-lg rounded-md items-center justify-center bg-bg-elevated border border-border"
                       onPress={handleCancel}
                       activeOpacity={0.8}
                     >
-                      <Text style={styles.cancelBtnText}>{options.cancelText || 'Hủy'}</Text>
+                      <Text className="text-sm font-semibold font-bevn-semibold text-text-secondary">{options.cancelText || 'Hủy'}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[
-                        styles.btn,
-                        isDestructive ? styles.destructiveBtn : styles.confirmBtn,
-                      ]}
+                      className={clsx(
+                        'flex-1 py-3 px-lg rounded-md items-center justify-center',
+                        isDestructive ? 'bg-status-failed' : 'bg-primary'
+                      )}
                       onPress={handleConfirm}
                       activeOpacity={0.8}
                     >
                       <Text
-                        style={[
-                          styles.confirmBtnText,
-                          isDestructive && styles.destructiveBtnText,
-                        ]}
+                        className={clsx(
+                          'text-sm font-bold font-bevn-bold',
+                          isDestructive ? 'text-white' : 'text-text-inverse'
+                        )}
                       >
                         {options.confirmText || 'Đồng ý'}
                       </Text>
@@ -168,11 +185,11 @@ export function AlertModal() {
                   </>
                 ) : (
                   <TouchableOpacity
-                    style={[styles.btn, styles.confirmBtn, { flex: 1 }]}
+                    className="flex-1 py-3 px-lg rounded-md items-center justify-center bg-primary"
                     onPress={handleConfirm}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.confirmBtnText}>{options.confirmText || 'Đã hiểu'}</Text>
+                    <Text className="text-sm font-bold font-bevn-bold text-text-inverse">{options.confirmText || 'Đã hiểu'}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -183,93 +200,3 @@ export function AlertModal() {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Spacing.xl,
-  },
-  backdropFill: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-  },
-  modalCard: {
-    width: '100%',
-    maxWidth: 340,
-    backgroundColor: Colors.bg.surface,
-    borderRadius: Radius.xl,
-    padding: Spacing.xl,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadow.md,
-  },
-  iconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  title: {
-    fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.primary,
-    fontFamily: 'BeVietnamPro_700Bold',
-    textAlign: 'center',
-    marginBottom: Spacing.xs,
-  },
-  message: {
-    fontSize: FontSize.sm,
-    color: Colors.text.secondary,
-    fontFamily: 'BeVietnamPro_400Regular',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: Spacing.lg,
-  },
-  btnRow: {
-    flexDirection: 'row',
-    gap: Spacing.md,
-    width: '100%',
-    marginTop: Spacing.xs,
-  },
-  btn: {
-    paddingVertical: 12,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelBtn: {
-    flex: 1,
-    backgroundColor: Colors.bg.elevated,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  cancelBtnText: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text.secondary,
-    fontFamily: 'BeVietnamPro_600SemiBold',
-  },
-  confirmBtn: {
-    flex: 1,
-    backgroundColor: Colors.primary,
-  },
-  confirmBtnText: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.inverse,
-    fontFamily: 'BeVietnamPro_700Bold',
-  },
-  destructiveBtn: {
-    flex: 1,
-    backgroundColor: Colors.status.failed,
-  },
-  destructiveBtnText: {
-    color: '#ffffff',
-  },
-});

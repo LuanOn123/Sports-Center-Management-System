@@ -3,8 +3,8 @@
 
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Platform, View, Text, StyleSheet } from 'react-native';
-import { Icon as MaterialIcons } from '../../components/shared/Icon';
+import { Platform, View, Text } from 'react-native';
+import { Icon } from '../../components/shared/Icon';
 import { Colors } from '../../constants/theme';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
@@ -13,14 +13,14 @@ import { useUnreadNotificationCount } from '../../hooks/shared/useNotifications'
 import { getTabConfigForRole, type MaterialIconName } from '../../navigation';
 
 function TabIcon({ name, color }: { name: MaterialIconName; color: string | any }) {
-  return <MaterialIcons name={name} size={20} color={String(color)} />;
+  return <Icon name={name} size={20} color={String(color)} />;
 }
 
 function Badge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
-    <View style={styles.badge}>
-      <Text style={styles.badgeText}>{count > 99 ? '99+' : String(count)}</Text>
+    <View className="absolute -top-1 -right-2 bg-status-expired rounded-full min-w-[16px] h-4 justify-center items-center px-[3px] border-[1.5px] border-bg-surface">
+      <Text className="text-[9px] font-bevn-bold text-white leading-[13px]">{count > 99 ? '99+' : String(count)}</Text>
     </View>
   );
 }
@@ -34,8 +34,8 @@ function ChatTabIcon({ color }: { color: string | any }) {
   });
 
   return (
-    <View style={{ position: 'relative' }}>
-      <MaterialIcons name="chat" size={20} color={String(color)} />
+    <View className="relative">
+      <Icon name="chat" size={20} color={String(color)} />
       <Badge count={data?.data?.unreadCount ?? 0} />
     </View>
   );
@@ -45,8 +45,8 @@ function NotificationsTabIcon({ color }: { color: string | any }) {
   const count = useUnreadNotificationCount();
 
   return (
-    <View style={{ position: 'relative' }}>
-      <MaterialIcons name="notifications" size={20} color={String(color)} />
+    <View className="relative">
+      <Icon name="notifications" size={20} color={String(color)} />
       <Badge count={count} />
     </View>
   );
@@ -60,6 +60,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        // Config của react-navigation, không phải JSX — không đổi được sang className.
         tabBarStyle: {
           backgroundColor: Colors.bg.surface,
           borderTopColor: Colors.border,
@@ -114,26 +115,3 @@ export default function TabLayout() {
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  badge: {
-    position: 'absolute',
-    top: -4,
-    right: -8,
-    backgroundColor: Colors.status.expired,
-    borderRadius: 99,
-    minWidth: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 3,
-    borderWidth: 1.5,
-    borderColor: Colors.bg.surface,
-  },
-  badgeText: {
-    fontSize: 9,
-    fontFamily: 'BeVietnamPro_700Bold',
-    color: '#fff',
-    lineHeight: 13,
-  },
-});

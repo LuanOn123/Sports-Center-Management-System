@@ -1,10 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView,
+  View, Text, ScrollView, Modal, TextInput,
   TouchableOpacity, ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
+import clsx from 'clsx';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Icon as MaterialIcons } from '../../components/shared/Icon';
+import { Icon } from '../../components/shared/Icon';
 import { useAuth } from '../../context/AuthContext';
 import {
   useMembershipData, usePendingRequest, useCancelSubscription, estimateSelfCancelRefund,
@@ -12,18 +13,24 @@ import {
 import { showAlert, showConfirm } from '../../lib/alert';
 import { storage } from '../../lib/storage';
 import { ApiError } from '../../lib/api';
-import type { MembershipPlan, MembershipTier, PendingMembershipRequest } from '../../lib/types';
-import { Colors, FontSize, FontWeight, Spacing, Radius } from '../../constants/theme';
+import type { MembershipPlan, PendingMembershipRequest } from '../../lib/types';
+import { Colors } from '../../constants/theme';
 
 const TIER_LABEL: Record<string, string> = { FREE: 'Miễn Phí', MEMBERSHIP: 'Tiêu Chuẩn', PREMIUM: 'Cao Cấp' };
-const TIER_ICON: Record<string, React.ComponentProps<typeof MaterialIcons>['name']> = {
+const TIER_ICON: Record<string, React.ComponentProps<typeof Icon>['name']> = {
   FREE: 'star-border',
   MEMBERSHIP: 'star',
   PREMIUM: 'workspace-premium',
 };
 
+// toLocaleDateString('vi-VN', ...) không đáng tin trên RN/Hermes — ICU của máy
+// có thể trả dấu "-" thay vì "/" giữa ngày/tháng. Tự ghép chuỗi cho chắc.
+function pad2(n: number) {
+  return String(n).padStart(2, '0');
+}
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const d = new Date(iso);
+  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 function formatPrice(price: string | number) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(price));
@@ -34,6 +41,8 @@ export default function MembershipPlansScreen() {
   const router = useRouter();
   const memberId = user?.memberProfile?.id ?? user?.id;
   const [selectedMethod, setSelectedMethod] = useState<'CASH' | 'BANK_TRANSFER'>('CASH');
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
 
   // ─── Hooks (logic) ──────────────────────────────────────────────────────────
   const {
@@ -119,34 +128,21 @@ export default function MembershipPlansScreen() {
     );
   };
 
-  const handleCancelSubscription = () => {
+  const openCancelModal = () => {
     if (!activeSub) return;
-    const { daysLeft, refundAmount, willRefund } = estimateSelfCancelRefund(activeSub);
-    const refundNote = willRefund
-      ? `Ước tính hoàn ${formatPrice(refundAmount)} (30%) vì còn ${daysLeft} ngày sử dụng.`
-      : `Không hoàn tiền vì gói chỉ còn ${daysLeft} ngày (≤ 15 ngày).`;
-    showConfirm(
-      'Hủy gói thành viên',
-      `Hủy gói "${activeSub.plan?.name ?? ''}"?\n\n${refundNote} Số tiền hoàn là ước tính, hệ thống sẽ trả kết quả chính thức.\n\nMọi lịch học sắp tới sẽ tự động bị hủy.`,
-      () => {
-        cancelMutation.mutate(
-          { id: activeSub.id },
-          {
-            onSuccess: (res) => {
-              showAlert('Đã hủy gói', res.data.message);
-              refreshMembership();
-            },
-            onError: (e) => {
-              const msg = e instanceof ApiError ? e.message : 'Hủy gói thất bại. Vui lòng thử lại.';
-              showAlert('Lỗi', msg);
-            },
-          }
-        );
-      },
-      undefined,
-      'Hủy gói',
-      true
-    );
+    cancelMutation.reset();
+    setCancelReason('');
+    setShowCancelModal(true);
+  };
+
+  const closeCancelModal = () => {
+    setShowCancelModal(false);
+    if (cancelMutation.isSuccess) refreshMembership();
+  };
+
+  const handleConfirmCancel = () => {
+    if (!activeSub) return;
+    cancelMutation.mutate({ id: activeSub.id, reason: cancelReason.trim() || undefined });
   };
 
   const handleCancelPending = () => {
@@ -164,23 +160,30 @@ export default function MembershipPlansScreen() {
     );
   };
 
+  const cancelEstimate = activeSub ? estimateSelfCancelRefund(activeSub) : null;
+
   // ─── UI ─────────────────────────────────────────────────────────────────────
   return (
-    <View style={styles.screen}>
+    <View className="flex-1 bg-bg-primary">
       {/* Header with Back and Home buttons */}
-      <View style={styles.topNav}>
-        <TouchableOpacity style={styles.navBtn} onPress={handleGoBack}>
-          <MaterialIcons name="arrow-back" size={24} color={Colors.text.primary} />
+      <View
+        className={clsx(
+          'flex-row justify-between items-center px-md pb-sm bg-bg-surface border-b border-border',
+          Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
+        )}
+      >
+        <TouchableOpacity className="w-10 h-10 justify-center items-center rounded-full" onPress={handleGoBack}>
+          <Icon name="arrow-back" size={24} color={Colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.navTitle}>Gói thành viên</Text>
-        <TouchableOpacity style={styles.navBtn} onPress={() => router.replace('/(tabs)')}>
-          <MaterialIcons name="home" size={24} color={Colors.primary} />
+        <Text className="text-lg font-bold font-bevn-bold text-text-primary">Gói thành viên</Text>
+        <TouchableOpacity className="w-10 h-10 justify-center items-center rounded-full" onPress={() => router.replace('/(tabs)')}>
+          <Icon name="home" size={24} color={Colors.primary} />
         </TouchableOpacity>
       </View>
 
       <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
+        className="flex-1 bg-bg-primary"
+        contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
         {/* Current status or Pending card */}
@@ -188,120 +191,116 @@ export default function MembershipPlansScreen() {
           <ActivityIndicator color={Colors.primary} style={{ marginVertical: 20 }} />
         ) : activeSub ? (
           /* ACTIVE MEMBERSHIP CARD */
-          <View style={[styles.currentCard, { borderColor: Colors.tier[status.effectiveTier] + '60' }]}>
-            <View style={styles.cardHeaderRow}>
-              <View style={styles.tierBadgeRow}>
-                <MaterialIcons
+          <View className="bg-bg-surface rounded-xl p-xl mb-xl border" style={{ borderColor: Colors.tier[status.effectiveTier] + '60' }}>
+            <View className="flex-row justify-between items-center mb-xs">
+              <View className="flex-row items-center gap-1">
+                <Icon
                   name={TIER_ICON[status.effectiveTier]}
                   size={14}
                   color={Colors.tier[status.effectiveTier]}
                 />
-                <Text style={[styles.tierBadgeText, { color: Colors.tier[status.effectiveTier] }]}>
+                <Text className="text-xs font-bold font-bevn-bold tracking-wide" style={{ color: Colors.tier[status.effectiveTier] }}>
                   HẠNG {TIER_LABEL[status.effectiveTier].toUpperCase()}
                 </Text>
               </View>
-              <View style={[styles.activeBadge, { backgroundColor: Colors.tier[status.effectiveTier] + '20' }]}>
-                <Text style={[styles.activeBadgeText, { color: Colors.tier[status.effectiveTier] }]}>ĐANG SỬ DỤNG</Text>
+              <View className="px-sm py-0.5 rounded-full" style={{ backgroundColor: Colors.tier[status.effectiveTier] + '20' }}>
+                <Text className="text-xs font-bold font-bevn-bold" style={{ color: Colors.tier[status.effectiveTier] }}>ĐANG SỬ DỤNG</Text>
               </View>
             </View>
-            <Text style={styles.currentPlanTitle}>
+            <Text className="text-xxl font-bold font-bevn-bold text-text-primary my-sm">
               {activeSub.plan?.name ?? `Gói ${TIER_LABEL[status.effectiveTier]}`}
             </Text>
-            <View style={styles.infoCol}>
-              <View style={styles.infoRow}>
-                <MaterialIcons name="event" size={16} color={Colors.text.secondary} />
-                <Text style={styles.currentInfo}>Hết hạn: {formatDate(activeSub.endDate)}</Text>
+            <View className="gap-1">
+              <View className="flex-row items-center gap-1.5">
+                <Icon name="event" size={16} color={Colors.text.secondary} />
+                <Text className="text-sm text-text-secondary font-bevn-regular">Hết hạn: {formatDate(activeSub.endDate)}</Text>
               </View>
               {Boolean(status.daysRemaining !== undefined) && (
-                <View style={styles.infoRow}>
-                  <MaterialIcons name="schedule" size={16} color={Colors.text.secondary} />
-                  <Text style={styles.currentInfo}>Còn {status.daysRemaining} ngày sử dụng</Text>
+                <View className="flex-row items-center gap-1.5">
+                  <Icon name="schedule" size={16} color={Colors.text.secondary} />
+                  <Text className="text-sm text-text-secondary font-bevn-regular">Còn {status.daysRemaining} ngày sử dụng</Text>
                 </View>
               )}
             </View>
             <TouchableOpacity
-              style={styles.cancelSubBtn}
-              onPress={handleCancelSubscription}
-              disabled={cancelMutation.isPending}
+              className="flex-row justify-center items-center gap-1.5 mt-lg py-sm rounded-md border border-[#EF444440]"
+              onPress={openCancelModal}
             >
-              {cancelMutation.isPending ? (
-                <ActivityIndicator color={Colors.status.expired} size="small" />
-              ) : (
-                <>
-                  <MaterialIcons name="cancel" size={16} color={Colors.status.expired} />
-                  <Text style={styles.cancelSubBtnText}>Hủy gói này</Text>
-                </>
-              )}
+              <Icon name="cancel" size={16} color={Colors.status.expired} />
+              <Text className="text-status-expired font-semibold font-bevn-semibold text-sm">Hủy gói này</Text>
             </TouchableOpacity>
           </View>
         ) : pendingRequest ? (
           /* PENDING APPROVAL CARD */
-          <View style={styles.pendingCard}>
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.pendingLabel}>Yêu cầu đăng ký</Text>
-              <View style={styles.pendingBadge}>
-                <MaterialIcons name="hourglass-top" size={12} color="#D97706" />
-                <Text style={styles.pendingBadgeText}>CHỜ LỄ TÂN DUYỆT</Text>
+          <View className="bg-bg-surface rounded-xl p-xl mb-xl border-[1.5px] border-[#F59E0B]">
+            <View className="flex-row justify-between items-center mb-xs">
+              <Text className="text-xs text-[#D97706] uppercase tracking-wide font-bevn-semibold">Yêu cầu đăng ký</Text>
+              <View className="flex-row items-center gap-1 bg-[#F59E0B20] px-sm py-[3px] rounded-full">
+                <Icon name="hourglass-top" size={12} color="#D97706" />
+                <Text className="text-xs font-bold font-bevn-bold text-[#D97706]">CHỜ LỄ TÂN DUYỆT</Text>
               </View>
             </View>
-            <Text style={styles.pendingPlanName}>{pendingRequest.planName}</Text>
-            <Text style={styles.pendingPrice}>
-              {formatPrice(pendingRequest.price)} <Text style={styles.pendingSubText}>/ {pendingRequest.durationDays} ngày</Text>
+            <Text className="text-xl font-bold font-bevn-bold text-text-primary mt-sm">{pendingRequest.planName}</Text>
+            <Text className="text-lg font-bold font-bevn-bold text-[#D97706] my-1">
+              {formatPrice(pendingRequest.price)} <Text className="text-sm text-text-muted font-bevn-regular">/ {pendingRequest.durationDays} ngày</Text>
             </Text>
-            <View style={styles.pendingInfoBox}>
-              <View style={styles.infoRow}>
-                <MaterialIcons name="payment" size={15} color={Colors.text.secondary} />
-                <Text style={styles.pendingInfoText}>
+            <View className="bg-[#F59E0B10] rounded-md p-md gap-1.5 my-md">
+              <View className="flex-row items-center gap-1.5">
+                <Icon name="payment" size={15} color={Colors.text.secondary} />
+                <Text className="text-sm text-text-secondary font-bevn-medium">
                   Thanh toán: {pendingRequest.paymentMethod === 'CASH' ? 'Tiền mặt tại quầy' : 'Chuyển khoản ngân hàng'}
                 </Text>
               </View>
-              <View style={styles.infoRow}>
-                <MaterialIcons name="info-outline" size={15} color="#D97706" />
-                <Text style={[styles.pendingInfoText, { color: '#B45309' }]}>
+              <View className="flex-row items-center gap-1.5">
+                <Icon name="info-outline" size={15} color="#D97706" />
+                <Text className="text-sm font-bevn-medium text-[#B45309]">
                   Vui lòng gặp Lễ tân để thanh toán & kích hoạt gói
                 </Text>
               </View>
             </View>
-            <View style={styles.pendingActions}>
-              <TouchableOpacity style={styles.checkBtn} onPress={onRefresh}>
-                <MaterialIcons name="refresh" size={16} color={Colors.primary} />
-                <Text style={styles.checkBtnText}>Kiểm tra kích hoạt</Text>
+            <View className="flex-row gap-md mt-xs">
+              <TouchableOpacity className="flex-1 flex-row justify-center items-center gap-1.5 bg-[#A3E63515] rounded-md py-md border border-[#A3E63540]" onPress={onRefresh}>
+                <Icon name="refresh" size={16} color={Colors.primary} />
+                <Text className="text-primary font-bold font-bevn-bold text-sm">Kiểm tra kích hoạt</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelPending}>
-                <Text style={styles.cancelBtnText}>Hủy</Text>
+              <TouchableOpacity className="px-lg justify-center items-center rounded-md bg-bg-elevated" onPress={handleCancelPending}>
+                <Text className="text-text-muted text-sm font-bevn-medium">Hủy</Text>
               </TouchableOpacity>
             </View>
           </View>
         ) : (
           /* NO ACTIVE MEMBERSHIP */
-          <View style={[styles.currentCard, { borderColor: Colors.border }]}>
-            <Text style={styles.currentLabel}>Hạng hiện tại</Text>
-            <View style={styles.currentRow}>
-              <MaterialIcons name="star-border" size={28} color={Colors.text.muted} />
-              <Text style={[styles.currentTier, { color: Colors.text.muted }]}>Miễn Phí (FREE)</Text>
+          <View className="bg-bg-surface rounded-xl p-xl mb-xl border border-border">
+            <Text className="text-xs text-text-muted uppercase tracking-wide mb-sm font-bevn-regular">Hạng hiện tại</Text>
+            <View className="flex-row items-center gap-sm mb-md">
+              <Icon name="star-border" size={28} color={Colors.text.muted} />
+              <Text className="text-xxl font-bold font-bevn-bold text-text-muted">Miễn Phí (FREE)</Text>
             </View>
-            <Text style={styles.noActive}>Chưa có gói thành viên đang hiệu lực. Hãy chọn gói bên dưới để đăng ký!</Text>
+            <Text className="text-sm text-text-muted font-bevn-regular">Chưa có gói thành viên đang hiệu lực. Hãy chọn gói bên dưới để đăng ký!</Text>
           </View>
         )}
 
         {/* Payment method selector */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
-          <View style={styles.methodRow}>
+        <View className="mb-xl">
+          <Text className="text-lg font-bold font-bevn-bold text-text-primary mb-md">Phương thức thanh toán</Text>
+          <View className="flex-row gap-md">
             {(['CASH', 'BANK_TRANSFER'] as const).map((m) => {
               const isActive = selectedMethod === m;
               return (
                 <TouchableOpacity
                   key={m}
-                  style={[styles.methodBtn, isActive && styles.methodBtnActive]}
+                  className={clsx(
+                    'flex-1 flex-row justify-center items-center gap-1.5 py-sm rounded-md border',
+                    isActive ? 'bg-primary border-primary' : 'bg-bg-surface border-border'
+                  )}
                   onPress={() => setSelectedMethod(m)}
                 >
-                  <MaterialIcons
+                  <Icon
                     name={m === 'CASH' ? 'payments' : 'account-balance'}
                     size={18}
                     color={isActive ? Colors.text.inverse : Colors.text.secondary}
                   />
-                  <Text style={[styles.methodText, isActive && styles.methodTextActive]}>
+                  <Text className={clsx('text-sm font-bevn-medium', isActive ? 'text-text-inverse font-bold font-bevn-bold' : 'text-text-secondary')}>
                     {m === 'CASH' ? 'Tiền mặt tại quầy' : 'Chuyển khoản'}
                   </Text>
                 </TouchableOpacity>
@@ -311,8 +310,8 @@ export default function MembershipPlansScreen() {
         </View>
 
         {/* Plans */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Các gói thành viên</Text>
+        <View className="mb-xl">
+          <Text className="text-lg font-bold font-bevn-bold text-text-primary mb-md">Các gói thành viên</Text>
           {plansLoading ? (
             <ActivityIndicator color={Colors.primary} />
           ) : (
@@ -326,50 +325,56 @@ export default function MembershipPlansScreen() {
               );
               const isPendingPlan = pendingRequest?.planId === plan.id;
               return (
-                <View key={plan.id} style={[styles.planCard, isCurrentPlan && styles.planCardActive, isPendingPlan && styles.planCardPending]}>
-                  <View style={styles.planTop}>
-                    <View style={styles.planTierRow}>
-                      <MaterialIcons name={TIER_ICON[plan.tier]} size={20} color={Colors.tier[plan.tier]} />
-                      <View style={[styles.planTierBadge, { backgroundColor: Colors.tier[plan.tier] + '20' }]}>
-                        <Text style={[styles.planTierText, { color: Colors.tier[plan.tier] }]}>{TIER_LABEL[plan.tier]}</Text>
+                <View
+                  key={plan.id}
+                  className={clsx(
+                    'bg-bg-surface rounded-xl p-xl mb-md border',
+                    isCurrentPlan ? 'border-primary' : isPendingPlan ? 'border-[#F59E0B80]' : 'border-border'
+                  )}
+                >
+                  <View className="mb-lg">
+                    <View className="flex-row items-center gap-sm mb-sm">
+                      <Icon name={TIER_ICON[plan.tier]} size={20} color={Colors.tier[plan.tier]} />
+                      <View className="rounded-full px-sm py-0.5" style={{ backgroundColor: Colors.tier[plan.tier] + '20' }}>
+                        <Text className="text-xs font-semibold font-bevn-semibold" style={{ color: Colors.tier[plan.tier] }}>{TIER_LABEL[plan.tier]}</Text>
                       </View>
                       {Boolean(isCurrentPlan) && (
-                        <View style={styles.currentBadge}>
-                          <Text style={styles.currentBadgeText}>Đang sử dụng</Text>
+                        <View className="bg-[#A3E63520] rounded-full px-sm py-0.5">
+                          <Text className="text-xs text-primary font-semibold font-bevn-semibold">Đang sử dụng</Text>
                         </View>
                       )}
                       {Boolean(isPendingPlan && !isCurrentPlan) && (
-                        <View style={styles.pendingBadgeSmall}>
-                          <Text style={styles.pendingBadgeSmallText}>Chờ duyệt</Text>
+                        <View className="bg-[#F59E0B20] rounded-full px-sm py-0.5">
+                          <Text className="text-xs text-[#D97706] font-semibold font-bevn-semibold">Chờ duyệt</Text>
                         </View>
                       )}
                     </View>
-                    <Text style={styles.planName}>{plan.name}</Text>
-                    {Boolean(plan.description) && <Text style={styles.planDesc}>{plan.description}</Text>}
+                    <Text className="text-lg font-bold font-bevn-bold text-text-primary mb-1">{plan.name}</Text>
+                    {Boolean(plan.description) && <Text className="text-sm text-text-secondary font-bevn-regular">{plan.description}</Text>}
                   </View>
-                  <View style={styles.planMid}>
-                    <Text style={styles.planPrice}>{formatPrice(plan.price)}</Text>
-                    <Text style={styles.planDuration}>{plan.durationDays} ngày</Text>
+                  <View className="flex-row justify-between items-baseline mb-lg py-md border-t border-b border-divider">
+                    <Text className="text-xl font-bold font-bevn-bold text-primary">{formatPrice(plan.price)}</Text>
+                    <Text className="text-sm text-text-secondary font-bevn-regular">{plan.durationDays} ngày</Text>
                   </View>
-                  <View style={styles.planActions}>
+                  <View>
                     {Boolean(isCurrentPlan) ? (
-                      <TouchableOpacity style={styles.renewBtn} onPress={() => handleRenew(plan)}>
-                        <MaterialIcons name="autorenew" size={18} color={Colors.accent} />
-                        <Text style={styles.renewBtnText}>Gia hạn gói này</Text>
+                      <TouchableOpacity className="flex-row justify-center items-center gap-1.5 bg-[#22C55E20] rounded-md p-md border border-[#22C55E40]" onPress={() => handleRenew(plan)}>
+                        <Icon name="autorenew" size={18} color={Colors.accent} />
+                        <Text className="text-accent font-bold font-bevn-bold text-md">Gia hạn gói này</Text>
                       </TouchableOpacity>
                     ) : activeSub ? (
-                      <TouchableOpacity style={styles.switchBtn} onPress={() => handleSubscribe(plan)}>
-                        <MaterialIcons name="swap-horiz" size={18} color={Colors.primary} />
-                        <Text style={styles.switchBtnText}>Đổi sang gói này</Text>
+                      <TouchableOpacity className="flex-row justify-center items-center gap-1.5 bg-[#A3E63515] rounded-md p-md border border-[#A3E63530]" onPress={() => handleSubscribe(plan)}>
+                        <Icon name="swap-horiz" size={18} color={Colors.primary} />
+                        <Text className="text-primary font-bold font-bevn-bold text-md">Đổi sang gói này</Text>
                       </TouchableOpacity>
                     ) : isPendingPlan ? (
-                      <View style={styles.pendingPlanBtn}>
-                        <MaterialIcons name="hourglass-empty" size={16} color="#D97706" />
-                        <Text style={styles.pendingPlanBtnText}>Đang chờ Lễ tân kích hoạt</Text>
+                      <View className="flex-row justify-center items-center gap-1.5 bg-[#F59E0B15] rounded-md p-md border border-[#F59E0B40]">
+                        <Icon name="hourglass-empty" size={16} color="#D97706" />
+                        <Text className="text-[#D97706] font-bold font-bevn-bold text-sm">Đang chờ Lễ tân kích hoạt</Text>
                       </View>
                     ) : (
-                      <TouchableOpacity style={styles.subscribeBtn} onPress={() => handleSubscribe(plan)}>
-                        <Text style={styles.subscribeBtnText}>Đăng ký gói này</Text>
+                      <TouchableOpacity className="bg-primary rounded-md p-md items-center" onPress={() => handleSubscribe(plan)}>
+                        <Text className="text-text-inverse font-bold font-bevn-bold text-md">Đăng ký gói này</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -381,16 +386,16 @@ export default function MembershipPlansScreen() {
 
         {/* History */}
         {Boolean(subs.length > 0) && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Lịch sử đăng ký</Text>
+          <View className="mb-xl">
+            <Text className="text-lg font-bold font-bevn-bold text-text-primary mb-md">Lịch sử đăng ký</Text>
             {subs.slice(0, 5).map((s) => (
-              <View key={s.id} style={styles.histItem}>
+              <View key={s.id} className="flex-row justify-between items-center py-md border-b border-divider">
                 <View>
-                  <Text style={styles.histPlan}>{s.plan?.name ?? 'Gói tập'}</Text>
-                  <Text style={styles.histDate}>{formatDate(s.startDate)} → {formatDate(s.endDate)}</Text>
+                  <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mb-0.5">{s.plan?.name ?? 'Gói tập'}</Text>
+                  <Text className="text-xs text-text-muted font-bevn-regular">{formatDate(s.startDate)} → {formatDate(s.endDate)}</Text>
                 </View>
-                <View style={[styles.histStatus, { backgroundColor: (Colors.status as Record<string, string>)[s.status.toLowerCase()] + '20' }]}>
-                  <Text style={[styles.histStatusText, { color: (Colors.status as Record<string, string>)[s.status.toLowerCase()] }]}>
+                <View className="rounded-full px-sm py-0.5" style={{ backgroundColor: (Colors.status as Record<string, string>)[s.status.toLowerCase()] + '20' }}>
+                  <Text className="text-xs font-semibold font-bevn-semibold" style={{ color: (Colors.status as Record<string, string>)[s.status.toLowerCase()] }}>
                     {s.status}
                   </Text>
                 </View>
@@ -399,118 +404,94 @@ export default function MembershipPlansScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Modal xác nhận hủy gói — điều khoản hoàn tiền + lý do hủy (không bắt buộc) */}
+      <Modal visible={showCancelModal} transparent animationType="fade" onRequestClose={closeCancelModal}>
+        <TouchableOpacity
+          className="flex-1 bg-[rgba(0,0,0,0.75)] justify-center items-center p-xl"
+          activeOpacity={1}
+          onPress={cancelMutation.isPending ? undefined : closeCancelModal}
+        >
+          <TouchableOpacity activeOpacity={1} className="w-full max-w-[400px] bg-bg-surface rounded-xl p-xl border border-border">
+            <Text className="text-lg font-bold font-bevn-bold text-text-primary mb-md text-center">
+              {cancelMutation.isSuccess ? 'Đã hủy gói tập' : 'Xác nhận hủy gói tập'}
+            </Text>
+
+            {cancelMutation.isSuccess && cancelMutation.data ? (
+              <View className="gap-sm mb-lg">
+                <Text className="text-sm text-status-active font-bevn-medium">Gói tập và các lượt đặt lớp tương lai đã được hủy.</Text>
+                <Text className="text-sm text-text-secondary font-bevn-regular">
+                  {cancelMutation.data.data.willRefund
+                    ? `Số tiền hoàn: ${formatPrice(cancelMutation.data.data.refundAmount)}. Vui lòng liên hệ quầy để nhận tiền.`
+                    : 'Không phát sinh hoàn tiền.'}
+                </Text>
+                <Text className="text-sm text-text-secondary font-bevn-regular">
+                  Còn {cancelMutation.data.data.daysLeft} ngày tại thời điểm hủy.
+                </Text>
+              </View>
+            ) : activeSub && cancelEstimate ? (
+              <View className="gap-sm mb-lg">
+                <Text className="text-sm text-text-secondary font-bevn-regular">
+                  Hủy <Text className="font-bold font-bevn-bold text-text-primary">{activeSub.plan?.name ?? 'gói tập'}</Text> sẽ chấm dứt quyền lợi và hủy toàn bộ lượt đặt lớp trong tương lai.
+                </Text>
+                <Text className="text-sm text-text-secondary font-bevn-regular">
+                  Còn trên 15 ngày: hoàn 30% khoản thanh toán gốc. Còn từ 15 ngày trở xuống: không hoàn tiền.
+                </Text>
+                <Text className="text-sm text-text-secondary font-bevn-regular">
+                  Dự kiến còn {cancelEstimate.daysLeft} ngày · Hoàn khoảng <Text className="font-bold font-bevn-bold text-text-primary">{formatPrice(cancelEstimate.refundAmount)}</Text>.
+                </Text>
+                <Text className="text-sm text-text-secondary font-bevn-regular">
+                  Ước tính theo giá gói hiện tại. Số tiền chính thức được xác định theo khoản thanh toán gốc và thời điểm xác nhận.
+                </Text>
+                <View className="mt-sm">
+                  <Text className="text-sm text-text-secondary mb-1.5 font-bevn-medium">Lý do hủy (không bắt buộc)</Text>
+                  <TextInput
+                    className="bg-bg-elevated rounded-md p-md text-text-primary text-sm border border-border font-bevn-regular min-h-[80px]"
+                    value={cancelReason}
+                    onChangeText={setCancelReason}
+                    multiline
+                    maxLength={500}
+                    editable={!cancelMutation.isPending}
+                    placeholder="Nhập lý do (nếu có)..."
+                    placeholderTextColor={Colors.text.muted}
+                  />
+                </View>
+              </View>
+            ) : null}
+
+            {cancelMutation.isError && (
+              <Text className="text-xs text-status-failed mb-md font-bevn-regular">
+                {cancelMutation.error instanceof ApiError ? cancelMutation.error.message : 'Hủy gói thất bại. Vui lòng thử lại.'}
+              </Text>
+            )}
+
+            <View className="flex-row gap-md">
+              <TouchableOpacity
+                className="flex-1 py-sm rounded-md items-center bg-bg-elevated border border-border"
+                onPress={closeCancelModal}
+                disabled={cancelMutation.isPending}
+              >
+                <Text className="text-text-secondary font-semibold font-bevn-semibold text-sm">
+                  {cancelMutation.isSuccess ? 'Đóng' : 'Giữ gói tập'}
+                </Text>
+              </TouchableOpacity>
+              {!cancelMutation.isSuccess && (
+                <TouchableOpacity
+                  className="flex-1 py-sm rounded-md items-center bg-status-failed"
+                  onPress={handleConfirmCancel}
+                  disabled={cancelMutation.isPending}
+                >
+                  {cancelMutation.isPending ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text className="text-white font-bold font-bevn-bold text-sm">Xác nhận hủy gói</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.bg.primary },
-  topNav: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingTop: Platform.OS === 'ios' ? 52 : (Platform.OS === 'android' ? 42 : 14),
-    paddingBottom: Spacing.sm,
-    backgroundColor: Colors.bg.surface, borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  navBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: Radius.full },
-  navTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  container: { flex: 1, backgroundColor: Colors.bg.primary },
-  content: { padding: Spacing.xl, paddingBottom: Spacing.xxxl },
-  currentCard: { backgroundColor: Colors.bg.surface, borderRadius: Radius.xl, padding: Spacing.xl, marginBottom: Spacing.xl, borderWidth: 1 },
-  currentLabel: { fontSize: FontSize.xs, color: Colors.text.muted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: Spacing.sm, fontFamily: 'BeVietnamPro_400Regular' },
-  currentRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.md },
-  currentTier: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
-  infoCol: { gap: 4 },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  currentInfo: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
-  noActive: { fontSize: FontSize.sm, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular' },
-  section: { marginBottom: Spacing.xl },
-  sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginBottom: Spacing.md },
-  methodRow: { flexDirection: 'row', gap: Spacing.md },
-  methodBtn: {
-    flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
-    gap: 6, paddingVertical: Spacing.sm, borderRadius: Radius.md,
-    backgroundColor: Colors.bg.surface, borderWidth: 1, borderColor: Colors.border,
-  },
-  methodBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  methodText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_500Medium' },
-  methodTextActive: { color: Colors.text.inverse, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
-  planCard: { backgroundColor: Colors.bg.surface, borderRadius: Radius.xl, padding: Spacing.xl, marginBottom: Spacing.md, borderWidth: 1, borderColor: Colors.border },
-  planCardActive: { borderColor: Colors.primary },
-  planTop: { marginBottom: Spacing.lg },
-  planTierRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
-  planTierBadge: { borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
-  planTierText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
-  currentBadge: { backgroundColor: Colors.primary + '20', borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
-  currentBadgeText: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
-  planName: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginBottom: 4 },
-  planDesc: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
-  planMid: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: Spacing.lg, paddingVertical: Spacing.md, borderTopWidth: 1, borderBottomWidth: 1, borderColor: Colors.divider },
-  planPrice: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  planDuration: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_400Regular' },
-  planActions: {},
-  subscribeBtn: { backgroundColor: Colors.primary, borderRadius: Radius.md, padding: Spacing.md, alignItems: 'center' },
-  subscribeBtnText: { color: Colors.text.inverse, fontWeight: FontWeight.bold, fontSize: FontSize.md, fontFamily: 'BeVietnamPro_700Bold' },
-  renewBtn: {
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6,
-    backgroundColor: Colors.accent + '20', borderRadius: Radius.md, padding: Spacing.md,
-    borderWidth: 1, borderColor: Colors.accent + '40',
-  },
-  renewBtnText: { color: Colors.accent, fontWeight: FontWeight.bold, fontSize: FontSize.md, fontFamily: 'BeVietnamPro_700Bold' },
-  cancelSubBtn: {
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6,
-    marginTop: Spacing.lg, paddingVertical: Spacing.sm, borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.status.expired + '40',
-  },
-  cancelSubBtnText: { color: Colors.status.expired, fontWeight: FontWeight.semibold, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_600SemiBold' },
-  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.xs },
-  tierBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  tierBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold', letterSpacing: 0.5 },
-  currentPlanTitle: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginVertical: Spacing.sm },
-  activeBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: Radius.full },
-  activeBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
-  switchBtn: {
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6,
-    backgroundColor: Colors.primary + '15', borderRadius: Radius.md, padding: Spacing.md,
-    borderWidth: 1, borderColor: Colors.primary + '30',
-  },
-  switchBtnText: { color: Colors.primary, fontWeight: FontWeight.bold, fontSize: FontSize.md, fontFamily: 'BeVietnamPro_700Bold' },
-  pendingCard: {
-    backgroundColor: Colors.bg.surface, borderRadius: Radius.xl, padding: Spacing.xl,
-    marginBottom: Spacing.xl, borderWidth: 1.5, borderColor: '#F59E0B',
-  },
-  pendingLabel: { fontSize: FontSize.xs, color: '#D97706', textTransform: 'uppercase', letterSpacing: 1, fontFamily: 'BeVietnamPro_600SemiBold' },
-  pendingBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#F59E0B20', paddingHorizontal: Spacing.sm, paddingVertical: 3, borderRadius: Radius.full,
-  },
-  pendingBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: '#D97706', fontFamily: 'BeVietnamPro_700Bold' },
-  pendingPlanName: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold', marginTop: Spacing.sm },
-  pendingPrice: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: '#D97706', fontFamily: 'BeVietnamPro_700Bold', marginVertical: 4 },
-  pendingSubText: { fontSize: FontSize.sm, color: Colors.text.muted, fontWeight: FontWeight.regular, fontFamily: 'BeVietnamPro_400Regular' },
-  pendingInfoBox: { backgroundColor: '#F59E0B10', borderRadius: Radius.md, padding: Spacing.md, gap: 6, marginVertical: Spacing.md },
-  pendingInfoText: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_500Medium' },
-  pendingActions: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.xs },
-  checkBtn: {
-    flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6,
-    backgroundColor: Colors.primary + '15', borderRadius: Radius.md, paddingVertical: Spacing.md,
-    borderWidth: 1, borderColor: Colors.primary + '40',
-  },
-  checkBtnText: { color: Colors.primary, fontWeight: FontWeight.bold, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_700Bold' },
-  cancelBtn: { paddingHorizontal: Spacing.lg, justifyContent: 'center', alignItems: 'center', borderRadius: Radius.md, backgroundColor: Colors.bg.elevated },
-  cancelBtnText: { color: Colors.text.muted, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_500Medium' },
-  planCardPending: { borderColor: '#F59E0B80' },
-  pendingBadgeSmall: { backgroundColor: '#F59E0B20', borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
-  pendingBadgeSmallText: { fontSize: FontSize.xs, color: '#D97706', fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
-  pendingPlanBtn: {
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6,
-    backgroundColor: '#F59E0B15', borderRadius: Radius.md, padding: Spacing.md,
-    borderWidth: 1, borderColor: '#F59E0B40',
-  },
-  pendingPlanBtnText: { color: '#D97706', fontWeight: FontWeight.bold, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_700Bold' },
-  histItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.divider },
-  histPlan: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_600SemiBold', marginBottom: 2 },
-  histDate: { fontSize: FontSize.xs, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular' },
-  histStatus: { borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
-  histStatusText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, fontFamily: 'BeVietnamPro_600SemiBold' },
-});

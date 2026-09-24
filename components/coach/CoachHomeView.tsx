@@ -3,14 +3,14 @@
 
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, ScrollView, TouchableOpacity,
   RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Icon as MaterialIcons } from '../shared/Icon';
+import { Icon } from '../shared/Icon';
 import { Brand } from '../shared/Brand';
 import { useCoachHome } from '../../hooks/coach/useCoachHome';
-import { Colors, FontSize, FontWeight, Spacing, Radius, Shadow } from '../../constants/theme';
+import { Colors } from '../../constants/theme';
 import type { User } from '../../lib/types';
 
 const CLASS_TYPE_LABEL: Record<string, string> = {
@@ -18,12 +18,20 @@ const CLASS_TYPE_LABEL: Record<string, string> = {
   PREMIUM: 'Cao Cấp',
 };
 
+// toLocaleDateString('vi-VN', ...) không đáng tin trên RN/Hermes — ICU của máy
+// có thể trả dấu "-" thay vì "/" giữa ngày/tháng. Tự ghép chuỗi cho chắc.
+const WEEKDAY_SHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+function pad2(n: number) {
+  return String(n).padStart(2, '0');
+}
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+  const d = new Date(iso);
+  return `${WEEKDAY_SHORT[d.getDay()]}, ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  const d = new Date(iso);
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
 interface CoachHomeViewProps {
@@ -44,26 +52,26 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
 
   return (
     <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
+      className="flex-1 bg-bg-primary"
+      contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
       refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
     >
       {/* Top Bar */}
-      <View style={styles.topBar}>
+      <View className="flex-row justify-between items-center mb-lg">
         <Brand size="sm" align="flex-start" />
-        <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} style={styles.avatar}>
-          <Text style={styles.avatarText}>{user?.fullName?.charAt(0)?.toUpperCase() ?? 'H'}</Text>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} className="w-11 h-11 rounded-full bg-primary justify-center items-center">
+          <Text className="text-lg font-bold font-bevn-bold text-text-inverse">{user?.fullName?.charAt(0)?.toUpperCase() ?? 'H'}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Greeting */}
-      <View style={styles.greetingSection}>
-        <View style={styles.coachBadge}>
-          <MaterialIcons name="sports" size={14} color={Colors.primary} />
-          <Text style={styles.coachBadgeText}>HUẤN LUYỆN VIÊN</Text>
+      <View className="mb-xl">
+        <View className="flex-row items-center gap-1 bg-[#A3E63520] px-sm py-[3px] rounded-full self-start mb-xs">
+          <Icon name="sports" size={14} color={Colors.primary} />
+          <Text className="text-xs font-bold font-bevn-bold text-primary tracking-wide">HUẤN LUYỆN VIÊN</Text>
         </View>
-        <Text style={styles.greeting}>Xin chào, HLV {user?.fullName}</Text>
-        <Text style={styles.greetingSubtitle}>
+        <Text className="text-xl font-bold font-bevn-bold text-text-primary">Xin chào, HLV {user?.fullName}</Text>
+        <Text className="text-sm text-text-secondary mt-0.5 font-bevn-regular">
           {user?.coachProfile?.specialization
             ? `Chuyên môn: ${user.coachProfile.specialization}`
             : 'Quản lý lịch dạy và các lớp học phụ trách'}
@@ -71,82 +79,82 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
       </View>
 
       {/* Stats overview */}
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <MaterialIcons name="class" size={20} color={Colors.primary} style={styles.statIcon} />
-          <Text style={styles.statLabel}>Lớp phụ trách</Text>
-          <Text style={styles.statValue}>{coachClasses.length} lớp</Text>
+      <View className="flex-row gap-md mb-lg">
+        <View className="flex-1 bg-bg-surface rounded-lg p-lg border border-border">
+          <Icon name="class" size={20} color={Colors.primary} style={{ marginBottom: 4 }} />
+          <Text className="text-xs text-text-muted font-bevn-regular uppercase tracking-wide">Lớp phụ trách</Text>
+          <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mt-0.5">{coachClasses.length} lớp</Text>
         </View>
-        <View style={styles.statCard}>
-          <MaterialIcons name="event-available" size={20} color="#10B981" style={styles.statIcon} />
-          <Text style={styles.statLabel}>Lịch dạy sắp tới</Text>
-          <Text style={styles.statValue}>{teachingSchedules.length} buổi</Text>
+        <View className="flex-1 bg-bg-surface rounded-lg p-lg border border-border">
+          <Icon name="event-available" size={20} color="#10B981" style={{ marginBottom: 4 }} />
+          <Text className="text-xs text-text-muted font-bevn-regular uppercase tracking-wide">Lịch dạy sắp tới</Text>
+          <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mt-0.5">{teachingSchedules.length} buổi</Text>
         </View>
         {Boolean(user?.coachProfile?.experienceYears) && (
-          <View style={styles.statCard}>
-            <MaterialIcons name="workspace-premium" size={20} color="#F59E0B" style={styles.statIcon} />
-            <Text style={styles.statLabel}>Kinh nghiệm</Text>
-            <Text style={styles.statValue}>{user?.coachProfile?.experienceYears} năm</Text>
+          <View className="flex-1 bg-bg-surface rounded-lg p-lg border border-border">
+            <Icon name="workspace-premium" size={20} color="#F59E0B" style={{ marginBottom: 4 }} />
+            <Text className="text-xs text-text-muted font-bevn-regular uppercase tracking-wide">Kinh nghiệm</Text>
+            <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mt-0.5">{user?.coachProfile?.experienceYears} năm</Text>
           </View>
         )}
       </View>
 
       {/* Lịch dạy sắp tới */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Lịch dạy sắp tới</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/training')} style={styles.sectionLinkRow}>
-            <Text style={styles.sectionLink}>Điểm danh</Text>
-            <MaterialIcons name="arrow-forward" size={16} color={Colors.primary} />
+      <View className="mb-xl">
+        <View className="flex-row justify-between items-center mb-md">
+          <Text className="text-lg font-bold font-bevn-bold text-text-primary">Lịch dạy sắp tới</Text>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/training')} className="flex-row items-center gap-1">
+            <Text className="text-sm text-primary font-bevn-medium">Điểm danh</Text>
+            <Icon name="arrow-forward" size={16} color={Colors.primary} />
           </TouchableOpacity>
         </View>
 
         {isLoading ? (
-          <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.lg }} />
+          <ActivityIndicator color={Colors.primary} style={{ marginTop: 16 }} />
         ) : teachingSchedules.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <MaterialIcons name="event-available" size={44} color={Colors.text.muted} style={{ marginBottom: Spacing.md }} />
-            <Text style={styles.emptyText}>Chưa có lịch dạy sắp tới</Text>
-            <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/(tabs)/classes')}>
-              <Text style={styles.emptyBtnText}>Xem danh sách lớp</Text>
+          <View className="bg-bg-surface rounded-xl p-xxxl items-center border border-border">
+            <Icon name="event-available" size={44} color={Colors.text.muted} style={{ marginBottom: 12 }} />
+            <Text className="text-text-muted text-sm font-bevn-regular mb-lg">Chưa có lịch dạy sắp tới</Text>
+            <TouchableOpacity className="bg-primary rounded-md px-xl py-sm" onPress={() => router.push('/(tabs)/classes')}>
+              <Text className="text-text-inverse font-bold font-bevn-bold">Xem danh sách lớp</Text>
             </TouchableOpacity>
           </View>
         ) : (
           teachingSchedules.slice(0, 5).map((s) => (
             <TouchableOpacity
               key={s.id}
-              style={styles.coachScheduleCard}
+              className="bg-bg-surface rounded-lg p-lg mb-md border border-border shadow-sm"
               onPress={() => router.push(`/schedule/${s.id}`)}
               activeOpacity={0.8}
             >
-              <View style={styles.scheduleHeaderRow}>
-                <View style={styles.sportBadge}>
-                  <Text style={styles.sportBadgeText}>{s.class?.sports?.map((sp) => sp.name).join(', ') || 'Môn thể thao'}</Text>
+              <View className="flex-row justify-between items-center mb-xs">
+                <View className="bg-[#A3E63518] px-sm py-0.5 rounded-sm">
+                  <Text className="text-xs font-semibold font-bevn-semibold text-primary">{s.class?.sports?.map((sp) => sp.name).join(', ') || 'Môn thể thao'}</Text>
                 </View>
-                <View style={styles.timeTag}>
-                  <MaterialIcons name="schedule" size={13} color={Colors.primary} />
-                  <Text style={styles.timeTagText}>
+                <View className="flex-row items-center gap-1">
+                  <Icon name="schedule" size={13} color={Colors.primary} />
+                  <Text className="text-xs text-primary font-semibold font-bevn-semibold">
                     {formatTime(s.startTime)} – {formatTime(s.endTime)}
                   </Text>
                 </View>
               </View>
 
-              <Text style={styles.coachClassTitle}>{s.class?.name ?? 'Lớp học'}</Text>
+              <Text className="text-md font-bold font-bevn-bold text-text-primary my-1">{s.class?.name ?? 'Lớp học'}</Text>
 
-              <View style={styles.scheduleFooterRow}>
-                <View style={styles.scheduleFooterItem}>
-                  <MaterialIcons name="today" size={14} color={Colors.text.secondary} />
-                  <Text style={styles.scheduleFooterText}>{formatDate(s.startTime)}</Text>
+              <View className="flex-row items-center flex-wrap gap-md mt-xs">
+                <View className="flex-row items-center gap-1">
+                  <Icon name="today" size={14} color={Colors.text.secondary} />
+                  <Text className="text-xs text-text-secondary font-bevn-regular">{formatDate(s.startTime)}</Text>
                 </View>
                 {Boolean(s.room) && (
-                  <View style={styles.scheduleFooterItem}>
-                    <MaterialIcons name="place" size={14} color={Colors.text.secondary} />
-                    <Text style={styles.scheduleFooterText}>{s.room!.name}</Text>
+                  <View className="flex-row items-center gap-1">
+                    <Icon name="place" size={14} color={Colors.text.secondary} />
+                    <Text className="text-xs text-text-secondary font-bevn-regular">{s.room!.name}</Text>
                   </View>
                 )}
-                <View style={styles.scheduleFooterItem}>
-                  <MaterialIcons name="people" size={14} color={Colors.primary} />
-                  <Text style={[styles.scheduleFooterText, { color: Colors.primary, fontWeight: FontWeight.semibold }]}>
+                <View className="flex-row items-center gap-1">
+                  <Icon name="people" size={14} color={Colors.primary} />
+                  <Text className="text-xs font-semibold text-primary font-bevn-semibold">
                     {s._count?.enrollments ?? 0}{s.class?.capacity ? `/${s.class.capacity}` : ''} học viên
                   </Text>
                 </View>
@@ -157,65 +165,65 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
       </View>
 
       {/* Lớp học phụ trách */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Lớp học phụ trách</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/classes')} style={styles.sectionLinkRow}>
-            <Text style={styles.sectionLink}>Tất cả lớp</Text>
-            <MaterialIcons name="arrow-forward" size={16} color={Colors.primary} />
+      <View className="mb-xl">
+        <View className="flex-row justify-between items-center mb-md">
+          <Text className="text-lg font-bold font-bevn-bold text-text-primary">Lớp học phụ trách</Text>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/classes')} className="flex-row items-center gap-1">
+            <Text className="text-sm text-primary font-bevn-medium">Tất cả lớp</Text>
+            <Icon name="arrow-forward" size={16} color={Colors.primary} />
           </TouchableOpacity>
         </View>
 
         {classesLoading ? (
-          <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.lg }} />
+          <ActivityIndicator color={Colors.primary} style={{ marginTop: 16 }} />
         ) : coachClasses.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <MaterialIcons name="school" size={44} color={Colors.text.muted} style={{ marginBottom: Spacing.md }} />
-            <Text style={styles.emptyText}>Chưa được phân công lớp học nào</Text>
+          <View className="bg-bg-surface rounded-xl p-xxxl items-center border border-border">
+            <Icon name="school" size={44} color={Colors.text.muted} style={{ marginBottom: 12 }} />
+            <Text className="text-text-muted text-sm font-bevn-regular">Chưa được phân công lớp học nào</Text>
           </View>
         ) : (
           coachClasses.map((c) => (
             <TouchableOpacity
               key={c.id}
-              style={styles.coachClassCard}
+              className="bg-bg-surface rounded-lg p-lg mb-sm flex-row items-center justify-between border border-border"
               onPress={() => router.push(`/classes/${c.id}`)}
               activeOpacity={0.8}
             >
-              <View style={styles.coachClassLeft}>
-                <View style={styles.coachClassTop}>
-                  <Text style={styles.coachClassName}>{c.name}</Text>
-                  <View style={styles.typeBadge}>
-                    <Text style={styles.typeBadgeText}>
+              <View className="flex-1 mr-sm">
+                <View className="flex-row items-center justify-between mb-1">
+                  <Text className="text-md font-semibold font-bevn-semibold text-text-primary flex-1 mr-sm">{c.name}</Text>
+                  <View className="bg-bg-elevated px-sm py-0.5 rounded-full border border-border">
+                    <Text className="text-[10px] text-text-secondary font-bevn-medium">
                       {CLASS_TYPE_LABEL[c.classType] ?? c.classType}
                     </Text>
                   </View>
                 </View>
                 {c.description ? (
-                  <Text style={styles.coachClassDesc} numberOfLines={2}>{c.description}</Text>
+                  <Text className="text-xs text-text-muted font-bevn-regular mb-xs" numberOfLines={2}>{c.description}</Text>
                 ) : null}
-                <View style={styles.coachClassMetaRow}>
+                <View className="flex-row items-center gap-sm">
                   {Boolean(c.sports?.length) && (
-                    <View style={styles.metaChip}>
-                      <MaterialIcons name="fitness-center" size={12} color={Colors.text.secondary} />
-                      <Text style={styles.metaChipText}>{c.sports!.map((s) => s.name).join(', ')}</Text>
+                    <View className="flex-row items-center gap-[3px]">
+                      <Icon name="fitness-center" size={12} color={Colors.text.secondary} />
+                      <Text className="text-xs text-text-secondary font-bevn-regular">{c.sports!.map((s) => s.name).join(', ')}</Text>
                     </View>
                   )}
-                  <View style={styles.metaChip}>
-                    <MaterialIcons name="group" size={12} color={Colors.text.secondary} />
-                    <Text style={styles.metaChipText}>Sức chứa: {c.capacity} học viên</Text>
+                  <View className="flex-row items-center gap-[3px]">
+                    <Icon name="group" size={12} color={Colors.text.secondary} />
+                    <Text className="text-xs text-text-secondary font-bevn-regular">Sức chứa: {c.capacity} học viên</Text>
                   </View>
                 </View>
               </View>
-              <MaterialIcons name="chevron-right" size={24} color={Colors.text.muted} />
+              <Icon name="chevron-right" size={24} color={Colors.text.muted} />
             </TouchableOpacity>
           ))
         )}
       </View>
 
       {/* Quick Actions for Coach */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Truy cập nhanh</Text>
-        <View style={styles.quickGrid}>
+      <View className="mb-xl">
+        <Text className="text-lg font-bold font-bevn-bold text-text-primary">Truy cập nhanh</Text>
+        <View className="flex-row flex-wrap gap-md mt-sm">
           {[
             { icon: 'fitness-center' as const, label: 'Lớp học', route: '/(tabs)/classes' as const },
             { icon: 'how-to-reg' as const, label: 'Điểm danh', route: '/(tabs)/training' as const },
@@ -224,13 +232,13 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
           ].map((item) => (
             <TouchableOpacity
               key={item.label}
-              style={styles.quickItem}
+              className="flex-1 min-w-[44%] bg-bg-surface rounded-lg p-lg items-center border border-border"
               onPress={() => router.push(item.route)}
             >
-              <View style={styles.quickIconContainer}>
-                <MaterialIcons name={item.icon} size={26} color={Colors.primary} />
+              <View className="w-12 h-12 rounded-md bg-bg-elevated justify-center items-center mb-sm">
+                <Icon name={item.icon} size={26} color={Colors.primary} />
               </View>
-              <Text style={styles.quickLabel}>{item.label}</Text>
+              <Text className="text-sm text-text-secondary font-bevn-medium">{item.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -238,198 +246,3 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg.primary },
-  content: { padding: Spacing.xl, paddingBottom: Spacing.xxxl },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg },
-  greetingSection: { marginBottom: Spacing.xl },
-  greeting: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  greetingSubtitle: { fontSize: FontSize.sm, color: Colors.text.secondary, marginTop: 2, fontFamily: 'BeVietnamPro_400Regular' },
-  avatar: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center',
-  },
-  avatarText: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.inverse, fontFamily: 'BeVietnamPro_700Bold' },
-
-  coachBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.primary + '20',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-    borderRadius: Radius.full,
-    alignSelf: 'flex-start',
-    marginBottom: Spacing.xs,
-  },
-  coachBadgeText: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
-    color: Colors.primary,
-    fontFamily: 'BeVietnamPro_700Bold',
-    letterSpacing: 0.5,
-  },
-
-  statsRow: { flexDirection: 'row', gap: Spacing.md, marginBottom: Spacing.lg },
-  statCard: {
-    flex: 1, backgroundColor: Colors.bg.surface, borderRadius: Radius.lg,
-    padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border,
-  },
-  statIcon: { marginBottom: Spacing.xs },
-  statLabel: { fontSize: FontSize.xs, color: Colors.text.muted, fontFamily: 'BeVietnamPro_400Regular', textTransform: 'uppercase', letterSpacing: 0.5 },
-  statValue: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text.primary, marginTop: 2, fontFamily: 'BeVietnamPro_600SemiBold' },
-
-  section: { marginBottom: Spacing.xl },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md },
-  sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary, fontFamily: 'BeVietnamPro_700Bold' },
-  sectionLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  sectionLink: { fontSize: FontSize.sm, color: Colors.primary, fontFamily: 'BeVietnamPro_500Medium' },
-
-  emptyCard: {
-    backgroundColor: Colors.bg.surface, borderRadius: Radius.xl,
-    padding: Spacing.xxxl, alignItems: 'center', borderWidth: 1, borderColor: Colors.border,
-  },
-  emptyText: { color: Colors.text.muted, fontSize: FontSize.sm, fontFamily: 'BeVietnamPro_400Regular', marginBottom: Spacing.lg },
-  emptyBtn: { backgroundColor: Colors.primary, borderRadius: Radius.md, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
-  emptyBtnText: { color: Colors.text.inverse, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro_700Bold' },
-
-  // Coach Schedule card
-  coachScheduleCard: {
-    backgroundColor: Colors.bg.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadow.sm,
-  },
-  scheduleHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.xs,
-  },
-  sportBadge: {
-    backgroundColor: Colors.primary + '18',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: Radius.sm,
-  },
-  sportBadgeText: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
-    color: Colors.primary,
-    fontFamily: 'BeVietnamPro_600SemiBold',
-  },
-  timeTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  timeTagText: {
-    fontSize: FontSize.xs,
-    color: Colors.primary,
-    fontWeight: FontWeight.semibold,
-    fontFamily: 'BeVietnamPro_600SemiBold',
-  },
-  coachClassTitle: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.primary,
-    fontFamily: 'BeVietnamPro_700Bold',
-    marginVertical: 4,
-  },
-  scheduleFooterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: Spacing.md,
-    marginTop: Spacing.xs,
-  },
-  scheduleFooterItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  scheduleFooterText: {
-    fontSize: FontSize.xs,
-    color: Colors.text.secondary,
-    fontFamily: 'BeVietnamPro_400Regular',
-  },
-
-  // Coach Class card
-  coachClassCard: {
-    backgroundColor: Colors.bg.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  coachClassLeft: { flex: 1, marginRight: Spacing.sm },
-  coachClassTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  coachClassName: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text.primary,
-    fontFamily: 'BeVietnamPro_600SemiBold',
-    flex: 1,
-    marginRight: Spacing.sm,
-  },
-  typeBadge: {
-    backgroundColor: Colors.bg.elevated,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  typeBadgeText: {
-    fontSize: 10,
-    color: Colors.text.secondary,
-    fontFamily: 'BeVietnamPro_500Medium',
-  },
-  coachClassDesc: {
-    fontSize: FontSize.xs,
-    color: Colors.text.muted,
-    fontFamily: 'BeVietnamPro_400Regular',
-    marginBottom: Spacing.xs,
-  },
-  coachClassMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  metaChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  metaChipText: {
-    fontSize: FontSize.xs,
-    color: Colors.text.secondary,
-    fontFamily: 'BeVietnamPro_400Regular',
-  },
-
-  // Quick grid
-  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, marginTop: Spacing.sm },
-  quickItem: {
-    flex: 1, minWidth: '44%', backgroundColor: Colors.bg.surface, borderRadius: Radius.lg,
-    padding: Spacing.lg, alignItems: 'center', borderWidth: 1, borderColor: Colors.border,
-  },
-  quickIconContainer: {
-    width: 48, height: 48, borderRadius: Radius.md,
-    backgroundColor: Colors.bg.elevated, justifyContent: 'center', alignItems: 'center',
-    marginBottom: Spacing.sm,
-  },
-  quickLabel: { fontSize: FontSize.sm, color: Colors.text.secondary, fontFamily: 'BeVietnamPro_500Medium' },
-});
