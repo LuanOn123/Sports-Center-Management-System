@@ -4,9 +4,10 @@
 import React from 'react';
 import {
   View, Text, FlatList, ActivityIndicator,
-  RefreshControl, TouchableOpacity, Modal,
+  RefreshControl, TouchableOpacity, Modal, Platform,
 } from 'react-native';
 import clsx from 'clsx';
+import { useRouter } from 'expo-router';
 import { Icon } from '../shared/Icon';
 import QRCode from 'react-native-qrcode-svg';
 import { useCoachTraining } from '../../hooks/coach/useCoachTraining';
@@ -42,6 +43,7 @@ interface CoachTrainingViewProps {
 }
 
 export function CoachTrainingView({ coachId }: CoachTrainingViewProps) {
+  const router = useRouter();
   const {
     activeTab,
     setActiveTab,
@@ -65,9 +67,25 @@ export function CoachTrainingView({ coachId }: CoachTrainingViewProps) {
   return (
     <View className="flex-1 bg-bg-primary">
       {/* Header */}
-      <View className="px-xl pt-xl pb-md">
-        <Text className="text-xxl font-bold font-bevn-bold text-text-primary">Quản Lý Giảng Dạy</Text>
-        <Text className="text-sm text-text-secondary mt-0.5 font-bevn-regular">Điểm danh học viên & theo dõi ca dạy</Text>
+      <View
+        className={clsx(
+          'flex-row justify-between items-center px-md pb-sm bg-bg-surface border-b border-border mb-md',
+          Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
+        )}
+      >
+        <TouchableOpacity
+          className="w-10 h-10 justify-center items-center rounded-full"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
+        >
+          <Icon name="arrow-back" size={24} color={Colors.text.primary} />
+        </TouchableOpacity>
+        <View className="flex-1 items-center px-xs">
+          <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center">Quản lý giảng dạy</Text>
+          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>
+            Điểm danh học viên & theo dõi ca dạy
+          </Text>
+        </View>
+        <View className="w-10 h-10" />
       </View>
 
       {/* Tabs */}

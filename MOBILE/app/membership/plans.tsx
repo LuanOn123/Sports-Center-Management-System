@@ -165,7 +165,7 @@ export default function MembershipPlansScreen() {
   // ─── UI ─────────────────────────────────────────────────────────────────────
   return (
     <View className="flex-1 bg-bg-primary">
-      {/* Header with Back and Home buttons */}
+      {/* Header with Back button */}
       <View
         className={clsx(
           'flex-row justify-between items-center px-md pb-sm bg-bg-surface border-b border-border',
@@ -175,15 +175,19 @@ export default function MembershipPlansScreen() {
         <TouchableOpacity className="w-10 h-10 justify-center items-center rounded-full" onPress={handleGoBack}>
           <Icon name="arrow-back" size={24} color={Colors.text.primary} />
         </TouchableOpacity>
-        <Text className="text-lg font-bold font-bevn-bold text-text-primary">Gói thành viên</Text>
-        <TouchableOpacity className="w-10 h-10 justify-center items-center rounded-full" onPress={() => router.replace('/(tabs)')}>
-          <Icon name="home" size={24} color={Colors.primary} />
-        </TouchableOpacity>
+        <View className="flex-1 items-center px-xs">
+          <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center">Gói thành viên</Text>
+          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>
+            Các gói tập & quyền lợi hội viên
+          </Text>
+        </View>
+        <View className="w-10 h-10" />
       </View>
 
       <ScrollView
         className="flex-1 bg-bg-primary"
         contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
+        keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
         {/* Current status or Pending card */}

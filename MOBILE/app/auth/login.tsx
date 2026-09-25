@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
+  Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import clsx from 'clsx';
 import { Link } from 'expo-router';
@@ -14,6 +14,7 @@ import { Colors } from '../../constants/theme';
 import { ApiError } from '../../lib/api';
 import { Brand } from '../../components';
 import { showAlert } from '../../lib/alert';
+import { KeyboardAwareView } from '../../components/shared/KeyboardAwareView';
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
@@ -45,7 +46,7 @@ export default function LoginScreen() {
 
 
   return (
-    <KeyboardAvoidingView className="flex-1 bg-bg-primary" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAwareView className="flex-1 bg-bg-primary">
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }} keyboardShouldPersistTaps="handled">
         {/* Logo / Header */}
         <View className="items-center mb-xxxl">
@@ -131,6 +132,6 @@ export default function LoginScreen() {
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareView>
   );
 }

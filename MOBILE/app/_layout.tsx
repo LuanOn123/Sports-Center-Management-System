@@ -4,11 +4,10 @@ import { useFonts, BeVietnamPro_400Regular, BeVietnamPro_500Medium, BeVietnamPro
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { Colors } from '../constants/theme';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AlertModal } from '../components';
+import { AlertModal, AppLoadingScreen } from '../components';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,11 +40,7 @@ function RootLayoutContent() {
   const { isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: Colors.bg.primary, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color={Colors.primary} size="large" />
-      </View>
-    );
+    return <AppLoadingScreen message="Đang kiểm tra phiên đăng nhập..." />;
   }
 
   return (
@@ -71,11 +66,7 @@ export default function RootLayout() {
   });
 
   if (!fontsLoaded) {
-    return (
-      <View style={{ flex: 1, backgroundColor: Colors.bg.primary, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color={Colors.primary} size="large" />
-      </View>
-    );
+    return <AppLoadingScreen message="Đang tải giao diện..." />;
   }
 
   return (

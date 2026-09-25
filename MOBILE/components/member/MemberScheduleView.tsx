@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   View, Text, FlatList, ScrollView, TouchableOpacity,
-  ActivityIndicator, RefreshControl,
+  ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
 import clsx from 'clsx';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -157,7 +157,7 @@ export function MemberScheduleView() {
             {showCancel && item.status === 'BOOKED' && !past && (
               <TouchableOpacity
                 className="bg-[#EF444420] rounded-md px-md py-xs"
-                onPress={() => handleCancel(item.id)}
+                onPress={() => handleCancel(item.id, item.schedule?.class?.name)}
                 disabled={cancelPending}
               >
                 <Text className="text-xs text-status-failed font-semibold font-bevn-semibold">Hủy</Text>
@@ -172,9 +172,25 @@ export function MemberScheduleView() {
   return (
     <View className="flex-1 bg-bg-primary">
       {/* Header */}
-      <View className="p-xl pb-md">
-        <Text className="text-xxl font-bold font-bevn-bold text-text-primary">Lịch tập cá nhân</Text>
-        <Text className="text-sm text-text-secondary mt-0.5 font-bevn-regular">Thời khóa biểu các ca học đã đặt của bạn theo tuần</Text>
+      <View
+        className={clsx(
+          'flex-row justify-between items-center px-md pb-sm bg-bg-surface border-b border-border mb-md',
+          Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
+        )}
+      >
+        <TouchableOpacity
+          className="w-10 h-10 justify-center items-center rounded-full"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
+        >
+          <Icon name="arrow-back" size={24} color={Colors.text.primary} />
+        </TouchableOpacity>
+        <View className="flex-1 items-center px-xs">
+          <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center">Lịch tập cá nhân</Text>
+          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>
+            Thời khóa biểu các ca học đã đặt của bạn theo tuần
+          </Text>
+        </View>
+        <View className="w-10 h-10" />
       </View>
 
       {/* Mode tabs */}

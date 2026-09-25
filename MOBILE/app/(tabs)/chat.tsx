@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, TextInput,
-  ActivityIndicator, RefreshControl, Platform,
+  ActivityIndicator, RefreshControl, Platform, Pressable,
 } from 'react-native';
 import clsx from 'clsx';
 import { useRouter } from 'expo-router';
@@ -38,6 +38,7 @@ const ROLE_COLOR: Record<string, string> = {
 
 export default function ChatTabScreen() {
   const router = useRouter();
+  const searchInputRef = useRef<TextInput>(null);
   const { user } = useAuth();
   const [search, setSearch] = useState('');
 
@@ -78,16 +79,36 @@ export default function ChatTabScreen() {
   return (
     <View className="flex-1 bg-bg-primary">
       {/* Header */}
-      <View className={clsx('p-xl pb-md', Platform.OS === 'ios' ? 'pt-[56px]' : 'pt-xl')}>
-        <Text className="text-xxl font-bold font-bevn-bold text-text-primary">Nhắn Tin</Text>
-        <Text className="text-sm text-text-secondary mt-0.5 font-bevn-regular">Liên lạc với huấn luyện viên & đội ngũ</Text>
+      <View
+        className={clsx(
+          'flex-row justify-between items-center px-md pb-sm bg-bg-surface border-b border-border mb-md',
+          Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
+        )}
+      >
+        <TouchableOpacity
+          className="w-10 h-10 justify-center items-center rounded-full"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
+        >
+          <Icon name="arrow-back" size={24} color={Colors.text.primary} />
+        </TouchableOpacity>
+        <View className="flex-1 items-center px-xs">
+          <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center">Tin nhắn</Text>
+          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>
+            Liên lạc với huấn luyện viên & đội ngũ
+          </Text>
+        </View>
+        <View className="w-10 h-10" />
       </View>
 
       {/* Tìm kiếm theo tên/email — lọc client-side trên danh sách đã gộp */}
       <View className="px-xl pb-sm">
-        <View className="flex-row items-center bg-bg-surface rounded-lg px-md border border-border">
+        <Pressable
+          onPress={() => searchInputRef.current?.focus()}
+          className="flex-row items-center bg-bg-surface rounded-lg px-md border border-border"
+        >
           <Icon name="search" size={18} color={Colors.text.muted} style={{ marginRight: 8 }} />
           <TextInput
+            ref={searchInputRef}
             className="flex-1 py-sm text-text-primary text-md font-bevn-regular"
             placeholder="Tìm theo tên hoặc email..."
             placeholderTextColor={Colors.text.muted}
@@ -101,7 +122,7 @@ export default function ChatTabScreen() {
               <Icon name="close" size={18} color={Colors.text.muted} />
             </TouchableOpacity>
           )}
-        </View>
+        </Pressable>
       </View>
 
       {isLoading ? (
@@ -110,6 +131,8 @@ export default function ChatTabScreen() {
         <FlatList
           data={filteredRows}
           keyExtractor={c => c.user.id}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
           refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
           ListEmptyComponent={

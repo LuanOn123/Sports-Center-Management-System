@@ -11,3 +11,8 @@ export const getMyEnrollments = (status?: string, limit?: string) =>
 /** DELETE /enrollments/:id */
 export const cancelEnrollment = (id: string) =>
   api.delete(`/enrollments/${id}`);
+
+/** POST /enrollments/:id/transfer */
+export const transferEnrollment = (id: string, targetScheduleId: string) =>
+  api.post<Enrollment>(`/enrollments/${id}/transfer`, { targetScheduleId });
+

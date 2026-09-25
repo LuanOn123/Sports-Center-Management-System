@@ -6,11 +6,12 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   RefreshControl, ActivityIndicator,
 } from 'react-native';
-import clsx from 'clsx';
 import { useRouter } from 'expo-router';
 import { Icon } from '../shared/Icon';
 import { Brand } from '../shared/Brand';
+import { ClassCardSkeleton } from '../shared/Skeleton';
 import { useMemberHome } from '../../hooks/member/useMemberHome';
+import { useUnreadNotificationCount } from '../../hooks/shared/useNotifications';
 import { Colors } from '../../constants/theme';
 import type { User, MembershipTier, Enrollment } from '../../lib/types';
 
@@ -48,6 +49,7 @@ interface MemberHomeViewProps {
 export function MemberHomeView({ user }: MemberHomeViewProps) {
   const router = useRouter();
   const memberId = user?.memberProfile?.id ?? user?.id;
+  const unreadNotificationsCount = useUnreadNotificationCount();
 
   const {
     status,
@@ -66,18 +68,43 @@ export function MemberHomeView({ user }: MemberHomeViewProps) {
       contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
       refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
     >
-      {/* Top Bar */}
+      {/* Top Bar Header */}
       <View className="flex-row justify-between items-center mb-lg">
         <Brand size="sm" align="flex-start" />
-        <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} className="w-11 h-11 rounded-full bg-primary justify-center items-center">
-          <Text className="text-lg font-bold font-bevn-bold text-text-inverse">{user?.fullName?.charAt(0)?.toUpperCase() ?? '?'}</Text>
-        </TouchableOpacity>
+        <View className="flex-row items-center gap-3">
+          {/* Nút thông báo */}
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/notifications')}
+            className="w-10 h-10 rounded-full bg-bg-surface border border-border justify-center items-center relative"
+            activeOpacity={0.7}
+          >
+            <Icon name="notifications-none" size={22} color={Colors.text.primary} />
+            {unreadNotificationsCount > 0 && (
+              <View className="absolute -top-1 -right-1 bg-status-expired rounded-full min-w-[18px] h-[18px] justify-center items-center px-1 border-2 border-bg-surface">
+                <Text className="text-[10px] font-bevn-bold text-white">
+                  {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* Avatar Profile */}
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/profile')}
+            className="w-10 h-10 rounded-full bg-primary justify-center items-center"
+            activeOpacity={0.7}
+          >
+            <Text className="text-base font-bold font-bevn-bold text-text-inverse">
+              {user?.fullName?.charAt(0)?.toUpperCase() ?? 'M'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Greeting */}
       <View className="mb-xl">
         <Text className="text-xl font-bold font-bevn-bold text-text-primary">Xin chào, {user?.fullName?.split(' ').pop()}</Text>
-        <Text className="text-sm text-text-secondary mt-0.5 font-bevn-regular">Hôm nay bạn tập gì?</Text>
+        <Text className="text-sm text-text-secondary mt-0.5 font-bevn-regular">Hôm nay bạn muốn tập gì?</Text>
       </View>
 
       {/* Membership Status Card */}
@@ -189,18 +216,98 @@ export function MemberHomeView({ user }: MemberHomeViewProps) {
         </View>
       )}
 
-      {/* Upcoming Classes */}
+      {/* ─── TRUY CẬP NHANH (QUICK ACCESS) — ĐƯỢC ĐẶT LÊN TRÊN LỊCH SẮP TỚI ─── */}
+      <View className="mb-xl">
+        <View className="flex-row justify-between items-center mb-md">
+          <Text className="text-lg font-bold font-bevn-bold text-text-primary">Truy cập nhanh</Text>
+        </View>
+
+        <View className="flex-row flex-wrap gap-md">
+          {[
+            {
+              icon: 'explore' as const,
+              label: 'Khám phá',
+              desc: 'Tìm & đăng ký lớp',
+              route: '/(tabs)/classes' as const,
+              color: Colors.primary,
+              bgColor: '#A3E63518',
+            },
+            {
+              icon: 'event-note' as const,
+              label: 'Lớp học',
+              desc: 'Lớp đã đặt, đổi buổi',
+              route: '/(tabs)/enrollments' as const,
+              color: '#8B5CF6',
+              bgColor: '#8B5CF618',
+            },
+            {
+              icon: 'event' as const,
+              label: 'Lịch tập',
+              desc: 'Thời khóa biểu cá nhân',
+              route: '/(tabs)/schedule' as const,
+              color: '#06B6D4',
+              bgColor: '#06B6D418',
+            },
+            {
+              icon: 'card-membership' as const,
+              label: 'Gói tập',
+              desc: 'Hội viên & quyền lợi',
+              route: '/membership/plans' as const,
+              color: '#F59E0B',
+              bgColor: '#F59E0B18',
+            },
+            {
+              icon: 'fact-check' as const,
+              label: 'Chuyên cần',
+              desc: 'Lịch sử điểm danh',
+              route: '/attendance/my' as const,
+              color: '#10B981',
+              bgColor: '#10B98118',
+            },
+            {
+              icon: 'person' as const,
+              label: 'Hồ sơ',
+              desc: 'Thông tin tài khoản',
+              route: '/(tabs)/profile' as const,
+              color: '#EC4899',
+              bgColor: '#EC489918',
+            },
+          ].map((item) => (
+            <TouchableOpacity
+              key={item.label}
+              className="flex-1 min-w-[46%] bg-bg-surface rounded-xl p-md border border-border flex-row items-center gap-md"
+              onPress={() => router.push(item.route)}
+              activeOpacity={0.75}
+            >
+              <View
+                className="w-11 h-11 rounded-lg justify-center items-center"
+                style={{ backgroundColor: item.bgColor }}
+              >
+                <Icon name={item.icon} size={22} color={item.color} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-sm font-semibold font-bevn-semibold text-text-primary">{item.label}</Text>
+                <Text className="text-[11px] text-text-muted font-bevn-regular mt-0.5" numberOfLines={1}>{item.desc}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* ─── LỊCH SẮP TỚI (UPCOMING CLASSES) ─── */}
       <View className="mb-xl">
         <View className="flex-row justify-between items-center mb-md">
           <Text className="text-lg font-bold font-bevn-bold text-text-primary">Lịch sắp tới</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/schedule')} className="flex-row items-center gap-1">
-            <Text className="text-sm text-primary font-bevn-medium">Xem tất cả</Text>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/enrollments')} className="flex-row items-center gap-1">
+            <Text className="text-sm text-primary font-bevn-medium">Quản lý lớp</Text>
             <Icon name="arrow-forward" size={16} color={Colors.primary} />
           </TouchableOpacity>
         </View>
 
         {enrollLoading ? (
-          <ActivityIndicator color={Colors.primary} style={{ marginTop: 16 }} />
+          <View className="mt-sm">
+            <ClassCardSkeleton />
+          </View>
         ) : upcoming.length === 0 ? (
           <View className="bg-bg-surface rounded-xl p-xxxl items-center border border-border">
             <Icon name="event-busy" size={44} color={Colors.text.muted} style={{ marginBottom: 12 }} />
@@ -236,30 +343,6 @@ export function MemberHomeView({ user }: MemberHomeViewProps) {
             </TouchableOpacity>
           ))
         )}
-      </View>
-
-      {/* Quick Actions */}
-      <View className="mb-xl">
-        <Text className="text-lg font-bold font-bevn-bold text-text-primary">Truy cập nhanh</Text>
-        <View className="flex-row flex-wrap gap-md mt-sm">
-          {[
-            { icon: 'fitness-center' as const, label: 'Lớp học', route: '/(tabs)/classes' as const },
-            { icon: 'card-membership' as const, label: 'Gói tập', route: '/membership/plans' as const },
-            { icon: 'timeline' as const, label: 'Chuyên cần', route: '/attendance/my' as const },
-            { icon: 'person' as const, label: 'Hồ sơ', route: '/(tabs)/profile' as const },
-          ].map((item) => (
-            <TouchableOpacity
-              key={item.label}
-              className="flex-1 min-w-[44%] bg-bg-surface rounded-lg p-lg items-center border border-border"
-              onPress={() => router.push(item.route)}
-            >
-              <View className="w-12 h-12 rounded-md bg-bg-elevated justify-center items-center mb-sm">
-                <Icon name={item.icon} size={26} color={Colors.primary} />
-              </View>
-              <Text className="text-sm text-text-secondary font-bevn-medium">{item.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
       </View>
 
       {/* AI Shortcut (stub) */}

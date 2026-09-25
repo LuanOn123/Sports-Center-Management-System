@@ -99,19 +99,34 @@ export default function NotificationsScreen() {
   return (
     <View className="flex-1 bg-bg-primary">
       {/* Header */}
-      <View className={clsx('flex-row items-start gap-md p-xl pb-md', Platform.OS === 'ios' ? 'pt-[56px]' : 'pt-xl')}>
-        <View className="flex-1">
-          <Text className="text-xxl font-bold font-bevn-bold text-text-primary">Thông Báo</Text>
-          <Text className="text-sm text-text-secondary mt-0.5 font-bevn-regular">Cập nhật từ trung tâm</Text>
+      <View
+        className={clsx(
+          'flex-row justify-between items-center px-md pb-sm bg-bg-surface border-b border-border mb-sm',
+          Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
+        )}
+      >
+        <TouchableOpacity
+          className="w-10 h-10 justify-center items-center rounded-full"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
+        >
+          <Icon name="arrow-back" size={24} color={Colors.text.primary} />
+        </TouchableOpacity>
+        <View className="flex-1 items-center px-xs">
+          <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center">Thông báo</Text>
+          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>
+            Cập nhật và tin tức từ trung tâm
+          </Text>
         </View>
-        {hasUnread && (
+        {hasUnread ? (
           <TouchableOpacity
-            className="px-md py-sm rounded-full border border-primary"
+            className="px-sm py-1 rounded-full border border-primary"
             onPress={() => markAllRead()}
             disabled={isMarkingAllRead}
           >
-            <Text className="text-xs text-primary font-bevn-semibold">Đọc tất cả</Text>
+            <Text className="text-xs text-primary font-bevn-semibold">Đọc hết</Text>
           </TouchableOpacity>
+        ) : (
+          <View className="w-10 h-10" />
         )}
       </View>
 

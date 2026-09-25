@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { BASE_URL } from './api';
+import { BASE_URL, getAccessToken } from './api';
 
 // ─── Socket singleton ─────────────────────────────────────────────────────────
 
@@ -14,11 +14,13 @@ export function connectSocket(userId: string): Socket {
 
   // Strip /api/v1 suffix to get the base WS server URL
   const wsUrl = BASE_URL.replace(/\/api\/v1\/?$/, '');
+  const token = getAccessToken();
 
   _socket = io(wsUrl, {
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
     reconnectionAttempts: 5,
     reconnectionDelay: 2000,
+    auth: token ? { token: `Bearer ${token}` } : undefined,
   });
 
   _socket.on('connect', () => {

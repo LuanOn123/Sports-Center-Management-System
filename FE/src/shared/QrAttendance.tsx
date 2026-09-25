@@ -156,7 +156,7 @@ export function ScanAttendanceQr() {
         controls = await new BrowserQRCodeReader().decodeFromConstraints(
           { video: { facingMode: "environment" }, audio: false },
           element,
-          (result: import("@zxing/library").Result | null, _error: unknown, control: { stop(): void }) => {
+          (result: import("@zxing/library").Result | null | undefined, _error: unknown, control: { stop(): void }) => {
             if (result && !disposed && !locked.current) {
               control.stop();
               submit.current(result.getText());

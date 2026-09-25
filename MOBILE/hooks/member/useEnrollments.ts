@@ -2,7 +2,7 @@
 // Business logic cho enrollments của hội viên — React Query + mutations
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMyEnrollments, cancelEnrollment } from '../../services/enrollmentService';
+import { getMyEnrollments, cancelEnrollment, transferEnrollment } from '../../services/enrollmentService';
 import { showAlert, showConfirm } from '../../lib/alert';
 import { ApiError } from '../../lib/api';
 import type { Enrollment } from '../../lib/types';
@@ -46,6 +46,8 @@ export function useCancelEnrollment() {
     mutationFn: cancelEnrollment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-enrollments'] });
+      queryClient.invalidateQueries({ queryKey: ['my-enrollments-upcoming'] });
+      showAlert('Thành công', 'Đã hủy đăng ký ca học thành công.');
     },
     onError: (e) => {
       const msg = e instanceof ApiError ? e.message : 'Hủy thất bại. Vui lòng thử lại.';
@@ -53,16 +55,39 @@ export function useCancelEnrollment() {
     },
   });
 
-  const handleCancel = (id: string) => {
+  const handleCancel = (id: string, className?: string) => {
+    const classDisplay = className ? `"${className}"` : 'này';
     showConfirm(
-      'Xác nhận hủy',
-      'Bạn có chắc muốn hủy đăng ký lớp học này?',
+      'Xác nhận Hủy Đăng Ký Ca Học',
+      `Bạn có chắc chắn muốn hủy đăng ký lớp ${classDisplay}? Sau khi hủy, chỗ trống sẽ được nhường lại cho học viên khác.`,
       () => mutation.mutate(id),
       undefined,
-      'Hủy đăng ký',
+      'Đồng ý hủy',
       true
     );
   };
 
   return { handleCancel, isPending: mutation.isPending };
 }
+
+/** Hook transfer enrollment sang schedule khác */
+export function useTransferEnrollment() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: ({ id, targetScheduleId }: { id: string; targetScheduleId: string }) =>
+      transferEnrollment(id, targetScheduleId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-enrollments'] });
+      queryClient.invalidateQueries({ queryKey: ['my-enrollments-upcoming'] });
+      showAlert('Đổi buổi thành công', 'Ca học của bạn đã được chuyển sang buổi mới.');
+    },
+    onError: (e) => {
+      const msg = e instanceof ApiError ? e.message : 'Đổi buổi học thất bại. Vui lòng thử lại.';
+      showAlert('Lỗi', msg);
+    },
+  });
+
+  return mutation;
+}
+

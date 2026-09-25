@@ -1,3 +1,4 @@
+import axios, { type AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
 import { storage } from './storage';
 
 if (!process.env.EXPO_PUBLIC_API_BASE_URL) {
@@ -65,61 +66,24 @@ export function getRefreshToken() {
   return _refreshToken;
 }
 
-// ─── Transport ───────────────────────────────────────────────────────────────
+// ─── Axios Instance ───────────────────────────────────────────────────────────
 
-async function transport<T>(
-  path: string,
-  method: string,
-  body?: unknown,
-  signal?: AbortSignal,
-): Promise<Envelope<T>> {
-  const headers: Record<string, string> = {
+const axiosInstance = axios.create({
+  baseURL: BASE_URL,
+  timeout: 60_000,
+  headers: {
     Accept: 'application/json',
-  };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
-  if (_accessToken) headers['Authorization'] = `Bearer ${_accessToken}`;
+    'Content-Type': 'application/json',
+  },
+});
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60_000);
-  const combinedSignal = signal
-    ? (AbortSignal as unknown as { any: (signals: AbortSignal[]) => AbortSignal }).any([signal, controller.signal])
-    : controller.signal;
-
-  let res: Response;
-  try {
-    res = await fetch(`${BASE_URL}${path}`, {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-      signal: combinedSignal,
-    });
-  } catch (e) {
-    clearTimeout(timeout);
-    if (e instanceof Error && e.name === 'AbortError') throw e;
-    throw new ApiError('Không thể kết nối máy chủ. Vui lòng kiểm tra mạng.', 0);
-  } finally {
-    clearTimeout(timeout);
+// Request interceptor — tự động gắn Bearer token vào mỗi request
+axiosInstance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  if (_accessToken) {
+    config.headers.Authorization = `Bearer ${_accessToken}`;
   }
-
-  const text = await res.text();
-  let payload: Envelope<T>;
-  try {
-    payload = text
-      ? JSON.parse(text)
-      : ({ success: res.ok, data: null, message: '' } as Envelope<T>);
-  } catch {
-    throw new ApiError('Máy chủ trả về dữ liệu không hợp lệ.', res.status);
-  }
-
-  if (!res.ok || payload.success === false) {
-    throw new ApiError(
-      payload.message || `Yêu cầu thất bại (${res.status})`,
-      res.status,
-      payload.errors,
-    );
-  }
-  return payload;
-}
+  return config;
+});
 
 // ─── Token refresh (singleton) ───────────────────────────────────────────────
 
@@ -129,23 +93,62 @@ async function doRefresh() {
   if (_refreshing) return _refreshing;
   _refreshing = (async () => {
     try {
-      const r = await transport<{ accessToken: string; refreshToken?: string }>(
+      const r = await axiosInstance.post<Envelope<{ accessToken: string; refreshToken?: string }>>(
         '/auth/refresh-token',
-        'POST',
         { refreshToken: _refreshToken },
       );
-      await saveTokens(r.data.accessToken, r.data.refreshToken || _refreshToken);
+      await saveTokens(r.data.data.accessToken, r.data.data.refreshToken || _refreshToken);
     } catch (e) {
-      if (e instanceof ApiError && [400, 401, 403].includes(e.status)) {
+      const err = e as AxiosError<Envelope<unknown>>;
+      const status = err.response?.status ?? 0;
+      if ([400, 401, 403].includes(status)) {
         await clearTokens();
       }
-      throw e;
+      throw new ApiError(
+        err.response?.data?.message || 'Phiên đăng nhập đã hết hạn.',
+        status,
+      );
     } finally {
       _refreshing = null;
     }
   })();
   return _refreshing;
 }
+
+// Response interceptor — chuyển lỗi Axios thành ApiError
+axiosInstance.interceptors.response.use(
+  (response) => {
+    // Body rỗng (vd. 204) → envelope rỗng; body không phải JSON → báo lỗi (giữ hành vi bản fetch cũ)
+    if (typeof response.data === 'string') {
+      if (response.data === '') {
+        response.data = { success: true, data: null, message: '' };
+      } else {
+        throw new ApiError('Máy chủ trả về dữ liệu không hợp lệ.', response.status);
+      }
+    }
+    // Nếu BE trả về success: false trong body (HTTP 200 nhưng lỗi nghiệp vụ)
+    const payload = response.data as Envelope<unknown>;
+    if (payload && payload.success === false) {
+      throw new ApiError(payload.message || 'Yêu cầu thất bại.', response.status, payload.errors);
+    }
+    return response;
+  },
+  (error: AxiosError<Envelope<unknown>>) => {
+    if (error.code === 'ECONNABORTED' || error.code === 'ERR_CANCELED') {
+      // Timeout hoặc bị huỷ (AbortSignal)
+      throw error;
+    }
+    if (!error.response) {
+      throw new ApiError('Không thể kết nối máy chủ. Vui lòng kiểm tra mạng.', 0);
+    }
+    const { status, data } = error.response;
+    throw new ApiError(
+      data?.message || `Yêu cầu thất bại (${status})`,
+      status,
+      data?.errors,
+    );
+  },
+);
 
 // ─── Public API function ─────────────────────────────────────────────────────
 
@@ -159,27 +162,33 @@ export async function apiRequest<T>(
     requiresAuth?: boolean;
   } = {},
 ): Promise<Envelope<T>> {
-  let url = path;
+  // Lọc bỏ các query param undefined/rỗng
+  const params: Record<string, string> = {};
   if (options.query) {
-    const params = new URLSearchParams();
     for (const [k, v] of Object.entries(options.query)) {
-      if (v !== undefined && v !== '') params.set(k, v);
+      if (v !== undefined && v !== '') params[k] = v;
     }
-    const qs = params.toString();
-    if (qs) url += '?' + qs;
   }
 
+  const config: AxiosRequestConfig = {
+    method,
+    url: path,
+    params: Object.keys(params).length ? params : undefined,
+    data: options.body,
+    signal: options.signal,
+  };
+
+  // requiresAuth chỉ quyết định có tự refresh token + retry khi gặp 401 hay không
+  // (token vẫn được gắn nếu có, giống bản fetch cũ).
   try {
-    return await transport<T>(url, method, options.body, options.signal);
+    const res = await axiosInstance.request<Envelope<T>>(config);
+    return res.data;
   } catch (e) {
-    if (
-      e instanceof ApiError &&
-      e.status === 401 &&
-      _refreshToken &&
-      options.requiresAuth !== false
-    ) {
+    if (e instanceof ApiError && e.status === 401 && _refreshToken && options.requiresAuth !== false) {
       await doRefresh();
-      return transport<T>(url, method, options.body, options.signal);
+      // Retry sau khi refresh token
+      const retryRes = await axiosInstance.request<Envelope<T>>(config);
+      return retryRes.data;
     }
     throw e;
   }

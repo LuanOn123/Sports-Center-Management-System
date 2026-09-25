@@ -1,9 +1,9 @@
 // app/(tabs)/_layout.tsx
-// Quản lý điều hướng Bottom Tab Bar theo cấu hình phân quyền vai trò
+// Quản lý điều hướng Bottom Tab Bar: Trang chủ, Tin nhắn, Hồ sơ
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
-import { Platform, View, Text } from 'react-native';
+import { Platform, View, Text, Keyboard } from 'react-native';
 import { Icon } from '../../components/shared/Icon';
 import { Colors } from '../../constants/theme';
 import { useQuery } from '@tanstack/react-query';
@@ -13,7 +13,7 @@ import { useUnreadNotificationCount } from '../../hooks/shared/useNotifications'
 import { getTabConfigForRole, type MaterialIconName } from '../../navigation';
 
 function TabIcon({ name, color }: { name: MaterialIconName; color: string | any }) {
-  return <Icon name={name} size={20} color={String(color)} />;
+  return <Icon name={name} size={22} color={String(color)} />;
 }
 
 function Badge({ count }: { count: number }) {
@@ -35,7 +35,7 @@ function ChatTabIcon({ color }: { color: string | any }) {
 
   return (
     <View className="relative">
-      <Icon name="chat" size={20} color={String(color)} />
+      <Icon name="chat" size={22} color={String(color)} />
       <Badge count={data?.data?.unreadCount ?? 0} />
     </View>
   );
@@ -46,7 +46,7 @@ function NotificationsTabIcon({ color }: { color: string | any }) {
 
   return (
     <View className="relative">
-      <Icon name="notifications" size={20} color={String(color)} />
+      <Icon name="notifications" size={22} color={String(color)} />
       <Badge count={count} />
     </View>
   );
@@ -55,36 +55,63 @@ function NotificationsTabIcon({ color }: { color: string | any }) {
 export default function TabLayout() {
   const { user } = useAuth();
   const tabs = getTabConfigForRole(user?.role);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const handleFocusIn = (e: FocusEvent) => {
+        const target = e.target as HTMLElement | null;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.getAttribute('contenteditable') === 'true')) {
+          setKeyboardVisible(true);
+        }
+      };
+      const handleFocusOut = () => {
+        setKeyboardVisible(false);
+      };
+      window.addEventListener('focusin', handleFocusIn);
+      window.addEventListener('focusout', handleFocusOut);
+      return () => {
+        window.removeEventListener('focusin', handleFocusIn);
+        window.removeEventListener('focusout', handleFocusOut);
+      };
+    }
+
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        // Config của react-navigation, không phải JSX — không đổi được sang className.
-        tabBarStyle: {
+        tabBarHideOnKeyboard: true,   // Android: hides natively
+        tabBarStyle: isKeyboardVisible
+          ? { display: 'none' }        // iOS: hide when keyboard shows
+          : {
           backgroundColor: Colors.bg.surface,
           borderTopColor: Colors.border,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 85 : 72,
-          paddingBottom: Platform.OS === 'ios' ? 20 : 8,
-          paddingTop: 2,
+          height: Platform.OS === 'ios' ? 84 : 68,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 10,
+          paddingTop: 6,
         },
         tabBarItemStyle: {
-          paddingVertical: 4,
           justifyContent: 'center',
           alignItems: 'center',
         },
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.text.muted,
         tabBarLabelStyle: {
-          fontSize: 10.5,
+          fontSize: 11,
           fontFamily: 'BeVietnamPro_500Medium',
-          lineHeight: 14,
-          padding: 0,
-          margin: 0,
-        },
-        tabBarIconStyle: {
-          marginBottom: 1,
+          lineHeight: 15,
+          marginTop: 2,
         },
       }}
     >
@@ -106,12 +133,6 @@ export default function TabLayout() {
           }}
         />
       ))}
-      <Tabs.Screen
-        name="profile"
-        options={{
-          href: null,
-        }}
-      />
     </Tabs>
   );
 }

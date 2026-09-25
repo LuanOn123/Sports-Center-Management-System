@@ -284,7 +284,7 @@ export default function ScheduleDetailScreen() {
         )
       )}
       {Boolean(isScheduleCancelled) && (
-        <View className="flex-row items-center gap-2 bg-[#6B728015] rounded-lg p-lg justify-center border border-[#6B728030]">
+        <View className="flex-row items-center gap-2 bg-[#EF444415] rounded-lg p-lg justify-center border border-[#EF444430]">
           <Icon name="warning" size={18} color={Colors.status.cancelled} />
           <Text className="text-status-cancelled text-sm font-bevn-medium">Buổi học này đã bị hủy</Text>
         </View>

@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
-  TextInput, ActivityIndicator, RefreshControl,
+  TextInput, ActivityIndicator, RefreshControl, Platform, Pressable,
 } from 'react-native';
 import clsx from 'clsx';
 import { useRouter } from 'expo-router';
 import { Icon } from '../../components/shared/Icon';
+import { ClassCardSkeleton } from '../../components/shared/Skeleton';
 import { useAuth } from '../../context/AuthContext';
 import { useClasses, useSports } from '../../hooks/shared/useClasses';
 import type { ClassFilters } from '../../services/classService';
@@ -15,6 +16,7 @@ const TYPE_LABEL: Record<string, string> = { REGULAR: 'Tiêu Chuẩn', PREMIUM: 
 
 export default function ClassesScreen() {
   const router = useRouter();
+  const searchInputRef = useRef<TextInput>(null);
   const { user } = useAuth();
   const isCoach = user?.role === 'COACH';
   const coachId = user?.coachProfile?.id;
@@ -40,18 +42,38 @@ export default function ClassesScreen() {
   return (
     <View className="flex-1 bg-bg-primary">
       {/* Header */}
-      <View className="p-xl pb-md">
-        <Text className="text-xxl font-bold font-bevn-bold text-text-primary">{isCoach ? 'Lớp dạy' : 'Lớp học'}</Text>
-        <Text className="text-sm text-text-secondary mt-0.5 font-bevn-regular">
-          {isCoach ? 'Các lớp bạn đang phụ trách' : 'Khám phá các lớp tập phù hợp'}
-        </Text>
+      <View
+        className={clsx(
+          'flex-row justify-between items-center px-md pb-sm bg-bg-surface border-b border-border mb-md',
+          Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
+        )}
+      >
+        <TouchableOpacity
+          className="w-10 h-10 justify-center items-center rounded-full"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
+        >
+          <Icon name="arrow-back" size={24} color={Colors.text.primary} />
+        </TouchableOpacity>
+        <View className="flex-1 items-center px-xs">
+          <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center">
+            {isCoach ? 'Lớp dạy' : 'Khám phá'}
+          </Text>
+          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>
+            {isCoach ? 'Các lớp bạn đang phụ trách' : 'Tìm và đăng ký lớp tập phù hợp'}
+          </Text>
+        </View>
+        <View className="w-10 h-10" />
       </View>
 
       {/* Search */}
       <View className="px-xl mb-sm">
-        <View className="flex-row items-center bg-bg-surface rounded-lg px-md border border-border">
+        <Pressable
+          onPress={() => searchInputRef.current?.focus()}
+          className="flex-row items-center bg-bg-surface rounded-lg px-md border border-border"
+        >
           <Icon name="search" size={20} color={Colors.text.muted} style={{ marginRight: 4 }} />
           <TextInput
+            ref={searchInputRef}
             className="flex-1 py-md text-text-primary text-md font-bevn-regular"
             placeholder={isCoach ? 'Tìm trong lớp bạn phụ trách...' : 'Tìm kiếm lớp học...'}
             placeholderTextColor={Colors.text.muted}
@@ -59,7 +81,12 @@ export default function ClassesScreen() {
             onChangeText={setSearch}
             returnKeyType="search"
           />
-        </View>
+          {Boolean(search) && (
+            <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Icon name="close" size={18} color={Colors.text.muted} />
+            </TouchableOpacity>
+          )}
+        </Pressable>
       </View>
 
       {/* Sport filter */}
@@ -69,6 +96,7 @@ export default function ClassesScreen() {
           data={[{ id: '', name: 'Tất cả' }, ...sports]}
           keyExtractor={(s) => s.id}
           showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 8 }}
           renderItem={({ item }) => (
             <TouchableOpacity
@@ -106,11 +134,17 @@ export default function ClassesScreen() {
 
       {/* Classes list */}
       {isLoading ? (
-        <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} size="large" />
+        <View className="px-xl pt-sm">
+          <ClassCardSkeleton />
+          <ClassCardSkeleton />
+          <ClassCardSkeleton />
+        </View>
       ) : (
         <FlatList
           data={classes}
           keyExtractor={(c) => c.id}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           contentContainerStyle={{ padding: 20, gap: 12 }}
           refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={Colors.primary} />}
           ListEmptyComponent={
