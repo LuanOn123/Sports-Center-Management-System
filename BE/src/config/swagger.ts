@@ -1166,7 +1166,7 @@ const options: swaggerJSDoc.Options = {
                     failedPayments: 0,
                     pendingPayments: 0,
                     refundedPayments: 0,
-                    revenueByMethod: { CASH: 300000, BANK_TRANSFER: 600000 },
+                    revenueByMethod: { CASH: 300000, BANK_TRANSFER: 600000, SEPAY: 300000 },
                     recentPayments: [
                       {
                         id: "322da21d-5040-44b8-90cc-cfc9eeff2631",
