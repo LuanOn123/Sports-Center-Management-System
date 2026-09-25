@@ -69,6 +69,17 @@ enum EnrollmentStatus {
 enum PaymentMethod {
   CASH
   BANK_TRANSFER
+  SEPAY
+}
+
+/// Trạng thái xử lý một webhook SePay (bảng `SepayWebhookEvent`).
+enum SepayWebhookStatus {
+  PENDING // Đã claim sepayId, đang xử lý trong transaction (không thấy được nếu transaction rollback)
+  PROCESSED // Đã chốt giao dịch (kích hoạt gói + invoice)
+  DUPLICATE // Webhook lặp (cùng sepayId) hoặc giao dịch đã SUCCESS trước đó
+  LATE // Tiền về sau khi giao dịch đã đóng (hết hạn/thất bại) — cần đối soát, KHÔNG kích hoạt
+  MISMATCH // Lệch số tiền hoặc số tài khoản — cần đối soát, KHÔNG kích hoạt
+  IGNORED // Tiền ra / không khớp mã đơn nào — bỏ qua
 }
 
 enum PaymentStatus {
@@ -192,6 +203,7 @@ model MembershipPlan {
   updatedAt            DateTime   @updatedAt
 
   subscriptions MembershipSubscription[]
+  payments      Payment[]
 }
 
 model MembershipSubscription {
@@ -345,10 +357,21 @@ model Payment {
   member          MemberProfile           @relation(fields: [memberId], references: [id])
   subscriptionId  String?
   subscription    MembershipSubscription? @relation(fields: [subscriptionId], references: [id])
+  /// Gói hội viên mà giao dịch này muốn mua — cần cho giao dịch ONLINE: Payment PENDING
+  /// được tạo TRƯỚC khi có subscription (chỉ tạo subscription khi cổng thanh toán xác nhận SUCCESS).
+  planId          String?
+  plan            MembershipPlan?         @relation(fields: [planId], references: [id], onDelete: SetNull)
   amount          Decimal                 @db.Decimal(12, 2)
   method          PaymentMethod
   status          PaymentStatus           @default(PENDING)
+  /// Mã đơn/mã thanh toán duy nhất — với giao dịch SePay đây là mã SePay bóc tách từ nội dung CK.
   transactionCode String?                 @unique
+  /// Cổng thanh toán online (VD "SEPAY"). NULL cho giao dịch tại quầy (CASH/BANK_TRANSFER).
+  gateway         String?
+  /// Mã giao dịch phía ngân hàng/SePay (referenceCode) để đối soát.
+  gatewayTransId  String?
+  /// Metadata thô của webhook SePay (payload đầy đủ + thông tin QR) để audit & tra soát.
+  gatewayPayload  Json?
   note            String?
   paidAt          DateTime?
   createdById     String?
@@ -356,11 +379,31 @@ model Payment {
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
 
-  invoice Invoice?
+  invoice            Invoice?
+  sepayWebhookEvents SepayWebhookEvent[]
 
   @@index([memberId])
   @@index([subscriptionId])
   @@index([status])
+  @@index([createdAt])
+  @@index([gateway, status])
+}
+
+/// Log webhook nhận từ SePay — `sepayId` UNIQUE chống xử lý trùng khi SePay retry/replay webhook.
+/// Một giao dịch chuyển khoản chỉ được kích hoạt gói ĐÚNG MỘT LẦN (claim + chốt trong cùng transaction).
+model SepayWebhookEvent {
+  id        String             @id @default(uuid())
+  /// `payload.id` của SePay — không đổi qua mọi lần retry/replay.
+  sepayId   Int                @unique
+  paymentId String?
+  payment   Payment?           @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  status    SepayWebhookStatus @default(PENDING)
+  /// Lý do trạng thái cuối (VD ORDER_NOT_FOUND, AMOUNT_MISMATCH, LATE_RESULT…).
+  reason    String?
+  payload   Json
+  createdAt DateTime           @default(now())
+
+  @@index([paymentId])
   @@index([createdAt])
 }
 

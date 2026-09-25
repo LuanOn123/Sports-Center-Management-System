@@ -17,7 +17,8 @@
     "test:e2e": "tsx tests/enrollment-quota.e2e.ts",
     "test:e2e:attendance": "tsx tests/attendance-manual-code.e2e.ts",
     "test:e2e:course": "tsx tests/course-enrollment.e2e.ts",
-    "test:e2e:all": "npm run test:e2e && npm run test:e2e:attendance && npm run test:e2e:course"
+    "test:e2e:sepay": "tsx tests/sepay-payment.e2e.ts",
+    "test:e2e:all": "npm run test:e2e && npm run test:e2e:attendance && npm run test:e2e:course && npm run test:e2e:sepay"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

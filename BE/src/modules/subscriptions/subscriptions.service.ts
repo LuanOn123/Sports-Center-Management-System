@@ -2,6 +2,7 @@ import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { createNotification } from "../notifications/notifications.service.js";
+import { activateSubscriptionForPayment } from "./subscription-purchase.service.js";
 import type { CreateSubscriptionInput, RenewSubscriptionInput } from "./subscriptions.schema.js";
 
 async function autoCreateInvoice(
@@ -33,7 +34,7 @@ export async function createSubscription(
     include: { user: true },
   });
   if (!memberProfile) throw new AppError("Member not found", 404);
-  
+
   // BR-16 Check: User must currently be a MEMBER and active
   if (!memberProfile.user.isActive || memberProfile.user.role !== "MEMBER") {
     throw new AppError("Cannot create subscription: user is not an active MEMBER", 400);
@@ -44,117 +45,38 @@ export async function createSubscription(
 
   const now = new Date();
   const startDate = data.startDate ? new Date(data.startDate) : now;
-  const endDate = new Date(startDate);
-  
-  let remainingDays = 0;
-  let isUpgrade = false;
-  let oldPlanName = "";
 
   return prisma.$transaction(async (tx) => {
-    // 1. Resolve member's user for snapshot
-    const memberUser = await tx.user.findUnique({ where: { id: memberProfile.userId }, select: { fullName: true } });
-
-    // 2. Prevent downgrade and calculate remaining days
-    const currentActive = await tx.membershipSubscription.findFirst({
-      where: { memberId: memberProfile.id, status: "ACTIVE" },
-      include: { plan: true }
+    // BR-25: tên hội viên cho snapshot trên Invoice.
+    const memberUser = await tx.user.findUnique({
+      where: { id: memberProfile.userId },
+      select: { fullName: true },
     });
 
-    if (currentActive) {
-      const tierValue: Record<string, number> = { "FREE": 0, "MEMBERSHIP": 1, "PREMIUM": 2 };
-      const currentTierVal = tierValue[currentActive.tier] ?? 0;
-      const newTierVal = tierValue[plan.tier] ?? 0;
-
-      if (newTierVal < currentTierVal) {
-        throw new AppError("Không thể mua gói thấp hơn hạng hiện tại. Bạn chỉ có thể nâng cấp.", 400);
-      }
-      if (newTierVal === currentTierVal && plan.durationDays < currentActive.plan.durationDays) {
-        throw new AppError(`Bạn đang dùng gói ${currentActive.plan.durationDays} ngày. Không thể mua gói ${plan.durationDays} ngày cùng hạng.`, 400);
-      }
-
-      if (newTierVal > currentTierVal) {
-        isUpgrade = true;
-        oldPlanName = currentActive.plan.name;
-      }
-
-      // Tính số ngày còn dư của gói cũ
-      if (currentActive.endDate > now) {
-        const diffTime = currentActive.endDate.getTime() - now.getTime();
-        remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      }
-
-      // Suspend gói cũ
-      await tx.membershipSubscription.update({
-        where: { id: currentActive.id },
-        data: { status: "SUSPENDED", suspendedAt: now },
-      });
-    }
-
-    // Cộng số ngày của gói mới + số ngày còn dư của gói cũ
-    endDate.setDate(endDate.getDate() + plan.durationDays + remainingDays);
-
-    // 3. Create new subscription
-    const subscription = await tx.membershipSubscription.create({
+    // Payment được tạo ở PENDING rồi chốt SUCCESS cùng lúc với subscription — dùng CHUNG
+    // luồng với thanh toán online (SePay) ở `subscription-purchase.service.ts`:
+    // áp luật hạ hạng + cộng ngày dư, tạo subscription ACTIVE, invoice snapshot, notification.
+    const pendingPayment = await tx.payment.create({
       data: {
         memberId: memberProfile.id,
         planId: plan.id,
-        tier: plan.tier,
-        startDate,
-        endDate,
-        status: "ACTIVE",
-      },
-      include: { plan: true },
-    });
-
-    // Create payment
-    const payment = await tx.payment.create({
-      data: {
-        memberId: memberProfile.id,
-        subscriptionId: subscription.id,
         amount: plan.price,
         method: data.paymentMethod,
-        status: "SUCCESS",
-        paidAt: new Date(),
+        status: "PENDING",
         note: data.note,
         createdById,
       },
     });
 
-    // Auto-create invoice with BR-25 snapshot fields
-    const invoice = await tx.invoice.create({
-      data: {
-        invoiceNumber: `INV-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-        memberId: memberProfile.id,
-        paymentId: payment.id,
-        subtotal: Number(plan.price),
-        discount: 0,
-        total: Number(plan.price),
-        status: "ISSUED",
-        issuedAt: new Date(),
-        memberName: memberUser?.fullName ?? null,
-        planName: plan.name,
-        planTier: plan.tier,
-      },
+    const { subscription, payment, invoice } = await activateSubscriptionForPayment(tx, {
+      memberProfileId: memberProfile.id,
+      memberUserId: memberProfile.userId,
+      memberName: memberUser?.fullName ?? null,
+      plan,
+      paymentId: pendingPayment.id,
+      startDate,
+      now,
     });
-
-    // Notify user out-of-band so it doesn't fail the transaction
-    if (isUpgrade) {
-      createNotification(
-        memberProfile.userId,
-        "PAYMENT_SUCCESS",
-        "Nâng cấp gói thành công!",
-        `Chúc mừng bạn đã nâng cấp thành công từ gói ${oldPlanName} lên ${plan.name} (${plan.tier}). Số ngày sử dụng còn dư đã được cộng dồn vào thời hạn gói mới.`,
-        { metadata: { subscriptionId: subscription.id } }
-      ).catch(() => {});
-    } else {
-      createNotification(
-        memberProfile.userId,
-        "PAYMENT_SUCCESS",
-        "Đăng ký gói thành công!",
-        `Gói ${plan.name} (${plan.tier}) của bạn đã được kích hoạt thành công. ${remainingDays > 0 ? "Thời gian dư từ gói cũ đã được cộng dồn." : ""}`,
-        { metadata: { subscriptionId: subscription.id } }
-      ).catch(() => {});
-    }
 
     return { subscription, payment, invoice };
   });
