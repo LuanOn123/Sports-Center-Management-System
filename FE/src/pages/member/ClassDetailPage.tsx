@@ -21,7 +21,9 @@ import type {
 } from "../../types/member";
 
 function courseBlockers(error: unknown): CourseRegistrationBlocker[] {
-  const raw = (error as { errors?: unknown } | undefined)?.errors;
+  const raw =
+    (error as { details?: unknown; errors?: unknown } | undefined)?.details ??
+    (error as { errors?: unknown } | undefined)?.errors;
   const details = (raw as { details?: unknown } | undefined)?.details;
   return Array.isArray(details) ? (details as CourseRegistrationBlocker[]) : [];
 }

@@ -7,7 +7,7 @@ export type ClassType = "REGULAR" | "PREMIUM";
 export type AreaType = "POOL" | "INDOOR" | "OUTDOOR";
 export type ScheduleStatus = "SCHEDULED" | "CANCELLED" | "COMPLETED";
 export type EnrollmentStatus = "BOOKED" | "CANCELLED" | "COMPLETED";
-export type PaymentMethod = "CASH" | "BANK_TRANSFER";
+export type PaymentMethod = "CASH" | "BANK_TRANSFER" | "SEPAY";
 export type PaymentStatus = "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED";
 
 export interface MemberProfile {
@@ -295,6 +295,39 @@ export interface MembershipSubscription {
   status: MembershipStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+export type SepayPaymentStatus = "PENDING" | "SUCCESS" | "FAILED";
+
+export interface SepayCheckout {
+  paymentId: string;
+  orderCode: string;
+  amount: number;
+  currency?: "VND" | string;
+  status: SepayPaymentStatus;
+  gateway: "SEPAY" | string;
+  expiresAt: string;
+  qrUrl: string;
+  transferContent: string;
+  bank?: {
+    id: string;
+    accountNumber: string;
+    accountHolder: string;
+  };
+  plan?: Pick<MembershipPlan, "id" | "name" | "tier" | "durationDays">;
+  paidAt?: string | null;
+  subscriptionId?: string | null;
+}
+
+export interface SepayMockConfirmResult {
+  sepayId: number;
+  orderCode: string;
+  paymentId: string;
+  processed: boolean;
+  status: string;
+  paymentStatus: SepayPaymentStatus;
+  subscriptionId?: string | null;
+  mock: boolean;
 }
 
 export interface ApiResponse<T> {

@@ -6,8 +6,14 @@ import type { LucideIcon } from "lucide-react";
 import { useSidebar } from "./useSidebar";
 import { Brand } from "./Brand";
 import type { ProfileOk } from "./generated";
-import { Chat, FloatingChat, NotificationBell, Notifications } from "./Communication";
+import {
+  Chat,
+  FloatingChat,
+  NotificationBell,
+  Notifications,
+} from "./Communication";
 import { Policies } from "./Policies";
+import { AttendanceShortcut } from "./AttendanceShortcut";
 export type NavigationItem = readonly [
   path: string,
   name: string,
@@ -47,9 +53,7 @@ export function PortalLayout({
     ]),
     {
       title: "KẾT NỐI",
-      items: [
-        ["policies", "Chính sách sử dụng"],
-      ] as NavigationItem[],
+      items: [["policies", "Chính sách sử dụng"]] as NavigationItem[],
     },
   ];
   const pageTitle =
@@ -174,6 +178,7 @@ export function PortalLayout({
         </footer>
       </div>
       <FloatingChat userId={user.id} />
+      <AttendanceShortcut role={user.role} base={base} />
     </div>
   );
 }
