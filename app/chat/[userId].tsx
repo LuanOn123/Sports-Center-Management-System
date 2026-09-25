@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  Platform, ActivityIndicator,
 } from 'react-native';
 import clsx from 'clsx';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -9,6 +9,7 @@ import { Icon } from '../../components/shared/Icon';
 import { useAuth } from '../../context/AuthContext';
 import { useChatMessages, usePartnerName } from '../../hooks/shared/useChat';
 import { Colors } from '../../constants/theme';
+import { KeyboardAwareView } from '../../components/shared/KeyboardAwareView';
 
 // toLocaleDateString('vi-VN', ...) không đáng tin trên RN/Hermes — ICU của máy
 // có thể trả dấu "-" thay vì "/" giữa ngày/tháng. Tự ghép chuỗi cho chắc.
@@ -60,11 +61,7 @@ export default function ChatScreen() {
 
   // ─── UI ─────────────────────────────────────────────────────────────────────
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-bg-primary"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-    >
+    <KeyboardAwareView className="flex-1 bg-bg-primary">
       {/* Header */}
       <View className={clsx('flex-row items-center gap-md px-lg pb-md bg-bg-surface border-b border-border', Platform.OS === 'ios' ? 'pt-[54px]' : 'pt-xl')}>
         <TouchableOpacity className="p-1" onPress={handleBack}>
@@ -171,6 +168,6 @@ export default function ChatScreen() {
           <Icon name="send" size={20} color={text.trim() ? Colors.text.inverse : Colors.text.muted} />
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardAwareView>
   );
 }

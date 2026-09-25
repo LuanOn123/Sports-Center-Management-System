@@ -34,7 +34,7 @@ module.exports = {
           active: '#A3E635',
           expired: '#EF4444',
           suspended: '#F59E0B',
-          cancelled: '#6B7280',
+          cancelled: '#EF4444',
           scheduled: '#3B82F6',
           completed: '#22C55E',
           booked: '#8B5CF6',

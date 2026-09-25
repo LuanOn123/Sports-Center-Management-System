@@ -113,15 +113,19 @@ export default function MyAttendanceScreen() {
         <TouchableOpacity className="w-10 h-10 justify-center items-center rounded-full" onPress={handleGoBack}>
           <Icon name="arrow-back" size={24} color={Colors.text.primary} />
         </TouchableOpacity>
-        <Text className="text-lg font-bold font-bevn-bold text-text-primary">Chuyên cần & Điểm danh</Text>
-        <TouchableOpacity className="w-10 h-10 justify-center items-center rounded-full" onPress={() => router.replace('/(tabs)')}>
-          <Icon name="home" size={24} color={Colors.primary} />
-        </TouchableOpacity>
+        <View className="flex-1 items-center px-xs">
+          <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center">Chuyên cần & Điểm danh</Text>
+          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>
+            Tỉ lệ tham gia & lịch sử điểm danh
+          </Text>
+        </View>
+        <View className="w-10 h-10" />
       </View>
 
       <ScrollView
         className="flex-1 bg-bg-primary"
         contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
+        keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
         {/* Tỉ lệ chuyên cần theo lớp */}
