@@ -20,6 +20,11 @@ import { allPages } from "../../shared/pagedApi";
 import { TrainingPlans } from "../../shared/TrainingPlans";
 import type { RecordData } from "../../shared/api";
 import type { Resource } from "./config";
+import {
+  ScheduleCalendar,
+  calendarRange,
+  type ScheduleCalendarView,
+} from "./ScheduleCalendar";
 import { at, display, money } from "../../shared/config";
 import { useDebouncedValue } from "../../shared/useDebouncedValue";
 import {
@@ -52,23 +57,33 @@ export function ResourcePage({
   const [bError, setBError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [calendarView, setCalendarView] = useState<ScheduleCalendarView>("week");
+  const [calendarCursor, setCalendarCursor] = useState(() => new Date());
   const listKey = "GET " + r.path;
   const params = contract[listKey].parameters.filter((p) => p.in === "query");
   const paginated = params.some((p) => p.name === "page");
-  const filters = params.filter(
-    (p) =>
-      !["page", "limit"].includes(p.name) && !(p.name === "role" && r.role),
-  );
+  const filters = params.filter((p) => {
+    if (["page", "limit"].includes(p.name) || (p.name === "role" && r.role)) return false;
+    if (r.slug === "schedules" && ["date", "startAfter", "startBefore", "from", "to", "weekday", "weekdays"].includes(p.name)) return false;
+    return true;
+  });
+  const visibleCalendarRange = calendarRange(calendarCursor, calendarView);
   const requestQuery = {
     ...query,
     ...(query.search !== undefined ? { search } : {}),
     ...(r.slug === "staff" ? { role: "STAFF" } : {}),
-    ...(paginated ? { page: String(page), limit: "10" } : {}),
+    ...(r.slug === "schedules"
+      ? {
+          from: visibleCalendarRange.start.toISOString(),
+          to: visibleCalendarRange.end.toISOString(),
+        }
+      : paginated ? { page: String(page), limit: "10" } : {}),
   };
   const q = useQuery({
     queryKey: ["resource", r.slug, requestQuery],
-    queryFn: ({ signal }) =>
-      api<RecordData[]>(listKey, { query: requestQuery, signal }),
+    queryFn: ({ signal }) => r.slug === "schedules"
+      ? allPages<RecordData>(listKey, { query: requestQuery, signal })
+      : api<RecordData[]>(listKey, { query: requestQuery, signal }),
   });
   const create = "POST " + (r.create || r.path);
   const update = "PATCH " + r.path + "/{id}";
@@ -139,9 +154,11 @@ export function ResourcePage({
       <section className="panel">
         <div className="panel-heading">
           <div>
-            <h2>Danh sách {r.title.toLowerCase()}</h2>
+            <h2>{r.slug === "schedules" ? "Thời khóa biểu" : `Danh sách ${r.title.toLowerCase()}`}</h2>
             <p>
-              {q.data?.pagination
+              {r.slug === "schedules"
+                ? `${q.data?.data.length || 0} buổi trong khoảng đang xem`
+                : q.data?.pagination
                 ? `${q.data.pagination.total} kết quả`
                 : "Dữ liệu trung tâm"}
             </p>
@@ -173,10 +190,22 @@ export function ResourcePage({
           <Loading />
         ) : q.isError ? (
           <ErrorState error={q.error} retry={() => q.refetch()} />
-        ) : !q.data.data.length ? (
+        ) : !q.data.data.length && r.slug !== "schedules" ? (
           <Empty
             text="Không tìm thấy kết quả"
             detail="Thử thay đổi bộ lọc hoặc thêm dữ liệu mới."
+          />
+        ) : r.slug === "schedules" ? (
+          <ScheduleCalendar
+            rows={q.data.data}
+            cursor={calendarCursor}
+            view={calendarView}
+            onCursorChange={setCalendarCursor}
+            onViewChange={setCalendarView}
+            onSelect={(row) => {
+              setDetailTab("overview");
+              setModal({ kind: "detail", row });
+            }}
           />
         ) : (
           <div
@@ -534,6 +563,38 @@ export function ResourcePage({
                 </div>
               )}
               {detailTab === "overview" && <Details value={detail.data.data} />}
+              {detailTab === "overview" && r.slug === "schedules" && (
+                <div className="modal-footer schedule-detail-actions">
+                  <button
+                    className="button"
+                    disabled={modal.row?.status !== "SCHEDULED"}
+                    onClick={() => setModal({ kind: "edit", row: modal.row })}
+                  >
+                    <Pencil size={16} /> Chỉnh sửa
+                  </button>
+                  <button
+                    className="button"
+                    disabled={!canCompleteSchedule(modal.row || {})}
+                    onClick={() => {
+                      setBError(undefined);
+                      setModal({ kind: "complete", row: modal.row });
+                    }}
+                  >
+                    Hoàn tất
+                  </button>
+                  <button
+                    className="button danger"
+                    disabled={modal.row?.status !== "SCHEDULED"}
+                    onClick={() => {
+                      setBError(undefined);
+                      setCancelReason("");
+                      setModal({ kind: "delete", row: modal.row });
+                    }}
+                  >
+                    <Trash2 size={16} /> Hủy lịch
+                  </button>
+                </div>
+              )}
               {detailTab === "related" &&
                 r.slug === "coaches" &&
                 Boolean(at(detail.data.data, "coachProfile.id")) && (

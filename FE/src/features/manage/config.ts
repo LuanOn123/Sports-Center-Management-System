@@ -81,6 +81,7 @@ export const resources: Resource[] = [
     path: "/sports",
     columns: [
       ["name", "Bộ môn"],
+      ["areaTypesLabel", "Loại khu vực"],
       ["description", "Mô tả"],
       ["_count.classes", "Số lớp"],
       ["isActive", "Trạng thái"],

@@ -17,6 +17,26 @@ async function fixtureApi(page: any, role = "MANAGER") {
         });
         return;
       }
+      if (
+        path === "/notifications/unread-count" ||
+        path === "/chat/messages/unread-count"
+      ) {
+        await route.fulfill({
+          json: { success: true, message: "", data: { unreadCount: 0 } },
+        });
+        return;
+      }
+      if (
+        path === "/notifications" ||
+        path === "/chat/contacts" ||
+        path === "/chat/conversations" ||
+        path === "/chat/messages"
+      ) {
+        await route.fulfill({
+          json: { success: true, message: "", data: [] },
+        });
+        return;
+      }
       const response: any = Object.entries(operation.responses).find(([code]) =>
         code.startsWith("2"),
       )?.[1];
@@ -69,6 +89,12 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
   await expect(
     page.getByText("900.000", { exact: false }).first(),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Thông báo", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Thông báo gần đây" })).toBeVisible();
+  await page.getByRole("button", { name: "Thông báo", exact: true }).click();
+  await page.getByRole("button", { name: "Mở tin nhắn" }).click();
+  await expect(page.getByRole("region", { name: "Cửa sổ tin nhắn" })).toBeVisible();
+  await page.getByRole("button", { name: "Đóng tin nhắn" }).first().click();
   await page.screenshot({
     path: "artifacts/dashboard-test-fixtures.png",
     fullPage: true,
