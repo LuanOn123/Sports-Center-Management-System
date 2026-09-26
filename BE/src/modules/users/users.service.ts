@@ -3,6 +3,7 @@ import { AppError } from "../../middlewares/errorHandler.js";
 import { hashPassword } from "../../utils/bcrypt.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { ensureActiveFreeSubscription } from "../subscriptions/free-subscription.service.js";
+import { disconnectUserSockets } from "../chat/chat.socket.js";
 import type { CreateUserInput, UpdateUserInput, UserQueryInput } from "./users.schema.js";
 
 const userSelect = {
@@ -161,7 +162,7 @@ export async function updateUser(id: string, data: UpdateUserInput, requesterId:
         }
       : {};
 
-  return prisma.user.update({
+  const updated = await prisma.user.update({
     where: { id },
     data: {
       ...data,
@@ -170,6 +171,13 @@ export async function updateUser(id: string, data: UpdateUserInput, requesterId:
     },
     select: userSelect,
   });
+
+  // Socket chỉ xác thực ở handshake → ngắt ngay khi khóa tài khoản hoặc đổi role (D04).
+  if (data.isActive === false || (data.role && data.role !== user.role)) {
+    disconnectUserSockets(id);
+  }
+
+  return updated;
 }
 
 export async function deactivateUser(id: string, requesterId: string) {
@@ -187,9 +195,14 @@ export async function deactivateUser(id: string, requesterId: string) {
     }
   }
 
-  return prisma.user.update({
+  const deactivated = await prisma.user.update({
     where: { id },
     data: { isActive: false },
     select: { id: true, email: true, fullName: true, role: true, isActive: true },
   });
+
+  // Tài khoản bị khóa phải ngừng ngay mọi phiên socket đang mở (D04).
+  disconnectUserSockets(id);
+
+  return deactivated;
 }

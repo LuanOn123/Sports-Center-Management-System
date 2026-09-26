@@ -1164,11 +1164,13 @@ const options: swaggerJSDoc.Options = {
                   message: "Revenue report retrieved successfully",
                   data: {
                     totalRevenue: 900000,
-                    totalPayments: 2,
+                    refundedAmount: 300000,
+                    netRevenue: 600000,
+                    totalPayments: 3,
                     successPayments: 2,
+                    refundedPayments: 1,
                     failedPayments: 0,
                     pendingPayments: 0,
-                    refundedPayments: 0,
                     revenueByMethod: { CASH: 300000, BANK_TRANSFER: 600000, SEPAY: 300000 },
                     recentPayments: [
                       {
