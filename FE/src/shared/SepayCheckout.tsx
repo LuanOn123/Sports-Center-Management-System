@@ -11,8 +11,7 @@ const clientEnv = (
     env: Record<string, string | boolean | undefined>;
   }
 ).env;
-const mockModeEnabled =
-  clientEnv.DEV === true || clientEnv.VITE_SEPAY_MOCK_MODE === "true";
+const mockModeEnabled = clientEnv.VITE_SEPAY_MOCK_MODE === "true";
 
 function useCountdown(expiresAt: string) {
   const expiry = useMemo(() => new Date(expiresAt).getTime(), [expiresAt]);
@@ -123,205 +122,232 @@ export function SepayCheckoutModal({
       dismissible={!mockConfirm.isPending}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 16,
-            padding: 16,
-            borderRadius: 12,
-            background: "#fff5fb",
-            border: "1px solid #f6c8e3",
-          }}
-        >
-          <div>
-            <strong style={{ color: "#203d31" }}>
-              {current.plan?.name ?? selectedPlan?.name ?? "Gói hội viên"}
-            </strong>
-            {(current.plan?.durationDays ?? selectedPlan?.durationDays) && (
-              <div style={{ color: "#667085", fontSize: 12, marginTop: 4 }}>
-                Thời hạn{" "}
-                {current.plan?.durationDays ?? selectedPlan?.durationDays} ngày
+        {current.status === "SUCCESS" ? (
+          <div style={{ textAlign: "center", padding: "10px 0" }}>
+            <div style={{ 
+              width: 72, height: 72, background: "#10b981", borderRadius: "50%", 
+              display: "flex", alignItems: "center", justifyContent: "center", 
+              margin: "0 auto 20px", color: "white", boxShadow: "0 4px 10px rgba(16, 185, 129, 0.3)"
+            }}>
+              <Check size={40} strokeWidth={3} />
+            </div>
+            <h3 style={{ color: "#065f46", margin: "0 0 8px 0", fontSize: 22 }}>Thanh toán thành công!</h3>
+            <div style={{ color: "#475467", fontSize: 14, marginBottom: 24 }}>
+              Giao dịch đã hoàn tất. Gói hội viên của bạn đã được kích hoạt.
+            </div>
+            <div style={{ 
+              background: "#f9fafb", borderRadius: 12, padding: 16, 
+              textAlign: "left", fontSize: 14, color: "#374151",
+              border: "1px solid #e5e7eb"
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                <span style={{ color: "#6b7280" }}>Mã đơn hàng:</span>
+                <strong>{current.orderCode}</strong>
               </div>
-            )}
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                <span style={{ color: "#6b7280" }}>Số tiền:</span>
+                <strong style={{ color: "#10b981" }}>+{current.amount.toLocaleString("vi-VN")} VND</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#6b7280" }}>Gói đăng ký:</span>
+                <strong>{current.plan?.name ?? selectedPlan?.name}</strong>
+              </div>
+            </div>
+            <button type="button" className="button primary" onClick={onClose} style={{ marginTop: 24, width: "100%", padding: 12 }}>
+              Đóng và bắt đầu tập luyện
+            </button>
           </div>
-          <strong style={{ color: "#a50064", whiteSpace: "nowrap" }}>
-            {Number(current.amount).toLocaleString("vi-VN")} VND
-          </strong>
-        </div>
-
-        {current.status === "PENDING" && !countdown.expired && (
-          <div style={{ textAlign: "center" }}>
+        ) : (
+          <>
             <div
               style={{
-                display: "inline-flex",
-                padding: 12,
-                background: "#fff",
-                border: "1px solid #e7ece9",
-                borderRadius: 14,
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 16,
+                padding: 16,
+                borderRadius: 12,
+                background: "#fff5fb",
+                border: "1px solid #f6c8e3",
               }}
             >
-              <img
-                src={current.qrUrl}
-                width={300}
-                height={300}
-                alt="Mã VietQR thanh toán gói hội viên"
-                style={{ maxWidth: "100%", height: "auto" }}
-              />
+              <div>
+                <strong style={{ color: "#203d31" }}>
+                  {current.plan?.name ?? selectedPlan?.name ?? "Gói hội viên"}
+                </strong>
+                {(current.plan?.durationDays ?? selectedPlan?.durationDays) && (
+                  <div style={{ color: "#667085", fontSize: 12, marginTop: 4 }}>
+                    Thời hạn{" "}
+                    {current.plan?.durationDays ?? selectedPlan?.durationDays} ngày
+                  </div>
+                )}
+              </div>
+              <strong style={{ color: "#a50064", whiteSpace: "nowrap" }}>
+                {Number(current.amount).toLocaleString("vi-VN")} VND
+              </strong>
             </div>
-            <div style={{ marginTop: 8, color: "#667085", fontSize: 13 }}>
-              Mã hết hạn sau <strong>{countdown.label}</strong>
-            </div>
-          </div>
-        )}
 
-        <div style={{ color: "#475467", fontSize: 13, lineHeight: 1.8 }}>
-          {current.bank && (
-            <>
-              <div>
-                Ngân hàng: <strong>{current.bank.id}</strong>
+            {current.status === "PENDING" && !countdown.expired && (
+              <div style={{ textAlign: "center" }}>
+                <div
+                  style={{
+                    display: "inline-flex",
+                    padding: 12,
+                    background: "#fff",
+                    border: "1px solid #e7ece9",
+                    borderRadius: 14,
+                  }}
+                >
+                  <img
+                    src={current.qrUrl}
+                    width={300}
+                    height={300}
+                    alt="Mã VietQR thanh toán gói hội viên"
+                    style={{ maxWidth: "100%", height: "auto" }}
+                  />
+                </div>
+                <div style={{ marginTop: 8, color: "#667085", fontSize: 13 }}>
+                  Mã hết hạn sau <strong>{countdown.label}</strong>
+                </div>
               </div>
-              <div>
-                Số tài khoản: <strong>{current.bank.accountNumber}</strong>
-              </div>
-              <div>
-                Chủ tài khoản: <strong>{current.bank.accountHolder}</strong>
-              </div>
-            </>
-          )}
-          <div>
-            Số tiền:{" "}
-            <strong>{current.amount.toLocaleString("vi-VN")} VND</strong>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-            }}
-          >
-            <span>
-              Nội dung: <strong>{current.transferContent}</strong>
-            </span>
-            <button
-              type="button"
-              className="button small"
-              onClick={copyTransferContent}
-              aria-label="Sao chép nội dung chuyển khoản"
-            >
-              {copied ? <Check size={15} /> : <Copy size={15} />}
-              {copied ? "Đã chép" : "Copy"}
-            </button>
-          </div>
-        </div>
+            )}
 
-        {current.status === "PENDING" && !countdown.expired && (
-          <AlertBanner
-            type="info"
-            title="Đang chờ ngân hàng xác nhận"
-            message="Hệ thống đang chờ xác nhận từ ngân hàng. Nếu đã chuyển tiền, không chuyển lại. Vui lòng giữ biên lai và mã đơn để trung tâm đối soát nếu trạng thái chưa cập nhật."
-          />
-        )}
-        {current.status === "PENDING" && countdown.expired && (
-          <AlertBanner
-            type="warning"
-            title="Đơn thanh toán đã hết thời gian"
-            message="Bạn có thể tạo đơn mới để nhận mã VietQR còn hiệu lực."
-          />
-        )}
-        {current.status === "SUCCESS" && (
-          <AlertBanner
-            type="success"
-            title="Thanh toán thành công"
-            message="Gói hội viên đã được kích hoạt và hóa đơn đã được tạo."
-          />
-        )}
-        {current.status === "FAILED" && (
-          <AlertBanner
-            type="error"
-            title="Thanh toán thất bại"
-            message="Giao dịch không thành công. Vui lòng tạo đơn thanh toán mới."
-          />
-        )}
-        {statusQuery.isError && current.status === "PENDING" && (
-          <AlertBanner
-            type="warning"
-            title="Chưa kiểm tra được trạng thái"
-            message="Kết nối tạm thời gián đoạn. Bạn có thể kiểm tra lại thủ công."
-          />
-        )}
-        {mockConfirm.isError && (
-          <AlertBanner
-            type="error"
-            title="Không thể giả lập thanh toán"
-            message={
-              mockConfirm.error instanceof Error
-                ? mockConfirm.error.message
-                : "Vui lòng kiểm tra SEPAY_MOCK_MODE ở backend."
-            }
-          />
-        )}
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
-          {current.status === "PENDING" && (
-            <button
-              type="button"
-              className="button"
-              disabled={statusQuery.isFetching}
-              onClick={async () => {
-                const result = await statusQuery.refetch();
-                if (result.data?.status === "PENDING")
-                  toast(
-                    "info",
-                    `Đơn ${checkout.orderCode} vẫn đang chờ BE xác nhận. Nếu đã chuyển tiền, vui lòng liên hệ trung tâm để đối soát.`,
-                  );
-              }}
-            >
-              <RotateCcw size={16} />
-              {statusQuery.isFetching ? "Đang kiểm tra..." : "Kiểm tra lại"}
-            </button>
-          )}
-          {(current.status === "FAILED" ||
-            (current.status === "PENDING" && countdown.expired)) && (
-            <button
-              type="button"
-              className="button primary"
-              onClick={onCreateNew}
-            >
-              Tạo đơn mới
-            </button>
-          )}
-          {current.status === "SUCCESS" && (
-            <button type="button" className="button primary" onClick={onClose}>
-              Hoàn tất
-            </button>
-          )}
-        </div>
-
-        {mockModeEnabled &&
-          current.status === "PENDING" &&
-          !countdown.expired && (
-            <button
-              type="button"
-              className="button"
-              disabled={mockConfirm.isPending}
-              onClick={() => mockConfirm.mutate()}
-              style={{ borderStyle: "dashed" }}
-            >
-              {mockConfirm.isPending && (
-                <LoaderCircle className="spin" size={16} />
+            <div style={{ color: "#475467", fontSize: 13, lineHeight: 1.8 }}>
+              {current.bank && (
+                <>
+                  <div>
+                    Ngân hàng: <strong>{current.bank.id}</strong>
+                  </div>
+                  <div>
+                    Số tài khoản: <strong>{current.bank.accountNumber}</strong>
+                  </div>
+                  <div>
+                    Chủ tài khoản: <strong>{current.bank.accountHolder}</strong>
+                  </div>
+                </>
               )}
-              DEV: giả lập SePay đã thu tiền
-            </button>
-          )}
+              <div>
+                Số tiền:{" "}
+                <strong>{current.amount.toLocaleString("vi-VN")} VND</strong>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
+                <span>
+                  Nội dung: <strong>{current.transferContent}</strong>
+                </span>
+                <button
+                  type="button"
+                  className="button small"
+                  onClick={copyTransferContent}
+                  aria-label="Sao chép nội dung chuyển khoản"
+                >
+                  {copied ? <Check size={15} /> : <Copy size={15} />}
+                  {copied ? "Đã chép" : "Copy"}
+                </button>
+              </div>
+            </div>
+
+            {current.status === "PENDING" && !countdown.expired && (
+              <AlertBanner
+                type="info"
+                title="Đang chờ ngân hàng xác nhận"
+                message="Hệ thống đang chờ xác nhận từ ngân hàng. Nếu đã chuyển tiền, không chuyển lại. Vui lòng giữ biên lai và mã đơn để trung tâm đối soát nếu trạng thái chưa cập nhật."
+              />
+            )}
+            {current.status === "PENDING" && countdown.expired && (
+              <AlertBanner
+                type="warning"
+                title="Đơn thanh toán đã hết thời gian"
+                message="Bạn có thể tạo đơn mới để nhận mã VietQR còn hiệu lực."
+              />
+            )}
+            {current.status === "FAILED" && (
+              <AlertBanner
+                type="error"
+                title="Thanh toán thất bại"
+                message="Giao dịch không thành công. Vui lòng tạo đơn thanh toán mới."
+              />
+            )}
+            {statusQuery.isError && current.status === "PENDING" && (
+              <AlertBanner
+                type="warning"
+                title="Chưa kiểm tra được trạng thái"
+                message="Kết nối tạm thời gián đoạn. Bạn có thể kiểm tra lại thủ công."
+              />
+            )}
+            {mockConfirm.isError && (
+              <AlertBanner
+                type="error"
+                title="Không thể giả lập thanh toán"
+                message={
+                  mockConfirm.error instanceof Error
+                    ? mockConfirm.error.message
+                    : "Vui lòng kiểm tra SEPAY_MOCK_MODE ở backend."
+                }
+              />
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                gap: 10,
+                flexWrap: "wrap",
+              }}
+            >
+              {current.status === "PENDING" && (
+                <button
+                  type="button"
+                  className="button"
+                  disabled={statusQuery.isFetching}
+                  onClick={async () => {
+                    const result = await statusQuery.refetch();
+                    if (result.data?.status === "PENDING")
+                      toast(
+                        "info",
+                        `Đơn ${checkout.orderCode} vẫn đang chờ BE xác nhận. Nếu đã chuyển tiền, vui lòng liên hệ trung tâm để đối soát.`,
+                      );
+                  }}
+                >
+                  <RotateCcw size={16} />
+                  {statusQuery.isFetching ? "Đang kiểm tra..." : "Kiểm tra lại"}
+                </button>
+              )}
+              {(current.status === "FAILED" ||
+                (current.status === "PENDING" && countdown.expired)) && (
+                <button
+                  type="button"
+                  className="button primary"
+                  onClick={onCreateNew}
+                >
+                  Tạo đơn mới
+                </button>
+              )}
+            </div>
+
+            {mockModeEnabled &&
+              current.status === "PENDING" &&
+              !countdown.expired && (
+                <button
+                  type="button"
+                  className="button"
+                  disabled={mockConfirm.isPending}
+                  onClick={() => mockConfirm.mutate()}
+                  style={{ borderStyle: "dashed" }}
+                >
+                  {mockConfirm.isPending && (
+                    <LoaderCircle className="spin" size={16} />
+                  )}
+                  DEV: giả lập SePay đã thu tiền
+                </button>
+              )}
+          </>
+        )}
       </div>
     </Modal>
   );
