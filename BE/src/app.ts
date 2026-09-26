@@ -31,12 +31,31 @@ import feedbackRoutes from "./modules/feedbacks/feedbacks.routes.js";
 
 const app = express();
 
+app.set("etag", false);
+
 // Global middlewares
 app.use(helmet());
 app.use(cors());
 app.use(morgan("dev"));
-app.use(express.json());
+app.use(
+  express.json({
+    // Giữ raw bytes của body: chữ ký HMAC-SHA256 webhook SePay ký trên
+    // `{timestamp}.{rawBody}` — KHÔNG thể re-serialize từ req.body (key order/whitespace lệch).
+    verify: (req, _res, buf) => {
+      (req as import("express").Request & { rawBody?: Buffer }).rawBody =
+        Buffer.from(buf);
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true }));
+
+// API dữ liệu theo phiên: cấm cache (browser/CDN) — tránh conditional request/304.
+// Bỏ qua /docs (tài nguyên Swagger UI tĩnh vẫn nên được cache).
+app.use("/api/v1", (req, res, next) => {
+  if (req.path.startsWith("/docs")) return next();
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
 
 // Swagger
 app.use(

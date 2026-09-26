@@ -4543,6 +4543,157 @@
       "500"
     ]
   },
+  "POST /payments/sepay/checkout": {
+    "path": "/payments/sepay/checkout",
+    "method": "POST",
+    "summary": "Create a SePay VietQR membership checkout",
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "planId"
+      ]
+    },
+    "statusCodes": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500",
+      "503"
+    ]
+  },
+  "GET /payments/sepay/{id}": {
+    "path": "/payments/sepay/{id}",
+    "method": "GET",
+    "summary": "Get a SePay membership checkout",
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  "POST /payments/sepay/mock-confirm": {
+    "path": "/payments/sepay/mock-confirm",
+    "method": "POST",
+    "summary": "DEV/DEMO confirm a SePay membership checkout",
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "properties": {
+        "paymentId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "paymentId"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  "GET /classes/{id}/course-plan": {
+    "path": "/classes/{id}/course-plan",
+    "method": "GET",
+    "summary": "View a class as ONE course (grouped timetable) + enrollment eligibility",
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "401",
+      "404",
+      "500"
+    ]
+  },
+  "POST /enrollments/bulk": {
+    "path": "/enrollments/bulk",
+    "method": "POST",
+    "summary": "Enroll in a whole course (all upcoming sessions)",
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "properties": {
+        "classId": {
+          "type": "string"
+        },
+        "memberId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "classId"
+      ]
+    },
+    "statusCodes": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
   "POST /class-schedules/activity-plan": {
     "path": "/class-schedules/activity-plan",
     "method": "POST",

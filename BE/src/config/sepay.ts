@@ -11,11 +11,20 @@ import crypto from "node:crypto";
  * `isSepayWebhookConfigured() = false` ⇒ endpoint webhook trả 503 (SePay sẽ retry khi cấu hình xong).
  * `mockMode = true` (chỉ DEV/DEMO/E2E) ⇒ cho phép `POST /payments/sepay/mock-confirm`
  * mô phỏng giao dịch chuyển khoản thành công mà không cần tiền thật.
+ * `apiToken` (SEPAY_API_TOKEN) ⇒ bật ĐỐI SOÁT CHỦ ĐỘNG qua SePay API v2: khi FE polling
+ * `GET /payments/sepay/{id}` mà đơn còn PENDING, BE tự tìm giao dịch khớp mã đơn để chốt.
+ * Dùng cho môi trường webhook không tới được server (BE chạy localhost, server downtime,
+ * SePay đã hết 7 lần retry trong ~33 phút) — xem sepay-api.client.ts.
  *
  * Lưu ý cấu hình trên my.sepay.vn (Cấu hình Công ty → Cấu trúc mã thanh toán):
  * - Tiền tố = `SEPAY_CODE_PREFIX` (mặc định SEVQR — cũng là chuỗi VietinBank yêu cầu trong nội dung),
  * - Hậu tố = `SEPAY_CODE_SUFFIX_LENGTH` ký tự, Loại ký tự = Số nguyên.
- * - Webhook: chọn xác thực API Key = `SEPAY_WEBHOOK_API_KEY` (SePay gửi header `Authorization: Apikey <key>`).
+ * - Webhook: chọn 1 trong 4 phương thức xác thực (docs SePay):
+ *   + API Key → header `Authorization: Apikey <SEPAY_WEBHOOK_API_KEY>`;
+ *   + HMAC-SHA256 (khuyến nghị) → header `X-SePay-Signature: sha256={hex}` +
+ *     `X-SePay-Timestamp`, ký trên `{timestamp}.{rawBody}` bằng `SEPAY_WEBHOOK_SECRET`;
+ *   + (None / OAuth 2.0 chưa hỗ trợ trong BE này).
+ *   Cả 2 biến cùng cấu hình ⇒ request có chữ ký HMAC thì verify HMAC, không có thì verify API Key.
  */
 export function sepayConfig() {
   return {
@@ -25,8 +34,10 @@ export function sepayConfig() {
     accountNo: (process.env.VIETQR_ACCOUNT_NO ?? "").trim(),
     /** Tên chủ tài khoản hiển thị trên ảnh QR (viết không dấu). */
     accountHolder: (process.env.VIETQR_ACCOUNT_NAME ?? "").trim(),
-    /** API key đã cấu hình ở webhook trên my.sepay.vn — dùng để xác thực request webhook. */
+    /** API key (phương thức API Key) đã cấu hình ở webhook trên my.sepay.vn. */
     webhookApiKey: (process.env.SEPAY_WEBHOOK_API_KEY ?? "").trim(),
+    /** Secret key (phương thức HMAC-SHA256) đã cấu hình ở webhook trên my.sepay.vn. */
+    webhookSecret: (process.env.SEPAY_WEBHOOK_SECRET ?? "").trim(),
     /** Dịch vụ tạo ảnh QR động của SePay. */
     qrBaseUrl: process.env.SEPAY_QR_BASE_URL?.trim() || "https://qr.sepay.vn/img",
     /** Kiểu hiển thị ảnh QR: compact | qronly | standee | (trống = QR chuẩn kèm logo VietQR). */
@@ -39,6 +50,17 @@ export function sepayConfig() {
     ttlMinutes: Math.max(1, Number(process.env.VIETQR_PAYMENT_TTL_MINUTES ?? 15) || 15),
     /** Chỉ DEV/DEMO/E2E: cho phép mô phỏng giao dịch qua `/payments/sepay/mock-confirm`. */
     mockMode: (process.env.SEPAY_MOCK_MODE ?? "false").trim() === "true",
+    /**
+     * Token Bearer của SePay API v2 (my.sepay.vn → Cấu hình Công ty → API Access).
+     * Có token ⇒ BE đối soát chủ động khi đơn còn PENDING mà webhook không tới được.
+     */
+    apiToken: (process.env.SEPAY_API_TOKEN ?? "").trim(),
+    /** Base URL SePay API v2; Test mode dùng `https://userapi-sandbox.sepay.vn/v2` với token riêng. */
+    apiBaseUrl:
+      (process.env.SEPAY_API_BASE_URL ?? "").trim().replace(/\/+$/, "") ||
+      "https://userapi.sepay.vn/v2",
+    /** Khoảng cách tối thiểu (giây) giữa 2 lần đối soát cho CÙNG một đơn — tránh spam API (SePay giới hạn 3 req/s). */
+    reconcileMinSeconds: clamp(Number(process.env.SEPAY_RECONCILE_MIN_SECONDS ?? 5) || 5, 1, 300),
   };
 }
 
@@ -52,9 +74,18 @@ export function isSepayConfigured(): boolean {
   return Boolean(cfg.bankId && cfg.accountNo);
 }
 
-/** Webhook cần API key để xác thực request từ SePay. */
+/** Webhook cần ít nhất 1 credentials (API Key hoặc HMAC secret) để xác thực request từ SePay. */
 export function isSepayWebhookConfigured(): boolean {
-  return Boolean(sepayConfig().webhookApiKey);
+  const cfg = sepayConfig();
+  return Boolean(cfg.webhookApiKey || cfg.webhookSecret);
+}
+
+/**
+ * Có API token ⇒ FE polling `GET /payments/sepay/{id}` sẽ kích hoạt đối soát chủ động
+ * (tìm giao dịch khớp mã đơn qua SePay API v2 để chốt đơn khi webhook không tới được server).
+ */
+export function isSepayApiConfigured(): boolean {
+  return Boolean(sepayConfig().apiToken);
 }
 
 /** Bỏ dấu tiếng Việt (một số ảnh QR/ngân hàng không nhận ký tự có dấu). */
@@ -122,4 +153,33 @@ export function verifySepayApiKey(authHeader: string | undefined, expected: stri
   const bufA = Buffer.from(received, "utf8");
   const bufB = Buffer.from(expected, "utf8");
   return bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB);
+}
+
+/**
+ * Xác thực chữ ký HMAC-SHA256 theo docs SePay:
+ * - Header `X-SePay-Signature: sha256={hex_hash}` (hex, không phân biệt hoa thường).
+ * - Header `X-SePay-Timestamp` = unix seconds khi ký.
+ * - HMAC-SHA256(secret, `{timestamp}.{rawBody}`) — ký trên **raw bytes** của body,
+ *   KHÔNG phải JSON đã parse rồi stringify lại (key order/whitespace/unicode khác sẽ lệch).
+ * - So khớp timing-safe.
+ */
+export function verifySepayHmacSignature(params: {
+  secret: string;
+  rawBody: Buffer | string | undefined;
+  signature: string | undefined;
+  timestamp: string | undefined;
+}): boolean {
+  const { secret, rawBody, signature, timestamp } = params;
+  if (!secret || rawBody === undefined || !signature || !timestamp) return false;
+  if (!/^\d+$/.test(timestamp.trim())) return false;
+  const cleanSignature = signature.trim().replace(/^sha256=/i, "");
+  if (!/^[0-9a-f]{64}$/i.test(cleanSignature)) return false;
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(`${timestamp.trim()}.`)
+    .update(rawBody)
+    .digest("hex");
+  const a = Buffer.from(cleanSignature.toLowerCase(), "hex");
+  const b = Buffer.from(expected, "hex");
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }

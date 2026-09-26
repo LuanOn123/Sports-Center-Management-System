@@ -6,12 +6,15 @@ import {
   buildSepayPaymentCode,
   buildVietQrUrl,
   extractPaymentCodeFromContent,
+  isSepayApiConfigured,
   isSepayConfigured,
   isSepayWebhookConfigured,
   normalizeBankAccount,
   sepayConfig,
   verifySepayApiKey,
+  verifySepayHmacSignature,
 } from "../../config/sepay.js";
+import { fetchSepayTransactionsByCode } from "./sepay-api.client.js";
 import { lockPaymentWebhook } from "../../utils/dbLocks.js";
 import { createNotification } from "../notifications/notifications.service.js";
 import {
@@ -213,13 +216,29 @@ export async function createSepayCheckout(userId: string, planId: string) {
  * FE polling trạng thái giao dịch (sau khi webhook về, gói được kích hoạt):
  * trả lại đúng thông tin QR để FE hiển thị lại + status/subscriptionId.
  * Quyền: chủ giao dịch (MEMBER) hoặc MANAGER/STAFF; COACH bị chặn.
+ *
+ * Nếu đơn còn PENDING và đã cấu hình `SEPAY_API_TOKEN`, BE đối soát chủ động qua SePay API
+ * (webhook không tới được server: localhost, server downtime, hết retry ~33 phút) để đơn
+ * chuyển SUCCESS ngay trong lần polling này — lỗi đối soát KHÔNG làm hỏng response.
  */
 export async function getSepayCheckout(userId: string, role: string, paymentId: string) {
-  const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+  let payment = await prisma.payment.findUnique({ where: { id: paymentId } });
   if (!payment || payment.gateway !== SEPAY_GATEWAY) {
     throw new AppError("SePay payment not found", 404);
   }
   await assertSepayPaymentOperator(userId, role, payment);
+
+  if (payment.status === "PENDING" && isSepayApiConfigured()) {
+    try {
+      await reconcileSepayPayment(payment.id);
+      payment = (await prisma.payment.findUnique({ where: { id: payment.id } })) ?? payment;
+    } catch (err) {
+      // Đối soát là kênh dự phòng — webhook vẫn là nguồn chính nên không được chặn FE polling.
+      console.warn(
+        `[SEPAY RECONCILE] Không đối soát được đơn ${payment.transactionCode ?? payment.id}: ${(err as Error).message}`
+      );
+    }
+  }
 
   const plan = payment.planId
     ? await prisma.membershipPlan.findUnique({ where: { id: payment.planId } })
@@ -272,7 +291,8 @@ type Settlement = {
 };
 
 export interface SepayWebhookOutcome {
-  sepayId: number;
+  /** `id` số nguyên của webhook SePay; `null` khi chốt qua đối soát API (API dùng UUID). */
+  sepayId: number | null;
   orderCode: string | null;
   paymentId: string | null;
   processed: boolean;
@@ -283,11 +303,40 @@ export interface SepayWebhookOutcome {
   mock?: boolean;
 }
 
+/** Nguồn của một khoản tiền vào: webhook SePay, mock DEV/CHỦ ĐÍCH hay đối soát chủ động qua API. */
+type SettleSource = "WEBHOOK" | "MOCK" | "RECONCILE";
+
+/**
+ * Dữ liệu một khoản tiền vào đã được xác thực để chốt đơn.
+ * `id` chỉ có ở webhook/mock (khoá chống trùng của bảng `SepayWebhookEvent`); giao dịch lấy từ
+ * SePay API v2 dùng UUID nên chống trùng dựa trên `Payment.status` + advisory lock.
+ */
+type TransferInput = {
+  gateway?: string;
+  transactionDate?: string;
+  accountNumber: string;
+  subAccount: string;
+  code?: string | null;
+  content: string;
+  transferType: string;
+  description: string;
+  transferAmount: number;
+  accumulated: number;
+  referenceCode: string;
+  id?: number;
+  /** UUID giao dịch SePay API v2 — lưu vào `gatewayPayload` để đối soát. */
+  apiTransactionId?: string;
+};
+
 /**
  * WEBHOOK (server-to-server) do SePay gọi mỗi khi phát hiện giao dịch ngân hàng.
  *
  * Kiểm tra theo thứ tự:
- * 1. `Authorization: Apikey <SEPAY_WEBHOOK_API_KEY>` — sai ⇒ 401 (SePay sẽ retry, cần sửa cấu hình).
+ * 1. Xác thực (chọn 1 trong 2 theo cấu hình my.sepay.vn):
+ *    a. HMAC-SHA256: request có `X-SePay-Signature` + `X-SePay-Timestamp` ⇒ verify
+ *       `sha256=hex(HMAC(secret, "{timestamp}.{rawBody}"))` bằng `SEPAY_WEBHOOK_SECRET`.
+ *    b. API Key: `Authorization: Apikey <SEPAY_WEBHOOK_API_KEY>` (fallback khi không có chữ ký).
+ *    Sai/thiếu ⇒ 401 (SePay sẽ retry, cần sửa cấu hình).
  * 2. Là TIỀN VÀO (`transferType = in`) — tiền ra ⇒ ack & bỏ qua.
  * 3. Mã đơn: `payload.code` (SePay bóc tách) hoặc tự tìm trong `content` theo tiền tố ⇒ không khớp ⇒ ack & bỏ qua.
  * 4. Số tài khoản nhận tiền (hoặc VA) phải đúng tài khoản của trung tâm.
@@ -295,23 +344,44 @@ export interface SepayWebhookOutcome {
  * 6. Chống trùng: `sepayId` UNIQUE (SePay retry/replay không xử lý lại) + giao dịch đã SUCCESS ⇒ duplicate.
  * 7. Hợp lệ ⇒ kích hoạt `MembershipSubscription` + `Invoice` + notification (cùng transaction với claim webhook).
  *
- * - 401 `SEPAY_INVALID_API_KEY`: header sai/thiếu (không xử lý gì).
- * - 503 `SEPAY_NOT_CONFIGURED`: server chưa có API key/tài khoản nhận tiền.
+ * - 401 `SEPAY_INVALID_SIGNATURE` / `SEPAY_INVALID_API_KEY`: xác thực sai (không xử lý gì).
+ * - 503 `SEPAY_NOT_CONFIGURED`: server chưa có API key/secret/tài khoản nhận tiền.
  * Mọi trường hợp khác (kể cả lệch tiền/lệch tài khoản) đều ACK 200 `{ success: true }`
  * để SePay không retry vô hạn — dữ liệu được lưu ở `SepayWebhookEvent` để đối soát thủ công.
  */
-export async function handleSepayWebhook(
-  authHeader: string | undefined,
-  body: SepayWebhookBody
-): Promise<SepayWebhookOutcome> {
+export async function handleSepayWebhook(input: {
+  authHeader: string | undefined;
+  signature: string | undefined;
+  timestamp: string | undefined;
+  rawBody: Buffer | undefined;
+  body: SepayWebhookBody;
+}): Promise<SepayWebhookOutcome> {
+  const { authHeader, signature, timestamp, rawBody, body } = input;
   const cfg = sepayConfig();
   if (!isSepayWebhookConfigured()) {
-    throw new AppError("Webhook SePay chưa được cấu hình (thiếu SEPAY_WEBHOOK_API_KEY).", 503, {
-      code: "SEPAY_NOT_CONFIGURED",
-      gateway: SEPAY_GATEWAY,
-    });
+    throw new AppError(
+      "Webhook SePay chưa được cấu hình (thiếu SEPAY_WEBHOOK_API_KEY / SEPAY_WEBHOOK_SECRET).",
+      503,
+      {
+        code: "SEPAY_NOT_CONFIGURED",
+        gateway: SEPAY_GATEWAY,
+      }
+    );
   }
-  if (!verifySepayApiKey(authHeader, cfg.webhookApiKey)) {
+  if (signature) {
+    // Phương thức HMAC-SHA256 (SePay gửi chữ ký) — phải có secret thì mới verify được.
+    if (
+      !cfg.webhookSecret ||
+      !verifySepayHmacSignature({ secret: cfg.webhookSecret, rawBody, signature, timestamp })
+    ) {
+      throw new AppError("Chữ ký webhook SePay không hợp lệ.", 401, {
+        code: "SEPAY_INVALID_SIGNATURE",
+        gateway: SEPAY_GATEWAY,
+        sepayId: body.id,
+      });
+    }
+  } else if (!verifySepayApiKey(authHeader, cfg.webhookApiKey)) {
+    // Phương thức API Key (không có chữ ký HMAC) — verify Authorization như cũ.
     throw new AppError("API key webhook SePay không hợp lệ.", 401, {
       code: "SEPAY_INVALID_API_KEY",
       gateway: SEPAY_GATEWAY,
@@ -380,19 +450,115 @@ function formatVnDateTime(date: Date): string {
   );
 }
 
+// ─── ĐỐI SOÁT CHỦ ĐỘNG QUA SEPAY API ────────────────────────────────────────
+
+/** Throttle theo đơn + gộp request song song (SePay giới hạn 3 request/giây). */
+const lastReconcileAt = new Map<string, number>();
+const inflightReconcile = new Map<string, Promise<SepayWebhookOutcome | null>>();
+
 /**
- * Chốt một giao dịch chuyển khoản đã được SePay xác nhận (webhook thật hoặc mock).
+ * ĐỐI SOÁT CHỦ ĐỘNG (fallback khi webhook không tới được BE): gọi SePay API v2 tìm giao dịch
+ * tiền vào khớp mã đơn + số tiền + tài khoản nhận, thấy thì chốt đơn qua đúng luồng kích hoạt gói.
+ *
+ * Vì sao cần: SePay chỉ retry webhook 7 lần trong ~33 phút; BE chạy localhost, server downtime
+ * hoặc URL webhook chưa cấu hình ⇒ webhook mất, đơn đứng PENDING mãi dù tiền đã vào. Hàm này được
+ * gọi trong `getSepayCheckout` (FE polling mỗi 4s) nên đơn tự chuyển SUCCESS ngay khi tiền vào.
+ *
+ * - Chỉ chạy khi có `SEPAY_API_TOKEN`; throttle `reconcileMinSeconds` + gộp request song song.
+ * - Khớp CHẶT: mã đơn xuất hiện trong `code`/nội dung CK/reference, `transfer_type = in`,
+ *   số tiền khớp CHÍNH XÁC, tài khoản nhận (hoặc VA) khớp `VIETQR_ACCOUNT_NO`. Lệch tiền/tài khoản
+ *   thì KHÔNG chốt ở đây — để webhook ghi nhận MISMATCH cho đối soát thủ công.
+ * - Chống chốt trùng: `Payment.status` + advisory lock trong `settleSepayTransfer`; webhook thật
+ *   về muộn sau đó được ghi `DUPLICATE / PAYMENT_ALREADY_PAID` để đối soát.
+ */
+export async function reconcileSepayPayment(
+  paymentId: string
+): Promise<SepayWebhookOutcome | null> {
+  const cfg = sepayConfig();
+  if (!cfg.apiToken) return null;
+
+  const inflight = inflightReconcile.get(paymentId);
+  if (inflight) return inflight; // nhiều request polling cùng lúc ⇒ dùng chung 1 lần gọi API.
+
+  const lastAt = lastReconcileAt.get(paymentId) ?? 0;
+  if (Date.now() - lastAt < cfg.reconcileMinSeconds * 1000) return null;
+
+  lastReconcileAt.set(paymentId, Date.now());
+  const task = runSepayReconcile(paymentId).finally(() => {
+    inflightReconcile.delete(paymentId);
+    if (lastReconcileAt.size > 1000) lastReconcileAt.clear(); // chống phình Map ở server chạy dài.
+  });
+  inflightReconcile.set(paymentId, task);
+  return task;
+}
+
+/** Một lượt đối soát: tìm giao dịch khớp đơn trong cửa sổ thời gian của đơn rồi chốt. */
+async function runSepayReconcile(paymentId: string): Promise<SepayWebhookOutcome | null> {
+  const cfg = sepayConfig();
+  const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+  if (!payment || payment.gateway !== SEPAY_GATEWAY || payment.status !== "PENDING") return null;
+  if (!payment.transactionCode) return null;
+
+  // Cửa sổ tìm kiếm: từ lúc tạo đơn (trừ 10 phút cho lệch giờ) tới hiện tại (+10 phút).
+  const transactions = await fetchSepayTransactionsByCode({
+    code: payment.transactionCode,
+    fromVnDateTime: formatVnDateTime(new Date(payment.createdAt.getTime() - 10 * 60 * 1000)),
+    toVnDateTime: formatVnDateTime(new Date(Date.now() + 10 * 60 * 1000)),
+  });
+
+  const expectedAccount = normalizeBankAccount(cfg.accountNo);
+  const orderCode = payment.transactionCode.toUpperCase();
+  const match = transactions.find((tx) => {
+    if (tx.transfer_type && tx.transfer_type !== "in") return false;
+    const searchable =
+      `${tx.code ?? ""} ${tx.transaction_content ?? ""} ${tx.reference_number ?? ""}`.toUpperCase();
+    if (!searchable.includes(orderCode)) return false;
+    if (money(tx.amount_in) !== money(payment.amount)) return false;
+    return [tx.account_number, tx.va].some(
+      (account) => normalizeBankAccount(account) === expectedAccount
+    );
+  });
+  if (!match) return null;
+
+  console.log(
+    `[SEPAY RECONCILE] order=${payment.transactionCode} khớp giao dịch ` +
+      `${match.reference_number ?? match.id} (${money(match.amount_in)}đ) → chốt đơn`
+  );
+
+  return settleSepayTransfer(
+    {
+      gateway: match.bank_brand_name ?? undefined,
+      transactionDate: match.transaction_date ?? undefined,
+      accountNumber: match.account_number ?? "",
+      subAccount: match.va ?? "",
+      code: match.code ?? payment.transactionCode,
+      content: match.transaction_content ?? "",
+      transferType: "in",
+      description: match.transaction_content ?? "",
+      transferAmount: money(match.amount_in),
+      accumulated: money(match.accumulated ?? 0),
+      referenceCode: match.reference_number ?? "",
+      apiTransactionId: match.id,
+    },
+    "RECONCILE"
+  );
+}
+
+
+/**
+ * Chốt một giao dịch chuyển khoản đã được SePay xác nhận (webhook thật, mock, hoặc đối soát API).
  *
  * Toàn bộ nằm trong MỘT transaction:
  * - Claim `sepayId` bằng `INSERT … ON CONFLICT DO NOTHING` (chống trùng, an toàn khi 2 webhook
  *   cùng lúc: request thứ hai chờ request thứ nhất commit rồi nhận 0 dòng ⇒ DUPLICATE).
+ *   Bỏ qua bước claim khi `source = "RECONCILE"` (giao dịch API dùng UUID, không có sepayId số).
  * - Advisory lock theo payment (2 webhook khác sepayId cho cùng một đơn phải xếp hàng).
  * - Claim + kiểm tra + kích hoạt gói cùng commit/rollback ⇒ SePay retry không bao giờ
  *   rơi vào trạng thái "đã đánh dấu xử lý nhưng chưa kích hoạt gói".
  */
 async function settleSepayTransfer(
-  body: SepayWebhookBody,
-  source: "WEBHOOK" | "MOCK"
+  body: TransferInput,
+  source: SettleSource
 ): Promise<SepayWebhookOutcome> {
   const cfg = sepayConfig();
   if (!isSepayConfigured()) {
@@ -413,20 +579,29 @@ async function settleSepayTransfer(
 
   const settlement = await prisma.$transaction(async (tx): Promise<Settlement> => {
     // (1) Claim sepayId — UNIQUE chống webhook trùng; 0 dòng = đã xử lý trước đó.
-    const claimed = await tx.$executeRaw`
-      INSERT INTO "SepayWebhookEvent" ("id", "sepayId", "paymentId", "status", "payload", "createdAt")
-      VALUES (${randomUUID()}, ${body.id}, ${drafted?.id ?? null}, 'PENDING', ${JSON.stringify(body)}::jsonb, NOW())
-      ON CONFLICT ("sepayId") DO NOTHING
-    `;
-    if (claimed === 0) {
-      return {
-        status: "DUPLICATE",
-        reason: "WEBHOOK_DUPLICATE",
-        paymentId: drafted?.id ?? null,
-        memberId: drafted?.memberId ?? null,
-        paymentStatus: drafted?.status ?? null,
-        processed: false,
-      };
+    // Chỉ webhook/mock mới có sepayId số; đối soát API dựa vào Payment.status + advisory lock bên dưới.
+    if (source !== "RECONCILE") {
+      if (body.id === undefined) {
+        throw new AppError("Thiếu mã giao dịch SePay (id) để chốt đơn.", 400, {
+          code: "SEPAY_ID_MISSING",
+          gateway: SEPAY_GATEWAY,
+        });
+      }
+      const claimed = await tx.$executeRaw`
+        INSERT INTO "SepayWebhookEvent" ("id", "sepayId", "paymentId", "status", "payload", "createdAt")
+        VALUES (${randomUUID()}, ${body.id}, ${drafted?.id ?? null}, 'PENDING', ${JSON.stringify(body)}::jsonb, NOW())
+        ON CONFLICT ("sepayId") DO NOTHING
+      `;
+      if (claimed === 0) {
+        return {
+          status: "DUPLICATE",
+          reason: "WEBHOOK_DUPLICATE",
+          paymentId: drafted?.id ?? null,
+          memberId: drafted?.memberId ?? null,
+          paymentStatus: drafted?.status ?? null,
+          processed: false,
+        };
+      }
     }
 
     /** Ghi trạng thái cuối của webhook rồi trả kết quả cho caller. */
@@ -439,14 +614,16 @@ async function settleSepayTransfer(
       processed?: boolean;
       subscriptionId?: string;
     }): Promise<Settlement> => {
-      await tx.sepayWebhookEvent.updateMany({
-        where: { sepayId: body.id },
-        data: {
-          status: params.status,
-          reason: params.reason ?? null,
-          ...(params.paymentId !== undefined ? { paymentId: params.paymentId } : {}),
-        },
-      });
+      if (source !== "RECONCILE") {
+        await tx.sepayWebhookEvent.updateMany({
+          where: { sepayId: body.id },
+          data: {
+            status: params.status,
+            reason: params.reason ?? null,
+            ...(params.paymentId !== undefined ? { paymentId: params.paymentId } : {}),
+          },
+        });
+      }
       return {
         status: params.status,
         reason: params.reason,
@@ -550,7 +727,18 @@ async function settleSepayTransfer(
     // (8) Đã thu tiền: lưu dấu vết cổng rồi kích hoạt gói qua luồng chung (sub + invoice + notification).
     await tx.payment.update({
       where: { id: payment.id },
-      data: { gatewayTransId, gatewayPayload: asJson(body) },
+      data: {
+        gatewayTransId,
+        gatewayPayload: asJson(body),
+        // Đối soát chủ động: ghi rõ nguồn chốt để đối chiếu khi webhook thật về sau (sẽ là DUPLICATE).
+        ...(source === "RECONCILE"
+          ? {
+              note:
+                `${payment.note ?? ""} | Chốt tự động qua đối soát SePay API ` +
+                `(webhook không tới được server) — ref ${gatewayTransId}.`,
+            }
+          : {}),
+      },
     });
 
     const plan = payment.planId
@@ -639,7 +827,7 @@ async function settleSepayTransfer(
   }
 
   return {
-    sepayId: body.id,
+    sepayId: body.id ?? null,
     orderCode: drafted?.transactionCode ?? code ?? null,
     paymentId: settlement.paymentId,
     processed: settlement.processed,
