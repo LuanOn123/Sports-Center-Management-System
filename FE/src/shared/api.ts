@@ -83,6 +83,7 @@ async function transport(
   try {
     res = await fetch(BASE_URL + path, {
       method,
+      cache: "no-store",
       headers: {
         Accept: "application/json",
         ...(body !== undefined && !(body instanceof FormData)

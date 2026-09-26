@@ -243,9 +243,16 @@ router.post(
  *   post:
  *     summary: SePay gọi server-to-server khi phát hiện giao dịch chuyển khoản
  *     description: |
- *       **Endpoint công khai (KHÔNG Bearer)** — SePay gọi trực tiếp, bảo vệ bằng API key:
- *       header `Authorization: Apikey <SEPAY_WEBHOOK_API_KEY>` (cấu hình ở bước Bảo mật khi tạo webhook
- *       trên my.sepay.vn). Sai/thiếu key ⇒ **401** và KHÔNG xử lý gì.
+ *       **Endpoint công khai (KHÔNG Bearer)** — SePay gọi trực tiếp, bảo vệ bằng 1 trong 2
+ *       phương thức (chọn ở bước Bảo mật khi tạo webhook trên my.sepay.vn):
+ *
+ *       1. **HMAC-SHA256** (khuyến nghị): header `X-SePay-Signature: sha256={hex}` +
+ *          `X-SePay-Timestamp` (unix seconds) — ký trên `{timestamp}.{rawBody}` bằng
+ *          `SEPAY_WEBHOOK_SECRET`.
+ *       2. **API Key**: header `Authorization: Apikey <SEPAY_WEBHOOK_API_KEY>`.
+ *
+ *       Request có header chữ ký ⇒ kiểm tra HMAC; không có ⇒ kiểm tra API Key.
+ *       Sai/thiếu ⇒ **401** (`SEPAY_INVALID_SIGNATURE` / `SEPAY_INVALID_API_KEY`) và KHÔNG xử lý gì.
  *
  *       Kiểm tra theo thứ tự:
  *       1. Header API key hợp lệ.
@@ -267,9 +274,19 @@ router.post(
  *     parameters:
  *       - in: header
  *         name: Authorization
- *         required: true
+ *         required: false
  *         schema: { type: string }
- *         description: "`Apikey <SEPAY_WEBHOOK_API_KEY>`"
+ *         description: "`Apikey <SEPAY_WEBHOOK_API_KEY>` (phương thức API Key)"
+ *       - in: header
+ *         name: X-SePay-Signature
+ *         required: false
+ *         schema: { type: string }
+ *         description: "`sha256={hex}` — chữ ký HMAC-SHA256 (phương thức HMAC)"
+ *       - in: header
+ *         name: X-SePay-Timestamp
+ *         required: false
+ *         schema: { type: string }
+ *         description: "Unix timestamp (seconds) khi SePay ký — tham gia nội dung ký"
  *     requestBody:
  *       required: true
  *       content:
@@ -313,16 +330,16 @@ router.post(
  *             example: { success: true }
  *       400: { description: "Payload không hợp lệ (thiếu id/transferType/transferAmount…)" }
  *       401:
- *         description: API key không hợp lệ
+ *         description: Xác thực không hợp lệ (API key sai hoặc chữ ký HMAC sai)
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *             example:
  *               success: false
- *               message: "API key webhook SePay không hợp lệ."
- *               errors: { code: SEPAY_INVALID_API_KEY, gateway: SEPAY, sepayId: 92704 }
- *       503: { description: "Server chưa cấu hình webhook SePay (SEPAY_WEBHOOK_API_KEY)" }
+ *               message: "Chữ ký webhook SePay không hợp lệ."
+ *               errors: { code: SEPAY_INVALID_SIGNATURE, gateway: SEPAY, sepayId: 92704 }
+ *       503: { description: "Server chưa cấu hình webhook SePay (SEPAY_WEBHOOK_API_KEY / SEPAY_WEBHOOK_SECRET)" }
  *       500: { $ref: "#/components/responses/ServerError" }
  */
 router.post(

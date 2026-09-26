@@ -12,6 +12,8 @@
  * lệch số tiền / hợp lệ / webhook lặp / tiền về muộn / mock-confirm.
  */
 import "dotenv/config";
+import { createHmac } from "node:crypto";
+import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import app from "../src/app.js";
 import { prisma } from "../src/config/prisma.js";
@@ -27,6 +29,8 @@ const E2E_SEPAY = {
   accountNo: "0703339186",
   accountHolder: "NGUYEN TRAN TU",
   apiKey: "e2e_sepay_api_key_1234567890",
+  /** Secret key cho phương thức HMAC-SHA256 (SEPAY_WEBHOOK_SECRET). */
+  hmacSecret: "whsec_e2e_sepay_hmac_secret_1234567890",
   prefix: "SEVQR",
   suffixLength: 8,
 };
@@ -38,7 +42,7 @@ type HttpResult = { status: number; body: any; text: string };
 async function http(
   method: string,
   path: string,
-  opts: { token?: string; body?: unknown; headers?: Record<string, string> } = {}
+  opts: { token?: string; body?: unknown; headers?: Record<string, string>; raw?: string } = {}
 ): Promise<HttpResult> {
   const res = await fetch(`${baseUrl}/api/v1${path}`, {
     method,
@@ -47,7 +51,13 @@ async function http(
       ...(opts.token ? { Authorization: `Bearer ${opts.token}` } : {}),
       ...(opts.headers ?? {}),
     },
-    body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+    // raw: gửi đúng chuỗi bytes đã ký HMAC (không JSON.stringify lại — sẽ lệch chữ ký).
+    body:
+      opts.raw !== undefined
+        ? opts.raw
+        : opts.body === undefined
+          ? undefined
+          : JSON.stringify(opts.body),
   });
   const text = await res.text();
   let body: any = null;
@@ -92,23 +102,40 @@ function check(name: string, condition: boolean, detail?: unknown): boolean {
 /**
  * Đặt biến môi trường SePay cho từng kịch bản (config đọc env động).
  * `configured: false` ⇒ bỏ cấu hình tài khoản nhận tiền để test nhánh 503.
+ * `apiToken` mặc định rỗng ⇒ tắt đối soát chủ động, tránh gọi ra SePay API thật khi chạy test.
  */
 function setSepayEnv(opts: {
   configured?: boolean;
   webhookKey?: string;
+  webhookSecret?: string;
   mock?: boolean;
   ttlMinutes?: number;
+  apiToken?: string;
+  apiBaseUrl?: string;
 }): void {
-  const { configured = true, webhookKey = E2E_SEPAY.apiKey, mock = false, ttlMinutes } = opts;
+  const {
+    configured = true,
+    webhookKey = E2E_SEPAY.apiKey,
+    // Mặc định XÓA secret để test API Key không phụ thuộc SEPAY_WEBHOOK_SECRET ngoài .env.
+    webhookSecret = "",
+    mock = false,
+    ttlMinutes,
+    apiToken = "",
+    apiBaseUrl = "https://userapi.sepay.vn/v2",
+  } = opts;
   process.env.VIETQR_BANK_ID = configured ? E2E_SEPAY.bankId : "";
   process.env.VIETQR_ACCOUNT_NO = configured ? E2E_SEPAY.accountNo : "";
   process.env.VIETQR_ACCOUNT_NAME = E2E_SEPAY.accountHolder;
   process.env.SEPAY_WEBHOOK_API_KEY = webhookKey;
+  process.env.SEPAY_WEBHOOK_SECRET = webhookSecret;
   process.env.SEPAY_CODE_PREFIX = E2E_SEPAY.prefix;
   process.env.SEPAY_CODE_SUFFIX_LENGTH = String(E2E_SEPAY.suffixLength);
   process.env.SEPAY_MOCK_MODE = mock ? "true" : "false";
   process.env.SEPAY_QR_TEMPLATE = "compact";
   process.env.VIETQR_PAYMENT_TTL_MINUTES = String(ttlMinutes ?? 15);
+  process.env.SEPAY_API_TOKEN = apiToken;
+  process.env.SEPAY_API_BASE_URL = apiBaseUrl;
+  process.env.SEPAY_RECONCILE_MIN_SECONDS = "5";
 }
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────
@@ -197,6 +224,29 @@ const sepayWebhook = (body: Record<string, unknown>, apiKey: string | null = E2E
     body,
     headers: apiKey === null ? {} : { Authorization: `Apikey ${apiKey}` },
   });
+
+/**
+ * Header HMAC-SHA256 đúng chuẩn SePay: `X-SePay-Signature: sha256={hex}` ký trên
+ * `{timestamp}.{rawBody}` bằng secret (docs: developer.sepay.vn → Xác thực webhook).
+ */
+function hmacHeaders(
+  raw: string,
+  secret: string,
+  timestamp: string = String(Math.floor(Date.now() / 1000))
+): Record<string, string> {
+  const signature =
+    "sha256=" + createHmac("sha256", secret).update(`${timestamp}.${raw}`).digest("hex");
+  return { "X-SePay-Signature": signature, "X-SePay-Timestamp": timestamp };
+}
+
+/** Gọi webhook với chữ ký HMAC hợp lệ (gửi đúng raw bytes đã ký). */
+const sepayWebhookHmac = (body: Record<string, unknown>, secret: string) => {
+  const raw = JSON.stringify(body);
+  return http("POST", "/payments/sepay/webhook", {
+    raw,
+    headers: hmacHeaders(raw, secret),
+  });
+};
 
 // ─── API helpers ──────────────────────────────────────────────────────────
 const checkout = (token: string, planId: string) =>
@@ -734,6 +784,290 @@ async function scenarioAuthorization(ctx: Ctx, staff: FixtureUser, coach: Fixtur
   check("GET /payments/sepay/:id không token → 401", anonGet.status === 401, anonGet.body);
 }
 
+/** G) Xác thực HMAC-SHA256 (SEPAY_WEBHOOK_SECRET) — song song & đối chiếu với API Key. */
+async function scenarioHmacAuth(member: FixtureUser, plan: any): Promise<void> {
+  section("G) HMAC-SHA256: chữ ký đúng / sai secret / body sửa / timestamp lệch / thiếu credentials");
+  const secret = E2E_SEPAY.hmacSecret;
+  const unknown = () => webhookBody({ transactionCode: "SEVQR99999999", amount: 1 });
+
+  // 1) Chữ ký hợp lệ → auth PASSED (200 ack; mã đơn lạ bị bỏ qua ở bước nghiệp vụ).
+  setSepayEnv({ webhookSecret: secret });
+  const good = await sepayWebhookHmac(unknown(), secret);
+  check("HMAC đúng → 200 ack (không 401)", good.status === 200 && good.body?.success === true, good.body);
+
+  // 2) Sai secret → 401 SEPAY_INVALID_SIGNATURE.
+  const badSecret = await sepayWebhookHmac(unknown(), "whsec_wrong_secret");
+  check(
+    "HMAC sai secret → 401 SEPAY_INVALID_SIGNATURE",
+    badSecret.status === 401 && badSecret.body?.errors?.code === "SEPAY_INVALID_SIGNATURE",
+    badSecret.body
+  );
+
+  // 3) Ký raw A nhưng gửi body B (đổi số tiền sau khi ký) → 401.
+  const bodyA = unknown();
+  const sigForA = hmacHeaders(JSON.stringify(bodyA), secret);
+  const tamperRes = await http("POST", "/payments/sepay/webhook", {
+    body: { ...bodyA, transferAmount: 999999 },
+    headers: sigForA,
+  });
+  check(
+    "Body bị sửa sau khi ký → 401 SEPAY_INVALID_SIGNATURE",
+    tamperRes.status === 401 && tamperRes.body?.errors?.code === "SEPAY_INVALID_SIGNATURE",
+    tamperRes.body
+  );
+
+  // 4) Timestamp gửi khác timestamp đã ký → 401.
+  const tsBody = unknown();
+  const tsRaw = JSON.stringify(tsBody);
+  const ts = String(Math.floor(Date.now() / 1000));
+  const sig = "sha256=" + createHmac("sha256", secret).update(`${ts}.${tsRaw}`).digest("hex");
+  const tsMismatch = await http("POST", "/payments/sepay/webhook", {
+    raw: tsRaw,
+    headers: { "X-SePay-Signature": sig, "X-SePay-Timestamp": String(Number(ts) + 1) },
+  });
+  check("Timestamp lệch giá trị đã ký → 401", tsMismatch.status === 401, tsMismatch.body);
+
+  // 5) Chữ ký sai định dạng (không phải sha256={64 hex}) → 401.
+  const malformed = await http("POST", "/payments/sepay/webhook", {
+    body: unknown(),
+    headers: { "X-SePay-Signature": "deadbeef", "X-SePay-Timestamp": ts },
+  });
+  check("Chữ ký sai định dạng sha256={hex} → 401", malformed.status === 401, malformed.body);
+
+  // 6) Chỉ cấu hình secret, request không gửi chữ ký → rơi vào nhánh API Key (rỗng) → 401.
+  setSepayEnv({ webhookKey: "", webhookSecret: secret });
+  const noCreds = await http("POST", "/payments/sepay/webhook", { body: unknown() });
+  check(
+    "Không chữ ký + không API key → 401 SEPAY_INVALID_API_KEY",
+    noCreds.status === 401 && noCreds.body?.errors?.code === "SEPAY_INVALID_API_KEY",
+    noCreds.body
+  );
+
+  // 7) Không cấu hình credentials nào → 503.
+  setSepayEnv({ webhookKey: "", webhookSecret: "" });
+  const none = await http("POST", "/payments/sepay/webhook", { body: unknown() });
+  check(
+    "Không cấu hình API key/secret → 503 SEPAY_NOT_CONFIGURED",
+    none.status === 503 && none.body?.errors?.code === "SEPAY_NOT_CONFIGURED",
+    none.body
+  );
+
+  // 8) Full flow qua HMAC: checkout → webhook hợp lệ → SUCCESS + subscription ACTIVE.
+  setSepayEnv({ webhookSecret: secret });
+  const res = await checkout(member.token, plan.id);
+  check("checkout → 201", res.status === 201, res.body);
+  const paymentId = res.body?.data?.paymentId as string;
+  const flowBody = webhookBody({
+    transactionCode: res.body?.data?.orderCode,
+    amount: res.body?.data?.amount,
+  });
+  const flow = await sepayWebhookHmac(flowBody, secret);
+  check(
+    "webhook HMAC hợp lệ → 200 ack",
+    flow.status === 200 && flow.body?.success === true,
+    flow.body
+  );
+  check(
+    "SepayWebhookEvent: PROCESSED",
+    (await sepayEvent(flowBody.id as number))?.status === "PROCESSED",
+    await sepayEvent(flowBody.id as number)
+  );
+  const status = await getCheckout(member.token, paymentId);
+  check(
+    "GET status → SUCCESS (thanh toán chốt qua HMAC)",
+    status.status === 200 && status.body?.data?.status === "SUCCESS",
+    status.body?.data
+  );
+  check(
+    "DB: đúng 1 subscription ACTIVE của member",
+    (await activeSubscriptions(member.memberProfileId)).length === 1
+  );
+
+  setSepayEnv({});
+}
+
+// ─── Đối soát chủ động qua SePay API (fake server) ──────────────────────────
+
+/**
+ * Fake SePay API v2 (`GET {baseUrl}/transactions?…`): trả đúng envelope `{ status, data, meta }`
+ * của userapi.sepay.vn để test luồng đối soát mà không gọi ra Internet.
+ */
+async function startFakeSepayApi(): Promise<{
+  baseUrl: string;
+  requests: { url: string; authorization: string | undefined }[];
+  respond: (transactions: Record<string, unknown>[]) => void;
+  close: () => Promise<void>;
+}> {
+  const requests: { url: string; authorization: string | undefined }[] = [];
+  let transactions: Record<string, unknown>[] = [];
+  const server = createServer((req, res) => {
+    requests.push({ url: req.url ?? "", authorization: req.headers.authorization });
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        status: "success",
+        data: transactions,
+        meta: {
+          pagination: {
+            total: transactions.length,
+            per_page: 50,
+            current_page: 1,
+            last_page: 1,
+            has_more: false,
+          },
+        },
+      })
+    );
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+  const port = (server.address() as AddressInfo).port;
+  return {
+    baseUrl: `http://127.0.0.1:${port}/v2`,
+    requests,
+    respond: (rows) => {
+      transactions = rows;
+    },
+    close: () =>
+      new Promise<void>((resolve, reject) =>
+        server.close((err) => (err ? reject(err) : resolve()))
+      ),
+  };
+}
+
+/**
+ * H) ĐỐI SOÁT CHỦ ĐỘNG: tiền vào đã có trên SePay nhưng webhook KHÔNG tới được BE
+ * (localhost/downtime) ⇒ FE polling `GET /payments/sepay/{id}` tự chốt đơn thành SUCCESS.
+ */
+async function scenarioReconcileViaApi(plan: any, upgradePlan: any): Promise<void> {
+  section("H) Đối soát chủ động qua SePay API khi webhook không tới BE");
+
+  setSepayEnv({});
+  const fake = await startFakeSepayApi();
+  const member = await createUser("MEMBER", "reconcile", await hashPassword(PASSWORD));
+  const apiToken = "e2e_sepay_api_token_1234567890";
+
+  try {
+    const res = await checkout(member.token, plan.id);
+    check("checkout → 201", res.status === 201, res.body);
+    const paymentId = res.body?.data?.paymentId as string;
+    const orderCode = res.body?.data?.orderCode as string;
+    const amount = res.body?.data?.amount as number;
+
+    // Chưa cấu hình token ⇒ đơn vẫn PENDING và KHÔNG gọi ra API ngoài.
+    const before = await getCheckout(member.token, paymentId);
+    check(
+      "chưa có SEPAY_API_TOKEN → giữ PENDING, không gọi SePay API",
+      before.status === 200 && before.body?.data?.status === "PENDING" && fake.requests.length === 0,
+      { status: before.body?.data?.status, requests: fake.requests }
+    );
+
+    // SePay đã ghi nhận tiền vào (đúng mã đơn + số tiền + tài khoản nhận) nhưng webhook bị mất.
+    const txId = "11111111-2222-3333-4444-555555555555";
+    const reference = `FT-RECON-${RUN}`;
+    fake.respond([
+      {
+        id: txId,
+        transaction_date: "2026-09-26 08:05:49",
+        account_number: E2E_SEPAY.accountNo,
+        va: "",
+        transfer_type: "in",
+        amount_in: amount,
+        amount_out: 0,
+        accumulated: 105000000,
+        transaction_content: `${orderCode} chuyen tien`,
+        reference_number: reference,
+        code: orderCode,
+        bank_brand_name: E2E_SEPAY.bankId.toUpperCase(),
+      },
+    ]);
+    setSepayEnv({ apiToken, apiBaseUrl: fake.baseUrl });
+
+    const after = await getCheckout(member.token, paymentId);
+    check(
+      "GET status sau khi đối soát → SUCCESS (không cần webhook)",
+      after.status === 200 && after.body?.data?.status === "SUCCESS",
+      after.body?.data
+    );
+    check(
+      "gọi đúng SePay API 1 lần với Bearer token",
+      fake.requests.length === 1 &&
+        fake.requests[0].authorization === `Bearer ${apiToken}` &&
+        fake.requests[0].url.includes("/transactions?") &&
+        fake.requests[0].url.includes("transfer_type=in"),
+      fake.requests
+    );
+
+    const row = await prisma.payment.findUnique({ where: { id: paymentId } });
+    check(
+      "DB: Payment SUCCESS + gatewayTransId = reference_number của SePay",
+      row?.status === "SUCCESS" && row?.gatewayTransId === reference,
+      { status: row?.status, gatewayTransId: row?.gatewayTransId }
+    );
+    check(
+      "DB: gatewayPayload lưu UUID giao dịch SePay API + note nêu rõ nguồn chốt",
+      (row?.gatewayPayload as any)?.apiTransactionId === txId &&
+        String(row?.note ?? "").includes("đối soát SePay API"),
+      { payload: row?.gatewayPayload, note: row?.note }
+    );
+    check(
+      "DB: đơn có subscriptionId + đúng 1 subscription ACTIVE",
+      Boolean(row?.subscriptionId) &&
+        (await activeSubscriptions(member.memberProfileId)).length === 1,
+      row?.subscriptionId
+    );
+    check(
+      "webhook không hề tới ⇒ KHÔNG tạo SepayWebhookEvent giả",
+      (await prisma.sepayWebhookEvent.count({ where: { paymentId } })) === 0
+    );
+
+    // Polling tiếp: đơn đã SUCCESS nên không gọi API nữa và không kích hoạt lần 2.
+    const again = await getCheckout(member.token, paymentId);
+    check(
+      "poll tiếp → SUCCESS, không gọi thêm SePay API",
+      again.body?.data?.status === "SUCCESS" && fake.requests.length === 1,
+      fake.requests
+    );
+    check(
+      "DB: vẫn đúng 1 subscription ACTIVE",
+      (await activeSubscriptions(member.memberProfileId)).length === 1
+    );
+
+    // Lệch số tiền ⇒ KHÔNG chốt tự động (để webhook ghi MISMATCH cho đối soát thủ công).
+    const upgrade = await checkout(member.token, upgradePlan.id);
+    const upgradeId = upgrade.body?.data?.paymentId as string;
+    const upgradeCode = upgrade.body?.data?.orderCode as string;
+    fake.respond([
+      {
+        id: "99999999-8888-7777-6666-555555555555",
+        transaction_date: "2026-09-26 08:20:00",
+        account_number: E2E_SEPAY.accountNo,
+        va: "",
+        transfer_type: "in",
+        amount_in: Number(upgrade.body?.data?.amount) - 1000,
+        amount_out: 0,
+        accumulated: 105000000,
+        transaction_content: `${upgradeCode} chuyen thieu`,
+        reference_number: `FT-SHORT-${RUN}`,
+        code: upgradeCode,
+        bank_brand_name: E2E_SEPAY.bankId.toUpperCase(),
+      },
+    ]);
+    const short = await getCheckout(member.token, upgradeId);
+    const upgradeRow = await prisma.payment.findUnique({ where: { id: upgradeId } });
+    check(
+      "chuyển THIẾU tiền → không chốt (giữ PENDING, chưa có subscription)",
+      short.body?.data?.status === "PENDING" &&
+        upgradeRow?.subscriptionId === null &&
+        upgradeRow?.gatewayTransId === null,
+      { status: short.body?.data?.status, row: upgradeRow }
+    );
+  } finally {
+    await fake.close();
+    setSepayEnv({});
+  }
+}
+
+
 // ─── Cleanup + runner ─────────────────────────────────────────────────────
 async function cleanup(): Promise<void> {
   const memberIds = created.memberProfileIds;
@@ -819,6 +1153,8 @@ async function main(): Promise<void> {
     await scenarioExpiredPendingAndLate(members[2], membership30);
     await scenarioGuardsAndUpgrade(ctx, members[0], freePlan.id);
     await scenarioAuthorization(ctx, staff, coach);
+    await scenarioHmacAuth(members[3], membership30);
+    await scenarioReconcileViaApi(membership30, premium90);
   } catch (err) {
     failures.push(`Lỗi không mong đợi: ${(err as Error).message}`);
     console.error("\nUNEXPECTED ERROR:", err);

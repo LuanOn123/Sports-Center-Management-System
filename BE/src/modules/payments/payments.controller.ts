@@ -41,16 +41,26 @@ export async function sepayCheckout(req: Request, res: Response, next: NextFunct
 }
 
 /**
- * POST /payments/sepay/webhook — SePay gọi server-to-server (không auth của app,
- * bảo vệ bằng header `Authorization: Apikey <SEPAY_WEBHOOK_API_KEY>`).
+ * POST /payments/sepay/webhook — SePay gọi server-to-server (không auth của app).
+ * Xác thực theo cấu hình trên my.sepay.vn:
+ * - API Key: header `Authorization: Apikey <SEPAY_WEBHOOK_API_KEY>`, hoặc
+ * - HMAC-SHA256: header `X-SePay-Signature: sha256={hex}` + `X-SePay-Timestamp`
+ *   ký trên raw body bằng `SEPAY_WEBHOOK_SECRET`.
  * Trả 200 `{ success: true }` khi đã ghi nhận xong để SePay không retry.
  */
 export async function sepayWebhook(req: Request, res: Response, next: NextFunction) {
   try {
-    const outcome = await sepayPaymentsService.handleSepayWebhook(
-      req.headers.authorization,
-      req.body
-    );
+    const header = (name: string): string | undefined => {
+      const value = req.headers[name];
+      return (Array.isArray(value) ? value[0] : value) ?? undefined;
+    };
+    const outcome = await sepayPaymentsService.handleSepayWebhook({
+      authHeader: req.headers.authorization,
+      signature: header("x-sepay-signature"),
+      timestamp: header("x-sepay-timestamp"),
+      rawBody: (req as Request & { rawBody?: Buffer }).rawBody,
+      body: req.body,
+    });
     console.log(
       `[SEPAY WEBHOOK] sepayId=${outcome.sepayId} order=${outcome.orderCode ?? "-"} ` +
         `status=${outcome.status} processed=${outcome.processed}` +
