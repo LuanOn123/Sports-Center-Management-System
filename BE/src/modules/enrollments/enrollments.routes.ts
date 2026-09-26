@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate.js";
 import { authorize } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
-import { CreateEnrollmentSchema, TransferEnrollmentSchema, EnrollmentQuerySchema } from "./enrollments.schema.js";
+import { CreateEnrollmentSchema, TransferEnrollmentSchema, EnrollmentQuerySchema, EnrollWholeCourseSchema } from "./enrollments.schema.js";
 import * as enrollmentsController from "./enrollments.controller.js";
 
 const router = Router();
@@ -145,6 +145,100 @@ router.get(
  *       500: { $ref: "#/components/responses/ServerError" }
  */
 router.get("/my/quota", authenticate, authorize("MEMBER"), enrollmentsController.getMyQuota);
+
+/**
+ * @swagger
+ * /enrollments/bulk:
+ *   post:
+ *     summary: Enroll in a WHOLE course (all upcoming sessions of a class) — Member self-enrolls; Staff/Manager for a member
+ *     description: |
+ *       **Đăng ký TRỌN KHÓA — ALL-OR-NOTHING.**
+ *
+ *       Tạo (hoặc kích hoạt lại) Enrollment cho **tất cả** buổi `ClassSchedule.status = SCHEDULED`
+ *       chưa bắt đầu của Class. Cả khóa chỉ chiếm **1 quota** lớp học song song (distinct Class).
+ *
+ *       **Chốt chặn nghiệp vụ (chạy sau khi đã advisory-lock memberQuota → memberClass → schedules):**
+ *       - Class tồn tại, đang hoạt động và **có ít nhất 1 buổi sắp diễn ra** (400 nếu không).
+ *       - Gói tập `ACTIVE` và **`endDate` phủ tới buổi CUỐI của khóa** (`SUBSCRIPTION_ENDS_BEFORE_COURSE_END`).
+ *       - Class `PREMIUM` yêu cầu gói tier `PREMIUM` (`PREMIUM_REQUIRED`).
+ *       - Không bị hình phạt chuyên cần đang hiệu lực ở Class này (`ATTENDANCE_PENALTY_ACTIVE`).
+ *       - Không vượt `MembershipPlan.maxConcurrentClasses` (`CONCURRENT_CLASS_LIMIT_REACHED`).
+ *       - MỌI buổi còn sức chứa (`SESSION_FULL`) và không trùng giờ với buổi khác đã đặt (`TIME_CONFLICT`).
+ *
+ *       **Chỉ cần 1 điều kiện fail ⇒ HTTP 409 `COURSE_ENROLLMENT_FAILED` với `errors.details[]`
+ *       (mỗi phần tử có `code`, `message`, `sessionId` khi lỗi thuộc một buổi) và transaction ROLLBACK:
+ *       KHÔNG buổi nào được tạo.** Điều kiện cấp khóa (gói tập / tier / quota / hình phạt) không có `sessionId`.
+ *
+ *       **Idempotent**: buổi đã `BOOKED`/`COMPLETED` của chính hội viên trả về `status = ALREADY_BOOKED`
+ *       (không lỗi, không tạo trùng); buổi từng `CANCELLED` được kích hoạt lại (`REACTIVATED`, BR-07).
+ *       Chỉ gửi **1 notification** `ENROLLMENT_CONFIRMED` cho cả khóa thay vì N notification.
+ *     tags: [Enrollments]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [classId]
+ *             properties:
+ *               classId: { type: string, format: uuid }
+ *               memberId:
+ *                 type: string
+ *                 description: "Required when enrolled by Staff/Manager (nhận cả userId hoặc MemberProfile.id)"
+ *           example:
+ *             classId: "a1b2c3d4-0000-0000-0000-000000000010"
+ *     responses:
+ *       201: { $ref: "#/components/responses/EnrollmentCreated" }
+ *       400: { $ref: "#/components/responses/BadRequest" }
+ *       401: { $ref: "#/components/responses/Unauthorized" }
+ *       403: { $ref: "#/components/responses/Forbidden" }
+ *       404: { $ref: "#/components/responses/NotFound" }
+ *       409:
+ *         description: Một hoặc nhiều buổi không đủ điều kiện (all-or-nothing — không buổi nào được tạo)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *             examples:
+ *               session_full:
+ *                 summary: Một buổi trong khóa đã hết chỗ
+ *                 value:
+ *                   success: false
+ *                   message: 'Không thể đăng ký trọn khóa "Yoga sáng": 1 điều kiện chưa đạt.'
+ *                   errors:
+ *                     code: COURSE_ENROLLMENT_FAILED
+ *                     classId: "a1b2c3d4-0000-0000-0000-000000000010"
+ *                     className: "Yoga sáng"
+ *                     totalSessions: 12
+ *                     failedCount: 1
+ *                     details:
+ *                       - code: SESSION_FULL
+ *                         message: "Buổi 18:00 05/10/2026 (Phòng Yoga 1) đã hết chỗ."
+ *                         sessionId: "b2c3d4e5-0000-0000-0000-000000000005"
+ *                         roomName: "Phòng Yoga 1"
+ *                         details: { bookedCount: 20, capacity: 20 }
+ *               subscription_expires:
+ *                 summary: Gói tập hết hạn trước buổi cuối của khóa
+ *                 value:
+ *                   success: false
+ *                   message: 'Không thể đăng ký trọn khóa "Yoga sáng": 1 điều kiện chưa đạt.'
+ *                   errors:
+ *                     code: COURSE_ENROLLMENT_FAILED
+ *                     failedCount: 1
+ *                     details:
+ *                       - code: SUBSCRIPTION_ENDS_BEFORE_COURSE_END
+ *                         message: "Gói tập của bạn hết hạn ngày 20/10/2026, trước buổi cuối của khóa ngày 19/11/2026. Vui lòng gia hạn gói để đăng ký trọn khóa."
+ *                         details: { planEndDate: "2026-10-20T00:00:00.000Z", lastSessionStartTime: "2026-11-19T01:00:00.000Z", coveredSessions: 6, totalSessions: 12 }
+ *       500: { $ref: "#/components/responses/ServerError" }
+ */
+router.post(
+  "/bulk",
+  authenticate,
+  validate(EnrollWholeCourseSchema),
+  enrollmentsController.enrollWholeCourse
+);
 
 /**
  * @swagger

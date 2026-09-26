@@ -56,6 +56,7 @@ export async function getRevenueReport(startDate: string, endDate: string) {
     revenueByMethod: {
       CASH: methodMap["CASH"] ?? 0,
       BANK_TRANSFER: methodMap["BANK_TRANSFER"] ?? 0,
+      SEPAY: methodMap["SEPAY"] ?? 0,
     },
     recentPayments,
     note: "totalRevenue = cash collected (paidAt in range). Refunds not yet deducted.",
