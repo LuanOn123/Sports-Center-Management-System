@@ -8,6 +8,7 @@ import {
   getRefreshTokenExpiryDate,
 } from "../../utils/jwt.js";
 import { hashToken } from "../../utils/hashToken.js";
+import { removeStoredAvatar } from "../../utils/avatarStorage.js";
 import { createNotification } from "../notifications/notifications.service.js";
 import { ensureActiveFreeSubscription } from "../subscriptions/free-subscription.service.js";
 import type { RegisterInput, UpdateProfileInput } from "./auth.schema.js";
@@ -131,6 +132,7 @@ export async function getMe(userId: string) {
       phone: true,
       gender: true,
       dateOfBirth: true,
+      avatarUrl: true,
       role: true,
       isActive: true,
       createdAt: true,
@@ -183,4 +185,24 @@ export async function changePassword(
 
   const hashed = await hashPassword(newPassword);
   await prisma.user.update({ where: { id: userId }, data: { password: hashed } });
+}
+
+/**
+ * Cập nhật avatar cho user. `avatarUrl` do controller lấy từ utils/avatarStorage
+ * (local `uploads/avatars/...` hoặc Cloudinary), sau đó trả về profile đầy đủ như `GET /auth/me`.
+ */
+export async function updateAvatar(userId: string, avatarUrl: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { avatarUrl: true },
+  });
+  if (!user) throw new AppError("User not found", 404);
+
+  await prisma.user.update({ where: { id: userId }, data: { avatarUrl } });
+
+  // Dọn avatar cũ sau khi DB update thành công. Với Cloudinary, `public_id` cố định theo user
+  // nên upload mới đã ghi đè asset cũ — không cần (và không được) xoá (xem utils/avatarStorage.ts).
+  removeStoredAvatar(user.avatarUrl);
+
+  return getMe(userId);
 }

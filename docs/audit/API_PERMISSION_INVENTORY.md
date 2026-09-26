@@ -1,6 +1,6 @@
 # Danh mục API và quyền tại route
 
-Snapshot 17/09/2026, trích từ 14 module routes; 66 endpoints nghiệp vụ. Không gồm health/docs. `AUTHENTICATED` chỉ chứng minh có xác thực; quyền trên từng bản ghi còn tùy controller/service, xem [báo cáo](BUSINESS_RULE_AUDIT.vi.md). Đây là hiện trạng, không phải ma trận quyền đề xuất.
+Snapshot 17/09/2026, trích từ 14 module routes; 67 endpoints nghiệp vụ. Không gồm health/docs. `AUTHENTICATED` chỉ chứng minh có xác thực; quyền trên từng bản ghi còn tùy controller/service, xem [báo cáo](BUSINESS_RULE_AUDIT.vi.md). Đây là hiện trạng, không phải ma trận quyền đề xuất.
 
 | Method | Endpoint | Role guard | Validation middleware | Nguồn |
 |---|---|---|---|---|
@@ -9,7 +9,8 @@ Snapshot 17/09/2026, trích từ 14 module routes; 66 endpoints nghiệp vụ. K
 | POST | /api/v1/auth/logout | AUTHENTICATED | — | [auth.routes.ts:91](../../BE/src/modules/auth/auth.routes.ts) |
 | POST | /api/v1/auth/refresh-token | PUBLIC | RefreshTokenSchema | [auth.routes.ts:115](../../BE/src/modules/auth/auth.routes.ts) |
 | GET | /api/v1/auth/me | AUTHENTICATED | — | [auth.routes.ts:129](../../BE/src/modules/auth/auth.routes.ts) |
-| PATCH | /api/v1/auth/me | AUTHENTICATED | UpdateProfileSchema | [auth.routes.ts:158](../../BE/src/modules/auth/auth.routes.ts) |
+| PATCH | /api/v1/auth/me | AUTHENTICATED | UpdateProfileSchema | [auth.routes.ts:163](../../BE/src/modules/auth/auth.routes.ts) |
+| POST | /api/v1/auth/me/avatar | AUTHENTICATED | — (multipart/form-data, field `avatar`) | [auth.routes.ts:197](../../BE/src/modules/auth/auth.routes.ts) |
 | PATCH | /api/v1/auth/me/change-password | AUTHENTICATED | ChangePasswordSchema | [auth.routes.ts:183](../../BE/src/modules/auth/auth.routes.ts) |
 | GET | /api/v1/class-schedules | AUTHENTICATED | ScheduleQuerySchema, query | [class-schedules.routes.ts:77](../../BE/src/modules/class-schedules/class-schedules.routes.ts) |
 | GET | /api/v1/class-schedules/:id | AUTHENTICATED | — | [class-schedules.routes.ts:103](../../BE/src/modules/class-schedules/class-schedules.routes.ts) |

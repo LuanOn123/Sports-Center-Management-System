@@ -38,6 +38,7 @@ export async function listCoaches(query: CoachQueryInput) {
         phone: true,
         gender: true,
         dateOfBirth: true,
+        avatarUrl: true,
         role: true,
         isActive: true,
         coachProfile: true,
@@ -60,6 +61,7 @@ export async function getCoachById(id: string) {
       phone: true,
       gender: true,
       dateOfBirth: true,
+      avatarUrl: true,
       role: true,
       isActive: true,
       coachProfile: {

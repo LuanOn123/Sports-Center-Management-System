@@ -106,6 +106,7 @@ model User {
   phone       String?   @unique
   gender      Gender?
   dateOfBirth DateTime?
+  avatarUrl   String?
   role        UserRole  @default(MEMBER)
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
