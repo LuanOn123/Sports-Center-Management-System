@@ -1,21 +1,44 @@
 /**
- * Mailer utility — hỗ trợ 2 driver:
- *  - RESEND_API_KEY có giá trị → dùng Resend API (khuyến nghị cho cloud/Render)
- *  - SMTP_USER + SMTP_PASS     → dùng Nodemailer SMTP (phù hợp local dev / Gmail)
- *  - Không cấu hình cả hai    → in OTP ra console (dev simulation)
+ * Mailer utility — thứ tự ưu tiên driver:
+ *  1. BREVO_API_KEY  → Brevo HTTP API (khuyến nghị cho Render/cloud, gửi đến mọi email, free 300/ngày)
+ *  2. RESEND_API_KEY → Resend API      (cần verify domain để gửi cho người khác)
+ *  3. SMTP_USER + SMTP_PASS → Nodemailer SMTP (local dev, Gmail App Password)
+ *  4. Không có gì → in OTP ra console (dev simulation)
  */
 import nodemailer from 'nodemailer';
 
-// ── Resend driver ──────────────────────────────────────────────────────────
+// ── 1. Brevo HTTP API driver ──────────────────────────────────────────────
+async function sendViaBrevo(to: string, otp: string): Promise<void> {
+  const { BrevoClient } = await import('@getbrevo/brevo');
+
+  const client = new BrevoClient({ apiKey: process.env.BREVO_API_KEY! });
+
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER || 'noreply@example.com';
+  const senderName  = process.env.BREVO_SENDER_NAME  || 'Sports Center';
+
+  await client.transactionalEmails.sendTransacEmail({
+    sender: { email: senderEmail, name: senderName },
+    to: [{ email: to }],
+    subject: 'Mã xác nhận đổi mật khẩu - Sports Center',
+    htmlContent: buildOtpHtml(otp),
+  });
+}
+
+// ── 2. Resend API driver ──────────────────────────────────────────────────
 async function sendViaResend(to: string, otp: string): Promise<void> {
   const { Resend } = await import('resend');
   const resend = new Resend(process.env.RESEND_API_KEY);
 
-  const from = process.env.RESEND_FROM || 'onboarding@resend.dev'; // domain riêng nếu có
+  const from     = process.env.RESEND_FROM || 'onboarding@resend.dev';
+  const actualTo = process.env.RESEND_TEST_REDIRECT || to;
+
+  if (actualTo !== to) {
+    console.log(`[MAILER] Resend redirect OTP (${to}) → ${actualTo} | OTP: ${otp}`);
+  }
 
   const { error } = await resend.emails.send({
     from,
-    to,
+    to: actualTo,
     subject: 'Mã xác nhận đổi mật khẩu - Sports Center',
     html: buildOtpHtml(otp),
   });
@@ -23,7 +46,7 @@ async function sendViaResend(to: string, otp: string): Promise<void> {
   if (error) throw new Error(`Resend error: ${error.message}`);
 }
 
-// ── Nodemailer / SMTP driver ────────────────────────────────────────────────
+// ── 3. Nodemailer / SMTP driver ───────────────────────────────────────────
 async function sendViaSMTP(to: string, otp: string): Promise<void> {
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -43,24 +66,29 @@ async function sendViaSMTP(to: string, otp: string): Promise<void> {
   });
 }
 
-// ── Public API ─────────────────────────────────────────────────────────────
+// ── Public API ────────────────────────────────────────────────────────────
 export async function sendOtpEmail(to: string, otp: string): Promise<void> {
-  // Ưu tiên Resend (hoạt động tốt trên cloud, không bị block như Gmail SMTP)
+  // 1. Brevo — ưu tiên cao nhất (HTTP API, không bị Render block, gửi mọi email)
+  if (process.env.BREVO_API_KEY) {
+    return sendViaBrevo(to, otp);
+  }
+
+  // 2. Resend — fallback (cần verify domain để gửi cho người khác)
   if (process.env.RESEND_API_KEY) {
     return sendViaResend(to, otp);
   }
 
-  // Fallback: SMTP (local dev hoặc khi đã có SMTP cấu hình đúng)
+  // 3. SMTP — local dev với Gmail App Password
   if (process.env.SMTP_USER && process.env.SMTP_PASS) {
     return sendViaSMTP(to, otp);
   }
 
-  // Dev simulation: in ra console
-  console.warn('[MAILER] Không có RESEND_API_KEY hoặc SMTP credentials — mô phỏng gửi email.');
+  // 4. Dev simulation
+  console.warn('[MAILER] Không có cấu hình email — mô phỏng gửi OTP ra console.');
   console.log(`[MAILER] TO: ${to} | OTP: ${otp}`);
 }
 
-// ── HTML template ──────────────────────────────────────────────────────────
+// ── HTML template ─────────────────────────────────────────────────────────
 function buildOtpHtml(otp: string): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px;
