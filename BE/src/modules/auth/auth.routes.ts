@@ -8,6 +8,8 @@ import {
   RefreshTokenSchema,
   UpdateProfileSchema,
   ChangePasswordSchema,
+  ForgotPasswordSchema,
+  ResetPasswordSchema,
 } from "./auth.schema.js";
 import * as authController from "./auth.controller.js";
 
@@ -227,5 +229,59 @@ router.patch(
   validate(ChangePasswordSchema),
   authController.changePassword
 );
+
+/**
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Gửi OTP đặt lại mật khẩu qua email
+ *     description: |
+ *       Sinh mã OTP 6 chữ số, hợp lệ trong **5 phút**, gửi về địa chỉ email đã đăng ký.
+ *       Luôn trả HTTP 200 với cùng thông điệp dù email không tồn tại (chống user enumeration).
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string, format: email }
+ *     responses:
+ *       200: { $ref: "#/components/responses/MessageOk" }
+ *       400: { $ref: "#/components/responses/BadRequest" }
+ *       500: { $ref: "#/components/responses/ServerError" }
+ */
+router.post("/forgot-password", validate(ForgotPasswordSchema), authController.forgotPassword);
+
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Đặt lại mật khẩu bằng OTP nhận qua email
+ *     description: |
+ *       Xác minh OTP rồi cập nhật mật khẩu mới. OTP chỉ dùng được **một lần** và hết hạn sau 5 phút.
+ *       Sau khi thành công, toàn bộ phiên đăng nhập cũ (refresh token) sẽ bị thu hồi.
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, otp, newPassword]
+ *             properties:
+ *               email: { type: string, format: email }
+ *               otp: { type: string, minLength: 6, maxLength: 6, description: "Mã 6 chữ số nhận qua email" }
+ *               newPassword: { type: string, minLength: 6 }
+ *     responses:
+ *       200: { $ref: "#/components/responses/MessageOk" }
+ *       400: { $ref: "#/components/responses/BadRequest" }
+ *       500: { $ref: "#/components/responses/ServerError" }
+ */
+router.post("/reset-password", validate(ResetPasswordSchema), authController.resetPassword);
 
 export default router;
