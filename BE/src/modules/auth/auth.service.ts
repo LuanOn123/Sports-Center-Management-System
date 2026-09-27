@@ -249,14 +249,11 @@ export async function forgotPassword(data: ForgotPasswordInput) {
     },
   });
 
-  // Gửi mail — lỗi SMTP (cấu hình sai, network, rate limit...) KHÔNG được biến thành 500
-  // vì: (1) tránh lộ user enumeration, (2) user không nhận được thông báo lỗi hữu ích từ 500.
-  // Log lỗi để admin biết nhưng vẫn trả 200 bình thường.
-  try {
-    await sendOtpEmail(user.email, otp);
-  } catch (mailErr) {
+  // Fire-and-forget: không await để API trả 200 NGAY, gửi mail ở nền.
+  // OTP đã được lưu DB — dù mail chưa đến tay user thì API đã sẵn sàng xác minh.
+  sendOtpEmail(user.email, otp).catch((mailErr) => {
     console.error('[forgotPassword] Failed to send OTP email to', user.email, mailErr);
-  }
+  });
 }
 
 /**
