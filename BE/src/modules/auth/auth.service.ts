@@ -249,8 +249,14 @@ export async function forgotPassword(data: ForgotPasswordInput) {
     },
   });
 
-  // Gửi mail — lỗi gửi mail không được làm lộ thông tin user.
-  await sendOtpEmail(user.email, otp);
+  // Gửi mail — lỗi SMTP (cấu hình sai, network, rate limit...) KHÔNG được biến thành 500
+  // vì: (1) tránh lộ user enumeration, (2) user không nhận được thông báo lỗi hữu ích từ 500.
+  // Log lỗi để admin biết nhưng vẫn trả 200 bình thường.
+  try {
+    await sendOtpEmail(user.email, otp);
+  } catch (mailErr) {
+    console.error('[forgotPassword] Failed to send OTP email to', user.email, mailErr);
+  }
 }
 
 /**
