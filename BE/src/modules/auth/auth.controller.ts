@@ -91,3 +91,26 @@ export async function changePassword(req: Request, res: Response, next: NextFunc
     next(err);
   }
 }
+
+export async function forgotPassword(req: Request, res: Response, next: NextFunction) {
+  try {
+    await authService.forgotPassword(req.body);
+    // Luôn trả thông điệp chung để chống user enumeration (không để lộ email có tồn tại hay không).
+    sendSuccess(
+      res,
+      null,
+      "Nếu email tồn tại trong hệ thống, mã OTP đã được gửi. Vui lòng kiểm tra hộp thư."
+    );
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function resetPassword(req: Request, res: Response, next: NextFunction) {
+  try {
+    await authService.resetPassword(req.body);
+    sendSuccess(res, null, "Mật khẩu đã được đặt lại thành công. Vui lòng đăng nhập lại.");
+  } catch (err) {
+    next(err);
+  }
+}
