@@ -68,7 +68,9 @@ export function PortalLayout({
     document.title = `${pageTitle} · Pulse Sports Center`;
   }, [pageTitle]);
   return (
-    <div className="app-layout">
+    <div
+      className={`app-layout${user.role === "MEMBER" ? " member-theme" : ""}`}
+    >
       <a className="skip-link" href="#main-content">
         Đến nội dung chính
       </a>
@@ -89,7 +91,7 @@ export function PortalLayout({
         className={"sidebar " + (open ? "is-open" : "")}
       >
         <Link to={base + "/dashboard"} className="brand-link">
-          <Brand />
+          <Brand member={user.role === "MEMBER"} />
         </Link>
         <button
           className="mobile-close icon-button"
@@ -145,6 +147,11 @@ export function PortalLayout({
             >
               <Menu />
             </button>
+            {user.role === "MEMBER" && (
+              <span className="member-breadcrumb-label">
+                Khu vực hội viên <ChevronRight size={14} />
+              </span>
+            )}
             <strong>{pageTitle}</strong>
           </div>
           <div className="topbar-actions">

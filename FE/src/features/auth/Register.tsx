@@ -1,20 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { AuthLink as Link } from "./AuthLink";
 import {
-  ArrowLeft,
   ArrowUpRight,
-  Check,
   CheckCircle2,
   Eye,
   EyeOff,
   LoaderCircle,
   ShieldCheck,
 } from "lucide-react";
-import { Brand } from "../../shared/Brand";
+import { AuthLayout } from "./AuthLayout";
 import { api, ApiError } from "../../shared/api";
 import type { PostAuthRegisterRequest } from "../../shared/generated";
-import "../public/public.css";
 
 export function Register() {
   const [show, setShow] = useState(false);
@@ -71,218 +68,187 @@ export function Register() {
     }
   }
   return (
-    <main className="pulse-public p-register">
-      <section className="p-register-story">
-        <img
-          src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1200&q=85"
-          alt="Không gian tập luyện tại trung tâm thể thao"
-        />
-        <div className="p-register-shade" />
-        <Link to="/" aria-label="Pulse — Trang chủ">
-          <Brand />
-        </Link>
-        <div className="p-register-copy">
-          <div className="p-eyebrow">YOUR NEXT CHAPTER</div>
-          <h2>
-            Một bước mới.
-            <br />
-            <em>Một bạn mới.</em>
-          </h2>
+    <AuthLayout registration>
+      {success ? (
+        <div className="p-register-success" role="status">
+          <CheckCircle2 size={56} />
+          <div className="auth-eyebrow">WELCOME TO PULSE</div>
+          <h1>Bạn đã sẵn sàng!</h1>
           <p>
-            Hành trình tốt hơn bắt đầu từ quyết định hôm nay.
-            <br />
-            Cùng Pulse, giữ nhịp đam mê của bạn.
+            Tài khoản hội viên đã được tạo thành công. Đăng nhập để khám phá lớp
+            học và bắt đầu hành trình của bạn.
           </p>
-          <ul className="p-checks">
-            <li>
-              <Check /> Khám phá lớp học phù hợp
-            </li>
-            <li>
-              <Check /> Kết nối cùng huấn luyện viên
-            </li>
-            <li>
-              <Check /> Quản lý gói tập và lịch cá nhân
-            </li>
-          </ul>
-        </div>
-        <span className="p-register-story-footer">
-          MOVE TOGETHER. GROW TOGETHER. <ArrowUpRight size={20} />
-        </span>
-      </section>
-      <section className="p-register-form-side">
-        <div className="p-register-top">
-          <Link to="/">
-            <ArrowLeft size={16} /> Trang chủ
+          <Link className="auth-submit" to="/login">
+            Đăng nhập ngay <ArrowUpRight size={18} />
           </Link>
-          <span>
-            Đã có tài khoản?{" "}
-            <Link to="/login">
-              Đăng nhập <ArrowUpRight size={14} />
-            </Link>
-          </span>
         </div>
-        <div className="p-register-form-wrap">
-          {success ? (
-            <div className="p-register-success" role="status">
-              <CheckCircle2 size={56} />
-              <div className="p-eyebrow">WELCOME TO PULSE</div>
-              <h1>Bạn đã sẵn sàng!</h1>
-              <p>
-                Tài khoản hội viên đã được tạo thành công. Đăng nhập để khám phá
-                lớp học và bắt đầu hành trình của bạn.
-              </p>
-              <Link className="p-button" to="/login">
-                Đăng nhập ngay <ArrowUpRight size={18} />
-              </Link>
-            </div>
-          ) : (
-            <>
-              <span className="p-register-badge">
-                <ShieldCheck size={20} />
-              </span>
-              <div className="p-eyebrow">JOIN THE MOVEMENT</div>
-              <h1>Bắt đầu cùng Pulse.</h1>
-              <p>Tạo tài khoản hội viên. Mở lối cho hành trình mới.</p>
-              <form onSubmit={submit} aria-busy={busy}>
-                <fieldset disabled={busy}>
-                  <label htmlFor="fullName">
-                    Họ và tên <span>*</span>
-                  </label>
+      ) : (
+        <>
+          <span className="p-register-badge">
+            <ShieldCheck size={20} />
+          </span>
+          <div className="auth-eyebrow">JOIN THE MOVEMENT</div>
+          <h1>Bắt đầu cùng Pulse.</h1>
+          <p className="auth-intro">
+            Một vài thông tin. Một khởi đầu mới.
+            <br />
+            Tìm lớp tập và nhịp sống phù hợp với bạn.
+          </p>
+          <form onSubmit={submit} aria-busy={busy}>
+            <fieldset disabled={busy}>
+              <div className="auth-floating">
+                <input
+                  id="fullName"
+                  name="fullName"
+                  autoComplete="name"
+                  placeholder="Nguyễn Minh Anh"
+                  required
+                  aria-invalid={!!fields.fullName}
+                  aria-describedby={
+                    fields.fullName ? "fullName-error" : undefined
+                  }
+                />
+                <label htmlFor="fullName">
+                  Họ và tên <span>*</span>
+                </label>
+              </div>
+              {fields.fullName && (
+                <small className="p-field-error" id="fullName-error">
+                  {fields.fullName}
+                </small>
+              )}
+              <div className="auth-floating">
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="ban@email.com"
+                  required
+                  aria-invalid={!!fields.email}
+                  aria-describedby={fields.email ? "email-error" : undefined}
+                />
+                <label htmlFor="email">
+                  Email <span>*</span>
+                </label>
+              </div>
+              {fields.email && (
+                <small className="p-field-error" id="email-error">
+                  {fields.email}
+                </small>
+              )}
+              <div className="auth-floating">
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="090 123 4567"
+                  aria-invalid={!!fields.phone}
+                  aria-describedby={fields.phone ? "phone-error" : undefined}
+                />
+                <label htmlFor="phone">
+                  Số điện thoại <small>(không bắt buộc)</small>
+                </label>
+              </div>
+              {fields.phone && (
+                <small className="p-field-error" id="phone-error">
+                  {fields.phone}
+                </small>
+              )}
+              <div className="auth-floating">
+                <div className="auth-password">
                   <input
-                    id="fullName"
-                    name="fullName"
-                    autoComplete="name"
-                    placeholder="Nguyễn Minh Anh"
-                    required
-                    aria-invalid={!!fields.fullName}
-                    aria-describedby={
-                      fields.fullName ? "fullName-error" : undefined
-                    }
-                  />
-                  {fields.fullName && (
-                    <small className="p-field-error" id="fullName-error">
-                      {fields.fullName}
-                    </small>
-                  )}
-                  <label htmlFor="email">
-                    Email <span>*</span>
-                  </label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="ban@email.com"
-                    required
-                    aria-invalid={!!fields.email}
-                    aria-describedby={fields.email ? "email-error" : undefined}
-                  />
-                  {fields.email && (
-                    <small className="p-field-error" id="email-error">
-                      {fields.email}
-                    </small>
-                  )}
-                  <label htmlFor="phone">
-                    Số điện thoại <small>(không bắt buộc)</small>
-                  </label>
-                  <input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    autoComplete="tel"
-                    placeholder="090 123 4567"
-                    aria-invalid={!!fields.phone}
-                    aria-describedby={fields.phone ? "phone-error" : undefined}
-                  />
-                  {fields.phone && (
-                    <small className="p-field-error" id="phone-error">
-                      {fields.phone}
-                    </small>
-                  )}
-                  <label htmlFor="password">
-                    Mật khẩu <span>*</span>
-                  </label>
-                  <div className="p-password">
-                    <input
-                      id="password"
-                      name="password"
-                      type={show ? "text" : "password"}
-                      minLength={6}
-                      autoComplete="new-password"
-                      placeholder="Ít nhất 6 ký tự"
-                      required
-                      aria-invalid={!!fields.password}
-                      aria-describedby="password-hint"
-                    />
-                    <button
-                      type="button"
-                      aria-label={show ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                      onClick={() => setShow(!show)}
-                    >
-                      {show ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                  <small
-                    id="password-hint"
-                    className={
-                      fields.password ? "p-field-error" : "p-field-hint"
-                    }
-                  >
-                    {fields.password ||
-                      "Dùng ít nhất 6 ký tự để bảo vệ tài khoản của bạn."}
-                  </small>
-                  <label htmlFor="confirmPassword">
-                    Xác nhận mật khẩu <span>*</span>
-                  </label>
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
+                    id="password"
+                    name="password"
                     type={show ? "text" : "password"}
                     minLength={6}
                     autoComplete="new-password"
-                    placeholder="Nhập lại mật khẩu"
+                    placeholder="Ít nhất 6 ký tự"
                     required
-                    aria-invalid={!!fields.confirmPassword}
-                    aria-describedby={
-                      fields.confirmPassword ? "confirm-error" : undefined
-                    }
+                    aria-invalid={!!fields.password}
+                    aria-describedby="password-hint"
                   />
-                  {fields.confirmPassword && (
-                    <small className="p-field-error" id="confirm-error">
-                      {fields.confirmPassword}
-                    </small>
-                  )}
-                </fieldset>
-                {error && (
-                  <div className="p-form-error" role="alert">
-                    {error}
-                  </div>
-                )}
-                <button className="p-button p-register-submit" disabled={busy}>
-                  {busy ? (
-                    <>
-                      <LoaderCircle className="p-spinner" size={18} /> Đang tạo
-                      tài khoản…
-                    </>
-                  ) : (
-                    <>
-                      Tạo tài khoản miễn phí <ArrowUpRight size={18} />
-                    </>
-                  )}
-                </button>
-                <p className="p-register-disclaimer">
-                  <ShieldCheck size={15} /> Không cần thẻ thanh toán. Bạn có thể
-                  chọn gói tập sau.
-                </p>
-              </form>
-            </>
-          )}
-        </div>
-        <footer>
-          © {new Date().getFullYear()} Pulse Sports Center{" "}
-          <span>MAKE EVERY MOVE COUNT.</span>
-        </footer>
-      </section>
-    </main>
+                  <button
+                    type="button"
+                    aria-label={show ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    aria-pressed={show}
+                    onClick={() => setShow(!show)}
+                  >
+                    {show ? (
+                      <EyeOff key="hide" size={18} />
+                    ) : (
+                      <Eye key="show" size={18} />
+                    )}
+                  </button>
+                </div>
+                <label htmlFor="password">
+                  Mật khẩu <span>*</span>
+                </label>
+              </div>
+              <small
+                id="password-hint"
+                className={fields.password ? "p-field-error" : "p-field-hint"}
+              >
+                {fields.password ||
+                  "Dùng ít nhất 6 ký tự để bảo vệ tài khoản của bạn."}
+              </small>
+              <div className="auth-floating">
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={show ? "text" : "password"}
+                  minLength={6}
+                  autoComplete="new-password"
+                  placeholder="Nhập lại mật khẩu"
+                  required
+                  aria-invalid={!!fields.confirmPassword}
+                  aria-describedby={
+                    fields.confirmPassword ? "confirm-error" : undefined
+                  }
+                />
+                <label htmlFor="confirmPassword">
+                  Xác nhận mật khẩu <span>*</span>
+                </label>
+              </div>
+              {fields.confirmPassword && (
+                <small className="p-field-error" id="confirm-error">
+                  {fields.confirmPassword}
+                </small>
+              )}
+            </fieldset>
+            {error && (
+              <div className="p-form-error" role="alert">
+                {error}
+              </div>
+            )}
+            <button className="auth-submit" disabled={busy}>
+              {busy ? (
+                <>
+                  <LoaderCircle className="auth-spinner" size={18} /> Đang tạo
+                  tài khoản…
+                </>
+              ) : (
+                <>
+                  Tạo tài khoản miễn phí <ArrowUpRight size={18} />
+                </>
+              )}
+            </button>
+            <p className="p-register-disclaimer">
+              <ShieldCheck size={15} /> Không cần thẻ thanh toán. Bạn có thể
+              chọn gói tập sau.
+            </p>
+          </form>
+        </>
+      )}
+      {!success && (
+        <p className="auth-switch">
+          Đã có tài khoản?{" "}
+          <Link to="/login">
+            Đăng nhập <ArrowUpRight size={14} />
+          </Link>
+        </p>
+      )}
+    </AuthLayout>
   );
 }

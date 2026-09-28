@@ -20,6 +20,24 @@ beforeEach(() => {
   vi.stubGlobal("window", { dispatchEvent: vi.fn() });
 });
 describe("API client contract and authentication", () => {
+  it("sends password recovery without credentials or session refresh", async () => {
+    sessionStorage.setItem("pulse.access", "old-token");
+    sessionStorage.setItem("pulse.refresh", "old-refresh");
+    const fetch = vi.fn().mockImplementation(async () => envelope(null));
+    vi.stubGlobal("fetch", fetch);
+    const { authService, hasSession } = await import("../src/shared/api");
+    await authService.forgotPassword("user@example.com");
+    await authService.resetPassword({ email: "user@example.com", otp: "012345", newPassword: "secret123" });
+    for (const [, options] of fetch.mock.calls) {
+      expect(options.headers.Authorization).toBeUndefined();
+      expect(options.method).toBe("POST");
+    }
+    expect(JSON.parse(fetch.mock.calls[1][1].body).otp).toBe("012345");
+    fetch.mockResolvedValue(envelope(null, 401));
+    await expect(authService.forgotPassword("user@example.com")).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(hasSession()).toBe(true);
+  });
   it("does not refresh a session revoked by Dynamic Auth", async () => {
     sessionStorage.setItem("pulse.access", "old");
     sessionStorage.setItem("pulse.refresh", "refresh");
@@ -257,6 +275,82 @@ describe("member API uses the shared session transport", () => {
     ).rejects.toMatchObject({ message: "Số điện thoại này đã được sử dụng." });
     expect(fetch.mock.calls[0][1].headers.Authorization).toBe(
       "Bearer member-token",
+    );
+  });
+});
+
+describe("audit integration", () => {
+  it("rejects external and legacy attachment URLs before sending credentials", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const { fetchAttachment } = await import("../src/shared/api");
+    for (const url of [
+      "https://evil.example/api/v1/chat/attachments/id",
+      "/uploads/old.png",
+      "javascript:alert(1)",
+    ])
+      await expect(fetchAttachment(url)).rejects.toThrow();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("refreshes expired credentials when loading a private attachment", async () => {
+    sessionStorage.setItem("pulse.access", "old");
+    sessionStorage.setItem("pulse.refresh", "refresh");
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("", { status: 401 }))
+      .mockResolvedValueOnce(
+        envelope({ accessToken: "new", refreshToken: "new-refresh" }),
+      )
+      .mockResolvedValueOnce(
+        new Response("pdf", { headers: { "Content-Type": "application/pdf" } }),
+      );
+    vi.stubGlobal("fetch", fetch);
+    const { fetchAttachment, BASE_URL } = await import("../src/shared/api");
+    expect(
+      (await fetchAttachment(BASE_URL + "/chat/attachments/id?name=file.pdf"))
+        .type,
+    ).toBe("application/pdf");
+    expect(fetch.mock.calls[2][1].headers.Authorization).toBe("Bearer new");
+    expect(fetch.mock.calls[0][1].redirect).toBe("error");
+  });
+  it("clears the session immediately after a successful password change", async () => {
+    sessionStorage.setItem("pulse.access", "old");
+    sessionStorage.setItem("pulse.refresh", "refresh");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(envelope({})));
+    const { api, hasSession } = await import("../src/shared/api");
+    await api("PATCH /auth/me/change-password", {
+      body: { currentPassword: "old", newPassword: "new" },
+    });
+    expect(hasSession()).toBe(false);
+    expect(window.dispatchEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "session-expired" }),
+    );
+  });
+  it("asks the mounted lists to reload after a stale schedule conflict", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              success: false,
+              message: "Lịch học đã thay đổi trạng thái, vui lòng tải lại.",
+              errors: { code: "SCHEDULE_STATE_CHANGED" },
+            }),
+            { status: 409 },
+          ),
+        ),
+    );
+    const { api } = await import("../src/shared/api");
+    await expect(
+      api("PATCH /class-schedules/{id}", {
+        params: { id: "schedule" },
+        body: {},
+      }),
+    ).rejects.toThrow("Lịch học");
+    expect(window.dispatchEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "schedule-state-changed" }),
     );
   });
 });

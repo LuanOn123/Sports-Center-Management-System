@@ -1,10 +1,11 @@
-import { useEffect, useId, useRef } from "react";
+import { createContext, useContext, useEffect, useId, useRef } from "react";
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
 import { display, label, money } from "./config";
 import { classSports } from "./sports";
 export { Empty, ErrorState, Loading } from "./feedback";
 export { SchemaForm, FilterField } from "./forms/SchemaForm";
+export const MemberPortalContext = createContext(false);
 export function Modal({
   title,
   children,
@@ -20,6 +21,7 @@ export function Modal({
   maxWidth?: number;
   eyebrow?: string;
 }) {
+  const member = useContext(MemberPortalContext);
   const ref = useRef<HTMLDialogElement>(null);
   const opener = useRef<HTMLElement | null>(null);
   const titleId = useId();
@@ -71,7 +73,7 @@ export function Modal({
     >
       <div className="modal-head">
         <div>
-          <small>{eyebrow}</small>
+          <small>{member ? "PULSE / HỘI VIÊN" : eyebrow}</small>
           <h2 id={titleId}>{title}</h2>
         </div>
         <button
@@ -93,6 +95,8 @@ const moneyFields = [
   "price",
   "amount",
   "totalRevenue",
+  "netRevenue",
+  "refundedAmount",
   "total",
   "subtotal",
   "discount",

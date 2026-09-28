@@ -1674,7 +1674,7 @@
   "PATCH /payments/{id}/status": {
     "path": "/payments/{id}/status",
     "method": "PATCH",
-    "summary": "Update payment status",
+    "summary": "Update payment status (thanh toán tại quầy)",
     "security": [
       {
         "BearerAuth": []
@@ -1710,6 +1710,230 @@
     "statusCodes": [
       "200",
       "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  "POST /payments/{id}/retry-activation": {
+    "path": "/payments/{id}/retry-activation",
+    "method": "POST",
+    "summary": "Kích hoạt bù cho giao dịch online đã thu tiền nhưng chưa cấp gói (Manager only)",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
+  "POST /payments/sepay/checkout": {
+    "path": "/payments/sepay/checkout",
+    "method": "POST",
+    "summary": "Create a SePay VietQR membership checkout",
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "planId"
+      ]
+    },
+    "statusCodes": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500",
+      "503"
+    ]
+  },
+  "POST /payments/sepay/webhook": {
+    "path": "/payments/sepay/webhook",
+    "method": "POST",
+    "summary": "SePay gọi server-to-server khi phát hiện giao dịch chuyển khoản",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "header",
+        "name": "Authorization",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "`Apikey <SEPAY_WEBHOOK_API_KEY>` (phương thức API Key)"
+      },
+      {
+        "in": "header",
+        "name": "X-SePay-Signature",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "`sha256={hex}` — chữ ký HMAC-SHA256 (phương thức HMAC)"
+      },
+      {
+        "in": "header",
+        "name": "X-SePay-Timestamp",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Unix timestamp (seconds) khi SePay ký — tham gia nội dung ký"
+      }
+    ],
+    "body": {
+      "type": "object",
+      "required": [
+        "id",
+        "transferType",
+        "transferAmount",
+        "accountNumber"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "ID giao dịch trên SePay — khoá chống trùng"
+        },
+        "gateway": {
+          "type": "string",
+          "description": "Tên ngân hàng, VD SACOMBANK"
+        },
+        "transactionDate": {
+          "type": "string",
+          "description": "YYYY-MM-DD HH:mm:ss (giờ VN)"
+        },
+        "accountNumber": {
+          "type": "string"
+        },
+        "subAccount": {
+          "type": "string",
+          "description": "Số VA nếu có, rỗng nếu không"
+        },
+        "code": {
+          "type": "string",
+          "nullable": true,
+          "description": "Mã thanh toán SePay bóc tách được, VD SEVQR12345678"
+        },
+        "content": {
+          "type": "string",
+          "description": "Nội dung chuyển khoản gốc"
+        },
+        "transferType": {
+          "type": "string",
+          "enum": [
+            "in",
+            "out"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "transferAmount": {
+          "type": "integer"
+        },
+        "accumulated": {
+          "type": "integer"
+        },
+        "referenceCode": {
+          "type": "string"
+        }
+      }
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "401",
+      "500",
+      "503"
+    ]
+  },
+  "POST /payments/sepay/mock-confirm": {
+    "path": "/payments/sepay/mock-confirm",
+    "method": "POST",
+    "summary": "DEV/DEMO confirm a SePay membership checkout",
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "properties": {
+        "paymentId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "paymentId"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  "GET /payments/sepay/{id}": {
+    "path": "/payments/sepay/{id}",
+    "method": "GET",
+    "summary": "Get a SePay membership checkout",
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
       "401",
       "403",
       "404",
@@ -2665,6 +2889,40 @@
       "500"
     ]
   },
+  "POST /enrollments/bulk": {
+    "path": "/enrollments/bulk",
+    "method": "POST",
+    "summary": "Enroll in a whole course (all upcoming sessions)",
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "properties": {
+        "classId": {
+          "type": "string"
+        },
+        "memberId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "classId"
+      ]
+    },
+    "statusCodes": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
   "GET /enrollments/schedule/{scheduleId}": {
     "path": "/enrollments/schedule/{scheduleId}",
     "method": "GET",
@@ -3207,6 +3465,33 @@
       "500"
     ]
   },
+  "GET /classes/{id}/course-plan": {
+    "path": "/classes/{id}/course-plan",
+    "method": "GET",
+    "summary": "View a class as ONE course (grouped timetable) + enrollment eligibility",
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "401",
+      "404",
+      "500"
+    ]
+  },
   "POST /classes/{id}/coaches": {
     "path": "/classes/{id}/coaches",
     "method": "POST",
@@ -3331,6 +3616,29 @@
       "401",
       "403",
       "404",
+      "500"
+    ]
+  },
+  "POST /class-schedules/activity-plan": {
+    "path": "/class-schedules/activity-plan",
+    "method": "POST",
+    "summary": "Atomically create a complete activity plan",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [],
+    "body": {
+      "type": "object"
+    },
+    "statusCodes": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
       "500"
     ]
   },
@@ -3755,6 +4063,34 @@
       "404"
     ]
   },
+  "GET /chat/attachments/{id}": {
+    "path": "/chat/attachments/{id}",
+    "method": "GET",
+    "summary": "Tải file đính kèm của tin nhắn (yêu cầu đăng nhập + phân quyền)",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "401",
+      "403",
+      "404"
+    ]
+  },
   "PATCH /chat/messages/read": {
     "path": "/chat/messages/read",
     "method": "PATCH",
@@ -4007,6 +4343,25 @@
         }
       }
     },
+    "statusCodes": [
+      "200",
+      "400",
+      "401",
+      "404",
+      "500"
+    ]
+  },
+  "POST /auth/me/avatar": {
+    "path": "/auth/me/avatar",
+    "method": "POST",
+    "summary": "Upload avatar image for the current user profile",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [],
+    "body": null,
     "statusCodes": [
       "200",
       "400",
@@ -4543,177 +4898,63 @@
       "500"
     ]
   },
-  "POST /payments/sepay/checkout": {
-    "path": "/payments/sepay/checkout",
+  "POST /auth/forgot-password": {
+    "path": "/auth/forgot-password",
     "method": "POST",
-    "summary": "Create a SePay VietQR membership checkout",
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ],
+    "summary": "Gửi OTP đặt lại mật khẩu qua email",
+    "security": [],
     "parameters": [],
     "body": {
       "type": "object",
-      "properties": {
-        "planId": {
-          "type": "string"
-        }
-      },
       "required": [
-        "planId"
-      ]
-    },
-    "statusCodes": [
-      "201",
-      "400",
-      "401",
-      "403",
-      "404",
-      "409",
-      "500",
-      "503"
-    ]
-  },
-  "GET /payments/sepay/{id}": {
-    "path": "/payments/sepay/{id}",
-    "method": "GET",
-    "summary": "Get a SePay membership checkout",
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
-      "200",
-      "401",
-      "403",
-      "404",
-      "500"
-    ]
-  },
-  "POST /payments/sepay/mock-confirm": {
-    "path": "/payments/sepay/mock-confirm",
-    "method": "POST",
-    "summary": "DEV/DEMO confirm a SePay membership checkout",
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ],
-    "parameters": [],
-    "body": {
-      "type": "object",
+        "email"
+      ],
       "properties": {
-        "paymentId": {
-          "type": "string"
+        "email": {
+          "type": "string",
+          "format": "email"
         }
-      },
-      "required": [
-        "paymentId"
-      ]
+      }
     },
     "statusCodes": [
       "200",
       "400",
-      "401",
-      "403",
-      "404",
       "500"
     ]
   },
-  "GET /classes/{id}/course-plan": {
-    "path": "/classes/{id}/course-plan",
-    "method": "GET",
-    "summary": "View a class as ONE course (grouped timetable) + enrollment eligibility",
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
-      "200",
-      "401",
-      "404",
-      "500"
-    ]
-  },
-  "POST /enrollments/bulk": {
-    "path": "/enrollments/bulk",
+  "POST /auth/reset-password": {
+    "path": "/auth/reset-password",
     "method": "POST",
-    "summary": "Enroll in a whole course (all upcoming sessions)",
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ],
+    "summary": "Đặt lại mật khẩu bằng OTP nhận qua email",
+    "security": [],
     "parameters": [],
     "body": {
       "type": "object",
+      "required": [
+        "email",
+        "otp",
+        "newPassword"
+      ],
       "properties": {
-        "classId": {
-          "type": "string"
+        "email": {
+          "type": "string",
+          "format": "email"
         },
-        "memberId": {
-          "type": "string"
+        "otp": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 6,
+          "pattern": "^[0-9]{6}$"
+        },
+        "newPassword": {
+          "type": "string",
+          "minLength": 6
         }
-      },
-      "required": [
-        "classId"
-      ]
-    },
-    "statusCodes": [
-      "201",
-      "400",
-      "401",
-      "403",
-      "404",
-      "409",
-      "500"
-    ]
-  },
-  "POST /class-schedules/activity-plan": {
-    "path": "/class-schedules/activity-plan",
-    "method": "POST",
-    "summary": "Atomically create a complete activity plan",
-    "security": [
-      {
-        "BearerAuth": []
       }
-    ],
-    "parameters": [],
-    "body": {
-      "type": "object"
     },
     "statusCodes": [
-      "201",
+      "200",
       "400",
-      "401",
-      "403",
-      "404",
-      "409",
       "500"
     ]
   }

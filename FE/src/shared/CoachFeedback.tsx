@@ -105,7 +105,7 @@ export function CoachFeedback({
               </strong>
               <p>{String(f.comment || "Không có nhận xét.")}</p>
               {(role === "MANAGER" ||
-                mine.data?.data.some((m) => m.id === f.id)) && (
+                (role === "MEMBER" && f.isOwn === true)) && (
                 <button
                   className="button small danger-text"
                   onClick={() => {

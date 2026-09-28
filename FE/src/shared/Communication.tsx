@@ -1,3 +1,4 @@
+import { ProtectedAttachment } from "./ProtectedAttachment";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { io, type Socket } from "socket.io-client";
@@ -13,7 +14,13 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
-import { api, BASE_URL, getAccessToken, type RecordData } from "./api";
+import {
+  api,
+  BASE_URL,
+  getAccessToken,
+  endSession,
+  type RecordData,
+} from "./api";
 import { Empty, ErrorState, Loading } from "./ui";
 import { display } from "./config";
 import "./workflow.css";
@@ -344,6 +351,7 @@ export function FloatingChat({ userId }: { userId: string }) {
       reconnectionDelay: 800,
       reconnectionDelayMax: 5000,
     });
+    socket.on("disconnect", handleDisconnect);
     socket.on("newMessage", () => {
       void cache.invalidateQueries({ queryKey: ["chat"] });
     });
@@ -400,17 +408,11 @@ export function FloatingChat({ userId }: { userId: string }) {
   );
 }
 
-function attachmentUrl(value?: string) {
-  if (!value) return null;
-  try {
-    const u = new URL(value, BASE_URL.replace(/\/api\/v1$/, "") + "/");
-    const base = new URL(BASE_URL);
-    if (u.hostname === base.hostname && base.protocol === "https:")
-      u.protocol = "https:";
-    return ["https:", "http:"].includes(u.protocol) ? u.href : null;
-  } catch {
-    return null;
-  }
+function handleDisconnect(reason: string) {
+  if (reason === "io server disconnect")
+    endSession(
+      "Phiên đăng nhập đã kết thúc ở thiết bị khác. Vui lòng đăng nhập lại.",
+    );
 }
 export function Chat({
   userId,
@@ -452,6 +454,7 @@ export function Chat({
     });
     socket.on("disconnect", () => setConnected(false));
     socket.on("connect_error", () => setConnected(false));
+    socket.on("disconnect", handleDisconnect);
     socket.on("newMessage", () => {
       void cache.invalidateQueries({ queryKey: ["chat"] });
     });
@@ -721,6 +724,19 @@ function Conversation({
       setValidation("Tệp tối đa 10 MB.");
       return;
     }
+    if (
+      file &&
+      ![
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+        "application/pdf",
+      ].includes(file.type)
+    ) {
+      setValidation("Chỉ gửi được ảnh JPEG/PNG/WebP/GIF hoặc PDF.");
+      return;
+    }
     const body = new FormData();
     if (target) body.set("receiverId", target);
     if (content.trim()) body.set("content", content.trim());
@@ -783,38 +799,7 @@ function Conversation({
             >
               {m.senderId !== userId && <strong>{m.sender?.fullName}</strong>}
               {m.content && <p>{m.content}</p>}
-              {attachmentUrl(m.fileUrl) && (
-                <a
-                  href={attachmentUrl(m.fileUrl)!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {/\.(png|jpe?g|gif|webp|avif)(?:\?|$)/i.test(
-                    m.fileUrl || "",
-                  ) ? (
-                    <img
-                      className="chat-image"
-                      src={attachmentUrl(m.fileUrl)!}
-                      alt="Ảnh đính kèm"
-                      loading="lazy"
-                      onError={(event) => {
-                        event.currentTarget.alt =
-                          "Không tải được ảnh — nhấn để mở tệp";
-                      }}
-                      onLoad={() => {
-                        if (log.current)
-                          log.current.scrollTop = log.current.scrollHeight;
-                      }}
-                    />
-                  ) : (
-                    <span className="chat-document">
-                      <Paperclip size={18} />{" "}
-                      {m.fileUrl?.split("/").pop()?.split("?")[0] ||
-                        "Mở tệp đính kèm"}
-                    </span>
-                  )}
-                </a>
-              )}
+              {m.fileUrl && <ProtectedAttachment url={m.fileUrl} />}
               <small>
                 {new Date(m.createdAt).toLocaleTimeString("vi-VN", {
                   hour: "2-digit",
@@ -854,11 +839,14 @@ function Conversation({
           <div className="chat-compose-row">
             <label className="chat-attach" title="Đính kèm tệp">
               <Paperclip size={19} />
-              <span className="sr-only">Tệp đính kèm · tối đa 10 MB</span>
+              <span className="sr-only">
+                Ảnh (JPEG/PNG/WebP/GIF) hoặc PDF · tối đa 10 MB
+              </span>
               <input
-                aria-label="Tệp đính kèm · tối đa 10 MB"
+                aria-label="Ảnh (JPEG/PNG/WebP/GIF) hoặc PDF · tối đa 10 MB"
                 key={send.isSuccess && !file ? "empty" : "file"}
                 type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
                 onChange={(event) => setFile(event.target.files?.[0] || null)}
               />
             </label>
