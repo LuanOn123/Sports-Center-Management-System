@@ -122,9 +122,11 @@ model User {
   gender      Gender?
   dateOfBirth DateTime?
   avatarUrl   String?
-  role        UserRole  @default(MEMBER)
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
+  role                      UserRole  @default(MEMBER)
+  isActive                  Boolean   @default(true)
+  resetPasswordOtp          String?
+  resetPasswordOtpExpiresAt DateTime?
+  createdAt                 DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   memberProfile              MemberProfile?
