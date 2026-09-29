@@ -109,12 +109,12 @@ export function SchemaForm({
           ? Array.isArray(initial[k])
             ? String(initial[k][0] || "INDOOR")
             : String(initial[k] || "INDOOR")
-          : initial[k] ??
-          (k === "sportIds"
-            ? classSports(initial).map((s) => s.id)
-            : k === "areaType" && operation === "POST /rooms"
-              ? "INDOOR"
-            : (s.default ?? "")),
+          : (initial[k] ??
+            (k === "sportIds"
+              ? classSports(initial).map((s) => s.id)
+              : k === "areaType" && operation === "POST /rooms"
+                ? "INDOOR"
+                : (s.default ?? ""))),
       ]),
     ),
     ...fixed,
@@ -264,7 +264,8 @@ export function SchemaForm({
         <p className="confirm-copy">
           Chỉ lưu sau khi đã nhận đủ tiền. Hệ thống sẽ ghi nhận thanh toán thành
           công và xuất hóa đơn ngay. Đăng ký gói mới tạm dừng các gói đang hoạt
-          động và cộng ngày dư vào gói mới; gia hạn tạo thêm một kỳ gói.
+          động và cộng ngày dư của gói trả phí vào gói mới (gói FREE không
+          cộng); gia hạn tạo thêm một kỳ gói.
         </p>
       )}
       {operation === "POST /payments" && (

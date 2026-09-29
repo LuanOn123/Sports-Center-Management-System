@@ -1,4 +1,7 @@
 import fs from "node:fs";
+const sourceLabel = process.argv.includes("--local")
+  ? "BE/src/config/swagger.ts + BE/src/modules/**/*.routes.ts (local checkout)"
+  : undefined;
 const openApiUrl =
   "https://sports-center-management-system.onrender.com/api/v1/docs/swagger-ui-init.js";
 const openApiFile = new URL("../docs/openapi.json", import.meta.url);
@@ -15,9 +18,7 @@ if (process.argv.includes("--live")) {
   if (!match) throw new Error("Cannot locate swaggerDoc in Swagger UI bundle");
   fs.writeFileSync(openApiFile, JSON.stringify(JSON.parse(match[1]), null, 2));
 }
-const doc = JSON.parse(
-  fs.readFileSync(openApiFile, "utf8"),
-);
+const doc = JSON.parse(fs.readFileSync(openApiFile, "utf8"));
 const schemaType = (s) =>
   s.enum
     ? s.enum.map(JSON.stringify).join(" | ")
@@ -54,7 +55,7 @@ let ts =
 const ops = {};
 let md = `# OpenAPI endpoint inventory
 
-Source: ${openApiUrl}
+Source: ${sourceLabel || openApiUrl}
 
 Snapshot: ${new Date().toISOString().slice(0, 10)}. Production base: https://sports-center-management-system.onrender.com/api/v1
 

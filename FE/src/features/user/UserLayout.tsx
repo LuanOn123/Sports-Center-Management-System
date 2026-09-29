@@ -1,3 +1,17 @@
+import { MemberPortalContext } from "../../shared/ui";
+import "./member-theme.css";
+import {
+  LayoutDashboard,
+  CreditCard,
+  ReceiptText,
+  Search,
+  BookOpen,
+  CalendarDays,
+  Dumbbell,
+  CircleCheck,
+  Bell,
+  UserRound,
+} from "lucide-react";
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import type { PortalProps } from "../../app/RoleRouter";
@@ -58,16 +72,16 @@ const Notifications = lazy(() =>
   })),
 );
 const items = [
-  ["dashboard", "Tổng quan hội viên"],
-  ["membership", "Gói thành viên"],
-  ["payments", "Thanh toán & hóa đơn"],
-  ["classes", "Khám phá lớp học"],
-  ["my-classes", "Lớp của tôi"],
-  ["schedule", "Lịch tập"],
-  ["training", "Mục tiêu tập luyện"],
-  ["attendance", "Điểm danh"],
-  ["notifications", "Thông báo"],
-  ["profile", "Tài khoản"],
+  ["dashboard", "Tổng quan hội viên", LayoutDashboard],
+  ["membership", "Gói thành viên", CreditCard],
+  ["payments", "Thanh toán & hóa đơn", ReceiptText],
+  ["classes", "Khám phá lớp học", Search],
+  ["my-classes", "Lớp của tôi", BookOpen],
+  ["schedule", "Lịch tập", CalendarDays],
+  ["training", "Mục tiêu tập luyện", Dumbbell],
+  ["attendance", "Điểm danh", CircleCheck],
+  ["notifications", "Thông báo", Bell],
+  ["profile", "Tài khoản", UserRound],
 ] as const;
 export function UserLayout(props: PortalProps) {
   return (
@@ -75,37 +89,45 @@ export function UserLayout(props: PortalProps) {
       user={props.user as unknown as User}
       onLogout={props.onLogout}
     >
-      <PortalLayout {...props} title="Hội viên" base="/member" items={items}>
-        <div className="member-content">
-          <Suspense fallback={<Loading variant="page" />}>
-            <Routes>
-              <Route
-                path="/member/dashboard"
-                element={
-                  <>
-                    <h1 className="member-page-title">Tổng quan hội viên</h1>
-                    <Dashboard />
-                  </>
-                }
-              />
-              <Route path="/member/membership" element={<Membership />} />
-              <Route path="/member/payments" element={<MemberPaymentsPage />} />
-              <Route path="/member/classes" element={<Classes />} />
-              <Route path="/member/classes/:id" element={<ClassDetail />} />
-              <Route path="/member/my-classes" element={<MyClasses />} />
-              <Route path="/member/schedule" element={<Schedule />} />
-              <Route path="/member/training" element={<Training />} />
-              <Route path="/member/attendance" element={<Attendance />} />
-              <Route path="/member/notifications" element={<Notifications />} />
-              <Route path="/member/profile" element={<Profile />} />
-              <Route
-                path="*"
-                element={<Placeholder title="Không tìm thấy trang" />}
-              />
-            </Routes>
-          </Suspense>
-        </div>
-      </PortalLayout>
+      <MemberPortalContext.Provider value={true}>
+        <PortalLayout {...props} title="Hội viên" base="/member" items={items}>
+          <div className="member-content">
+            <Suspense fallback={<Loading variant="page" />}>
+              <Routes>
+                <Route
+                  path="/member/dashboard"
+                  element={
+                    <>
+                      <h1 className="member-page-title">Tổng quan hội viên</h1>
+                      <Dashboard />
+                    </>
+                  }
+                />
+                <Route path="/member/membership" element={<Membership />} />
+                <Route
+                  path="/member/payments"
+                  element={<MemberPaymentsPage />}
+                />
+                <Route path="/member/classes" element={<Classes />} />
+                <Route path="/member/classes/:id" element={<ClassDetail />} />
+                <Route path="/member/my-classes" element={<MyClasses />} />
+                <Route path="/member/schedule" element={<Schedule />} />
+                <Route path="/member/training" element={<Training />} />
+                <Route path="/member/attendance" element={<Attendance />} />
+                <Route
+                  path="/member/notifications"
+                  element={<Notifications />}
+                />
+                <Route path="/member/profile" element={<Profile />} />
+                <Route
+                  path="*"
+                  element={<Placeholder title="Không tìm thấy trang" />}
+                />
+              </Routes>
+            </Suspense>
+          </div>
+        </PortalLayout>
+      </MemberPortalContext.Provider>
     </MemberSessionProvider>
   );
 }

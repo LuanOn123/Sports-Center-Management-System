@@ -24,21 +24,45 @@ const checkout = (suffix: string) => ({
   },
 });
 
-test("keeps tracking a checkout after closing and reloading", async ({ page }) => {
+test("keeps tracking a checkout after closing and reloading", async ({
+  page,
+}) => {
   await setup(page, "MEMBER");
   const payment = checkout("RESTORE");
   let paid = false;
-  await page.route("**/api/v1/payments/sepay/checkout", route => route.fulfill({ status: 201, json: { success: true, data: payment } }));
-  await page.route(`**/api/v1/payments/sepay/${payment.paymentId}`, route => route.fulfill({ json: { success: true, data: { ...payment, status: paid ? "SUCCESS" : "PENDING" } } }));
+  await page.route("**/api/v1/payments/sepay/checkout", (route) =>
+    route.fulfill({ status: 201, json: { success: true, data: payment } }),
+  );
+  await page.route(`**/api/v1/payments/sepay/${payment.paymentId}`, (route) =>
+    route.fulfill({
+      json: {
+        success: true,
+        data: { ...payment, status: paid ? "SUCCESS" : "PENDING" },
+      },
+    }),
+  );
   await page.goto("/member/membership");
   await page.getByRole("button", { name: "Bảng giá các gói" }).click();
-  await page.getByRole("button", { name: "Chuyển khoản VietQR", exact: true }).first().click();
+  await page
+    .getByRole("button", { name: "Chuyển khoản VietQR", exact: true })
+    .first()
+    .click();
   await page.getByRole("button", { name: "Đóng", exact: true }).click();
-  await expect(page.getByRole("button", { name: `Xem trạng thái giao dịch ${payment.orderCode}` })).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: `Xem trạng thái giao dịch ${payment.orderCode}`,
+    }),
+  ).toBeVisible();
   await page.reload();
   paid = true;
-  await page.getByRole("button", { name: `Xem trạng thái giao dịch ${payment.orderCode}` }).click();
-  await expect(page.getByText("Thanh toán thành công", { exact: true })).toBeVisible({ timeout: 10000 });
+  await page
+    .getByRole("button", {
+      name: `Xem trạng thái giao dịch ${payment.orderCode}`,
+    })
+    .click();
+  await expect(
+    page.getByText("Thanh toán thành công!", { exact: true }),
+  ).toBeVisible({ timeout: 10000 });
 });
 
 for (const result of ["SUCCESS", "FAILED"] as const) {
@@ -65,7 +89,7 @@ for (const result of ["SUCCESS", "FAILED"] as const) {
 
     await expect(
       page.getByText(
-        result === "SUCCESS" ? "Thanh toán thành công" : "Thanh toán thất bại",
+        result === "SUCCESS" ? "Thanh toán thành công!" : "Thanh toán thất bại",
         { exact: true },
       ),
     ).toBeVisible();
@@ -133,5 +157,54 @@ test("member sees the counter-payment fallback when SePay is not configured", as
     page.getByText(
       "Thanh toán online chưa được cấu hình. Vui lòng thanh toán tại quầy hoặc thử lại sau.",
     ),
+  ).toBeVisible();
+});
+
+test("received funds require review until activation succeeds", async ({
+  page,
+}) => {
+  await setup(page, "MEMBER");
+  const payment = checkout("REVIEW");
+  let activated = false;
+  await page.route("**/api/v1/payments/sepay/checkout", (route) =>
+    route.fulfill({ status: 201, json: { success: true, data: payment } }),
+  );
+  await page.route(`**/api/v1/payments/sepay/${payment.paymentId}`, (route) =>
+    route.fulfill({
+      json: {
+        success: true,
+        data: {
+          ...payment,
+          status: "SUCCESS",
+          activationStatus: activated ? "ACTIVATED" : "REQUIRES_REVIEW",
+          ...(activated
+            ? {}
+            : {
+                requiresReview: true,
+                reviewReason: "Cần xác minh gói hiện tại",
+              }),
+        },
+      },
+    }),
+  );
+  await page.goto("/member/membership");
+  await page.getByRole("button", { name: "Bảng giá các gói" }).click();
+  await page
+    .locator('button:has-text("Chuyển khoản VietQR"):not([disabled])')
+    .first()
+    .click();
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByText("Đã nhận thanh toán — đang đối soát", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    dialog.getByText("Thanh toán thành công!", { exact: true }),
+  ).toHaveCount(0);
+  activated = true;
+  await dialog
+    .getByRole("button", { name: "Kiểm tra lại", exact: true })
+    .click();
+  await expect(
+    dialog.getByText("Thanh toán thành công!", { exact: true }),
   ).toBeVisible();
 });

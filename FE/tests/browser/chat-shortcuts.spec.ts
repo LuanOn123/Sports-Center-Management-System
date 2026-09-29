@@ -7,7 +7,18 @@ for (const width of [390, 1440]) {
   }) => {
     await page.setViewportSize({ width, height: 850 });
     await setup(page, "MEMBER");
-      await page.route("**/uploads/photo.png", route => route.fulfill({ contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7X8AAAAASUVORK5CYII=", "base64") }));
+    await page.route("**/api/v1/chat/attachments/photo*", (route) => {
+      expect(route.request().headers().authorization).toBe(
+        "Bearer fixture-token",
+      );
+      return route.fulfill({
+        contentType: "image/png",
+        body: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7X8AAAAASUVORK5CYII=",
+          "base64",
+        ),
+      });
+    });
     const messages: object[] = [];
     await page.route("**/api/v1/chat/contacts", (route) =>
       route.fulfill({ json: { success: true, data: [] } }),
@@ -24,7 +35,7 @@ for (const width of [390, 1440]) {
           id: "file-1",
           senderId: "member",
           sender: { fullName: "Hội viên" },
-          fileUrl: "/uploads/photo.png",
+          fileUrl: "/api/v1/chat/attachments/photo?name=photo.png",
           createdAt: new Date().toISOString(),
         });
       }
@@ -45,7 +56,9 @@ for (const width of [390, 1440]) {
     const input = page.getByRole("textbox", { name: "Nội dung", exact: true });
     await expect(input).toBeInViewport();
     await page
-      .getByLabel("Tệp đính kèm · tối đa 10 MB", { exact: true })
+      .getByLabel("Ảnh (JPEG/PNG/WebP/GIF) hoặc PDF · tối đa 10 MB", {
+        exact: true,
+      })
       .setInputFiles({
         name: "photo.png",
         mimeType: "image/png",
@@ -54,7 +67,9 @@ for (const width of [390, 1440]) {
     await page
       .getByRole("button", { name: "Gửi tin nhắn", exact: true })
       .click();
-    await expect(page.getByRole("img", { name: "Ảnh đính kèm" })).toBeVisible();
+    await expect(
+      page.getByRole("img", { name: "Ảnh đính kèm: photo.png" }),
+    ).toBeVisible();
     await expect(input).toBeInViewport();
   });
 }

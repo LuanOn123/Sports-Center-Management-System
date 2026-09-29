@@ -36,7 +36,10 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
   const revenue = useQuery({
     queryKey: ["report", "revenue", query],
     queryFn: ({ signal }) =>
-      api<RevenueReportOk["data"]>("GET /reports/revenue", { query, signal }),
+      api<RevenueReportOk["data"] & { note?: string }>("GET /reports/revenue", {
+        query,
+        signal,
+      }),
     enabled: valid,
   });
   const members = useQuery({
@@ -74,10 +77,10 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
   });
   const cards = [
     {
-      title: "Doanh thu",
+      title: "Thực nhận",
       icon: Wallet,
       q: revenue,
-      value: revenue.data?.data.totalRevenue,
+      value: revenue.data?.data.netRevenue,
       money: true,
       sub: "Trong khoảng thời gian đã chọn",
     },
@@ -304,7 +307,12 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                   <strong className="chart-total">
                     {money(revenue.data.data.totalRevenue)}
                   </strong>
-                  <p>Tổng doanh thu trong kỳ đã chọn</p>
+                  <p>Tổng thu trong kỳ đã chọn</p>
+                  <p>
+                    Đã hoàn: {money(revenue.data.data.refundedAmount)} · Thực
+                    nhận: {money(revenue.data.data.netRevenue)}
+                  </p>
+                  <p>{String(revenue.data.data.note || "")}</p>
                   <Bars values={revenue.data.data.revenueByMethod} currency />
                   <div className="chart-note">
                     <Activity size={15} />
@@ -466,7 +474,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                       <h2>{String(title)}</h2>
                     </div>
                     {q.isPending ? (
-                    <Loading variant="field" />
+                      <Loading variant="field" />
                     ) : q.isError ? (
                       <ErrorState error={q.error} retry={() => q.refetch()} />
                     ) : (
@@ -477,7 +485,13 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                             <div className="report-line" key={k}>
                               <span>{label(k)}</span>
                               <strong>
-                                {k === "totalRevenue" ? money(v) : display(v)}
+                                {[
+                                  "totalRevenue",
+                                  "netRevenue",
+                                  "refundedAmount",
+                                ].includes(k)
+                                  ? money(v)
+                                  : display(v)}
                               </strong>
                             </div>
                           ))}

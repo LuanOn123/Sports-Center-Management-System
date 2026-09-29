@@ -26,6 +26,10 @@ describe("September business rules", () => {
   it("uses the strict 15-day boundary and different manager/member refund rules", () => {
     const now = Date.parse("2026-09-01T00:00:00Z");
     expect(
+      refundEstimate("2027-09-01T00:00:00Z", 300000, 30, "MANAGER", now)
+        .refundAmount,
+    ).toBe(300000);
+    expect(
       refundEstimate("2026-09-16T00:00:00Z", 500000, 30, "MEMBER", now)
         .refundAmount,
     ).toBe(0);

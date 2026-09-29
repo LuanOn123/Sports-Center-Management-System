@@ -11,12 +11,36 @@ export interface BadgeProps {
 export function Badge({ variant = "neutral", children }: BadgeProps) {
   const styles: Record<string, { bg: string; color: string; border: string }> =
     {
-      success: { bg: "#edfcf2", color: "#267346", border: "#abefc6" },
-      warning: { bg: "#fffaeb", color: "#b54708", border: "#fedf89" },
-      danger: { bg: "#fef3f2", color: "#d92d20", border: "#fecdca" },
-      info: { bg: "#f0f9ff", color: "#026aa2", border: "#b9e6fe" },
-      primary: { bg: "#f3fbe8", color: "#203d31", border: "#cbe58b" },
-      neutral: { bg: "#f8f9fa", color: "#475467", border: "#eaecf0" },
+      success: {
+        bg: "var(--member-success-soft, #edfcf2)",
+        color: "var(--member-success, #267346)",
+        border: "var(--member-success-border, #abefc6)",
+      },
+      warning: {
+        bg: "var(--member-warning-soft, #fffaeb)",
+        color: "var(--member-warning, #b54708)",
+        border: "var(--member-warning-border, #fedf89)",
+      },
+      danger: {
+        bg: "var(--member-danger-soft, #fef3f2)",
+        color: "var(--member-danger, #d92d20)",
+        border: "var(--member-danger-border, #fecdca)",
+      },
+      info: {
+        bg: "var(--member-info-soft, #f0f9ff)",
+        color: "var(--member-info, #026aa2)",
+        border: "var(--member-info-border, #b9e6fe)",
+      },
+      primary: {
+        bg: "var(--member-accent-soft, #f3fbe8)",
+        color: "var(--member-text, #203d31)",
+        border: "var(--member-accent-border, #cbe58b)",
+      },
+      neutral: {
+        bg: "var(--member-surface-alt, #f8f9fa)",
+        color: "var(--member-muted, #475467)",
+        border: "var(--member-border, #eaecf0)",
+      },
     };
 
   const current = styles[variant] || styles.neutral;
@@ -130,7 +154,12 @@ export function ConfirmModal({
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <p
-          style={{ margin: 0, color: "#475467", fontSize: 14, lineHeight: 1.5 }}
+          style={{
+            margin: 0,
+            color: "var(--member-muted, #475467)",
+            fontSize: 14,
+            lineHeight: 1.5,
+          }}
         >
           {message}
         </p>
@@ -143,14 +172,15 @@ export function ConfirmModal({
           }}
         >
           <button
+            className="member-button"
             onClick={onClose}
             disabled={loading}
             style={{
               padding: "9px 16px",
               borderRadius: 8,
-              border: "1px solid #d0d5dd",
-              background: "#ffffff",
-              color: "#344054",
+              border: "1px solid var(--member-border, #d0d5dd)",
+              background: "var(--member-surface, #ffffff)",
+              color: "var(--member-text, #344054)",
               fontWeight: 600,
               cursor: "pointer",
             }}
@@ -158,14 +188,19 @@ export function ConfirmModal({
             {cancelText}
           </button>
           <button
+            className="member-button"
             onClick={onConfirm}
             disabled={loading}
             style={{
               padding: "9px 16px",
               borderRadius: 8,
               border: "none",
-              background: isDanger ? "#d92d20" : "#203d31",
-              color: "#ffffff",
+              background: isDanger
+                ? "var(--member-danger-soft, #d92d20)"
+                : "var(--member-accent, #203d31)",
+              color: isDanger
+                ? "var(--member-danger, #ffffff)"
+                : "var(--member-ink, #ffffff)",
               fontWeight: 600,
               cursor: "pointer",
               display: "flex",
@@ -198,9 +233,9 @@ export function EmptyState({
       style={{
         padding: "48px 24px",
         textAlign: "center",
-        background: "#ffffff",
+        background: "var(--member-surface, #ffffff)",
         borderRadius: 14,
-        border: "1px dashed #d0d7d3",
+        border: "1px dashed var(--member-border, #d0d7d3)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -208,16 +243,28 @@ export function EmptyState({
         gap: 8,
       }}
     >
-      <div style={{ color: "#9aa6a0", marginBottom: 4 }}>
+      <div style={{ color: "var(--member-muted, #9aa6a0)", marginBottom: 4 }}>
         {icon || <Info size={36} />}
       </div>
       <h3
-        style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#203d31" }}
+        style={{
+          margin: 0,
+          fontSize: 16,
+          fontWeight: 700,
+          color: "var(--member-text, #203d31)",
+        }}
       >
         {title}
       </h3>
       {description && (
-        <p style={{ margin: 0, color: "#667085", fontSize: 13, maxWidth: 360 }}>
+        <p
+          style={{
+            margin: 0,
+            color: "var(--member-muted, #667085)",
+            fontSize: 13,
+            maxWidth: 360,
+          }}
+        >
           {description}
         </p>
       )}
@@ -247,27 +294,27 @@ export function AlertBanner({
 }) {
   const config = {
     info: {
-      bg: "#f0f9ff",
-      border: "#b9e6fe",
-      color: "#026aa2",
+      bg: "var(--member-info-soft, #f0f9ff)",
+      border: "var(--member-info-border, #b9e6fe)",
+      color: "var(--member-info, #026aa2)",
       icon: <Info size={18} />,
     },
     success: {
-      bg: "#edfcf2",
-      border: "#abefc6",
-      color: "#267346",
+      bg: "var(--member-success-soft, #edfcf2)",
+      border: "var(--member-success-border, #abefc6)",
+      color: "var(--member-success, #267346)",
       icon: <CheckCircle2 size={18} />,
     },
     warning: {
-      bg: "#fffaeb",
-      border: "#fedf89",
-      color: "#b54708",
+      bg: "var(--member-warning-soft, #fffaeb)",
+      border: "var(--member-warning-border, #fedf89)",
+      color: "var(--member-warning, #b54708)",
       icon: <AlertCircle size={18} />,
     },
     error: {
-      bg: "#fef3f2",
-      border: "#fecdca",
-      color: "#d92d20",
+      bg: "var(--member-danger-soft, #fef3f2)",
+      border: "var(--member-danger-border, #fecdca)",
+      color: "var(--member-danger, #d92d20)",
       icon: <XCircle size={18} />,
     },
   }[type];

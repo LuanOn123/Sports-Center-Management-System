@@ -11,14 +11,24 @@ import { LoadingSpinner } from "../../components/common";
 export function NotificationsPage() {
   const { user } = useAuth();
 
-  const { data: enrollData, isLoading: enrollLoading, error: enrollError } = useQuery({
+  const {
+    data: enrollData,
+    isLoading: enrollLoading,
+    error: enrollError,
+  } = useQuery({
     queryKey: ["my-enrollments", "BOOKED", 5],
-    queryFn: () => enrollmentsApi.getMyEnrollments({ status: "BOOKED", limit: 5 }),
+    queryFn: () =>
+      enrollmentsApi.getMyEnrollments({ status: "BOOKED", limit: 5 }),
   });
 
-  const { data: subData, isLoading: subLoading, error: subError } = useQuery({
+  const {
+    data: subData,
+    isLoading: subLoading,
+    error: subError,
+  } = useQuery({
     queryKey: ["current-membership", user?.id],
-    queryFn: () => (user?.id ? membershipApi.getMySubscriptions(user.id) : null),
+    queryFn: () =>
+      user?.id ? membershipApi.getMySubscriptions(user.id) : null,
     enabled: Boolean(user?.id),
   });
 
@@ -55,7 +65,8 @@ export function NotificationsPage() {
           {
             id: "sub-none",
             title: "Chưa kích hoạt gói hội viên",
-            message: "Hãy đăng ký gói hội viên để mở khóa toàn bộ các lớp học và tiện ích tại Pulse Sports.",
+            message:
+              "Hãy đăng ký gói hội viên để mở khóa toàn bộ các lớp học và tiện ích tại Pulse Sports.",
             type: "alert",
             time: "Hôm nay",
             link: "/member/membership",
@@ -77,40 +88,64 @@ export function NotificationsPage() {
     {
       id: "system-welcome",
       title: "Chào mừng bạn đến với Pulse Sports Center!",
-      message: "Chúng tôi luôn sẵn sàng hỗ trợ bạn trên hành trình chinh phục thể hình và sức khỏe tối ưu.",
+      message:
+        "Chúng tôi luôn sẵn sàng hỗ trợ bạn trên hành trình chinh phục thể hình và sức khỏe tối ưu.",
       type: "system",
       time: "Hệ thống",
     },
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 840 }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 24,
+        maxWidth: 840,
+      }}
+    >
       <div
         style={{
-          background: "#ffffff",
+          background: "var(--member-surface, #ffffff)",
           borderRadius: 16,
           padding: "24px 28px",
-          border: "1px solid #e7ece9",
+          border: "1px solid var(--member-border, #e7ece9)",
         }}
       >
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: "#203d31", margin: "0 0 6px" }}>
+        <h1
+          style={{
+            fontSize: 24,
+            fontWeight: 800,
+            color: "var(--member-text, #203d31)",
+            margin: "0 0 6px",
+          }}
+        >
           Thông báo của bạn
         </h1>
-        <p style={{ margin: 0, color: "#58695f", fontSize: 13 }}>
-          Nhắc lịch ca học sắp tới, tình trạng gói hội viên và các thông báo mới từ trung tâm
+        <p
+          style={{
+            margin: 0,
+            color: "var(--member-muted, #58695f)",
+            fontSize: 13,
+          }}
+        >
+          Nhắc lịch ca học sắp tới, tình trạng gói hội viên và các thông báo mới
+          từ trung tâm
         </p>
       </div>
 
       {enrollLoading || subLoading ? (
         <LoadingSpinner text="Đang tải thông báo..." />
-      ) : enrollError || subError ? <ErrorState error={enrollError || subError} /> : (
+      ) : enrollError || subError ? (
+        <ErrorState error={enrollError || subError} />
+      ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {notifications.map((n) => (
             <div
               key={n.id}
               style={{
-                backgroundColor: "#ffffff",
-                border: "1px solid #e7ece9",
+                backgroundColor: "var(--member-surface, #ffffff)",
+                border: "1px solid var(--member-border, #e7ece9)",
                 borderRadius: 16,
                 padding: "18px 22px",
                 display: "flex",
@@ -125,16 +160,16 @@ export function NotificationsPage() {
                   borderRadius: 10,
                   backgroundColor:
                     n.type === "class"
-                      ? "#f4f3ff"
+                      ? "var(--member-purple-soft, #f4f3ff)"
                       : n.type === "membership"
-                      ? "#f2f8eb"
-                      : "#f8faf9",
+                        ? "var(--member-accent-soft, #f2f8eb)"
+                        : "var(--member-surface-alt, #f8faf9)",
                   color:
                     n.type === "class"
-                      ? "#5925dc"
+                      ? "var(--member-purple, #5925dc)"
                       : n.type === "membership"
-                      ? "#376228"
-                      : "#475467",
+                        ? "var(--member-accent, #376228)"
+                        : "var(--member-muted, #475467)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -151,13 +186,41 @@ export function NotificationsPage() {
               </div>
 
               <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                  <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#203d31" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "baseline",
+                    marginBottom: 4,
+                  }}
+                >
+                  <h4
+                    style={{
+                      margin: 0,
+                      fontSize: 15,
+                      fontWeight: 700,
+                      color: "var(--member-text, #203d31)",
+                    }}
+                  >
                     {n.title}
                   </h4>
-                  <span style={{ fontSize: 11, color: "#58695f" }}>{n.time}</span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "var(--member-muted, #58695f)",
+                    }}
+                  >
+                    {n.time}
+                  </span>
                 </div>
-                <p style={{ margin: "0 0 10px", fontSize: 13, color: "#54655d", lineHeight: 1.5 }}>
+                <p
+                  style={{
+                    margin: "0 0 10px",
+                    fontSize: 13,
+                    color: "var(--member-muted, #54655d)",
+                    lineHeight: 1.5,
+                  }}
+                >
                   {n.message}
                 </p>
 
@@ -167,7 +230,7 @@ export function NotificationsPage() {
                     style={{
                       fontSize: 12,
                       fontWeight: 700,
-                      color: "#376228",
+                      color: "var(--member-accent, #376228)",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 4,
