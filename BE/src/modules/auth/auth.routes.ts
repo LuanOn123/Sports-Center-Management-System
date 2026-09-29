@@ -1,12 +1,15 @@
 import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate.js";
 import { validate } from "../../middlewares/validate.js";
+import { avatarUpload } from "../../middlewares/upload.js";
 import {
   RegisterSchema,
   LoginSchema,
   RefreshTokenSchema,
   UpdateProfileSchema,
   ChangePasswordSchema,
+  ForgotPasswordSchema,
+  ResetPasswordSchema,
 } from "./auth.schema.js";
 import * as authController from "./auth.controller.js";
 
@@ -164,6 +167,41 @@ router.patch("/me", authenticate, validate(UpdateProfileSchema), authController.
 
 /**
  * @swagger
+ * /auth/me/avatar:
+ *   post:
+ *     summary: Upload avatar image for the current user profile
+ *     description: |
+ *       Upload ảnh đại diện (chọn từ file) dạng `multipart/form-data`, field name **avatar**.
+ *       Chấp nhận jpeg / jpg / png / webp / gif, dung lượng tối đa **5MB**.
+ *       Nơi lưu ảnh phụ thuộc env `AVATAR_STORAGE`:
+ *       - `local` (mặc định khi chưa có credentials): lưu `uploads/avatars/`, phục vụ tĩnh qua `GET /uploads/avatars/<filename>`;
+ *       - `cloudinary` (tự bật khi điền đủ `CLOUDINARY_*`): ảnh resize 512x512, nén q_auto/f_auto,
+ *         lưu 1 asset/user nên thay ảnh mới GHI ĐÈ ảnh cũ (không sinh rác).
+ *       URL được lưu vào `User.avatarUrl` và trả về trong `GET /auth/me`.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [avatar]
+ *             properties:
+ *               avatar:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image file (jpeg, jpg, png, webp, gif), max 5MB
+ *     responses:
+ *       200: { $ref: "#/components/responses/ProfileOk" }
+ *       400: { $ref: "#/components/responses/BadRequest" }
+ *       401: { $ref: "#/components/responses/Unauthorized" }
+ *       404: { $ref: "#/components/responses/NotFound" }
+ *       500: { $ref: "#/components/responses/ServerError" }
+ */
+router.post("/me/avatar", authenticate, avatarUpload, authController.uploadAvatar);
+
+/**
+ * @swagger
  * /auth/me/change-password:
  *   patch:
  *     summary: Change current user password
@@ -191,5 +229,59 @@ router.patch(
   validate(ChangePasswordSchema),
   authController.changePassword
 );
+
+/**
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Gửi OTP đặt lại mật khẩu qua email
+ *     description: |
+ *       Sinh mã OTP 6 chữ số, hợp lệ trong **5 phút**, gửi về địa chỉ email đã đăng ký.
+ *       Luôn trả HTTP 200 với cùng thông điệp dù email không tồn tại (chống user enumeration).
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string, format: email }
+ *     responses:
+ *       200: { $ref: "#/components/responses/MessageOk" }
+ *       400: { $ref: "#/components/responses/BadRequest" }
+ *       500: { $ref: "#/components/responses/ServerError" }
+ */
+router.post("/forgot-password", validate(ForgotPasswordSchema), authController.forgotPassword);
+
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Đặt lại mật khẩu bằng OTP nhận qua email
+ *     description: |
+ *       Xác minh OTP rồi cập nhật mật khẩu mới. OTP chỉ dùng được **một lần** và hết hạn sau 5 phút.
+ *       Sau khi thành công, toàn bộ phiên đăng nhập cũ (refresh token) sẽ bị thu hồi.
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, otp, newPassword]
+ *             properties:
+ *               email: { type: string, format: email }
+ *               otp: { type: string, minLength: 6, maxLength: 6, description: "Mã 6 chữ số nhận qua email" }
+ *               newPassword: { type: string, minLength: 6 }
+ *     responses:
+ *       200: { $ref: "#/components/responses/MessageOk" }
+ *       400: { $ref: "#/components/responses/BadRequest" }
+ *       500: { $ref: "#/components/responses/ServerError" }
+ */
+router.post("/reset-password", validate(ResetPasswordSchema), authController.resetPassword);
 
 export default router;

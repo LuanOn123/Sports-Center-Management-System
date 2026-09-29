@@ -1,17 +1,23 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type FormEvent,
-} from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { io, type Socket } from "socket.io-client";
-import { Paperclip, Search, Send, Users, Wifi, WifiOff, X } from "lucide-react";
+import {
+  Bell,
+  CheckCheck,
+  MessageCircle,
+  Paperclip,
+  Search,
+  Send,
+  Users,
+  Wifi,
+  WifiOff,
+  X,
+} from "lucide-react";
 import { api, BASE_URL, getAccessToken, type RecordData } from "./api";
 import { Empty, ErrorState, Loading } from "./ui";
 import { display } from "./config";
 import "./workflow.css";
+import "./communication.css";
 
 type Notification = {
   id: string;
@@ -21,6 +27,126 @@ type Notification = {
   isRead: boolean;
   createdAt: string;
 };
+
+export function NotificationBell() {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const cache = useQueryClient();
+  const count = useQuery({
+    queryKey: ["notifications", "count"],
+    queryFn: ({ signal }) =>
+      api<{ unreadCount: number }>("GET /notifications/unread-count", {
+        signal,
+      }),
+    refetchInterval: 20_000,
+  });
+  const list = useQuery({
+    queryKey: ["notifications", "popover"],
+    queryFn: ({ signal }) =>
+      api<Notification[]>("GET /notifications", {
+        query: { page: "1", limit: "8" },
+        signal,
+      }),
+    enabled: open,
+  });
+  const markRead = useMutation({
+    mutationFn: (id: string) =>
+      api(
+        id === "all"
+          ? "PATCH /notifications/mark-all-read"
+          : "PATCH /notifications/{id}/read",
+        { params: { id } },
+      ),
+    onSuccess: () => cache.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open]);
+  const unreadCount = count.data?.data.unreadCount || 0;
+  return (
+    <div className="notification-bell" ref={root}>
+      <button
+        type="button"
+        className={`topbar-icon ${unreadCount ? "has-unread attention" : ""}`}
+        aria-label={
+          unreadCount ? `${unreadCount} thông báo chưa đọc` : "Thông báo"
+        }
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <Bell size={20} />
+        {unreadCount > 0 && (
+          <span className="utility-badge">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
+      </button>
+      {open && (
+        <section
+          className="notification-popover"
+          aria-label="Thông báo gần đây"
+        >
+          <header>
+            <div>
+              <strong>Thông báo</strong>
+              <small>{unreadCount} chưa đọc</small>
+            </div>
+            <button
+              type="button"
+              className="icon-button"
+              title="Đánh dấu tất cả đã đọc"
+              aria-label="Đánh dấu tất cả đã đọc"
+              disabled={!unreadCount || markRead.isPending}
+              onClick={() => markRead.mutate("all")}
+            >
+              <CheckCheck size={18} />
+            </button>
+          </header>
+          <div className="notification-popover-list">
+            {list.isPending ? (
+              <Loading variant="cards" />
+            ) : list.error ? (
+              <ErrorState error={list.error} retry={() => list.refetch()} />
+            ) : !list.data.data.length ? (
+              <Empty text="Không có thông báo." />
+            ) : (
+              list.data.data.map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  className={`notification-popover-item ${item.isRead ? "" : "unread"}`}
+                  onClick={() => {
+                    if (!item.isRead) markRead.mutate(item.id);
+                  }}
+                >
+                  <span className="notification-dot" />
+                  <span>
+                    <strong>{item.title}</strong>
+                    <p>{item.body}</p>
+                    <small>{display(item.createdAt)}</small>
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
 export function Notifications({ role }: { role: string }) {
   const [page, setPage] = useState(1),
     [unread, setUnread] = useState(false);
@@ -167,7 +293,20 @@ export function Notifications({ role }: { role: string }) {
 
 function NotificationBody({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
-  return <><p className={expanded ? "" : "workflow-notification-preview"}>{text}</p>{text.length > 240 && <button className="text-button" aria-expanded={expanded} onClick={() => setExpanded(v => !v)}>{expanded ? "Thu gọn" : "Xem đầy đủ"}</button>}</>;
+  return (
+    <>
+      <p className={expanded ? "" : "workflow-notification-preview"}>{text}</p>
+      {text.length > 240 && (
+        <button
+          className="text-button"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? "Thu gọn" : "Xem đầy đủ"}
+        </button>
+      )}
+    </>
+  );
 }
 
 type Contact = { id: string; fullName: string; role: string; email?: string };
@@ -186,21 +325,100 @@ type ConversationItem = {
   unreadCount: number;
   latestMessage?: Message;
 };
+
+export function FloatingChat({ userId }: { userId: string }) {
+  const [open, setOpen] = useState(false);
+  const cache = useQueryClient();
+  const unread = useQuery({
+    queryKey: ["chat", "unread-count"],
+    queryFn: ({ signal }) =>
+      api<{ unreadCount: number }>("GET /chat/messages/unread-count", {
+        signal,
+      }),
+    refetchInterval: open ? false : 20_000,
+  });
+  useEffect(() => {
+    const socket = io(BASE_URL.replace(/\/api\/v1$/, ""), {
+      transports: ["websocket", "polling"],
+      auth: (done) => done({ token: getAccessToken() }),
+      reconnectionDelay: 800,
+      reconnectionDelayMax: 5000,
+    });
+    socket.on("newMessage", () => {
+      void cache.invalidateQueries({ queryKey: ["chat"] });
+    });
+    socket.on("messagesRead", () => {
+      void cache.invalidateQueries({ queryKey: ["chat"] });
+    });
+    return () => {
+      socket.disconnect();
+    };
+  }, [cache]);
+  const unreadCount = unread.data?.data.unreadCount || 0;
+  return (
+    <div className={`floating-chat ${open ? "open" : ""}`}>
+      {open && (
+        <section className="floating-chat-panel" aria-label="Cửa sổ tin nhắn">
+          <header className="floating-chat-header">
+            <div>
+              <MessageCircle size={19} />
+              <strong>Tin nhắn</strong>
+            </div>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Đóng tin nhắn"
+              onClick={() => setOpen(false)}
+            >
+              <X size={18} />
+            </button>
+          </header>
+          <Chat userId={userId} compact />
+        </section>
+      )}
+      <button
+        type="button"
+        className={`floating-chat-button ${unreadCount ? "has-unread attention" : ""}`}
+        aria-label={
+          open
+            ? "Đóng tin nhắn"
+            : unreadCount
+              ? `${unreadCount} tin nhắn chưa đọc`
+              : "Mở tin nhắn"
+        }
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {open ? <X size={24} /> : <MessageCircle size={25} />}
+        {!open && unreadCount > 0 && (
+          <span className="utility-badge">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
+      </button>
+    </div>
+  );
+}
+
 function attachmentUrl(value?: string) {
   if (!value) return null;
   try {
-    const u = new URL(value);
+    const u = new URL(value, BASE_URL.replace(/\/api\/v1$/, "") + "/");
     const base = new URL(BASE_URL);
-    return u.origin === base.origin &&
-      u.pathname.startsWith("/uploads/") &&
-      ["https:", "http:"].includes(u.protocol)
-      ? u.href
-      : null;
+    if (u.hostname === base.hostname && base.protocol === "https:")
+      u.protocol = "https:";
+    return ["https:", "http:"].includes(u.protocol) ? u.href : null;
   } catch {
     return null;
   }
 }
-export function Chat({ userId }: { userId: string }) {
+export function Chat({
+  userId,
+  compact = false,
+}: {
+  userId: string;
+  compact?: boolean;
+}) {
   const [target, setTarget] = useState("");
   const [search, setSearch] = useState("");
   const [connected, setConnected] = useState(false);
@@ -282,23 +500,43 @@ export function Chat({ userId }: { userId: string }) {
         const bTime = Date.parse(
           conversationById.get(b.id)?.latestMessage?.createdAt || "",
         );
-        return (Number.isFinite(bTime) ? bTime : 0) -
-          (Number.isFinite(aTime) ? aTime : 0);
+        return (
+          (Number.isFinite(bTime) ? bTime : 0) -
+          (Number.isFinite(aTime) ? aTime : 0)
+        );
       });
   }, [contacts.data, conversations.data, search]);
-  const selectedContact = contacts.data?.data.find((item) => item.id === target);
+  const selectedContact = contacts.data?.data.find(
+    (item) => item.id === target,
+  );
   return (
-    <div className="workflow-page chat-page">
-      <div className="page-heading">
-        <div>
-          <h1>Tin nhắn</h1>
-          <p>Trao đổi tức thời với đội ngũ và huấn luyện viên của trung tâm.</p>
+    <div className={`workflow-page chat-page ${compact ? "compact" : ""}`}>
+      {!compact && (
+        <div className="page-heading">
+          <div>
+            <h1>Tin nhắn</h1>
+            <p>
+              Trao đổi tức thời với đội ngũ và huấn luyện viên của trung tâm.
+            </p>
+          </div>
+          <span
+            className={`chat-connection ${connected ? "online" : ""}`}
+            role="status"
+          >
+            {connected ? <Wifi size={16} /> : <WifiOff size={16} />}
+            {connected ? "Đang kết nối realtime" : "Đang kết nối lại…"}
+          </span>
         </div>
-        <span className={`chat-connection ${connected ? "online" : ""}`} role="status">
-          {connected ? <Wifi size={16} /> : <WifiOff size={16} />}
-          {connected ? "Đang kết nối realtime" : "Đang kết nối lại…"}
+      )}
+      {compact && (
+        <span
+          className={`chat-connection ${connected ? "online" : ""}`}
+          role="status"
+        >
+          {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
+          {connected ? "Realtime" : "Đang kết nối lại…"}
         </span>
-      </div>
+      )}
       {contacts.isPending ? (
         <Loading variant="field" />
       ) : contacts.error ? (
@@ -309,7 +547,10 @@ export function Chat({ userId }: { userId: string }) {
             <div className="chat-sidebar-head">
               <label>
                 Cuộc trò chuyện
-                <select value={target} onChange={(event) => setTarget(event.target.value)}>
+                <select
+                  value={target}
+                  onChange={(event) => setTarget(event.target.value)}
+                >
                   <option value="">Phòng chung · tất cả thành viên</option>
                   {contacts.data.data.map((contact) => (
                     <option value={contact.id} key={contact.id}>
@@ -320,20 +561,47 @@ export function Chat({ userId }: { userId: string }) {
               </label>
               <div className="chat-search">
                 <Search size={16} />
-                <input aria-label="Tìm người nhắn tin" placeholder="Tìm người…" value={search} onChange={(event) => setSearch(event.target.value)} />
+                <input
+                  aria-label="Tìm người nhắn tin"
+                  placeholder="Tìm người…"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
               </div>
             </div>
-            <button className={`chat-contact ${target === "" ? "active" : ""}`} onClick={() => setTarget("")}>
-              <span className="chat-avatar group"><Users size={18} /></span>
-              <span><strong>Phòng chung</strong><small>Không gian trao đổi của trung tâm</small></span>
+            <button
+              className={`chat-contact ${target === "" ? "active" : ""}`}
+              onClick={() => setTarget("")}
+            >
+              <span className="chat-avatar group">
+                <Users size={18} />
+              </span>
+              <span>
+                <strong>Phòng chung</strong>
+                <small>Không gian trao đổi của trung tâm</small>
+              </span>
             </button>
             {orderedContacts.map((contact) => {
               const item = conversationById.get(contact.id);
               return (
-                <button className={`chat-contact ${target === contact.id ? "active" : ""}`} key={contact.id} onClick={() => setTarget(contact.id)}>
-                  <span className="chat-avatar">{contact.fullName.slice(0, 2).toUpperCase()}<i className={online.has(contact.id) ? "online" : ""} /></span>
-                  <span><strong>{contact.fullName}</strong><small>{item?.latestMessage?.content || display(contact.role)}</small></span>
-                  {item?.unreadCount ? <b className="chat-unread">{item.unreadCount}</b> : null}
+                <button
+                  className={`chat-contact ${target === contact.id ? "active" : ""}`}
+                  key={contact.id}
+                  onClick={() => setTarget(contact.id)}
+                >
+                  <span className="chat-avatar">
+                    {contact.fullName.slice(0, 2).toUpperCase()}
+                    <i className={online.has(contact.id) ? "online" : ""} />
+                  </span>
+                  <span>
+                    <strong>{contact.fullName}</strong>
+                    <small>
+                      {item?.latestMessage?.content || display(contact.role)}
+                    </small>
+                  </span>
+                  {item?.unreadCount ? (
+                    <b className="chat-unread">{item.unreadCount}</b>
+                  ) : null}
                 </button>
               );
             })}
@@ -400,7 +668,10 @@ function Conversation({
     onSuccess: () => {
       setContent("");
       setFile(null);
-      socket?.emit("typing", { receiverId: target || undefined, isTyping: false });
+      socket?.emit("typing", {
+        receiverId: target || undefined,
+        isTyping: false,
+      });
       void cache.invalidateQueries({ queryKey: ["chat"] });
     },
   });
@@ -414,7 +685,10 @@ function Conversation({
   useEffect(
     () => () => {
       if (typingTimer.current) window.clearTimeout(typingTimer.current);
-      socket?.emit("typing", { receiverId: target || undefined, isTyping: false });
+      socket?.emit("typing", {
+        receiverId: target || undefined,
+        isTyping: false,
+      });
     },
     [socket, target],
   );
@@ -427,7 +701,11 @@ function Conversation({
     });
     if (typingTimer.current) window.clearTimeout(typingTimer.current);
     typingTimer.current = window.setTimeout(
-      () => socket.emit("typing", { receiverId: target || undefined, isTyping: false }),
+      () =>
+        socket.emit("typing", {
+          receiverId: target || undefined,
+          isTyping: false,
+        }),
       1600,
     );
   }
@@ -453,12 +731,24 @@ function Conversation({
     <section className="chat-conversation">
       <header className="chat-conversation-head">
         <span className={`chat-avatar ${target ? "" : "group"}`}>
-          {target ? contact?.fullName.slice(0, 2).toUpperCase() : <Users size={18} />}
+          {target ? (
+            contact?.fullName.slice(0, 2).toUpperCase()
+          ) : (
+            <Users size={18} />
+          )}
           {target && <i className={online ? "online" : ""} />}
         </span>
         <div>
-          <h2>{target ? contact?.fullName || "Trao đổi riêng" : "Phòng chung"}</h2>
-          <small>{target ? (online ? "Đang hoạt động" : display(contact?.role)) : "Không gian chung của trung tâm"}</small>
+          <h2>
+            {target ? contact?.fullName || "Trao đổi riêng" : "Phòng chung"}
+          </h2>
+          <small>
+            {target
+              ? online
+                ? "Đang hoạt động"
+                : display(contact?.role)
+              : "Không gian chung của trung tâm"}
+          </small>
         </div>
         {target && (
           <button
@@ -499,26 +789,78 @@ function Conversation({
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Mở tệp đính kèm
+                  {/\.(png|jpe?g|gif|webp|avif)(?:\?|$)/i.test(
+                    m.fileUrl || "",
+                  ) ? (
+                    <img
+                      className="chat-image"
+                      src={attachmentUrl(m.fileUrl)!}
+                      alt="Ảnh đính kèm"
+                      loading="lazy"
+                      onError={(event) => {
+                        event.currentTarget.alt =
+                          "Không tải được ảnh — nhấn để mở tệp";
+                      }}
+                      onLoad={() => {
+                        if (log.current)
+                          log.current.scrollTop = log.current.scrollHeight;
+                      }}
+                    />
+                  ) : (
+                    <span className="chat-document">
+                      <Paperclip size={18} />{" "}
+                      {m.fileUrl?.split("/").pop()?.split("?")[0] ||
+                        "Mở tệp đính kèm"}
+                    </span>
+                  )}
                 </a>
               )}
               <small>
-                {new Date(m.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
-                {m.senderId === userId && index === messages.data.data.length - 1 ? " · Đã gửi" : ""}
+                {new Date(m.createdAt).toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                {m.senderId === userId &&
+                index === messages.data.data.length - 1
+                  ? " · Đã gửi"
+                  : ""}
               </small>
             </article>
           ))
         )}
-        {isTyping && <div className="chat-typing" aria-live="polite"><i /><i /><i /><span>đang nhập…</span></div>}
+        {isTyping && (
+          <div className="chat-typing" aria-live="polite">
+            <i />
+            <i />
+            <i />
+            <span>đang nhập…</span>
+          </div>
+        )}
       </div>
       <form className="chat-composer" onSubmit={submit} ref={form}>
         <fieldset disabled={send.isPending}>
-          {file && <div className="chat-file"><Paperclip size={15} /> <span>{file.name}</span><button type="button" aria-label="Bỏ tệp" onClick={() => setFile(null)}><X size={15} /></button></div>}
+          {file && (
+            <div className="chat-file">
+              <Paperclip size={15} /> <span>{file.name}</span>
+              <button
+                type="button"
+                aria-label="Bỏ tệp"
+                onClick={() => setFile(null)}
+              >
+                <X size={15} />
+              </button>
+            </div>
+          )}
           <div className="chat-compose-row">
             <label className="chat-attach" title="Đính kèm tệp">
               <Paperclip size={19} />
               <span className="sr-only">Tệp đính kèm · tối đa 10 MB</span>
-              <input aria-label="Tệp đính kèm · tối đa 10 MB" key={send.isSuccess && !file ? "empty" : "file"} type="file" onChange={(event) => setFile(event.target.files?.[0] || null)} />
+              <input
+                aria-label="Tệp đính kèm · tối đa 10 MB"
+                key={send.isSuccess && !file ? "empty" : "file"}
+                type="file"
+                onChange={(event) => setFile(event.target.files?.[0] || null)}
+              />
             </label>
             <label className="chat-input">
               <span className="sr-only">Nội dung</span>
@@ -530,14 +872,22 @@ function Conversation({
                 value={content}
                 onChange={(event) => updateTyping(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
+                  if (
+                    event.key === "Enter" &&
+                    !event.shiftKey &&
+                    !event.nativeEvent.isComposing
+                  ) {
                     event.preventDefault();
                     form.current?.requestSubmit();
                   }
                 }}
               />
             </label>
-            <button className="chat-send" aria-label="Gửi tin nhắn" disabled={send.isPending || (!content.trim() && !file)}>
+            <button
+              className="chat-send"
+              aria-label="Gửi tin nhắn"
+              disabled={send.isPending || (!content.trim() && !file)}
+            >
               <Send size={19} />
             </button>
           </div>

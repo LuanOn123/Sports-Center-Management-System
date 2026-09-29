@@ -4,6 +4,7 @@ import type {
   AreaType,
   ClassItem,
   ClassSchedule,
+  CoursePlan,
   Sport,
 } from "../types/member";
 
@@ -31,9 +32,7 @@ export interface ScheduleQuery {
 }
 
 export const classesApi = {
-  async getClasses(
-    query: ClassQuery = {},
-  ): Promise<{
+  async getClasses(query: ClassQuery = {}): Promise<{
     classes: ClassItem[];
     pagination?: { page: number; totalPages: number; total: number };
   }> {
@@ -59,6 +58,10 @@ export const classesApi = {
     return apiClient.get<ClassItem>(`/classes/${id}`);
   },
 
+  async getCoursePlan(id: string): Promise<CoursePlan> {
+    return apiClient.get<CoursePlan>(`/classes/${id}/course-plan`);
+  },
+
   async getSports(): Promise<{ sports: Sport[] }> {
     return {
       sports: (
@@ -67,9 +70,7 @@ export const classesApi = {
     };
   },
 
-  async getSchedules(
-    query: ScheduleQuery = {},
-  ): Promise<{
+  async getSchedules(query: ScheduleQuery = {}): Promise<{
     schedules: ClassSchedule[];
     pagination?: { page: number; totalPages: number; total: number };
   }> {

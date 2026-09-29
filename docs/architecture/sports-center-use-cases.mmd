@@ -1,0 +1,181 @@
+flowchart LR
+  Guest["👤 Khách"]
+  Member["👤 Hội viên"]
+  Coach["👤 Huấn luyện viên"]
+  Staff["👤 Lễ tân"]
+  Manager["👤 Quản lý"]
+
+  subgraph System["HỆ THỐNG QUẢN LÝ TRUNG TÂM THỂ THAO"]
+    direction TB
+
+    subgraph Access["Tài khoản và liên lạc"]
+      direction TB
+      U_Register(["Đăng ký tài khoản hội viên"])
+      U_Login(["Đăng nhập"])
+      U_Logout(["Đăng xuất"])
+      U_Profile(["Xem và cập nhật hồ sơ cá nhân"])
+      U_Password(["Đổi mật khẩu"])
+      U_Notice(["Xem và đánh dấu thông báo"])
+      U_Chat(["Trao đổi tin nhắn"])
+    end
+
+    subgraph MemberArea["Hội viên và đặt lớp"]
+      direction TB
+      U_Catalog(["Xem gói tập và bộ môn"])
+      U_FindClass(["Tìm và xem lớp học, lịch học"])
+      U_Book(["Đặt chỗ buổi học"])
+      U_CheckBook(["Kiểm tra gói, chỗ trống và trùng lịch"])
+      U_CheckAttend(["Kiểm tra mã QR, đặt chỗ và gói còn hạn"])
+      U_CancelBook(["Hủy lượt đặt chỗ"])
+      U_MyBookings(["Xem lớp và lịch tập của tôi"])
+      U_MySub(["Xem gói hội viên"])
+      U_SelfCancel(["Tự hủy gói và xem kết quả hoàn tiền"])
+      U_MyFinance(["Xem thanh toán và hóa đơn của tôi"])
+      U_ScanQR(["Quét QR điểm danh"])
+      U_MyAttendance(["Xem lịch sử điểm danh"])
+      U_MyTraining(["Xem kế hoạch và kết quả tập luyện"])
+      U_ViewFeedback(["Xem đánh giá huấn luyện viên"])
+      U_RateCoach(["Gửi hoặc cập nhật đánh giá HLV"])
+      U_DeleteFeedback(["Xóa đánh giá của tôi"])
+    end
+
+    subgraph Coaching["Huấn luyện và điểm danh"]
+      direction TB
+      U_CoachSchedule(["Xem lớp và lịch dạy được phân công"])
+      U_Roster(["Xem danh sách học viên buổi học"])
+      U_ManualAttendance(["Ghi và sửa điểm danh thủ công"])
+      U_GenerateQR(["Tạo QR điểm danh"])
+      U_TrainingPlan(["Giao kế hoạch tập luyện"])
+      U_TrainingResult(["Ghi nhận kết quả tập luyện"])
+    end
+
+    subgraph Operations["Vận hành tại quầy"]
+      direction TB
+      U_CreateMember(["Tạo tài khoản và hồ sơ hội viên"])
+      U_EditMember(["Cập nhật hồ sơ hội viên"])
+      U_ManageClass(["Tạo, sửa và ngừng lớp học"])
+      U_ManageSchedule(["Tạo, sửa, hủy và hoàn tất lịch học"])
+      U_AssignCoach(["Phân công hoặc gỡ huấn luyện viên"])
+      U_BookForMember(["Đặt chỗ cho hội viên"])
+      U_CancelForMember(["Hủy chỗ cho hội viên"])
+      U_Subscribe(["Đăng ký hoặc gia hạn gói tại quầy"])
+      U_CheckPlan(["Kiểm tra hạng và thời hạn gói"])
+      U_PaymentInvoice(["Ghi nhận thanh toán và phát hành hóa đơn"])
+      U_ViewFinance(["Tra cứu thanh toán và hóa đơn"])
+      U_Remind(["Gửi nhắc lịch học sắp tới"])
+    end
+
+    subgraph Administration["Quản trị và báo cáo"]
+      direction TB
+      U_Users(["Quản lý tài khoản, vai trò và trạng thái"])
+      U_CoachProfile(["Cập nhật hồ sơ huấn luyện viên"])
+      U_Plans(["Quản lý danh mục gói hội viên"])
+      U_Sports(["Quản lý bộ môn"])
+      U_Rooms(["Quản lý phòng tập"])
+      U_SubStatus(["Tạm dừng, tiếp tục hoặc hủy gói"])
+      U_Refund(["Tính và ghi nhận hoàn tiền khi hủy gói"])
+      U_PaymentStatus(["Điều chỉnh trạng thái thanh toán"])
+      U_Reports(["Xem báo cáo doanh thu, hội viên, lớp và gói"])
+      U_Moderate(["Xóa đánh giá vi phạm"])
+    end
+  end
+
+  Guest --- U_Register
+  Guest --- U_Login
+  Guest --- U_Catalog
+
+  Member --- U_Catalog
+  Member --- U_FindClass
+  Member --- U_Book
+  Member --- U_CancelBook
+  Member --- U_MyBookings
+  Member --- U_MySub
+  Member --- U_SelfCancel
+  Member --- U_MyFinance
+  Member --- U_ScanQR
+  Member --- U_MyAttendance
+  Member --- U_MyTraining
+  Member --- U_ViewFeedback
+  Member --- U_RateCoach
+  Member --- U_DeleteFeedback
+
+  Coach --- U_CoachSchedule
+  Coach --- U_Roster
+  Coach --- U_ManualAttendance
+  Coach --- U_GenerateQR
+  Coach --- U_TrainingPlan
+  Coach --- U_TrainingResult
+  Coach --- U_ViewFeedback
+
+  Staff --- U_CreateMember
+  Staff --- U_EditMember
+  Staff --- U_ManageClass
+  Staff --- U_ManageSchedule
+  Staff --- U_AssignCoach
+  Staff --- U_BookForMember
+  Staff --- U_CancelForMember
+  Staff --- U_Subscribe
+  Staff --- U_PaymentInvoice
+  Staff --- U_ViewFinance
+  Staff --- U_Remind
+
+  Manager --- U_CreateMember
+  Manager --- U_EditMember
+  Manager --- U_ManageClass
+  Manager --- U_ManageSchedule
+  Manager --- U_AssignCoach
+  Manager --- U_BookForMember
+  Manager --- U_CancelForMember
+  Manager --- U_Subscribe
+  Manager --- U_PaymentInvoice
+  Manager --- U_ViewFinance
+  Manager --- U_Remind
+  Manager --- U_ManualAttendance
+  Manager --- U_GenerateQR
+  Manager --- U_TrainingPlan
+  Manager --- U_TrainingResult
+  Manager --- U_Users
+  Manager --- U_CoachProfile
+  Manager --- U_Plans
+  Manager --- U_Sports
+  Manager --- U_Rooms
+  Manager --- U_SubStatus
+  Manager --- U_PaymentStatus
+  Manager --- U_Reports
+  Manager --- U_Moderate
+
+  Member --- U_Logout
+  Member --- U_Profile
+  Member --- U_Password
+  Member --- U_Notice
+  Member --- U_Chat
+  Coach --- U_Logout
+  Coach --- U_Profile
+  Coach --- U_Password
+  Coach --- U_Notice
+  Coach --- U_Chat
+  Staff --- U_Logout
+  Staff --- U_Profile
+  Staff --- U_Password
+  Staff --- U_Notice
+  Staff --- U_Chat
+  Manager --- U_Logout
+  Manager --- U_Profile
+  Manager --- U_Password
+  Manager --- U_Notice
+  Manager --- U_Chat
+
+  U_Book -.->|«include»| U_CheckBook
+  U_BookForMember -.->|«include»| U_CheckBook
+  U_ScanQR -.->|«include»| U_CheckAttend
+  U_Subscribe -.->|«include»| U_CheckPlan
+  U_Subscribe -.->|«include»| U_PaymentInvoice
+  U_Refund -.->|«extend» khi đủ điều kiện| U_SelfCancel
+  U_Refund -.->|«extend» khi hủy gói ACTIVE| U_SubStatus
+
+  classDef actor fill:#fff,stroke:#26384a,stroke-width:2px,color:#172b3a
+  classDef usecase fill:#f5f9ff,stroke:#315b83,stroke-width:1px,color:#172b3a
+  classDef develop fill:#fff8e8,stroke:#a86b14,stroke-width:1px,stroke-dasharray:5 4,color:#172b3a
+  class Guest,Member,Coach,Staff,Manager actor
+  class U_Register,U_Login,U_Logout,U_Profile,U_Password,U_Notice,U_Chat,U_Catalog,U_FindClass,U_Book,U_CheckBook,U_CancelBook,U_MyBookings,U_MySub,U_MyFinance,U_MyAttendance,U_MyTraining,U_CoachSchedule,U_Roster,U_ManualAttendance,U_TrainingPlan,U_TrainingResult,U_CreateMember,U_EditMember,U_ManageClass,U_ManageSchedule,U_AssignCoach,U_BookForMember,U_CancelForMember,U_Subscribe,U_CheckPlan,U_PaymentInvoice,U_ViewFinance,U_Remind,U_Users,U_CoachProfile,U_Plans,U_Sports,U_Rooms,U_SubStatus,U_PaymentStatus,U_Reports usecase
+  class U_SelfCancel,U_ScanQR,U_CheckAttend,U_ViewFeedback,U_RateCoach,U_DeleteFeedback,U_GenerateQR,U_Refund,U_Moderate develop

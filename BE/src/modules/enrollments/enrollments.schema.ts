@@ -17,3 +17,10 @@ export const EnrollmentQuerySchema = z.object({
   scheduleId: z.string().optional(),
   memberId: z.string().optional(),
 });
+
+// Đăng ký TRỌN KHÓA: tạo Enrollment cho TẤT CẢ buổi sắp diễn ra của Class (all-or-nothing).
+export const EnrollWholeCourseSchema = z.object({
+  classId: z.string().min(1),
+  memberId: z.string().optional(), // required when staff/manager enrolls for a member
+});
+

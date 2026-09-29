@@ -4,6 +4,7 @@ import { authorize } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
 import {
   CreateScheduleSchema,
+  CreateActivityPlanSchema,
   UpdateScheduleSchema,
   ScheduleQuerySchema,
   ScheduleIdSchema,
@@ -11,6 +12,33 @@ import {
 import * as schedulesController from "./class-schedules.controller.js";
 
 const router = Router();
+
+/**
+ * @swagger
+ * /class-schedules/activity-plan:
+ *   post:
+ *     summary: Atomically create a sport (optional), class, coach assignments and schedules
+ *     tags: [Class Schedules]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       201: { $ref: "#/components/responses/ScheduleCreated" }
+ *       400: { $ref: "#/components/responses/BadRequest" }
+ *       401: { $ref: "#/components/responses/Unauthorized" }
+ *       403: { $ref: "#/components/responses/Forbidden" }
+ *       409: { $ref: "#/components/responses/Conflict" }
+ */
+router.post(
+  "/activity-plan",
+  authenticate,
+  authorize("MANAGER", "STAFF"),
+  validate(CreateActivityPlanSchema),
+  schedulesController.createActivityPlan,
+);
 
 /**
  * @swagger

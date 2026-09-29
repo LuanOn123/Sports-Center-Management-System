@@ -8,9 +8,13 @@ import {
   getRefreshTokenExpiryDate,
 } from "../../utils/jwt.js";
 import { hashToken } from "../../utils/hashToken.js";
+import { removeStoredAvatar } from "../../utils/avatarStorage.js";
 import { createNotification } from "../notifications/notifications.service.js";
 import { ensureActiveFreeSubscription } from "../subscriptions/free-subscription.service.js";
-import type { RegisterInput, UpdateProfileInput } from "./auth.schema.js";
+import { disconnectUserSockets } from "../chat/chat.socket.js";
+import { sendOtpEmail } from "../../utils/mailer.js";
+import { randomInt, createHash } from "crypto";
+import type { RegisterInput, UpdateProfileInput, ForgotPasswordInput, ResetPasswordInput } from "./auth.schema.js";
 
 export async function register(data: RegisterInput) {
   const existing = await prisma.user.findUnique({ where: { email: data.email } });
@@ -131,6 +135,7 @@ export async function getMe(userId: string) {
       phone: true,
       gender: true,
       dateOfBirth: true,
+      avatarUrl: true,
       role: true,
       isActive: true,
       createdAt: true,
@@ -149,23 +154,25 @@ export async function updateMe(userId: string, data: UpdateProfileInput) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new AppError("User not found", 404);
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      ...userFields,
-      dateOfBirth: userFields.dateOfBirth ? new Date(userFields.dateOfBirth) : undefined,
-    },
-  });
+  const profileData: Record<string, unknown> = {};
+  if (fitnessGoal !== undefined) profileData.fitnessGoal = fitnessGoal;
+  if (trainingLevel !== undefined) profileData.trainingLevel = trainingLevel;
+  if (trainingPreference !== undefined) profileData.trainingPreference = trainingPreference;
 
-  if (user.role === "MEMBER") {
-    const profileData: Record<string, unknown> = {};
-    if (fitnessGoal !== undefined) profileData.fitnessGoal = fitnessGoal;
-    if (trainingLevel !== undefined) profileData.trainingLevel = trainingLevel;
-    if (trainingPreference !== undefined) profileData.trainingPreference = trainingPreference;
-    if (Object.keys(profileData).length > 0) {
-      await prisma.memberProfile.update({ where: { userId }, data: profileData });
+  // User + profile phải cập nhật ATOMIC: lỗi giữa chừng không để dữ liệu nửa vời (F02).
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        ...userFields,
+        dateOfBirth: userFields.dateOfBirth ? new Date(userFields.dateOfBirth) : undefined,
+      },
+    });
+
+    if (user.role === "MEMBER" && Object.keys(profileData).length > 0) {
+      await tx.memberProfile.update({ where: { userId }, data: profileData });
     }
-  }
+  });
 
   return getMe(userId);
 }
@@ -182,5 +189,112 @@ export async function changePassword(
   if (!valid) throw new AppError("Current password is incorrect", 400);
 
   const hashed = await hashPassword(newPassword);
-  await prisma.user.update({ where: { id: userId }, data: { password: hashed } });
+  // Đổi mật khẩu (đặc biệt khi nghi lộ tài khoản) phải thu hồi MỌI refresh token cũ —
+  // nếu không thiết bị khác vẫn refresh được access token mới.
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { password: hashed } }),
+    prisma.refreshToken.deleteMany({ where: { userId } }),
+  ]);
+
+  // Đồng thời ngắt socket đang mở (handshake chỉ xác thực một lần).
+  disconnectUserSockets(userId);
+}
+
+/**
+ * Cập nhật avatar cho user. `avatarUrl` do controller lấy từ utils/avatarStorage
+ * (local `uploads/avatars/...` hoặc Cloudinary), sau đó trả về profile đầy đủ như `GET /auth/me`.
+ */
+export async function updateAvatar(userId: string, avatarUrl: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { avatarUrl: true },
+  });
+  if (!user) throw new AppError("User not found", 404);
+
+  await prisma.user.update({ where: { id: userId }, data: { avatarUrl } });
+
+  // Dọn avatar cũ sau khi DB update thành công. Với Cloudinary, `public_id` cố định theo user
+  // nên upload mới đã ghi đè asset cũ — không cần (và không được) xoá (xem utils/avatarStorage.ts).
+  removeStoredAvatar(user.avatarUrl);
+
+  return getMe(userId);
+}
+
+/** Băm OTP bằng SHA-256 trước khi lưu DB — tránh lộ OTP cleartext nếu DB bị dump. */
+function hashOtp(otp: string): string {
+  return createHash("sha256").update(otp).digest("hex");
+}
+
+/**
+ * Bước 1 — Quên mật khẩu: sinh OTP 6 chữ số, lưu hash + expiry vào User,
+ * sau đó gửi mail. Luôn trả HTTP 200 cùng thông điệp chung dù email không tồn tại
+ * (chống user enumeration).
+ */
+export async function forgotPassword(data: ForgotPasswordInput) {
+  const OTP_TTL_MS = 5 * 60 * 1000; // 5 phút
+
+  const user = await prisma.user.findUnique({ where: { email: data.email } });
+
+  // Trả sớm nếu không tìm thấy — KHÔNG tiết lộ email có tồn tại hay không.
+  if (!user || !user.isActive) return;
+
+  const otp = String(randomInt(100_000, 999_999)); // 6 chữ số, đủ ngẫu nhiên
+  const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      resetPasswordOtp: hashOtp(otp),
+      resetPasswordOtpExpiresAt: expiresAt,
+    },
+  });
+
+  // Fire-and-forget: không await để API trả 200 NGAY, gửi mail ở nền.
+  // OTP đã được lưu DB — dù mail chưa đến tay user thì API đã sẵn sàng xác minh.
+  sendOtpEmail(user.email, otp).catch((mailErr) => {
+    console.error('[forgotPassword] Failed to send OTP email to', user.email, mailErr);
+  });
+}
+
+/**
+ * Bước 2 — Đặt lại mật khẩu: xác minh OTP (hash, expiry, one-time-use),
+ * cập nhật password mới, thu hồi toàn bộ refresh token và đóng socket.
+ */
+export async function resetPassword(data: ResetPasswordInput) {
+  const user = await prisma.user.findUnique({ where: { email: data.email } });
+
+  if (!user || !user.isActive) {
+    throw new AppError("OTP không hợp lệ hoặc đã hết hạn.", 400);
+  }
+
+  if (!user.resetPasswordOtp || !user.resetPasswordOtpExpiresAt) {
+    throw new AppError("OTP không hợp lệ hoặc đã hết hạn.", 400);
+  }
+
+  if (user.resetPasswordOtpExpiresAt < new Date()) {
+    throw new AppError("OTP đã hết hạn. Vui lòng yêu cầu mã mới.", 400);
+  }
+
+  const inputHash = hashOtp(data.otp);
+  if (inputHash !== user.resetPasswordOtp) {
+    throw new AppError("OTP không hợp lệ hoặc đã hết hạn.", 400);
+  }
+
+  const hashed = await hashPassword(data.newPassword);
+
+  // Đặt lại password + xóa OTP (one-time-use) + thu hồi mọi refresh token — atomic.
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashed,
+        resetPasswordOtp: null,
+        resetPasswordOtpExpiresAt: null,
+      },
+    }),
+    prisma.refreshToken.deleteMany({ where: { userId: user.id } }),
+  ]);
+
+  // Đóng các socket đang mở.
+  disconnectUserSockets(user.id);
 }

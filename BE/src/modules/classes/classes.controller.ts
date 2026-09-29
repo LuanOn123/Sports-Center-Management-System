@@ -20,6 +20,12 @@ export async function getClassById(req: Request, res: Response, next: NextFuncti
     sendSuccess(res, cls, "Class retrieved successfully");
   } catch (err) { next(err); }
 }
+export async function getClassCoursePlan(req: Request, res: Response, next: NextFunction) {
+  try {
+    const plan = await classesService.getClassCoursePlan(req.params.id as string, req.user);
+    sendSuccess(res, plan, "Class course plan retrieved successfully");
+  } catch (err) { next(err); }
+}
 export async function updateClass(req: Request, res: Response, next: NextFunction) {
   try {
     const cls = await classesService.updateClass(req.params.id as string, req.body);

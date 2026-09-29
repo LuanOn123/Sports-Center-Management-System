@@ -159,6 +159,29 @@ async function main() {
   });
   console.log("Member 3:", member3.email);
 
+  // Account riêng để kiểm thử thanh toán SePay (MEMBER + memberProfile).
+  const memberSepay = await prisma.user.upsert({
+    where: { email: "sepay.test@example.com" },
+    update: {},
+    create: {
+      email: "sepay.test@example.com",
+      password: memberPwd,
+      fullName: "SePay Test Member",
+      phone: "0900000008",
+      role: UserRole.MEMBER,
+      isActive: true,
+      memberProfile: {
+        create: {
+          fitnessGoal: "Kiểm thử thanh toán VietQR",
+          trainingLevel: "BEGINNER",
+          trainingPreference: "Cuối tuần",
+        },
+      },
+    },
+    include: { memberProfile: true },
+  });
+  console.log("Member SePay test:", memberSepay.email);
+
   // ─── MEMBERSHIP PLANS ────────────────────────────────
   const planBasic = await prisma.membershipPlan.upsert({
     where: { id: "plan-basic-001" },
@@ -218,6 +241,21 @@ async function main() {
       durationDays: FREE_PLAN.durationDays,
       tier: MemberTier.FREE,
       maxConcurrentClasses: 0,
+      isActive: true,
+    },
+  });
+  // Gói giá thấp để kiểm thử thanh toán SePay (webhook/mock-confirm) với số tiền thật nhỏ.
+  await prisma.membershipPlan.upsert({
+    where: { id: "plan-sepay-test-001" },
+    update: {},
+    create: {
+      id: "plan-sepay-test-001",
+      name: "SePay Test 5K",
+      description: "Gói thử nghiệm thanh toán SePay 5.000đ (7 ngày) — chỉ dùng để kiểm thử luồng VietQR.",
+      price: 5000,
+      durationDays: 7,
+      tier: MemberTier.MEMBERSHIP,
+      maxConcurrentClasses: 3,
       isActive: true,
     },
   });
@@ -530,7 +568,7 @@ async function main() {
   // ─── AUTO FREE SUBSCRIPTION cho MEMBER chưa có gói ACTIVE ────────────
   // Member mới luôn phải có subscription ACTIVE (tier FREE, quota 0). Idempotent:
   // member đã có ACTIVE subscription (member1/member2) sẽ không bị tạo thêm.
-  const memberProfiles = [member1.memberProfile, member2.memberProfile, member3.memberProfile];
+  const memberProfiles = [member1.memberProfile, member2.memberProfile, member3.memberProfile, memberSepay.memberProfile];
   for (const profile of memberProfiles) {
     if (!profile) continue;
     const result = await prisma.$transaction((tx) =>
@@ -550,6 +588,7 @@ async function main() {
   console.log("  Member 1: member1@example.com      / Member@123  [MEMBERSHIP tier]");
   console.log("  Member 2: member2@example.com      / Member@123  [PREMIUM tier]");
   console.log("  Member 3: member3@example.com      / Member@123  [FREE tier]");
+  console.log("  SePay:    sepay.test@example.com   / Member@123  [FREE tier — kiểm thử thanh toán SePay, gói SePay Test 5K]");
 }
 
 main()

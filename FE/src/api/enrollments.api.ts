@@ -1,6 +1,10 @@
 import { allPages } from "../shared/pagedApi";
 import { apiClient } from "./client";
-import type { ConcurrentClassQuota, Enrollment } from "../types/member";
+import type {
+  ConcurrentClassQuota,
+  Enrollment,
+  WholeCourseEnrollmentResult,
+} from "../types/member";
 
 export interface EnrollmentQuery {
   status?: "BOOKED" | "CANCELLED" | "COMPLETED";
@@ -11,6 +15,16 @@ export interface EnrollmentQuery {
 export const enrollmentsApi = {
   async bookClass(scheduleId: string): Promise<Enrollment> {
     return apiClient.post<Enrollment>("/enrollments", { scheduleId });
+  },
+
+  async enrollWholeCourse(
+    classId: string,
+    memberId?: string,
+  ): Promise<WholeCourseEnrollmentResult> {
+    return apiClient.post<WholeCourseEnrollmentResult>("/enrollments/bulk", {
+      classId,
+      ...(memberId ? { memberId } : {}),
+    });
   },
 
   async getMyEnrollments(
