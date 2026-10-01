@@ -68,7 +68,7 @@ router.post("/chat", validate(AiChatSchema), aiController.chat);
  *     description: Dành cho Hội viên (MEMBER). Hệ thống sẽ đọc dữ liệu từ hồ sơ của hội viên (Tuổi, Giới tính, Mục tiêu, Trình độ, Sở thích) để nhờ AI viết lịch tập 7 ngày. Lịch tập sẽ được tạo và lưu luôn vào danh sách Lịch tập của hội viên. Một tài khoản "Trợ Lý AI" sẽ được tự động tạo với vai trò Coach.
  *     tags: [AI Assistant]
  *     security:
- *       - bearerAuth: []
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Thành công
