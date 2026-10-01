@@ -5,8 +5,8 @@ export const AiChatSchema = z.object({
   history: z
     .array(
       z.object({
-        role: z.enum(["user", "model"]),
-        parts: z.array(z.object({ text: z.string() })),
+        role: z.enum(["user", "assistant", "system"]),
+        content: z.string(),
       })
     )
     .optional(),

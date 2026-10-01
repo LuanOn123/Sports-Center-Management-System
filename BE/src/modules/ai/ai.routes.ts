@@ -31,13 +31,8 @@ const router = Router();
  *                 items:
  *                   type: object
  *                   properties:
- *                     role: { type: string, enum: [user, model] }
- *                     parts:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           text: { type: string }
+ *                     role: { type: string, enum: [user, assistant, system] }
+ *                     content: { type: string }
  *             example:
  *               message: "Trung tâm có gói tập nào và tuần này có lớp Yoga không?"
  *     responses:

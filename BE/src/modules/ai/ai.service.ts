@@ -1,14 +1,14 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import type { AiChatInput } from "./ai.schema.js";
 
-// Khởi tạo Gemini (đảm bảo đã thêm GEMINI_API_KEY vào .env)
-const getGenAI = () => {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new AppError("Tính năng AI hiện chưa được cấu hình (thiếu GEMINI_API_KEY).", 503);
+// Khởi tạo Groq (đảm bảo đã thêm GROQ_API_KEY vào .env)
+const getGroqAI = () => {
+  if (!process.env.GROQ_API_KEY) {
+    throw new AppError("Tính năng AI hiện chưa được cấu hình (thiếu GROQ_API_KEY).", 503);
   }
-  return new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  return new Groq({ apiKey: process.env.GROQ_API_KEY });
 };
 
 export async function chatWithAssistant(data: AiChatInput) {
@@ -30,9 +30,9 @@ export async function chatWithAssistant(data: AiChatInput) {
           name: true,
           description: true,
           coaches: {
-            include: { coach: { include: { user: { select: { fullName: true } } } } }
-          }
-        }
+            include: { coach: { include: { user: { select: { fullName: true } } } } },
+          },
+        },
       },
     },
     orderBy: { startTime: "asc" },
@@ -60,45 +60,30 @@ Nhiệm vụ của bạn là giải đáp các thắc mắc về trung tâm dự
     schedules.forEach((s) => {
       const timeStr = s.startTime.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
       const duration = Math.round((s.endTime.getTime() - s.startTime.getTime()) / 60000);
-      const coachNames = s.class.coaches.map(c => c.coach.user.fullName).join(", ") || "Chưa xếp HLV";
+      const coachNames = s.class.coaches.map((c) => c.coach.user.fullName).join(", ") || "Chưa xếp HLV";
       systemPrompt += `- Lớp "${s.class.name}" (HLV: ${coachNames}) | Bắt đầu: ${timeStr} | Kéo dài: ${duration} phút | Phòng: ${s.roomId}\n`;
     });
   }
 
   systemPrompt += `\nLưu ý:\n- Câu trả lời nên ngắn gọn, dễ đọc (dùng gạch đầu dòng nếu cần).\n- Trung tâm có hỗ trợ thanh toán chuyển khoản qua mã QR (SePay).\n- Hội viên mua gói sẽ được cấp mã QR tự động.`;
 
-  const genAI = getGenAI();
-  let model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
-    systemInstruction: systemPrompt,
-  });
-
-  // 4. Gọi Gemini API
-  let chat = model.startChat({
-    history: data.history || [],
-  });
+  const groq = getGroqAI();
+  const messages: any[] = [{ role: "system", content: systemPrompt }];
+  
+  if (data.history && data.history.length > 0) {
+    messages.push(...data.history);
+  }
+  messages.push({ role: "user", content: data.message });
 
   try {
-    const result = await chat.sendMessage(data.message);
-    return result.response.text();
-  } catch (err: any) {
-    // Fallback model mới nhất nếu không tìm thấy
-    if (err.status === 404 || err.message?.includes("not found")) {
-      console.warn("[AI] gemini-2.5-flash not found, falling back to gemini-3.5-flash...");
-      model = genAI.getGenerativeModel({
-        model: "gemini-3.5-flash",
-        systemInstruction: systemPrompt,
-      });
-      chat = model.startChat({ history: data.history || [] });
-      try {
-        const fallbackResult = await chat.sendMessage(data.message);
-        return fallbackResult.response.text();
-      } catch (fallbackErr) {
-        console.error("[AI Chat Fallback Error]", fallbackErr);
-        throw new AppError("Lỗi kết nối đến AI Server (không tìm thấy model hỗ trợ).", 500);
-      }
-    }
+    const chatCompletion = await groq.chat.completions.create({
+      messages: messages,
+      model: "qwen/qwen3.8-27b", // Model mới hỗ trợ rất tốt tiếng Việt
+      temperature: 0.5,
+    });
     
+    return chatCompletion.choices[0]?.message?.content || "Xin lỗi, em không thể trả lời lúc này.";
+  } catch (err: any) {
     console.error("[AI Chat Error]", err);
     throw new AppError("Lỗi kết nối đến AI Server. Vui lòng thử lại sau.", 500);
   }
@@ -156,7 +141,8 @@ export async function generateTrainingPlan(userId: string) {
     ageStr = `${age} tuổi`;
   }
   const genderStr = gender === "MALE" ? "nam" : gender === "FEMALE" ? "nữ" : "giới tính khác";
-  const levelStr = trainingLevel === "BEGINNER" ? "cơ bản" : trainingLevel === "INTERMEDIATE" ? "trung bình" : "nâng cao";
+  const levelStr =
+    trainingLevel === "BEGINNER" ? "cơ bản" : trainingLevel === "INTERMEDIATE" ? "trung bình" : "nâng cao";
 
   const prompt = `Đóng vai một Huấn luyện viên chuyên nghiệp. Hãy tạo một lịch tập và dinh dưỡng trong 7 ngày cho hội viên có thông tin sau:
 - Tên: ${fullName}
@@ -169,14 +155,21 @@ Yêu cầu:
 - Trả về bằng định dạng Markdown đẹp, rõ ràng.
 - Ghi rõ các bài tập, số hiệp (sets), số lần (reps) cho từng ngày.
 - Có thêm vài gạch đầu dòng về gợi ý dinh dưỡng (ví dụ: ăn nhiều protein, uống đủ nước...).
-- Chỉ xuất nội dung, không cần chào hỏi thừa thãi.`;
+- Chỉ xuất nội dung markdown lịch tập, tuyệt đối không cần dạo đầu hay chào hỏi thừa thãi.`;
 
-  const genAI = getGenAI();
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const groq = getGroqAI();
 
   try {
-    const result = await model.generateContent(prompt);
-    const planContent = result.response.text();
+    const completion = await groq.chat.completions.create({
+      messages: [
+        { role: "system", content: "Bạn là một huấn luyện viên AI chuyên nghiệp." },
+        { role: "user", content: prompt },
+      ],
+      model: "qwen/qwen3.8-27b",
+      temperature: 0.7,
+    });
+
+    const planContent = completion.choices[0]?.message?.content || "Không thể tạo lịch tập.";
 
     const aiCoachId = await getOrCreateAiCoach();
 
