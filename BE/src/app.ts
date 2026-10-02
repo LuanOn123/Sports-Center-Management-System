@@ -27,15 +27,35 @@ import chatRoutes from "./modules/chat/chat.routes.js";
 import attendanceRoutes from "./modules/attendance/attendance.routes.js";
 import trainingPlanRoutes from "./modules/training-plans/training-plans.routes.js";
 import notificationRoutes from "./modules/notifications/notifications.routes.js";
+import feedbackRoutes from "./modules/feedbacks/feedbacks.routes.js";
 
 const app = express();
+
+app.set("etag", false);
 
 // Global middlewares
 app.use(helmet());
 app.use(cors());
 app.use(morgan("dev"));
-app.use(express.json());
+app.use(
+  express.json({
+    // Giữ raw bytes của body: chữ ký HMAC-SHA256 webhook SePay ký trên
+    // `{timestamp}.{rawBody}` — KHÔNG thể re-serialize từ req.body (key order/whitespace lệch).
+    verify: (req, _res, buf) => {
+      (req as import("express").Request & { rawBody?: Buffer }).rawBody =
+        Buffer.from(buf);
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true }));
+
+// API dữ liệu theo phiên: cấm cache (browser/CDN) — tránh conditional request/304.
+// Bỏ qua /docs (tài nguyên Swagger UI tĩnh vẫn nên được cache).
+app.use("/api/v1", (req, res, next) => {
+  if (req.path.startsWith("/docs")) return next();
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
 
 // Swagger
 app.use(
@@ -75,6 +95,7 @@ app.use(`${v1}/chat`, chatRoutes);
 app.use(`${v1}/attendance`, attendanceRoutes);
 app.use(`${v1}/training-plans`, trainingPlanRoutes);
 app.use(`${v1}/notifications`, notificationRoutes);
+app.use(`${v1}/feedbacks`, feedbackRoutes);
 
 // Static files for uploads
 app.use("/uploads", express.static("uploads"));

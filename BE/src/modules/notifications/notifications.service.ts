@@ -22,6 +22,13 @@ export type NotificationTypeEnum =
   | "TRAINING_PLAN_ASSIGNED"
   // Lớp học mới
   | "NEW_CLASS"
+  | "COACH_CHANGED"
+  // Chuyên cần (Attendance)
+  | "ATTENDANCE_WARNING"
+  | "ATTENDANCE_PENALTY"
+  | "ATTENDANCE_PENALTY_REVOKED"
+  // Lịch học đổi phòng (bulk transfer Room hư)
+  | "SCHEDULE_ROOM_CHANGED"
   // Thanh toán
   | "PAYMENT_SUCCESS"
   | "PAYMENT_REFUNDED"
@@ -57,6 +64,10 @@ export async function createNotification(
 /**
  * Gửi notification đến nhiều user (batch).
  * Ví dụ: thông báo lớp mới cho tất cả thành viên.
+ *
+ * Không dedupe ở DB: Notification không có unique constraint nên không dùng
+ * `skipDuplicates` (đã gỡ vì misleading). Dedupe thật (nếu cần) làm ở caller,
+ * ví dụ UPCOMING_CLASS check findFirst theo metadata.scheduleId trong 24h.
  */
 export async function broadcastNotification(
   userIds: string[],
@@ -75,7 +86,6 @@ export async function broadcastNotification(
       reason: options?.reason ?? null,
       metadata: options?.metadata ? (options.metadata as object) : undefined,
     })),
-    skipDuplicates: true,
   });
 }
 
@@ -147,7 +157,7 @@ export async function sendUpcomingClassReminders() {
       startTime: { gte: now, lte: in24h },
     },
     include: {
-      class: { include: { sport: true } },
+      class: { include: { sports: true } },
       enrollments: {
         where: { status: "BOOKED" },
         include: { member: { include: { user: true } } },
@@ -171,11 +181,12 @@ export async function sendUpcomingClassReminders() {
       if (exists) continue;
 
       const startStr = schedule.startTime.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+      const sportNames = schedule.class.sports.map(s => s.name).join(", ");
       await createNotification(
         userId,
         "UPCOMING_CLASS",
         `Nhắc nhở: Lớp ${schedule.class.name} sắp bắt đầu`,
-        `Lớp "${schedule.class.name}" (${schedule.class.sport.name}) sẽ bắt đầu lúc ${startStr}. Đừng quên chuẩn bị!`,
+        `Lớp "${schedule.class.name}" (${sportNames}) sẽ bắt đầu lúc ${startStr}. Đừng quên chuẩn bị!`,
         { metadata: { scheduleId: schedule.id, classId: schedule.classId } }
       );
       sent++;

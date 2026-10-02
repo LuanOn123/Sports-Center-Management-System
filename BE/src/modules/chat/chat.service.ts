@@ -1,13 +1,39 @@
 import { prisma } from "../../config/prisma.js";
 import { createNotification } from "../notifications/notifications.service.js";
+import { AppError } from "../../middlewares/errorHandler.js";
+import type { UserRole } from "@prisma/client";
+
+const allowedContacts: Record<string, UserRole[]> = {
+  MEMBER: ["COACH"],
+  COACH: ["MEMBER", "STAFF", "MANAGER"],
+  STAFF: ["MANAGER", "COACH"],
+  MANAGER: ["STAFF", "COACH"],
+};
+
+async function assertCanContact(senderId: string, receiverId?: string) {
+  if (!receiverId) return;
+  if (senderId === receiverId) throw new AppError("Cannot send messages to yourself", 400);
+  const [sender, receiver] = await Promise.all([
+    prisma.user.findUnique({ where: { id: senderId }, select: { role: true, isActive: true } }),
+    prisma.user.findUnique({ where: { id: receiverId }, select: { role: true, isActive: true } }),
+  ]);
+  if (!sender?.isActive || !receiver?.isActive)
+    throw new AppError("Chat user not found or inactive", 404);
+  if (!allowedContacts[sender.role]?.includes(receiver.role))
+    throw new AppError("You cannot message this user", 403);
+}
 
 export const chatService = {
   async createMessage(data: { senderId: string; receiverId?: string; content?: string; fileUrl?: string }) {
+    await assertCanContact(data.senderId, data.receiverId);
+    const content = data.content?.trim();
+    if (!content && !data.fileUrl) throw new AppError("Message content or file is required", 400);
+    if (content && content.length > 5000) throw new AppError("Message content is too long", 400);
     const message = await prisma.chatMessage.create({
       data: {
         senderId: data.senderId,
         receiverId: data.receiverId,
-        content: data.content,
+        content,
         fileUrl: data.fileUrl,
         isRead: false,
       },
@@ -23,7 +49,7 @@ export const chatService = {
         data.receiverId,
         "CHAT_MESSAGE",
         `Tin nhắn mới từ ${message.sender.fullName}`,
-        data.content ?? "[Tệp đính kèm]",
+        content ?? "[Tệp đính kèm]",
         { metadata: { senderId: data.senderId, messageId: message.id } }
       ).catch(() => {});
     }
@@ -140,24 +166,7 @@ export const chatService = {
     // MEMBER -> COACH
     // COACH -> MEMBER, STAFF, MANAGER
     // MANAGER -> STAFF, COACH
-    let allowedRoles: any[] = [];
-    
-    switch (role) {
-      case "MEMBER":
-        allowedRoles = ["COACH"];
-        break;
-      case "COACH":
-        allowedRoles = ["MEMBER", "STAFF", "MANAGER"];
-        break;
-      case "STAFF":
-        allowedRoles = ["MANAGER", "COACH"];
-        break;
-      case "MANAGER":
-        allowedRoles = ["STAFF", "COACH"];
-        break;
-      default:
-        allowedRoles = [];
-    }
+    const allowedRoles = allowedContacts[role] ?? [];
 
     return prisma.user.findMany({
       where: {

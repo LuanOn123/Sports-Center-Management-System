@@ -25,6 +25,14 @@ const router = Router();
  *         name: type
  *         schema:
  *           type: string
+ *           enum: [
+ *             "MEMBER_REGISTERED", "CHAT_MESSAGE",
+ *             "SUBSCRIPTION_EXPIRING", "SUBSCRIPTION_EXPIRED", "SUBSCRIPTION_CANCELLED",
+ *             "UPCOMING_CLASS", "SCHEDULE_CANCELLED", "SCHEDULE_UPDATED",
+ *             "ENROLLMENT_CONFIRMED", "ENROLLMENT_CANCELLED",
+ *             "TRAINING_PLAN_ASSIGNED", "NEW_CLASS", "COACH_CHANGED",
+ *             "PAYMENT_SUCCESS", "PAYMENT_REFUNDED", "PAYMENT_FAILED"
+ *           ]
  *         description: Filter by notification type
  *       - in: query
  *         name: isRead

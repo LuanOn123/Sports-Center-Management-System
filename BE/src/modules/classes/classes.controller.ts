@@ -20,6 +20,12 @@ export async function getClassById(req: Request, res: Response, next: NextFuncti
     sendSuccess(res, cls, "Class retrieved successfully");
   } catch (err) { next(err); }
 }
+export async function getClassCoursePlan(req: Request, res: Response, next: NextFunction) {
+  try {
+    const plan = await classesService.getClassCoursePlan(req.params.id as string, req.user);
+    sendSuccess(res, plan, "Class course plan retrieved successfully");
+  } catch (err) { next(err); }
+}
 export async function updateClass(req: Request, res: Response, next: NextFunction) {
   try {
     const cls = await classesService.updateClass(req.params.id as string, req.body);
@@ -30,6 +36,12 @@ export async function assignCoach(req: Request, res: Response, next: NextFunctio
   try {
     const cls = await classesService.assignCoach(req.params.id as string, req.body.coachId, req.body.isPrimary ?? false);
     sendSuccess(res, cls, "Coach assigned successfully");
+  } catch (err) { next(err); }
+}
+export async function assignSupportCoach(req: Request, res: Response, next: NextFunction) {
+  try {
+    const cls = await classesService.assignSupportCoach(req.params.id as string, req.body.coachId);
+    sendSuccess(res, cls, "Support coach assigned successfully");
   } catch (err) { next(err); }
 }
 export async function removeCoach(req: Request, res: Response, next: NextFunction) {

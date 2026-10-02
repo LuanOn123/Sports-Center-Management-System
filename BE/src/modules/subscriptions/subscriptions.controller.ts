@@ -40,3 +40,14 @@ export async function updateSubscriptionStatus(req: Request, res: Response, next
     sendSuccess(res, sub, "Subscription status updated");
   } catch (err) { next(err); }
 }
+
+export async function cancelSubscriptionBySelf(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await subsService.cancelSubscriptionBySelf(
+      req.params.id as string,
+      req.user!.id,
+      req.body.reason,
+    );
+    sendSuccess(res, result, result.message);
+  } catch (err) { next(err); }
+}
