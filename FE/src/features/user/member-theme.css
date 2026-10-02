@@ -163,6 +163,9 @@ body:has(.member-theme) {
   font-size: 12px;
 }
 .member-theme .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
   min-height: 72px;
   background: #0c121b;
   border-color: #232c3a;
