@@ -106,17 +106,17 @@ export function NotificationsPage() {
     >
       <div
         style={{
-          background: "var(--color-surface)",
-          borderRadius: "var(--radius-card)",
+          background: "var(--member-surface, #ffffff)",
+          borderRadius: 16,
           padding: "24px 28px",
-          border: "1px solid #e7ece9",
+          border: "1px solid var(--member-border, #e7ece9)",
         }}
       >
         <h1
           style={{
             fontSize: 24,
-            fontWeight: 700,
-            color: "var(--color-primary)",
+            fontWeight: 800,
+            color: "var(--member-text, #203d31)",
             margin: "0 0 6px",
           }}
         >
@@ -125,8 +125,8 @@ export function NotificationsPage() {
         <p
           style={{
             margin: 0,
-            color: "var(--color-text-muted)",
-            fontSize: "var(--font-small)",
+            color: "var(--member-muted, #58695f)",
+            fontSize: 13,
           }}
         >
           Nhắc lịch ca học sắp tới, tình trạng gói hội viên và các thông báo mới
@@ -144,9 +144,9 @@ export function NotificationsPage() {
             <div
               key={n.id}
               style={{
-                backgroundColor: "var(--color-surface)",
-                border: "1px solid #e7ece9",
-                borderRadius: "var(--radius-card)",
+                backgroundColor: "var(--member-surface, #ffffff)",
+                border: "1px solid var(--member-border, #e7ece9)",
+                borderRadius: 16,
                 padding: "18px 22px",
                 display: "flex",
                 alignItems: "flex-start",
@@ -160,16 +160,16 @@ export function NotificationsPage() {
                   borderRadius: 10,
                   backgroundColor:
                     n.type === "class"
-                      ? "#f4f3ff"
+                      ? "var(--member-purple-soft, #f4f3ff)"
                       : n.type === "membership"
-                        ? "#f2f8eb"
-                        : "#f8faf9",
+                        ? "var(--member-accent-soft, #f2f8eb)"
+                        : "var(--member-surface-alt, #f8faf9)",
                   color:
                     n.type === "class"
-                      ? "#5925dc"
+                      ? "var(--member-purple, #5925dc)"
                       : n.type === "membership"
-                        ? "#376228"
-                        : "var(--color-text-muted)",
+                        ? "var(--member-accent, #376228)"
+                        : "var(--member-muted, #475467)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -197,17 +197,17 @@ export function NotificationsPage() {
                   <h4
                     style={{
                       margin: 0,
-                      fontSize: "var(--font-small)",
+                      fontSize: 15,
                       fontWeight: 700,
-                      color: "var(--color-primary)",
+                      color: "var(--member-text, #203d31)",
                     }}
                   >
                     {n.title}
                   </h4>
                   <span
                     style={{
-                      fontSize: "var(--font-caption)",
-                      color: "var(--color-text-muted)",
+                      fontSize: 11,
+                      color: "var(--member-muted, #58695f)",
                     }}
                   >
                     {n.time}
@@ -216,8 +216,8 @@ export function NotificationsPage() {
                 <p
                   style={{
                     margin: "0 0 10px",
-                    fontSize: "var(--font-small)",
-                    color: "#54655d",
+                    fontSize: 13,
+                    color: "var(--member-muted, #54655d)",
                     lineHeight: 1.5,
                   }}
                 >
@@ -228,9 +228,9 @@ export function NotificationsPage() {
                   <Link
                     to={n.link}
                     style={{
-                      fontSize: "var(--font-caption)",
+                      fontSize: 12,
                       fontWeight: 700,
-                      color: "#376228",
+                      color: "var(--member-accent, #376228)",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 4,

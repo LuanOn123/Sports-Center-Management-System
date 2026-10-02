@@ -87,6 +87,24 @@ const messages: Record<string, string> = {
     "Không thể ngừng gói đang có hội viên sử dụng.",
   "cannot deactivate room with upcoming schedules":
     "Không thể ngừng phòng đang có lịch học sắp tới.",
+  "target schedule must belong to the same class as the current enrollment":
+    "Bạn chỉ có thể đổi sang buổi khác trong cùng lớp.",
+  "enrollment is no longer booked (it may have been transferred or cancelled already)":
+    "Chỗ hiện tại đã được đổi hoặc hủy. Danh sách sẽ được tải lại.",
+  "only booked enrollments can be transferred":
+    "Chỉ có thể đổi buổi cho lượt đăng ký đang giữ chỗ.",
+  "cannot transfer to the same schedule": "Hãy chọn một buổi khác.",
+  "support coach is already the primary coach of this class":
+    "Huấn luyện viên này đang là HLV chính của lớp.",
+  "cannot change class area type while upcoming schedules use incompatible rooms":
+    "Không thể đổi khu vực lớp khi lịch sắp tới đang dùng phòng không tương thích.",
+  "cannot change room area type while upcoming schedules use incompatible classes":
+    "Không thể đổi khu vực phòng khi còn lịch sắp tới của lớp không tương thích.",
+  "attendance penalty not found": "Không tìm thấy quyết định chuyên cần.",
+  "appeal window has expired": "Đã quá thời hạn gửi khiếu nại.",
+  "penalty has already been appealed": "Quyết định này đã được khiếu nại.",
+  "invalid or expired manual attendance code":
+    "Mã điểm danh không hợp lệ hoặc đã hết hạn. Hãy xin mã mới từ huấn luyện viên.",
   "cannot deactivate sport with active classes":
     "Không thể ngừng bộ môn đang có lớp hoạt động.",
   "cannot create subscription: user is not an active member":
@@ -120,6 +138,12 @@ const messages: Record<string, string> = {
   "a plan with this name already exists": "Tên gói tập đã được sử dụng.",
   "room with this name already exists": "Tên phòng đã được sử dụng.",
   "sport with this name already exists": "Tên bộ môn đã được sử dụng.",
+  "only managers can create a new sport":
+    "Chỉ quản lý được phép tạo bộ môn mới.",
+  "support coach must be different from primary coach":
+    "Huấn luyện viên hỗ trợ phải khác huấn luyện viên chính.",
+  "schedules in the activity plan must not overlap":
+    "Các khung giờ trong lịch không được chồng lấn.",
   "validation failed":
     "Thông tin chưa hợp lệ. Vui lòng kiểm tra các trường bên dưới.",
   "invalid email address": "Email không hợp lệ.",
@@ -132,6 +156,15 @@ const messages: Record<string, string> = {
   "forbidden: insufficient permissions":
     "Bạn không có quyền thực hiện thao tác này.",
   unauthorized: "Vui lòng đăng nhập để tiếp tục.",
+  "avatar must be an image (jpeg, png, webp or gif)":
+    "Chọn ảnh JPEG/PNG/WebP/GIF.",
+  "avatar image must be at most 5mb": "Ảnh đại diện tối đa 5MB.",
+  "avatar image content is invalid (jpeg, png, webp or gif)":
+    "Nội dung ảnh đại diện không hợp lệ. Vui lòng chọn ảnh JPEG/PNG/WebP/GIF thật.",
+  "attachment not found": "Tệp đính kèm không còn khả dụng.",
+  "attachment file not found on storage": "Tệp đính kèm không còn khả dụng.",
+  "forbidden: you can only view your own training plans":
+    "Bạn chỉ được xem kế hoạch tập luyện của mình.",
   forbidden: "Bạn không có quyền thực hiện thao tác này.",
   "record not found": "Không tìm thấy dữ liệu được yêu cầu.",
   "internal server error": "Máy chủ gặp lỗi. Vui lòng thử lại sau.",
@@ -210,7 +243,19 @@ export function localizeApiError(
   errors: unknown,
   status: number,
 ) {
-  const rawMessage = typeof message === "string" ? message : "";
+  let rawMessage = typeof message === "string" ? message : "";
+  const detail = errors as
+    { code?: string; conflicts?: unknown[]; uncovered?: unknown[] } | undefined;
+  if (detail?.code === "SCHEDULE_MOVE_IMPACT") {
+    const names = (items?: unknown[]) =>
+      (items || [])
+        .filter((name): name is string => typeof name === "string")
+        .join(", ");
+    if (names(detail.conflicts))
+      rawMessage += ` Trùng giờ: ${names(detail.conflicts)}.`;
+    if (names(detail.uncovered))
+      rawMessage += ` Ngoài hạn gói: ${names(detail.uncovered)}.`;
+  }
   const fields: FieldError[] = Array.isArray(errors)
     ? errors
         .filter(

@@ -1,0 +1,455 @@
+/* Motion belongs only to the public and authentication surfaces. */
+:is(.pulse-auth, .pulse-landing) {
+  position: relative;
+  isolation: isolate;
+}
+.ambient-motion {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.ambient-gradient {
+  position: absolute;
+  inset: -20%;
+  background: linear-gradient(
+    125deg,
+    #0b101800 20%,
+    #20203866 45%,
+    #3e211b44 65%,
+    #0b101800 85%
+  );
+  background-size: 180% 180%;
+  animation: ambient-shift 32s ease-in-out infinite alternate;
+}
+.ambient-glow {
+  position: absolute;
+  width: min(50vw, 550px);
+  height: 500px;
+  opacity: 0.13;
+  filter: blur(75px);
+  border-radius: 50%;
+}
+.ambient-glow-orange {
+  background: #d36a24;
+  top: 0;
+  right: -15%;
+}
+.ambient-glow-red {
+  background: #ae2b39;
+  bottom: 5%;
+  left: -20%;
+}
+.ambient-particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: #ffd7a3;
+  border-radius: 50%;
+  opacity: 0.22;
+  animation: particle-drift 18s ease-in-out infinite alternate;
+}
+.particle-0 {
+  left: 12%;
+  top: 15%;
+}
+.particle-1 {
+  left: 85%;
+  top: 25%;
+  animation-delay: -4s;
+}
+.particle-2 {
+  left: 60%;
+  top: 40%;
+  animation-delay: -8s;
+}
+.particle-3 {
+  left: 32%;
+  top: 65%;
+  animation-delay: -12s;
+}
+.particle-4 {
+  left: 90%;
+  top: 80%;
+  animation-delay: -6s;
+}
+.particle-5 {
+  left: 70%;
+  top: 8%;
+  animation-delay: -10s;
+}
+.motion-toggle {
+  position: fixed;
+  bottom: 14px;
+  right: 14px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #131a26f2;
+  color: #bdc8d8;
+  border: 1px solid #3b485a;
+  border-radius: 20px;
+  padding: 9px 12px;
+  font-size: 10px;
+  cursor: pointer;
+}
+.pulse-auth .auth-content {
+  position: relative;
+  isolation: isolate;
+}
+.pulse-auth .auth-form-wrap {
+  width: min(456px, 100%);
+  padding: 34px 28px;
+  margin-block: auto;
+  border: 1px solid #ffffff17;
+  border-radius: 16px;
+  background: #131a26b8;
+  backdrop-filter: blur(18px);
+  box-shadow:
+    0 16px 55px #00000024,
+    inset 0 1px #ffffff05;
+}
+.pulse-auth .auth-top {
+  margin-bottom: 35px;
+}
+.pulse-auth .auth-footer {
+  margin-top: 35px;
+}
+.auth-brand,
+.auth-story-copy > *,
+.auth-form-wrap
+  > :is(.auth-eyebrow, h1, .auth-intro, form, .auth-switch, .auth-note),
+.lp-hero-copy > * {
+  animation: public-fade-up 0.65s both cubic-bezier(0.2, 0.65, 0.3, 1);
+}
+.auth-form-wrap > h1,
+.auth-story-copy h2,
+.lp-hero-copy h1 {
+  animation-delay: 0.08s;
+}
+.auth-form-wrap > .auth-intro,
+.auth-story-copy p,
+.lp-hero-copy > p {
+  animation-delay: 0.16s;
+}
+.auth-form-wrap > form,
+.lp-hero-copy > .lp-button {
+  animation-delay: 0.24s;
+}
+.auth-form-wrap > .auth-switch,
+.lp-hero-small {
+  animation-delay: 0.32s;
+}
+.auth-form-wrap > .auth-note {
+  animation-delay: 0.4s;
+}
+.auth-story-photo,
+.lp-hero-photo {
+  animation: public-image-reveal 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.auth-story-photo,
+.lp-hero-photo {
+  transform: translate3d(var(--pointer-x, 0px), var(--pointer-y, 0px), 0)
+    scale(1.035);
+  transition: transform 0.55s cubic-bezier(0.2, 0.65, 0.3, 1);
+}
+.pulse-auth input {
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    background 0.2s;
+}
+.pulse-auth input:focus {
+  border-color: #f59a62;
+  box-shadow:
+    0 0 0 3px #ef8c4c18,
+    0 0 20px #e7833410;
+  outline-color: #f59a62;
+}
+.auth-floating {
+  position: relative;
+  margin-top: 20px;
+}
+.pulse-auth .auth-floating input {
+  min-height: 58px;
+  padding-top: 23px;
+  padding-bottom: 8px;
+}
+.pulse-auth .auth-floating input::placeholder {
+  color: transparent;
+}
+.pulse-auth .auth-floating input:focus::placeholder {
+  color: #8191a6;
+}
+.pulse-auth .auth-floating > label {
+  position: absolute;
+  top: 18px;
+  left: 15px;
+  margin: 0;
+  z-index: 1;
+  color: #9baac0;
+  font-size: 13px;
+  pointer-events: none;
+  transform-origin: left top;
+  transition:
+    transform 0.2s,
+    color 0.2s;
+}
+.pulse-auth .auth-floating:has(input:focus) > label,
+.pulse-auth .auth-floating:has(input:not(:placeholder-shown)) > label,
+.pulse-auth .auth-floating:has(input:autofill) > label {
+  transform: translateY(-11px) scale(0.78);
+  color: #bdc8d8;
+}
+.pulse-auth .auth-floating:focus-within > label {
+  color: #f5b68d;
+}
+.auth-floating .auth-password button {
+  top: 8px;
+}
+.auth-password button svg {
+  animation: eye-switch 0.24s ease-out;
+}
+.auth-password button:hover {
+  color: #f1f4f9;
+  background: #ffffff08;
+}
+.pulse-auth .auth-label-row {
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+:is(.pulse-auth .auth-submit, .pulse-landing .lp-button) {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s,
+    background 0.2s;
+}
+:is(.pulse-auth .auth-submit, .pulse-landing .lp-button):hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 25px #d4ff001c;
+}
+:is(.pulse-auth .auth-submit, .pulse-landing .lp-button):active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+  box-shadow: none;
+}
+.pulse-auth form[aria-busy="true"] .auth-submit::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 25%,
+    #ffffff50 50%,
+    transparent 75%
+  );
+  transform: translateX(-100%);
+  animation: button-sweep 1.4s linear infinite;
+  pointer-events: none;
+}
+.motion-wait {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.65s,
+    transform 0.65s;
+}
+.motion-wait.motion-visible,
+.motion-wait:focus-within {
+  opacity: 1;
+  transform: none;
+}
+.pulse-landing .lp-header {
+  transition:
+    background 0.3s,
+    box-shadow 0.3s,
+    backdrop-filter 0.3s;
+}
+.pulse-landing.motion-scrolled .lp-header {
+  background: #0b1018cc;
+  backdrop-filter: blur(18px);
+  box-shadow: 0 8px 32px #00000020;
+}
+.lp-nav nav a {
+  position: relative;
+  padding-block: 7px;
+}
+.lp-nav nav a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: #d4ff00;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s;
+}
+.lp-nav nav a:hover::after,
+.lp-nav nav a[aria-current="location"]::after {
+  transform: scaleX(1);
+}
+.lp-nav nav a[aria-current="location"] {
+  color: #d4ff00;
+}
+.lp-movement-detail,
+.lp-preview {
+  transition:
+    transform 0.35s,
+    box-shadow 0.35s;
+}
+@media (hover: hover) and (pointer: fine) {
+  .lp-movement-detail:hover {
+    transform: translateY(-5px);
+  }
+  .lp-preview:hover {
+    transform: rotate(0deg) translateY(-5px);
+    box-shadow: 14px 20px 35px #00000030;
+  }
+}
+@keyframes ambient-shift {
+  from {
+    background-position: 0% 20%;
+    transform: translate3d(-2%, 0, 0);
+  }
+  to {
+    background-position: 100% 80%;
+    transform: translate3d(2%, 2%, 0);
+  }
+}
+@keyframes particle-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.12;
+  }
+  to {
+    transform: translate3d(18px, -36px, 0);
+    opacity: 0.3;
+  }
+}
+@keyframes public-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes public-image-reveal {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+@keyframes eye-switch {
+  from {
+    opacity: 0.4;
+    transform: scale(0.65) rotate(-15deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes button-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+@media (max-width: 700px) {
+  .pulse-auth .auth-content {
+    padding: 24px 20px;
+  }
+  .pulse-auth .auth-form-wrap {
+    padding: 26px 20px;
+  }
+  .pulse-auth .auth-top {
+    margin-bottom: 25px;
+  }
+  .pulse-auth .auth-footer {
+    margin-bottom: 35px;
+  }
+  .ambient-glow {
+    filter: blur(45px);
+    width: 220px;
+    height: 320px;
+  }
+  .pulse-auth .auth-form-wrap {
+    backdrop-filter: blur(10px);
+  }
+}
+:is(.pulse-auth, .pulse-landing)[data-motion="paused"] *,
+:is(.pulse-auth, .pulse-landing)[data-motion="paused"] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+[data-motion="paused"] .motion-wait {
+  opacity: 1;
+  transform: none;
+}
+[data-motion="paused"] :is(.auth-story-photo, .lp-hero-photo) {
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.pulse-auth, .pulse-landing) *,
+  :is(.pulse-auth, .pulse-landing) *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .motion-wait {
+    opacity: 1;
+    transform: none;
+  }
+  :is(.auth-story-photo, .lp-hero-photo) {
+    transform: none;
+  }
+  .ambient-particle,
+  .motion-toggle {
+    display: none;
+  }
+  html.auth-route-transition::view-transition-old(root),
+  html.auth-route-transition::view-transition-new(root) {
+    animation: none !important;
+  }
+}
+@supports (view-transition-name: none) {
+  html.auth-route-transition::view-transition-old(root) {
+    animation: page-out 0.18s ease-out both;
+  }
+  html.auth-route-transition::view-transition-new(root) {
+    animation: page-in 0.3s ease-out both;
+  }
+}
+@keyframes page-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 700px) {
+  .motion-toggle span {
+    display: none;
+  }
+  .motion-toggle {
+    padding: 10px;
+    right: 8px;
+    bottom: 8px;
+  }
+}

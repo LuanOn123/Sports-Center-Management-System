@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { enrollmentsApi } from "../../api/enrollments.api";
+import { classesApi } from "../../api/classes.api";
 import type { Enrollment, EnrollmentStatus } from "../../types/member";
 import {
   CalendarCheck,
@@ -12,7 +13,9 @@ import {
   MapPin,
   Volleyball,
   CheckCircle2,
+  ArrowRightLeft,
 } from "lucide-react";
+import { ErrorState, Loading, Modal } from "../../shared/ui";
 import {
   LoadingSpinner,
   EmptyState,
@@ -29,6 +32,8 @@ export function MyClassesPage() {
   const [selectedEnrollment, setSelectedEnrollment] =
     useState<Enrollment | null>(null);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [targetScheduleId, setTargetScheduleId] = useState("");
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -38,6 +43,22 @@ export function MyClassesPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["my-enrollments", activeTab],
     queryFn: () => enrollmentsApi.getMyEnrollments({ status: activeTab }),
+  });
+
+  const quota = useQuery({
+    queryKey: ["my-enrollment-quota"],
+    queryFn: () => enrollmentsApi.getMyQuota(),
+  });
+
+  const transferSchedules = useQuery({
+    queryKey: ["transfer-schedules", selectedEnrollment?.classId],
+    enabled: transferOpen && Boolean(selectedEnrollment?.classId),
+    queryFn: () =>
+      classesApi.getSchedules({
+        classId: selectedEnrollment!.classId,
+        status: "SCHEDULED",
+        from: new Date().toISOString(),
+      }),
   });
 
   // Cancel Mutation
@@ -69,6 +90,24 @@ export function MyClassesPage() {
     },
   });
 
+  const transferMutation = useMutation({
+    mutationFn: () =>
+      enrollmentsApi.transferEnrollment(
+        selectedEnrollment!.id,
+        targetScheduleId,
+      ),
+    onSuccess: () => {
+      setMessage({ type: "success", text: "Đã đổi buổi học thành công." });
+      setTransferOpen(false);
+      setSelectedEnrollment(null);
+      setTargetScheduleId("");
+      void queryClient.invalidateQueries({ queryKey: ["my-enrollments"] });
+      void queryClient.invalidateQueries({ queryKey: ["member-schedule"] });
+      void queryClient.invalidateQueries({ queryKey: ["class-schedules"] });
+      void queryClient.invalidateQueries({ queryKey: ["my-enrollment-quota"] });
+    },
+  });
+
   const enrollments = data?.enrollments || [];
 
   return (
@@ -76,10 +115,10 @@ export function MyClassesPage() {
       {/* HEADER */}
       <div
         style={{
-          background: "var(--color-surface)",
-          borderRadius: "var(--radius-card)",
+          background: "var(--member-surface, #ffffff)",
+          borderRadius: 16,
           padding: "24px 28px",
-          border: "1px solid #e7ece9",
+          border: "1px solid var(--member-border, #e7ece9)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -91,8 +130,8 @@ export function MyClassesPage() {
           <h1
             style={{
               fontSize: 24,
-              fontWeight: 700,
-              color: "var(--color-primary)",
+              fontWeight: 800,
+              color: "var(--member-text, #203d31)",
               margin: "0 0 6px",
             }}
           >
@@ -101,8 +140,8 @@ export function MyClassesPage() {
           <p
             style={{
               margin: 0,
-              color: "var(--color-text-muted)",
-              fontSize: "var(--font-small)",
+              color: "var(--member-muted, #58695f)",
+              fontSize: 13,
             }}
           >
             Theo dõi danh sách các buổi học bạn đã đăng ký, buổi đã tham gia và
@@ -111,17 +150,18 @@ export function MyClassesPage() {
         </div>
 
         <button
+          className="member-button member-button-primary"
           onClick={() => navigate("/member/classes")}
           style={{
             display: "inline-flex",
             alignItems: "center",
             gap: 8,
             padding: "10px 18px",
-            backgroundColor: "var(--color-primary)",
-            color: "var(--color-surface)",
+            backgroundColor: "var(--member-surface-alt, #203d31)",
+            color: "var(--member-text, #ffffff)",
             border: "none",
             borderRadius: 10,
-            fontSize: "var(--font-small)",
+            fontSize: 13,
             fontWeight: 700,
             cursor: "pointer",
           }}
@@ -133,12 +173,55 @@ export function MyClassesPage() {
       {/* FEEDBACK ALERT */}
       {message && <AlertBanner type={message.type} message={message.text} />}
 
+      {quota.isSuccess && (
+        <section className="panel" aria-label="Hạn mức lớp học">
+          <div className="panel-heading">
+            <div>
+              <h2>Hạn mức lớp đang giữ</h2>
+              <p>
+                {quota.data.used}/{quota.data.limit} lớp · còn{" "}
+                {quota.data.remaining} lớp với gói{" "}
+                {quota.data.tier || "chưa kích hoạt"}
+              </p>
+            </div>
+            <span className="badge">
+              {quota.data.hasActiveSubscription
+                ? "Đang hiệu lực"
+                : "Cần mua gói"}
+            </span>
+          </div>
+          <div
+            role="progressbar"
+            aria-label="Mức sử dụng hạn mức lớp"
+            aria-valuemin={0}
+            aria-valuemax={Math.max(1, quota.data.limit)}
+            aria-valuenow={quota.data.used}
+            style={{
+              height: 8,
+              borderRadius: 99,
+              background: "var(--member-border, #e7ece9)",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                height: "100%",
+                width: `${quota.data.limit ? Math.min(100, (quota.data.used / quota.data.limit) * 100) : 100}%`,
+                background: quota.data.remaining
+                  ? "var(--member-accent, #376228)"
+                  : "var(--member-warning, #d97706)",
+              }}
+            />
+          </div>
+        </section>
+      )}
+
       {/* TABS */}
       <div
         style={{
           display: "flex",
           gap: 8,
-          borderBottom: "1px solid #e7ece9",
+          borderBottom: "1px solid var(--member-border, #e7ece9)",
           paddingBottom: 2,
         }}
       >
@@ -163,6 +246,7 @@ export function MyClassesPage() {
           const isActive = activeTab === tab.key;
           return (
             <button
+              className="member-button"
               key={tab.key}
               onClick={() => {
                 setActiveTab(tab.key);
@@ -175,13 +259,13 @@ export function MyClassesPage() {
                 padding: "10px 18px",
                 border: "none",
                 background: "none",
-                fontSize: "var(--font-small)",
+                fontSize: 14,
                 fontWeight: isActive ? 700 : 500,
                 color: isActive
-                  ? "var(--color-primary)"
-                  : "var(--color-text-muted)",
+                  ? "var(--member-text, #203d31)"
+                  : "var(--member-muted, #58695f)",
                 borderBottom: isActive
-                  ? "3px solid #203d31"
+                  ? "3px solid var(--member-text, #203d31)"
                   : "3px solid transparent",
                 cursor: "pointer",
                 borderRadius: "4px 4px 0 0",
@@ -190,7 +274,9 @@ export function MyClassesPage() {
               <Icon
                 size={16}
                 color={
-                  isActive ? "var(--color-primary)" : "var(--color-text-muted)"
+                  isActive
+                    ? "var(--member-text, #203d31)"
+                    : "var(--member-muted, #58695f)"
                 }
               />
               <span>{tab.label}</span>
@@ -225,14 +311,15 @@ export function MyClassesPage() {
           action={
             activeTab === "BOOKED" ? (
               <button
+                className="member-button member-button-primary"
                 onClick={() => navigate("/member/classes")}
                 style={{
                   padding: "9px 18px",
-                  backgroundColor: "var(--color-primary)",
-                  color: "var(--color-surface)",
+                  backgroundColor: "var(--member-surface-alt, #203d31)",
+                  color: "var(--member-text, #ffffff)",
                   border: "none",
                   borderRadius: 8,
-                  fontSize: "var(--font-small)",
+                  fontSize: 13,
                   fontWeight: 600,
                   cursor: "pointer",
                 }}
@@ -255,9 +342,9 @@ export function MyClassesPage() {
               <div
                 key={item.id}
                 style={{
-                  backgroundColor: "var(--color-surface)",
-                  borderRadius: "var(--radius-card)",
-                  border: "1px solid #e7ece9",
+                  backgroundColor: "var(--member-surface, #ffffff)",
+                  borderRadius: 16,
+                  border: "1px solid var(--member-border, #e7ece9)",
                   padding: "20px 24px",
                   display: "flex",
                   alignItems: "center",
@@ -266,24 +353,25 @@ export function MyClassesPage() {
                   gap: 16,
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
                   {/* Date badge */}
                   {startTime && (
                     <div
                       style={{
                         textAlign: "center",
                         minWidth: 68,
-                        backgroundColor: "#f2f8eb",
-                        border: "1px solid #d4ebbf",
+                        backgroundColor: "var(--member-accent-soft, #f2f8eb)",
+                        border:
+                          "1px solid var(--member-accent-border, #d4ebbf)",
                         borderRadius: 12,
                         padding: "10px 8px",
                       }}
                     >
                       <div
                         style={{
-                          fontSize: "var(--font-caption)",
+                          fontSize: 11,
                           fontWeight: 700,
-                          color: "#376228",
+                          color: "var(--member-accent, #376228)",
                           textTransform: "uppercase",
                         }}
                       >
@@ -294,8 +382,8 @@ export function MyClassesPage() {
                       <div
                         style={{
                           fontSize: 19,
-                          fontWeight: 700,
-                          color: "var(--color-primary)",
+                          fontWeight: 800,
+                          color: "var(--member-text, #203d31)",
                         }}
                       >
                         {startTime.getDate()}/{startTime.getMonth() + 1}
@@ -314,9 +402,9 @@ export function MyClassesPage() {
                     >
                       <span
                         style={{
-                          fontSize: "var(--font-body)",
-                          fontWeight: 700,
-                          color: "var(--color-primary)",
+                          fontSize: 16,
+                          fontWeight: 800,
+                          color: "var(--member-text, #203d31)",
                         }}
                       >
                         {sch?.class?.name || "Lớp học thể thao"}
@@ -329,8 +417,8 @@ export function MyClassesPage() {
                         display: "flex",
                         alignItems: "center",
                         gap: 16,
-                        fontSize: "var(--font-small)",
-                        color: "#54655d",
+                        fontSize: 13,
+                        color: "var(--member-muted, #54655d)",
                         flexWrap: "wrap",
                       }}
                     >
@@ -342,7 +430,10 @@ export function MyClassesPage() {
                             gap: 4,
                           }}
                         >
-                          <Clock size={15} color="var(--color-text-muted)" />
+                          <Clock
+                            size={15}
+                            color="var(--member-muted, #58695f)"
+                          />
                           {formatMemberDate(startTime, {
                             hour: "2-digit",
                             minute: "2-digit",
@@ -361,7 +452,10 @@ export function MyClassesPage() {
                           gap: 4,
                         }}
                       >
-                        <MapPin size={15} color="var(--color-text-muted)" />
+                        <MapPin
+                          size={15}
+                          color="var(--member-muted, #58695f)"
+                        />
                         Phòng: <strong>{sch?.room?.name || "Sân tập"}</strong>
                       </span>
                       <span>
@@ -374,14 +468,15 @@ export function MyClassesPage() {
                 {/* ACTION BUTTONS */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <button
+                    className="member-button"
                     onClick={() => navigate(`/member/classes/${item.classId}`)}
                     style={{
                       padding: "8px 14px",
                       borderRadius: 8,
-                      border: "1px solid #d0d7d3",
-                      backgroundColor: "var(--color-surface)",
-                      color: "var(--color-primary)",
-                      fontSize: "var(--font-caption)",
+                      border: "1px solid var(--member-border, #d0d7d3)",
+                      backgroundColor: "var(--member-surface, #ffffff)",
+                      color: "var(--member-text, #203d31)",
+                      fontSize: 12,
                       fontWeight: 600,
                       cursor: "pointer",
                     }}
@@ -393,15 +488,31 @@ export function MyClassesPage() {
                     <button
                       onClick={() => {
                         setSelectedEnrollment(item);
+                        setTargetScheduleId("");
+                        transferMutation.reset();
+                        setTransferOpen(true);
+                      }}
+                      className="button small"
+                    >
+                      <ArrowRightLeft size={14} /> Đổi buổi
+                    </button>
+                  )}
+
+                  {canCancel && (
+                    <button
+                      className="member-button"
+                      onClick={() => {
+                        setSelectedEnrollment(item);
                         setConfirmCancelOpen(true);
                       }}
                       style={{
                         padding: "8px 14px",
                         borderRadius: 8,
-                        border: "1px solid #fecdca",
-                        backgroundColor: "#fef3f2",
-                        color: "#d92d20",
-                        fontSize: "var(--font-caption)",
+                        border:
+                          "1px solid var(--member-danger-border, #fecdca)",
+                        backgroundColor: "var(--member-danger-soft, #fef3f2)",
+                        color: "var(--member-danger, #d92d20)",
+                        fontSize: 12,
                         fontWeight: 600,
                         cursor: "pointer",
                       }}
@@ -432,6 +543,104 @@ export function MyClassesPage() {
         isDanger={true}
         loading={cancelMutation.isPending}
       />
+
+      {transferOpen && selectedEnrollment && (
+        <Modal
+          title="Đổi buổi trong cùng lớp"
+          dismissible={!transferMutation.isPending}
+          onClose={() => setTransferOpen(false)}
+          maxWidth={680}
+        >
+          <p className="confirm-copy">
+            Chọn một buổi khác của lớp “
+            {selectedEnrollment.schedule?.class?.name}”. Chỗ cũ chỉ được hủy khi
+            máy chủ xác nhận chỗ mới hợp lệ.
+          </p>
+          {transferSchedules.isPending ? (
+            <Loading variant="cards" />
+          ) : transferSchedules.isError ? (
+            <ErrorState
+              error={transferSchedules.error}
+              retry={() => transferSchedules.refetch()}
+            />
+          ) : (
+            <div
+              className="detail-list"
+              role="radiogroup"
+              aria-label="Buổi học mới"
+            >
+              {(transferSchedules.data?.schedules || [])
+                .filter(
+                  (schedule) => schedule.id !== selectedEnrollment.scheduleId,
+                )
+                .map((schedule) => {
+                  const count = schedule._count?.enrollments ?? 0;
+                  const remaining =
+                    schedule.availableSlots ??
+                    Math.max(0, schedule.class.capacity - count);
+                  const disabled =
+                    schedule.isFull === true ||
+                    remaining <= 0 ||
+                    new Date(schedule.startTime) <= new Date();
+                  return (
+                    <label className="assignment" key={schedule.id}>
+                      <input
+                        type="radio"
+                        name="targetSchedule"
+                        value={schedule.id}
+                        checked={targetScheduleId === schedule.id}
+                        disabled={disabled || transferMutation.isPending}
+                        onChange={() => setTargetScheduleId(schedule.id)}
+                      />
+                      <span>
+                        <strong>{formatMemberDate(schedule.startTime)}</strong>{" "}
+                        ·{" "}
+                        {formatMemberDate(schedule.startTime, {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        {" – "}
+                        {formatMemberDate(schedule.endTime, {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        {" · "}
+                        {schedule.room?.name || "Chưa có phòng"}
+                      </span>
+                      <span className={`badge ${disabled ? "muted" : ""}`}>
+                        {disabled ? "Hết chỗ" : `Còn ${remaining} chỗ`}
+                      </span>
+                    </label>
+                  );
+                })}
+              {!transferSchedules.data?.schedules.some(
+                (schedule) => schedule.id !== selectedEnrollment.scheduleId,
+              ) && <p>Hiện chưa có buổi khác để chuyển.</p>}
+            </div>
+          )}
+          {transferMutation.error && (
+            <ErrorState error={transferMutation.error} />
+          )}
+          <div className="modal-footer">
+            <button
+              className="button"
+              disabled={transferMutation.isPending}
+              onClick={() => setTransferOpen(false)}
+            >
+              Giữ buổi hiện tại
+            </button>
+            <button
+              className="button primary"
+              disabled={!targetScheduleId || transferMutation.isPending}
+              onClick={() => transferMutation.mutate()}
+            >
+              {transferMutation.isPending
+                ? "Đang đổi buổi…"
+                : "Xác nhận đổi buổi"}
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

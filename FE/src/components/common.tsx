@@ -139,27 +139,27 @@ export function AlertBanner({
 }) {
   const config = {
     info: {
-      bg: "#f0f9ff",
-      border: "#b9e6fe",
-      color: "#026aa2",
+      bg: "var(--member-info-soft, #f0f9ff)",
+      border: "var(--member-info-border, #b9e6fe)",
+      color: "var(--member-info, #026aa2)",
       icon: <Info size={18} />,
     },
     success: {
-      bg: "#edfcf2",
-      border: "#abefc6",
-      color: "#267346",
+      bg: "var(--member-success-soft, #edfcf2)",
+      border: "var(--member-success-border, #abefc6)",
+      color: "var(--member-success, #267346)",
       icon: <CheckCircle2 size={18} />,
     },
     warning: {
-      bg: "#fffaeb",
-      border: "#fedf89",
-      color: "#b54708",
+      bg: "var(--member-warning-soft, #fffaeb)",
+      border: "var(--member-warning-border, #fedf89)",
+      color: "var(--member-warning, #b54708)",
       icon: <AlertCircle size={18} />,
     },
     error: {
-      bg: "#fef3f2",
-      border: "#fecdca",
-      color: "#d92d20",
+      bg: "var(--member-danger-soft, #fef3f2)",
+      border: "var(--member-danger-border, #fecdca)",
+      color: "var(--member-danger, #d92d20)",
       icon: <XCircle size={18} />,
     },
   }[type];

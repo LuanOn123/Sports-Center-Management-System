@@ -9,6 +9,7 @@ import { authService, hasSession } from "../shared/api";
 import { Session } from "../features/auth/Session";
 import "../styles.css";
 import { ErrorBoundary } from "../shared/ErrorBoundary";
+import { ToastViewport } from "../shared/toast";
 const client = new QueryClient({
   defaultOptions: {
     queries: { retry: 1, staleTime: 30000, refetchOnWindowFocus: false },
@@ -22,6 +23,7 @@ export default function App() {
         <BrowserRouter>
           <Session />
           <SessionChat />
+          <ToastViewport />
         </BrowserRouter>
       </QueryClientProvider>
     </ErrorBoundary>

@@ -96,13 +96,6 @@ export function ProfilePage() {
     setSavingPass(true);
     try {
       await authApi.changePassword({ currentPassword, newPassword });
-      setPassMsg({
-        type: "success",
-        text: "Đổi mật khẩu tài khoản thành công!",
-      });
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
     } catch (err: unknown) {
       setPassMsg({
         type: "error",
@@ -126,17 +119,17 @@ export function ProfilePage() {
       {/* HEADER */}
       <div
         style={{
-          background: "var(--color-surface)",
-          borderRadius: "var(--radius-card)",
+          background: "var(--member-surface, #ffffff)",
+          borderRadius: 16,
           padding: "24px 28px",
-          border: "1px solid #e7ece9",
+          border: "1px solid var(--member-border, #e7ece9)",
         }}
       >
         <h1
           style={{
             fontSize: 24,
-            fontWeight: 700,
-            color: "var(--color-primary)",
+            fontWeight: 800,
+            color: "var(--member-text, #203d31)",
             margin: "0 0 6px",
           }}
         >
@@ -145,8 +138,8 @@ export function ProfilePage() {
         <p
           style={{
             margin: 0,
-            color: "var(--color-text-muted)",
-            fontSize: "var(--font-small)",
+            color: "var(--member-muted, #58695f)",
+            fontSize: 13,
           }}
         >
           Quản lý thông tin tài khoản, mục tiêu rèn luyện thể chất và bảo mật
@@ -157,9 +150,9 @@ export function ProfilePage() {
       {/* EDIT PROFILE FORM */}
       <div
         style={{
-          background: "var(--color-surface)",
+          background: "var(--member-surface, #ffffff)",
           borderRadius: 18,
-          border: "1px solid #e7ece9",
+          border: "1px solid var(--member-border, #e7ece9)",
           padding: 28,
         }}
       >
@@ -171,12 +164,12 @@ export function ProfilePage() {
             marginBottom: 20,
           }}
         >
-          <UserCircle size={22} color="var(--color-primary)" />
+          <UserCircle size={22} color="var(--member-text, #203d31)" />
           <h2
             style={{
               fontSize: 18,
-              fontWeight: 700,
-              color: "var(--color-primary)",
+              fontWeight: 800,
+              color: "var(--member-text, #203d31)",
               margin: 0,
             }}
           >
@@ -207,9 +200,9 @@ export function ProfilePage() {
                 htmlFor="member-profile-1"
                 style={{
                   display: "block",
-                  fontSize: "var(--font-small)",
+                  fontSize: 13,
                   fontWeight: 600,
-                  color: "#344054",
+                  color: "var(--member-text, #344054)",
                   marginBottom: 6,
                 }}
               >
@@ -230,9 +223,9 @@ export function ProfilePage() {
                 htmlFor="member-profile-2"
                 style={{
                   display: "block",
-                  fontSize: "var(--font-small)",
+                  fontSize: 13,
                   fontWeight: 600,
-                  color: "#344054",
+                  color: "var(--member-text, #344054)",
                   marginBottom: 6,
                 }}
               >
@@ -244,8 +237,8 @@ export function ProfilePage() {
                 disabled
                 value={user?.email || ""}
                 style={{
-                  backgroundColor: "#f8faf9",
-                  color: "var(--color-text-muted)",
+                  backgroundColor: "var(--member-surface-alt, #f8faf9)",
+                  color: "var(--member-muted, #667085)",
                 }}
               />
             </div>
@@ -264,9 +257,9 @@ export function ProfilePage() {
                 htmlFor="member-profile-3"
                 style={{
                   display: "block",
-                  fontSize: "var(--font-small)",
+                  fontSize: 13,
                   fontWeight: 600,
-                  color: "#344054",
+                  color: "var(--member-text, #344054)",
                   marginBottom: 6,
                 }}
               >
@@ -287,9 +280,9 @@ export function ProfilePage() {
                 htmlFor="member-profile-4"
                 style={{
                   display: "block",
-                  fontSize: "var(--font-small)",
+                  fontSize: 13,
                   fontWeight: 600,
-                  color: "#344054",
+                  color: "var(--member-text, #344054)",
                   marginBottom: 6,
                 }}
               >
@@ -314,9 +307,9 @@ export function ProfilePage() {
                 htmlFor="member-profile-5"
                 style={{
                   display: "block",
-                  fontSize: "var(--font-small)",
+                  fontSize: 13,
                   fontWeight: 600,
-                  color: "#344054",
+                  color: "var(--member-text, #344054)",
                   marginBottom: 6,
                 }}
               >
@@ -332,7 +325,11 @@ export function ProfilePage() {
           </div>
 
           <div
-            style={{ height: 1, backgroundColor: "#f0f4f2", margin: "8px 0" }}
+            style={{
+              height: 1,
+              backgroundColor: "var(--member-surface-alt, #f0f4f2)",
+              margin: "8px 0",
+            }}
           />
 
           {/* Fitness Goal & Level */}
@@ -348,9 +345,9 @@ export function ProfilePage() {
                 htmlFor="member-profile-6"
                 style={{
                   display: "block",
-                  fontSize: "var(--font-small)",
+                  fontSize: 13,
                   fontWeight: 600,
-                  color: "#344054",
+                  color: "var(--member-text, #344054)",
                   marginBottom: 6,
                 }}
               >
@@ -376,9 +373,9 @@ export function ProfilePage() {
                 htmlFor="member-profile-7"
                 style={{
                   display: "block",
-                  fontSize: "var(--font-small)",
+                  fontSize: 13,
                   fontWeight: 600,
-                  color: "#344054",
+                  color: "var(--member-text, #344054)",
                   marginBottom: 6,
                 }}
               >
@@ -399,9 +396,9 @@ export function ProfilePage() {
               htmlFor="member-profile-8"
               style={{
                 display: "block",
-                fontSize: "var(--font-small)",
+                fontSize: 13,
                 fontWeight: 600,
-                color: "#344054",
+                color: "var(--member-text, #344054)",
                 marginBottom: 6,
               }}
             >
@@ -418,15 +415,16 @@ export function ProfilePage() {
 
           <div>
             <button
+              className="member-button member-button-primary"
               type="submit"
               disabled={savingProfile}
               style={{
                 padding: "11px 24px",
-                backgroundColor: "var(--color-primary)",
-                color: "var(--color-surface)",
+                backgroundColor: "var(--member-surface-alt, #203d31)",
+                color: "var(--member-text, #ffffff)",
                 border: "none",
                 borderRadius: 10,
-                fontSize: "var(--font-small)",
+                fontSize: 14,
                 fontWeight: 700,
                 display: "inline-flex",
                 alignItems: "center",
@@ -444,9 +442,9 @@ export function ProfilePage() {
       {/* CHANGE PASSWORD FORM */}
       <div
         style={{
-          background: "var(--color-surface)",
+          background: "var(--member-surface, #ffffff)",
           borderRadius: 18,
-          border: "1px solid #e7ece9",
+          border: "1px solid var(--member-border, #e7ece9)",
           padding: 28,
         }}
       >
@@ -458,12 +456,12 @@ export function ProfilePage() {
             marginBottom: 20,
           }}
         >
-          <KeyRound size={22} color="var(--color-primary)" />
+          <KeyRound size={22} color="var(--member-text, #203d31)" />
           <h2
             style={{
               fontSize: 18,
-              fontWeight: 700,
-              color: "var(--color-primary)",
+              fontWeight: 800,
+              color: "var(--member-text, #203d31)",
               margin: 0,
             }}
           >
@@ -477,6 +475,7 @@ export function ProfilePage() {
           </div>
         )}
 
+        <p>Đổi mật khẩu sẽ đăng xuất khỏi tất cả thiết bị.</p>
         <form
           onSubmit={handleChangePassword}
           style={{ display: "flex", flexDirection: "column", gap: 16 }}
@@ -486,9 +485,9 @@ export function ProfilePage() {
               htmlFor="member-profile-9"
               style={{
                 display: "block",
-                fontSize: "var(--font-small)",
+                fontSize: 13,
                 fontWeight: 600,
-                color: "#344054",
+                color: "var(--member-text, #344054)",
                 marginBottom: 6,
               }}
             >
@@ -516,9 +515,9 @@ export function ProfilePage() {
                 htmlFor="member-profile-10"
                 style={{
                   display: "block",
-                  fontSize: "var(--font-small)",
+                  fontSize: 13,
                   fontWeight: 600,
-                  color: "#344054",
+                  color: "var(--member-text, #344054)",
                   marginBottom: 6,
                 }}
               >
@@ -540,9 +539,9 @@ export function ProfilePage() {
                 htmlFor="member-profile-11"
                 style={{
                   display: "block",
-                  fontSize: "var(--font-small)",
+                  fontSize: 13,
                   fontWeight: 600,
-                  color: "#344054",
+                  color: "var(--member-text, #344054)",
                   marginBottom: 6,
                 }}
               >
@@ -562,15 +561,16 @@ export function ProfilePage() {
 
           <div>
             <button
+              className="member-button member-button-primary"
               type="submit"
               disabled={savingPass}
               style={{
                 padding: "11px 24px",
-                backgroundColor: "var(--color-primary)",
-                color: "var(--color-surface)",
+                backgroundColor: "var(--member-surface-alt, #203d31)",
+                color: "var(--member-text, #ffffff)",
                 border: "none",
                 borderRadius: 10,
-                fontSize: "var(--font-small)",
+                fontSize: 14,
                 fontWeight: 700,
                 display: "inline-flex",
                 alignItems: "center",

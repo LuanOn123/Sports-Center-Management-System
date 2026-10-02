@@ -1,4 +1,9 @@
 import { formatMemberDate } from "../../shared/memberFormat";
+import {
+  MEMBER_TIME_ZONE,
+  memberDateKey,
+  memberWeekStart,
+} from "../../shared/memberCalendar";
 import { ErrorState } from "../../shared/feedback";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -20,12 +25,7 @@ export function SchedulePage() {
 
   // State for week navigation
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
-    const d = new Date();
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
-    const monday = new Date(d.setDate(diff));
-    monday.setHours(0, 0, 0, 0);
-    return monday;
+    return memberWeekStart();
   });
 
   const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
@@ -42,29 +42,24 @@ export function SchedulePage() {
   // Generate 7 days of the current week
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const day = new Date(currentWeekStart);
-    day.setDate(day.getDate() + i);
+    day.setUTCDate(day.getUTCDate() + i);
     return day;
   });
 
   const nextWeek = () => {
     const d = new Date(currentWeekStart);
-    d.setDate(d.getDate() + 7);
+    d.setUTCDate(d.getUTCDate() + 7);
     setCurrentWeekStart(d);
   };
 
   const prevWeek = () => {
     const d = new Date(currentWeekStart);
-    d.setDate(d.getDate() - 7);
+    d.setUTCDate(d.getUTCDate() - 7);
     setCurrentWeekStart(d);
   };
 
   const resetToThisWeek = () => {
-    const d = new Date();
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(d.setDate(diff));
-    monday.setHours(0, 0, 0, 0);
-    setCurrentWeekStart(monday);
+    setCurrentWeekStart(memberWeekStart());
   };
 
   return (
@@ -72,10 +67,10 @@ export function SchedulePage() {
       {/* HEADER & CONTROLS */}
       <div
         style={{
-          background: "var(--color-surface)",
-          borderRadius: "var(--radius-card)",
+          background: "var(--member-surface, #ffffff)",
+          borderRadius: 16,
           padding: "20px 24px",
-          border: "1px solid #e7ece9",
+          border: "1px solid var(--member-border, #e7ece9)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -87,8 +82,8 @@ export function SchedulePage() {
           <h1
             style={{
               fontSize: 24,
-              fontWeight: 700,
-              color: "var(--color-primary)",
+              fontWeight: 800,
+              color: "var(--member-text, #203d31)",
               margin: "0 0 4px",
             }}
           >
@@ -97,8 +92,8 @@ export function SchedulePage() {
           <p
             style={{
               margin: 0,
-              color: "var(--color-text-muted)",
-              fontSize: "var(--font-small)",
+              color: "var(--member-muted, #58695f)",
+              fontSize: 13,
             }}
           >
             Thời khóa biểu các ca học đã đặt của bạn theo tuần
@@ -118,12 +113,13 @@ export function SchedulePage() {
             style={{
               display: "flex",
               alignItems: "center",
-              backgroundColor: "#f2f5f3",
+              backgroundColor: "var(--member-surface-alt, #f2f5f3)",
               borderRadius: 10,
               padding: 3,
             }}
           >
             <button
+              className="member-button"
               onClick={prevWeek}
               style={{
                 background: "none",
@@ -131,27 +127,29 @@ export function SchedulePage() {
                 padding: "6px 8px",
                 cursor: "pointer",
                 display: "flex",
-                color: "var(--color-primary)",
+                color: "var(--member-text, #203d31)",
               }}
               title="Tuần trước"
             >
               <ChevronLeft size={18} />
             </button>
             <button
+              className="member-button"
               onClick={resetToThisWeek}
               style={{
                 background: "none",
                 border: "none",
                 padding: "6px 12px",
-                fontSize: "var(--font-caption)",
+                fontSize: 12,
                 fontWeight: 700,
-                color: "var(--color-primary)",
+                color: "var(--member-text, #203d31)",
                 cursor: "pointer",
               }}
             >
               Hôm nay
             </button>
             <button
+              className="member-button"
               onClick={nextWeek}
               style={{
                 background: "none",
@@ -159,7 +157,7 @@ export function SchedulePage() {
                 padding: "6px 8px",
                 cursor: "pointer",
                 display: "flex",
-                color: "var(--color-primary)",
+                color: "var(--member-text, #203d31)",
               }}
               title="Tuần sau"
             >
@@ -169,17 +167,19 @@ export function SchedulePage() {
 
           <span
             style={{
-              fontSize: "var(--font-small)",
+              fontSize: 13,
               fontWeight: 700,
-              color: "var(--color-primary)",
+              color: "var(--member-text, #203d31)",
             }}
           >
             {weekDays[0].toLocaleDateString("vi-VN", {
+              timeZone: MEMBER_TIME_ZONE,
               day: "numeric",
               month: "numeric",
             })}{" "}
             -{" "}
             {weekDays[6].toLocaleDateString("vi-VN", {
+              timeZone: MEMBER_TIME_ZONE,
               day: "numeric",
               month: "numeric",
               year: "numeric",
@@ -190,25 +190,26 @@ export function SchedulePage() {
           <div
             style={{
               display: "flex",
-              backgroundColor: "#f2f5f3",
+              backgroundColor: "var(--member-surface-alt, #f2f5f3)",
               borderRadius: 8,
               padding: 2,
             }}
           >
             <button
+              className="member-button"
               onClick={() => setViewMode("calendar")}
               style={{
                 border: "none",
                 background:
                   viewMode === "calendar"
-                    ? "var(--color-surface)"
+                    ? "var(--member-surface, #ffffff)"
                     : "transparent",
                 color:
                   viewMode === "calendar"
-                    ? "var(--color-primary)"
-                    : "var(--color-text-muted)",
+                    ? "var(--member-text, #203d31)"
+                    : "var(--member-muted, #58695f)",
                 fontWeight: 600,
-                fontSize: "var(--font-caption)",
+                fontSize: 12,
                 padding: "6px 12px",
                 borderRadius: 6,
                 cursor: "pointer",
@@ -220,17 +221,20 @@ export function SchedulePage() {
               <CalendarIcon size={14} /> Lịch tuần
             </button>
             <button
+              className="member-button"
               onClick={() => setViewMode("list")}
               style={{
                 border: "none",
                 background:
-                  viewMode === "list" ? "var(--color-surface)" : "transparent",
+                  viewMode === "list"
+                    ? "var(--member-surface, #ffffff)"
+                    : "transparent",
                 color:
                   viewMode === "list"
-                    ? "var(--color-primary)"
-                    : "var(--color-text-muted)",
+                    ? "var(--member-text, #203d31)"
+                    : "var(--member-muted, #58695f)",
                 fontWeight: 600,
-                fontSize: "var(--font-caption)",
+                fontSize: 12,
                 padding: "6px 12px",
                 borderRadius: 6,
                 cursor: "pointer",
@@ -252,6 +256,10 @@ export function SchedulePage() {
       ) : viewMode === "calendar" ? (
         /* WEEKLY CALENDAR VIEW */
         <div
+          className="member-week-grid"
+          tabIndex={0}
+          role="region"
+          aria-label="Lịch tập trong tuần"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
@@ -259,21 +267,24 @@ export function SchedulePage() {
           }}
         >
           {weekDays.map((date) => {
-            const isToday = date.toDateString() === new Date().toDateString();
+            const isToday = memberDateKey(date) === memberDateKey(new Date());
 
-            const dateStr = date.toISOString().split("T")[0];
+            const dateStr = memberDateKey(date);
             const dayClasses = enrollments.filter((item) => {
               if (!item.schedule?.startTime) return false;
-              return item.schedule.startTime.startsWith(dateStr);
+              return memberDateKey(item.schedule.startTime) === dateStr;
             });
 
             return (
               <div
+                className={`member-day ${isToday ? "is-today" : ""}`}
                 key={dateStr}
                 style={{
-                  backgroundColor: "var(--color-surface)",
-                  borderRadius: "var(--radius-card)",
-                  border: isToday ? "2px solid #376228" : "1px solid #e7ece9",
+                  backgroundColor: "var(--member-surface, #ffffff)",
+                  borderRadius: 14,
+                  border: isToday
+                    ? "2px solid var(--member-accent, #376228)"
+                    : "1px solid var(--member-border, #e7ece9)",
                   minHeight: 320,
                   display: "flex",
                   flexDirection: "column",
@@ -285,30 +296,37 @@ export function SchedulePage() {
                   style={{
                     padding: "10px 12px",
                     textAlign: "center",
-                    backgroundColor: isToday ? "#f2f8eb" : "#f8faf9",
-                    borderBottom: "1px solid #edf2ee",
+                    backgroundColor: isToday
+                      ? "var(--member-accent-soft, #f2f8eb)"
+                      : "var(--member-surface-alt, #f8faf9)",
+                    borderBottom: "1px solid var(--member-border, #edf2ee)",
                   }}
                 >
                   <div
                     style={{
-                      fontSize: "var(--font-caption)",
+                      fontSize: 11,
                       fontWeight: 700,
-                      color: isToday ? "#376228" : "var(--color-text-muted)",
+                      color: isToday
+                        ? "var(--member-accent, #376228)"
+                        : "var(--member-muted, #58695f)",
                       textTransform: "uppercase",
                     }}
                   >
-                    {date.toLocaleDateString("vi-VN", { weekday: "short" })}
+                    {date.toLocaleDateString("vi-VN", {
+                      timeZone: MEMBER_TIME_ZONE,
+                      weekday: "short",
+                    })}
                   </div>
                   <div
                     style={{
-                      fontSize: "var(--font-body)",
-                      fontWeight: 700,
+                      fontSize: 16,
+                      fontWeight: 800,
                       color: isToday
-                        ? "var(--color-primary)"
-                        : "var(--color-text-muted)",
+                        ? "var(--member-text, #203d31)"
+                        : "var(--member-muted, #475467)",
                     }}
                   >
-                    {date.getDate()}/{date.getMonth() + 1}
+                    {date.getUTCDate()}/{date.getUTCMonth() + 1}
                   </div>
                 </div>
 
@@ -329,11 +347,15 @@ export function SchedulePage() {
                         alignItems: "center",
                         justifyContent: "center",
                         flex: 1,
-                        color: "var(--color-text-muted)",
-                        fontSize: "var(--font-caption)",
+                        color: "var(--member-muted, #58695f)",
+                        fontSize: 11,
                       }}
                     >
-                      Nghỉ tập
+                      <span className="member-rest">
+                        <CalendarDays size={22} />
+                        <strong>Ngày nghỉ tập</strong>
+                        <span>Chưa có ca học</span>
+                      </span>
                     </div>
                   ) : (
                     dayClasses.map((item) => {
@@ -344,13 +366,16 @@ export function SchedulePage() {
                       return (
                         <button
                           type="button"
+                          className="member-calendar-event"
                           key={item.id}
                           onClick={() =>
                             navigate(`/member/classes/${item.classId}`)
                           }
                           style={{
-                            backgroundColor: "#f2f8eb",
-                            border: "1px solid #d4ebbf",
+                            backgroundColor:
+                              "var(--member-accent-soft, #f2f8eb)",
+                            border:
+                              "1px solid var(--member-accent-border, #d4ebbf)",
                             borderRadius: 10,
                             padding: "8px 10px",
                             cursor: "pointer",
@@ -362,9 +387,9 @@ export function SchedulePage() {
                         >
                           <div
                             style={{
-                              fontSize: "var(--font-caption)",
+                              fontSize: 12,
                               fontWeight: 700,
-                              color: "var(--color-primary)",
+                              color: "var(--member-text, #203d31)",
                               lineHeight: 1.2,
                             }}
                           >
@@ -372,14 +397,17 @@ export function SchedulePage() {
                           </div>
                           <div
                             style={{
-                              fontSize: "var(--font-caption)",
-                              color: "var(--color-text-muted)",
+                              fontSize: 11,
+                              color: "var(--member-muted, #475467)",
                               display: "flex",
                               alignItems: "center",
                               gap: 4,
                             }}
                           >
-                            <Clock size={12} color="var(--color-text-muted)" />
+                            <Clock
+                              size={12}
+                              color="var(--member-muted, #58695f)"
+                            />
                             {formatMemberDate(startTime, {
                               hour: "2-digit",
                               minute: "2-digit",
@@ -392,14 +420,17 @@ export function SchedulePage() {
                           </div>
                           <div
                             style={{
-                              fontSize: "var(--font-caption)",
-                              color: "var(--color-text-muted)",
+                              fontSize: 10,
+                              color: "var(--member-muted, #667085)",
                               display: "flex",
                               alignItems: "center",
                               gap: 4,
                             }}
                           >
-                            <MapPin size={11} color="var(--color-text-muted)" />
+                            <MapPin
+                              size={11}
+                              color="var(--member-muted, #58695f)"
+                            />
                             {sch.room?.name}
                           </div>
                         </button>
@@ -425,9 +456,9 @@ export function SchedulePage() {
               <div
                 key={item.id}
                 style={{
-                  backgroundColor: "var(--color-surface)",
-                  borderRadius: "var(--radius-card)",
-                  border: "1px solid #e7ece9",
+                  backgroundColor: "var(--member-surface, #ffffff)",
+                  borderRadius: 14,
+                  border: "1px solid var(--member-border, #e7ece9)",
                   padding: "16px 20px",
                   display: "flex",
                   alignItems: "center",
@@ -439,9 +470,9 @@ export function SchedulePage() {
                 <div>
                   <div
                     style={{
-                      fontSize: "var(--font-body)",
+                      fontSize: 16,
                       fontWeight: 700,
-                      color: "var(--color-primary)",
+                      color: "var(--member-text, #203d31)",
                     }}
                   >
                     {item.schedule?.class?.name}
@@ -451,8 +482,8 @@ export function SchedulePage() {
                       display: "flex",
                       gap: 16,
                       marginTop: 4,
-                      fontSize: "var(--font-small)",
-                      color: "var(--color-text-muted)",
+                      fontSize: 13,
+                      color: "var(--member-muted, #475467)",
                     }}
                   >
                     <span>📅 {formatMemberDate(item.schedule?.startTime)}</span>
@@ -473,14 +504,15 @@ export function SchedulePage() {
                 </div>
 
                 <button
+                  className="member-button member-button-primary"
                   onClick={() => navigate(`/member/classes/${item.classId}`)}
                   style={{
                     padding: "8px 16px",
-                    backgroundColor: "#f2f8eb",
-                    color: "var(--color-primary)",
-                    border: "1px solid #d4ebbf",
+                    backgroundColor: "var(--member-accent-soft, #f2f8eb)",
+                    color: "var(--member-text, #203d31)",
+                    border: "1px solid var(--member-accent-border, #d4ebbf)",
                     borderRadius: 8,
-                    fontSize: "var(--font-caption)",
+                    fontSize: 12,
                     fontWeight: 600,
                     cursor: "pointer",
                   }}

@@ -57,7 +57,12 @@ async function setupCoach(
       });
     let data: unknown = [],
       pagination: unknown;
-    if (path === "/auth/me") data = profile;
+    if (
+      path === "/notifications/unread-count" ||
+      path === "/chat/messages/unread-count"
+    )
+      data = { unreadCount: 0 };
+    else if (path === "/auth/me") data = profile;
     else if (path === "/auth/me/change-password") data = null;
     else if (path === "/classes") {
       data = options.empty
@@ -168,10 +173,7 @@ test("coach dashboard scopes classes by profile ID and schedule by assigned clas
   await expect(page.locator(".coach-session")).toContainText("09:00");
   expect(
     calls.some(
-      (c) =>
-        c.path.startsWith("/attendance") ||
-        c.path.startsWith("/training") ||
-        c.path.startsWith("/chat"),
+      (c) => c.path.startsWith("/attendance") || c.path.startsWith("/training"),
     ),
   ).toBeFalsy();
 });
@@ -263,7 +265,9 @@ test("profile validates names, phone and birthdate before API call", async ({
   await page.getByLabel("Số điện thoại", { exact: true }).fill("0901234567");
   await page.getByLabel("Ngày sinh", { exact: true }).fill("1995-03-01");
   await page.getByRole("button", { name: "Lưu thay đổi" }).click();
-  await expect(page.getByRole("status")).toContainText("Đã cập nhật hồ sơ");
+  await expect(page.getByRole("main").getByRole("status")).toContainText(
+    "Đã cập nhật hồ sơ",
+  );
   expect(calls.find((c) => c.method === "PATCH")?.body).toMatchObject({
     fullName: "Nguyễn Minh An",
     phone: "0901234567",
@@ -287,14 +291,19 @@ test("password confirmation is required and is not sent to BE", async ({
     .getByLabel("Xác nhận mật khẩu mới", { exact: true })
     .fill("new-password");
   await page.getByRole("button", { name: "Lưu thay đổi" }).click();
-  await expect(page.getByRole("status")).toContainText("Đã đổi mật khẩu");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "Đã đổi mật khẩu",
+  );
   expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({
     currentPassword: "old-password",
     newPassword: "new-password",
   });
-  await expect(page.getByLabel("Mật khẩu mới", { exact: true })).toHaveValue(
-    "",
-  );
+  await expect(
+    page.getByRole("button", { name: "Đăng nhập", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => sessionStorage.getItem("pulse.access")),
+  ).toBeNull();
 });
 test("empty assigned classes never query global schedules", async ({
   page,
@@ -309,7 +318,9 @@ test("API error remains visible instead of becoming empty data", async ({
 }) => {
   await setupCoach(page, { fail: "/classes" });
   await page.goto("/coach/schedule");
-  await expect(page.getByRole("alert")).toContainText("Bạn không có quyền");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "Bạn không có quyền",
+  );
   await expect(page.getByRole("button", { name: "Thử lại" })).toBeVisible();
 });
 test("loading has accessible skeleton and page has no serious axe findings", async ({

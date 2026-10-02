@@ -105,10 +105,16 @@ export function SchemaForm({
     ...Object.fromEntries(
       Object.entries(schema?.properties || {}).map(([k, s]) => [
         k,
-        initial[k] ??
-          (k === "sportIds"
-            ? classSports(initial).map((s) => s.id)
-            : (s.default ?? "")),
+        k === "areaTypes" && /\/sports(?:\/|$)/.test(operation)
+          ? Array.isArray(initial[k])
+            ? String(initial[k][0] || "INDOOR")
+            : String(initial[k] || "INDOOR")
+          : (initial[k] ??
+            (k === "sportIds"
+              ? classSports(initial).map((s) => s.id)
+              : k === "areaType" && operation === "POST /rooms"
+                ? "INDOOR"
+                : (s.default ?? ""))),
       ]),
     ),
     ...fixed,
@@ -134,6 +140,9 @@ export function SchemaForm({
       let v = values[k];
       if (v === "" || v === undefined || v === null) continue;
       if (s.type === "number" || s.type === "integer") v = Number(v);
+      if (k === "areaTypes" && /\/sports(?:\/|$)/.test(operation)) {
+        v = [String(v)];
+      }
       if (s.format === "date-time") {
         if (!Number.isFinite(Date.parse(String(v)))) {
           setError(new Error("Ngày giờ không hợp lệ."));
@@ -255,7 +264,8 @@ export function SchemaForm({
         <p className="confirm-copy">
           Chỉ lưu sau khi đã nhận đủ tiền. Hệ thống sẽ ghi nhận thanh toán thành
           công và xuất hóa đơn ngay. Đăng ký gói mới tạm dừng các gói đang hoạt
-          động và cộng ngày dư vào gói mới; gia hạn tạo thêm một kỳ gói.
+          động và cộng ngày dư của gói trả phí vào gói mới (gói FREE không
+          cộng); gia hạn tạo thêm một kỳ gói.
         </p>
       )}
       {operation === "POST /payments" && (
@@ -289,7 +299,17 @@ export function SchemaForm({
               >
                 {label(k)}
                 {required && <b className="required"> *</b>}
-                {choices[k] ? (
+                {k === "areaTypes" && /\/sports(?:\/|$)/.test(operation) ? (
+                  <select
+                    required={required}
+                    value={String(value)}
+                    onChange={(e) => change(k, e.target.value)}
+                  >
+                    <option value="INDOOR">Trong nhà</option>
+                    <option value="OUTDOOR">Ngoài trời</option>
+                    <option value="POOL">Hồ bơi</option>
+                  </select>
+                ) : choices[k] ? (
                   <select
                     aria-invalid={
                       (error instanceof ApiError &&

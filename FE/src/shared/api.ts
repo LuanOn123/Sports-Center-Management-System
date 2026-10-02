@@ -1,4 +1,5 @@
 import operations from "./operations.json";
+import { toast } from "./toast";
 import { localizeApiError } from "./apiErrors";
 import { terminalSessionError } from "./businessRules";
 import type { LoginOk, ProfileOk, PostAuthLoginRequest } from "./generated";
@@ -47,12 +48,17 @@ export const BASE_URL = (
 ).replace(/\/$/, "");
 let accessToken = sessionStorage.getItem("pulse.access") || "";
 let refreshToken = sessionStorage.getItem("pulse.refresh") || "";
+export const getAccessToken = () => accessToken;
 export const hasSession = () => Boolean(accessToken || refreshToken);
 export function clearSession() {
   accessToken = "";
   refreshToken = "";
   sessionStorage.removeItem("pulse.access");
   sessionStorage.removeItem("pulse.refresh");
+}
+export function endSession(message: string) {
+  clearSession();
+  window.dispatchEvent(new CustomEvent("session-expired", { detail: message }));
 }
 export function saveTokens(tokens: LoginOk["data"]) {
   accessToken = tokens.accessToken;
@@ -66,6 +72,7 @@ export class ApiError extends Error {
     public status: number,
     public errors: Envelope<unknown>["errors"] = [],
     public terminalSession = false,
+    public details?: unknown,
   ) {
     super(message);
   }
@@ -75,17 +82,19 @@ async function transport(
   method: string,
   body?: unknown,
   signal?: AbortSignal,
+  authenticated = true,
 ) {
   let res: Response;
   try {
     res = await fetch(BASE_URL + path, {
       method,
+      cache: "no-store",
       headers: {
         Accept: "application/json",
         ...(body !== undefined && !(body instanceof FormData)
           ? { "Content-Type": "application/json" }
           : {}),
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(authenticated && accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
       ...(body !== undefined
         ? { body: body instanceof FormData ? body : JSON.stringify(body) }
@@ -114,17 +123,16 @@ async function transport(
     );
   }
   if (!res.ok || payload.success === false) {
-    const localized = localizeApiError(
-      payload.message,
-      payload.errors,
-      res.status,
-    );
-    throw new ApiError(
+    const rawErrors = (payload as unknown as { errors?: unknown }).errors;
+    const localized = localizeApiError(payload.message, rawErrors, res.status);
+    const error = new ApiError(
       localized.message,
       res.status,
       localized.errors,
       terminalSessionError(String(payload.message || "")),
+      rawErrors,
     );
+    throw error;
   }
   return payload;
 }
@@ -153,7 +161,54 @@ async function refresh() {
     })();
   return refreshing;
 }
-export async function api<T = RecordData>(
+// Never send Bearer credentials to an external URL or legacy public upload.
+export function attachmentLocation(value: string): URL | null {
+  try {
+    const base = new URL(BASE_URL);
+    const url = new URL(value, base.origin);
+    if (url.hostname === base.hostname && base.protocol === "https:")
+      url.protocol = "https:";
+    if (
+      url.origin !== base.origin ||
+      url.username ||
+      url.password ||
+      !url.pathname.startsWith(base.pathname + "/chat/attachments/") ||
+      !/^[^/]+$/.test(
+        url.pathname.slice((base.pathname + "/chat/attachments/").length),
+      )
+    )
+      return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+export async function fetchAttachment(
+  value: string,
+  signal?: AbortSignal,
+): Promise<Blob> {
+  const url = attachmentLocation(value);
+  if (!url) throw new Error("Tệp cũ không còn khả dụng.");
+  const request = () =>
+    fetch(url.href, {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      signal,
+      redirect: "error",
+      cache: "no-store",
+    });
+  let response = await request();
+  if (response.status === 401 && refreshToken) {
+    await refresh();
+    response = await request();
+  }
+  if (response.status === 401)
+    endSession("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+  if (!response.ok)
+    throw new ApiError("Không thể tải tệp đính kèm.", response.status);
+  return response.blob();
+}
+
+async function apiRequest<T = RecordData>(
   key: string,
   options: {
     params?: Record<string, string>;
@@ -188,6 +243,7 @@ export async function api<T = RecordData>(
       op.method,
       options.body,
       options.signal,
+      op.security.length > 0,
     )) as Envelope<T>;
   } catch (e) {
     if (
@@ -231,7 +287,73 @@ export async function api<T = RecordData>(
     throw e;
   }
 }
+export async function api<T = RecordData>(
+  key: string,
+  options: Parameters<typeof apiRequest>[1] = {},
+): Promise<Envelope<T>> {
+  try {
+    const result = await apiRequest<T>(key, options);
+    if (key === "PATCH /auth/me/change-password") {
+      endSession(
+        "Đã đổi mật khẩu. Vui lòng đăng nhập lại trên tất cả thiết bị.",
+      );
+      return result;
+    }
+    if (
+      !key.startsWith("GET ") &&
+      !/\/auth\/refresh-token|\/notifications\/.*read|\/chat\//.test(key)
+    ) {
+      const message =
+        key === "POST /payments/sepay/checkout"
+          ? "Đã tạo mã thanh toán. Vui lòng chuyển khoản để kích hoạt gói."
+          : key === "POST /payments/sepay/mock-confirm"
+            ? "Đã gửi xác nhận giả lập. Đang kiểm tra trạng thái thanh toán."
+            : /[À-ỹ]/.test(result.message || "")
+              ? result.message
+              : "Thao tác đã thực hiện thành công.";
+      toast("success", message);
+    }
+    return result;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError")
+      throw error;
+    const code =
+      error instanceof ApiError
+        ? (error.details as { code?: string } | undefined)?.code
+        : undefined;
+    if (
+      code === "SCHEDULE_STATE_CHANGED" ||
+      code === "SCHEDULE_NOT_AVAILABLE"
+    ) {
+      window.dispatchEvent(new Event("schedule-state-changed"));
+    }
+    if (
+      error instanceof ApiError &&
+      error.status === 409 &&
+      code === "SEPAY_PAYMENT_PENDING"
+    ) {
+      toast(
+        "info",
+        "Bạn có đơn đang chờ thanh toán. Đã mở lại mã QR của đơn cũ.",
+      );
+    } else {
+      toast(
+        "error",
+        code === "SEPAY_NOT_CONFIGURED"
+          ? "Thanh toán online chưa được cấu hình. Vui lòng thanh toán tại quầy hoặc thử lại sau."
+          : error instanceof Error
+            ? error.message
+            : "Thao tác không thành công. Vui lòng thử lại.",
+      );
+    }
+    throw error;
+  }
+}
 export const authService = {
+  forgotPassword: (email: string) =>
+    api<null>("POST /auth/forgot-password", { body: { email } }),
+  resetPassword: (body: { email: string; otp: string; newPassword: string }) =>
+    api<null>("POST /auth/reset-password", { body }),
   async login(body: PostAuthLoginRequest) {
     const r = await api<LoginOk["data"]>("POST /auth/login", { body });
     saveTokens(r.data);

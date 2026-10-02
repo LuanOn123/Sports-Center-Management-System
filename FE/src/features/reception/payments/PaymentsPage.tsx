@@ -139,12 +139,23 @@ export function PaymentsPage({ role = "STAFF" }: { role?: string }) {
                         >
                           Chi tiết
                         </button>
+                        {Boolean(row.gateway) && (
+                          <small>
+                            Giao dịch online được chốt qua webhook/đối soát.
+                          </small>
+                        )}
+                        {row.activationStatus === "REQUIRES_REVIEW" && (
+                          <span role="status">
+                            Cần đối soát — chưa kích hoạt gói
+                          </span>
+                        )}
                         <StatusAction
                           operation="PATCH /payments/{id}/status"
                           id={String(row.id)}
                           statuses={paymentTransitions(
                             String(row.status),
                             role,
+                            row.gateway,
                           )}
                           explanation="Cập nhật thanh toán sẽ cập nhật hóa đơn tương ứng. Hoàn tiền ở đây chỉ ghi nhận trạng thái, không chuyển tiền qua ngân hàng và không tự hủy quyền lợi gói. Đối chiếu giao dịch thực tế trước khi xác nhận."
                         />

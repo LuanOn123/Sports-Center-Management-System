@@ -63,3 +63,18 @@ describe("Vietnamese backend errors", () => {
     expect(result.message).toBe("Số điện thoại này đã được sử dụng.");
   });
 });
+
+it("lists members impacted by a schedule move without inventing field errors", () => {
+  const result = localizeApiError(
+    "Không thể dời lịch.",
+    {
+      code: "SCHEDULE_MOVE_IMPACT",
+      conflicts: ["Nguyễn An"],
+      uncovered: ["Trần Bình"],
+    },
+    409,
+  );
+  expect(result.message).toContain("Trùng giờ: Nguyễn An");
+  expect(result.message).toContain("Ngoài hạn gói: Trần Bình");
+  expect(result.errors).toEqual([]);
+});

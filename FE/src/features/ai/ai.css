@@ -17,6 +17,15 @@
 .ai-spinner {
   animation: ai-spin 1s linear infinite;
 }
+body:has(.motion-toggle) .ai-fab {
+  bottom: 72px;
+}
+body:has(.floating-chat) .ai-fab {
+  bottom: 164px;
+}
+body:has(.floating-chat.open) .ai-fab {
+  visibility: hidden;
+}
 @keyframes ai-spin {
   to {
     transform: rotate(360deg);

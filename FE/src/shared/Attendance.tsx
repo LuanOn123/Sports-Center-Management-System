@@ -45,7 +45,9 @@ export function Attendance({
     <section className="workflow-page">
       <h3>Điểm danh buổi học</h3>
       {["MANAGER", "COACH"].includes(role) &&
-        schedule.status === "SCHEDULED" && <AttendanceQr scheduleId={id} />}
+        schedule.status === "SCHEDULED" && (
+          <AttendanceQr scheduleId={id} schedule={schedule} />
+        )}
       <p>
         Hoàn tất lịch học không tự xác nhận hội viên có mặt. Mỗi học viên cần
         được ghi nhận riêng.

@@ -3,12 +3,50 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { classesApi } from "../../api/classes.api";
-import { Search, Volleyball, Users, Sparkles, ArrowRight } from "lucide-react";
+import type { AreaType } from "../../types/member";
+import {
+  Search,
+  Volleyball,
+  CalendarDays,
+  Clock3,
+  ArrowRight,
+} from "lucide-react";
 import {
   LoadingSpinner,
   EmptyState,
   StatusBadge,
 } from "../../components/common";
+
+function CoursePatternSummary({ classId }: { classId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["course-plan", classId],
+    queryFn: () => classesApi.getCoursePlan(classId),
+  });
+  if (isLoading)
+    return (
+      <span style={{ color: "var(--member-muted, #98a2b3)" }}>
+        Đang tải lịch học...
+      </span>
+    );
+  const slots = data?.course?.slots || [];
+  if (!slots.length)
+    return (
+      <span style={{ color: "var(--member-muted, #98a2b3)" }}>
+        Chưa có lịch học sắp tới
+      </span>
+    );
+  return slots.slice(0, 4).map((slot) => (
+    <div
+      key={`${slot.weekday}-${slot.startTime}-${slot.roomId}`}
+      style={{ display: "flex", alignItems: "center", gap: 6 }}
+    >
+      <Clock3 size={14} color="var(--member-muted, #58695f)" />
+      <span>
+        {slot.weekdayLabel} · {slot.startTime}–{slot.endTime}
+      </span>
+    </div>
+  ));
+}
 
 export function BrowseClassesPage() {
   const navigate = useNavigate();
@@ -18,6 +56,7 @@ export function BrowseClassesPage() {
   const [selectedType, setSelectedType] = useState<"REGULAR" | "PREMIUM" | "">(
     "",
   );
+  const [selectedArea, setSelectedArea] = useState<AreaType | "">("");
   const [page, setPage] = useState(1);
 
   // Fetch sports for filtering
@@ -32,12 +71,20 @@ export function BrowseClassesPage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["classes", search, selectedSport, selectedType, page],
+    queryKey: [
+      "classes",
+      search,
+      selectedSport,
+      selectedType,
+      selectedArea,
+      page,
+    ],
     queryFn: () =>
       classesApi.getClasses({
         search: search || undefined,
         sportId: selectedSport || undefined,
         classType: selectedType || undefined,
+        areaType: selectedArea || undefined,
         isActive: true,
         page,
         limit: 12,
@@ -51,11 +98,12 @@ export function BrowseClassesPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {/* HEADER BANNER */}
       <div
+        className="member-explore-hero"
         style={{
-          background: "var(--color-surface)",
-          borderRadius: "var(--radius-card)",
+          background: "var(--member-surface, #ffffff)",
+          borderRadius: 16,
           padding: "24px 28px",
-          border: "1px solid #e7ece9",
+          border: "1px solid var(--member-border, #e7ece9)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -64,11 +112,12 @@ export function BrowseClassesPage() {
         }}
       >
         <div>
+          <span className="member-kicker">PULSE / KHÁM PHÁ</span>
           <h1
             style={{
               fontSize: 24,
-              fontWeight: 700,
-              color: "var(--color-primary)",
+              fontWeight: 800,
+              color: "var(--member-text, #203d31)",
               margin: "0 0 6px",
             }}
           >
@@ -77,8 +126,8 @@ export function BrowseClassesPage() {
           <p
             style={{
               margin: 0,
-              color: "var(--color-text-muted)",
-              fontSize: "var(--font-small)",
+              color: "var(--member-muted, #58695f)",
+              fontSize: 13,
             }}
           >
             Lựa chọn môn thể thao yêu thích, xem lịch học và đặt chỗ trực tuyến
@@ -87,13 +136,39 @@ export function BrowseClassesPage() {
         </div>
       </div>
 
+      <div className="member-sport-tabs" aria-label="Chọn bộ môn">
+        <button
+          className={!selectedSport ? "active" : ""}
+          aria-pressed={!selectedSport}
+          onClick={() => {
+            setSelectedSport("");
+            setPage(1);
+          }}
+        >
+          Tất cả bộ môn
+        </button>
+        {sports.map((sport) => (
+          <button
+            key={sport.id}
+            className={selectedSport === sport.id ? "active" : ""}
+            aria-pressed={selectedSport === sport.id}
+            onClick={() => {
+              setSelectedSport(sport.id);
+              setPage(1);
+            }}
+          >
+            {sport.name}
+          </button>
+        ))}
+      </div>
       {/* SEARCH AND FILTER BAR */}
       <div
+        className="member-filter-bar"
         style={{
-          background: "var(--color-surface)",
-          borderRadius: "var(--radius-card)",
+          background: "var(--member-surface, #ffffff)",
+          borderRadius: 14,
           padding: "16px 20px",
-          border: "1px solid #e7ece9",
+          border: "1px solid var(--member-border, #e7ece9)",
           display: "flex",
           flexWrap: "wrap",
           gap: 12,
@@ -104,7 +179,7 @@ export function BrowseClassesPage() {
         <div style={{ position: "relative", flex: "1 1 260px" }}>
           <Search
             size={17}
-            color="var(--color-text-muted)"
+            color="var(--member-muted, #58695f)"
             style={{
               position: "absolute",
               left: 12,
@@ -159,22 +234,40 @@ export function BrowseClassesPage() {
           </select>
         </div>
 
-        {(search || selectedSport || selectedType) && (
+        <div style={{ flex: "0 1 180px" }}>
+          <select
+            aria-label="Lọc theo khu vực tập"
+            value={selectedArea}
+            onChange={(e) => {
+              setSelectedArea(e.target.value as AreaType | "");
+              setPage(1);
+            }}
+          >
+            <option value="">Tất cả khu vực</option>
+            <option value="INDOOR">Trong nhà</option>
+            <option value="OUTDOOR">Ngoài trời</option>
+            <option value="POOL">Hồ bơi</option>
+          </select>
+        </div>
+
+        {(search || selectedSport || selectedType || selectedArea) && (
           <button
+            className="member-button"
             onClick={() => {
               setSearch("");
               setSelectedSport("");
               setSelectedType("");
+              setSelectedArea("");
               setPage(1);
             }}
             style={{
               padding: "10px 14px",
               background: "none",
-              border: "1px dashed #d0d5dd",
+              border: "1px dashed var(--member-border, #d0d5dd)",
               borderRadius: 8,
-              fontSize: "var(--font-caption)",
+              fontSize: 12,
               fontWeight: 600,
-              color: "var(--color-text-muted)",
+              color: "var(--member-muted, #475467)",
               cursor: "pointer",
             }}
           >
@@ -198,137 +291,158 @@ export function BrowseClassesPage() {
           description="Hãy thử đổi từ khóa tìm kiếm hoặc chọn bộ môn khác."
         />
       ) : (
-        <div className="browse-class-grid">
-          {classes.map((c) => {
-            const coaches = c.coaches || [];
-            const primaryCoach = coaches[0]?.coach?.user?.fullName;
-
-            return (
-              <div key={c.id} className="browse-class-card">
-                <div className="browse-class-visual" aria-hidden="true">
-                  <Volleyball size={36} strokeWidth={1.2} />
-                  <span className="court-lines" />
-                </div>
-                <div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      marginBottom: 12,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: "var(--font-caption)",
-                        fontWeight: 700,
-                        color: "var(--color-primary)",
-                        backgroundColor: "#f2f8eb",
-                        padding: "3px 9px",
-                        borderRadius: 6,
-                        border: "1px solid #d4ebbf",
-                      }}
-                    >
-                      {sportNames(c)}
-                    </span>
-                    <StatusBadge status={c.classType} />
-                  </div>
-
-                  <h3
-                    style={{
-                      fontSize: 18,
-                      fontWeight: 700,
-                      color: "var(--color-primary)",
-                      margin: "0 0 8px",
-                      lineHeight: 1.3,
-                    }}
-                  >
-                    {c.name}
-                  </h3>
-
-                  <p
-                    style={{
-                      fontSize: "var(--font-small)",
-                      color: "var(--color-text-muted)",
-                      lineHeight: 1.5,
-                      margin: "0 0 16px",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {c.description ||
-                      "Lớp học tiêu chuẩn rèn luyện thể chất với giáo trình bài bản và chuyên nghiệp."}
-                  </p>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 8,
-                      fontSize: "var(--font-caption)",
-                      color: "var(--color-text-muted)",
-                    }}
-                  >
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 6 }}
-                    >
-                      <Users size={14} color="var(--color-text-muted)" />
-                      <span>
-                        Sức chứa: <strong>{c.capacity} học viên</strong>
-                      </span>
-                    </div>
-
-                    {primaryCoach && (
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                        }}
-                      >
-                        <Sparkles size={14} color="var(--color-text-muted)" />
-                        <span>
-                          HLV chính: <strong>{primaryCoach}</strong>
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(auto-fill, minmax(min(100%, 280px), 1fr))",
+            gap: 20,
+          }}
+        >
+          {classes.map((c) => (
+            <div
+              className="member-class-card"
+              key={c.id}
+              style={{
+                backgroundColor: "var(--member-surface, #ffffff)",
+                borderRadius: 16,
+                border: "1px solid var(--member-border, #e7ece9)",
+                padding: 22,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.02)",
+                transition: "box-shadow 0.2s, transform 0.2s",
+              }}
+            >
+              <div>
                 <div
                   style={{
-                    marginTop: 20,
-                    paddingTop: 16,
-                    borderTop: "1px solid #f2f5f3",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: 12,
                   }}
                 >
-                  <button
-                    onClick={() => navigate(`/member/classes/${c.id}`)}
+                  <span
                     style={{
-                      width: "100%",
-                      padding: "10px 16px",
-                      backgroundColor: "#f2f8eb",
-                      color: "var(--color-primary)",
-                      border: "1px solid #d4ebbf",
-                      borderRadius: 10,
-                      fontSize: "var(--font-small)",
+                      fontSize: 12,
                       fontWeight: 700,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 8,
-                      cursor: "pointer",
-                      transition: "background 0.15s",
+                      color: "var(--member-text, #203d31)",
+                      backgroundColor: "var(--member-accent-soft, #f2f8eb)",
+                      padding: "3px 9px",
+                      borderRadius: 6,
+                      border: "1px solid var(--member-accent-border, #d4ebbf)",
                     }}
                   >
-                    Xem lịch & Đặt chỗ <ArrowRight size={15} />
-                  </button>
+                    {sportNames(c)}
+                  </span>
+                  <StatusBadge status={c.classType} />
+                </div>
+
+                <h3
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 800,
+                    color: "var(--member-text, #203d31)",
+                    margin: "0 0 8px",
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {c.name}
+                </h3>
+
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: "var(--member-muted, #667085)",
+                    lineHeight: 1.5,
+                    margin: "0 0 16px",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }}
+                >
+                  {c.description ||
+                    "Lớp học tiêu chuẩn rèn luyện thể chất với giáo trình bài bản và chuyên nghiệp."}
+                </p>
+
+                {Boolean(c.coaches?.length) && (
+                  <div className="member-class-coach">
+                    <span className="member-coach-avatar">HLV</span>
+                    <div>
+                      <small>Huấn luyện viên</small>
+                      <strong>
+                        {c.coaches
+                          ?.map((item) => item.coach?.user?.fullName)
+                          .filter(Boolean)
+                          .join(", ")}
+                      </strong>
+                    </div>
+                  </div>
+                )}
+                <div
+                  className="member-class-schedule"
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                    fontSize: 12,
+                    color: "var(--member-muted, #475467)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      fontWeight: 700,
+                      color: "var(--member-text, #203d31)",
+                    }}
+                  >
+                    <CalendarDays
+                      size={15}
+                      color="var(--member-accent, #376228)"
+                    />
+                    <span>Lịch học trong tuần</span>
+                  </div>
+                  <CoursePatternSummary classId={c.id} />
                 </div>
               </div>
-            );
-          })}
+
+              <div
+                style={{
+                  marginTop: 20,
+                  paddingTop: 16,
+                  borderTop: "1px solid var(--member-surface-alt, #f2f5f3)",
+                }}
+              >
+                <button
+                  className="member-button member-button-primary"
+                  onClick={() => navigate(`/member/classes/${c.id}`)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 16px",
+                    backgroundColor: "var(--member-accent-soft, #f2f8eb)",
+                    color: "var(--member-text, #203d31)",
+                    border: "1px solid var(--member-accent-border, #d4ebbf)",
+                    borderRadius: 10,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    cursor: "pointer",
+                    transition: "background 0.15s",
+                  }}
+                >
+                  Xem chi tiết khóa học <ArrowRight size={15} />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
       <div className="pagination">

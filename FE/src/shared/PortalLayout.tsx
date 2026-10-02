@@ -25,8 +25,14 @@ import type { LucideIcon } from "lucide-react";
 import { useSidebar } from "./useSidebar";
 import { Brand } from "./Brand";
 import type { ProfileOk } from "./generated";
-import { Chat, Notifications } from "./Communication";
+import {
+  Chat,
+  FloatingChat,
+  NotificationBell,
+  Notifications,
+} from "./Communication";
 import { Policies } from "./Policies";
+import { AttendanceShortcut } from "./AttendanceShortcut";
 export type NavigationItem = readonly [
   path: string,
   name: string,
@@ -86,11 +92,7 @@ export function PortalLayout({
     ]),
     {
       title: "KẾT NỐI",
-      items: [
-        ["notifications", "Thông báo"],
-        ["chat", "Tin nhắn"],
-        ["policies", "Chính sách sử dụng"],
-      ] as NavigationItem[],
+      items: [["policies", "Chính sách sử dụng"]] as NavigationItem[],
     },
   ];
   const pageTitle =
@@ -105,7 +107,9 @@ export function PortalLayout({
     document.title = `${pageTitle} · Pulse Sports Center`;
   }, [pageTitle]);
   return (
-    <div className="app-layout">
+    <div
+      className={`app-layout${user.role === "MEMBER" ? " member-theme" : ""}`}
+    >
       <a className="skip-link" href="#main-content">
         Đến nội dung chính
       </a>
@@ -126,7 +130,7 @@ export function PortalLayout({
         className={"sidebar " + (open ? "is-open" : "")}
       >
         <Link to={base + "/dashboard"} className="brand-link">
-          <Brand />
+          <Brand member={user.role === "MEMBER"} />
         </Link>
         <button
           className="mobile-close icon-button"
@@ -188,16 +192,15 @@ export function PortalLayout({
             >
               <Menu />
             </button>
+            {user.role === "MEMBER" && (
+              <span className="member-breadcrumb-label">
+                Khu vực hội viên <ChevronRight size={14} />
+              </span>
+            )}
             <strong>{pageTitle}</strong>
           </div>
           <div className="topbar-actions">
-            <Link
-              className="icon-button notification-link"
-              to={base + "/notifications"}
-              aria-label="Xem thông báo"
-            >
-              <Bell size={18} />
-            </Link>
+            <NotificationBell />
             <Link
               className="profile-link"
               to={base + "/profile"}
@@ -226,6 +229,8 @@ export function PortalLayout({
           © {new Date().getFullYear()} Pulse Sports Center
         </footer>
       </div>
+      <FloatingChat userId={user.id} />
+      <AttendanceShortcut role={user.role} base={base} />
     </div>
   );
 }

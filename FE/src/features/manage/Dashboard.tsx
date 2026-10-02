@@ -37,7 +37,10 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
   const revenue = useQuery({
     queryKey: ["report", "revenue", query],
     queryFn: ({ signal }) =>
-      api<RevenueReportOk["data"]>("GET /reports/revenue", { query, signal }),
+      api<RevenueReportOk["data"] & { note?: string }>("GET /reports/revenue", {
+        query,
+        signal,
+      }),
     enabled: valid,
   });
   const members = useQuery({
@@ -75,46 +78,46 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
   });
   const cards = [
     {
-      title: "Doanh thu",
+      title: "Thực nhận",
       icon: Wallet,
       q: revenue,
-      value: revenue.data?.data.totalRevenue,
+      value: revenue.data?.data.netRevenue,
       money: true,
-      sub: "Trong khoáº£ng thá»i gian Ä‘Ã£ chá»n",
+      sub: "Trong khoảng thời gian đã chọn",
       accent: "stat-revenue",
     },
     {
-      title: "Tá»•ng há»™i viÃªn",
+      title: "Tổng hội viên",
       icon: Users,
       q: members,
       value: members.data?.data.totalMembers,
-      sub: "Cá»™ng Ä‘á»“ng cá»§a trung tÃ¢m",
+      sub: "Cộng đồng của trung tâm",
       accent: "stat-members",
     },
     {
-      title: "LÆ°á»£t Ä‘Äƒng kÃ½ lá»›p",
+      title: "Lượt đăng ký lớp",
       icon: Dumbbell,
       q: enrollments,
       value: enrollments.data?.data.totalEnrollments,
-      sub: "Trong káº»áººÌng thá»i gian Ä‘Ã£ chá»n",
+      sub: "Trong khoảng thời gian đã chọn",
       accent: "stat-enrollments",
     },
     {
-      title: "GÃ³i Ä‘ang hiá»‡u lá»±c",
+      title: "Gói đang hiệu lực",
       icon: CreditCard,
       q: memberships,
       value: memberships.data?.data.activeSubscriptions,
-      sub: "Sáºµn sÃ ng cho buá»•i táº­p tiáº¿p theo",
+      sub: "Sẵn sàng cho buổi tập tiếp theo",
       accent: "stat-memberships",
     },
   ];
   function exportCsv() {
-    const rows = [["BÃ¡o cÃ¡o", "Chá»‰ tiÃªu", "GiÃ¡ trá»‹", "Tá»« ngÃ y", "Äáº¿n ngÃ y"]];
+    const rows = [["Báo cáo", "Chỉ tiêu", "Giá trị", "Từ ngày", "Đến ngày"]];
     for (const [name, q] of [
       ["Doanh thu", revenue],
-      ["Há»™i viÃªn", members],
-      ["ÄÄƒng kÃ½ lá»›p", enrollments],
-      ["GÃ³i thÃ nh viÃªn", memberships],
+      ["Hội viên", members],
+      ["Đăng ký lớp", enrollments],
+      ["Gói thành viên", memberships],
     ] as const) {
       if (q.data)
         for (const [k, v] of Object.entries(q.data.data)) {
@@ -149,17 +152,17 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
         <div>
           <div className="eyebrow">
             {reports
-              ? "HIá»‚U Dá»® LIá»†U. DáºªN Dáº®T TÄ‚NG TRÆ¯á»žNG."
-              : "Má»–I NGÃ€Y LÃ€ Má»˜T BÆ¯á»šC TIáº¾N"}
+              ? "HIỂU DỮ LIỆU. DẪN DẮT TĂNG TRƯỞNG."
+              : "MỖI NGÀY LÀ MỘT BƯỚC TIẾN"}
           </div>
           <h1>
-            {reports ? "BÃ¡o cÃ¡o & phÃ¢n tÃ­ch" : "Tá»•ng quan trung tÃ¢m"}
+            {reports ? "Báo cáo & phân tích" : "Tổng quan trung tâm"}
             <span className="heading-dot">.</span>
           </h1>
           <p>
             {reports
-              ? "Bá»©c tranh hoáº¡t Ä‘á»™ng, Ä‘Æ°á»£c cáº­p nháº­t tá»« dá»¯ liá»‡u thá»±c."
-              : "ChÃ o ngÃ y má»›i! CÃ¹ng giá»¯ nhá»‹p váº­n hÃ nh trung tÃ¢m."}
+              ? "Bức tranh hoạt động, được cập nhật từ dữ liệu thực."
+              : "Chào ngày mới! Cùng giữ nhịp vận hành trung tâm."}
           </p>
         </div>
         <div className="date-label">
@@ -173,21 +176,21 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
         </div>
       </div>
       <div className="section-heading">
-        <h2>{reports ? "Hiá»‡u quáº£ hoáº¡t Ä‘á»™ng" : "Trung tÃ¢m trong táº§m tay"}</h2>
+        <h2>{reports ? "Hiệu quả hoạt động" : "Trung tâm trong tầm tay"}</h2>
         <div className="date-range">
           <label>
-            Tá»«
+            Từ
             <input
-              aria-label="Tá»« ngÃ y"
+              aria-label="Từ ngày"
               type="date"
               value={startDate}
               onChange={(e) => setStart(e.target.value)}
             />
           </label>
           <label>
-            Äáº¿n
+            Đến
             <input
-              aria-label="Äáº¿n ngÃ y"
+              aria-label="Đến ngày"
               type="date"
               min={startDate}
               value={endDate}
@@ -203,7 +206,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
               onClick={exportCsv}
             >
               <ArrowDownToLine size={16} />
-              Xuáº¥t CSV
+              Xuất CSV
             </button>
           )}
         </div>
@@ -212,7 +215,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
         <ErrorState
           error={
             new Error(
-              "Chá»n khoáº£ng ngÃ y há»£p lá»‡: ngÃ y káº¿t thÃºc pháº£i báº±ng hoáº·c sau ngÃ y báº¯t Ä‘áº§u.",
+              "Chọn khoảng ngày hợp lệ: ngày kết thúc phải bằng hoặc sau ngày bắt đầu.",
             )
           }
         />
@@ -220,8 +223,19 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
         <>
           <div className="stats-grid">
             {cards.map(
-              ({ title, icon: Icon, q, value, money: isMoney, sub, accent }) => (
-                <section className={`stat-card${accent ? " " + accent : ""}`} key={title}>
+              ({
+                title,
+                icon: Icon,
+                q,
+                value,
+                money: isMoney,
+                sub,
+                accent,
+              }) => (
+                <section
+                  className={`stat-card${accent ? " " + accent : ""}`}
+                  key={title}
+                >
                   <div className="stat-top">
                     <span>{title}</span>
                     <span className="stat-icon">
@@ -236,7 +250,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                     <>
                       <strong className="stat-value">
                         {value == null
-                          ? "â€”"
+                          ? "—"
                           : isMoney
                             ? money(value)
                             : value.toLocaleString("vi-VN")}
@@ -255,11 +269,11 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
             <section className="dashboard-callout">
               <CalendarDays size={28} />
               <div>
-                <h2>Sáºµn sÃ ng cho lá»‹ch táº­p hÃ´m nay</h2>
-                <p>Äiá»u phá»‘i phÃ²ng táº­p, lá»›p há»c vÃ  Ä‘á»™i ngÅ© huáº¥n luyá»‡n viÃªn.</p>
+                <h2>Sẵn sàng cho lịch tập hôm nay</h2>
+                <p>Điều phối phòng tập, lớp học và đội ngũ huấn luyện viên.</p>
               </div>
               <Link className="button lime" to="/manager/schedules">
-                Xem lá»‹ch hoáº¡t Ä‘á»™ng <ArrowUpRight size={18} />
+                Xem lịch hoạt động <ArrowUpRight size={18} />
               </Link>
             </section>
           )}
@@ -267,8 +281,8 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
             <section className="panel">
               <div className="panel-heading">
                 <div>
-                  <span className="eyebrow">DÃ’NG TIá»€N</span>
-                  <h2>Doanh thu theo phÆ°Æ¡ng thá»©c</h2>
+                  <span className="eyebrow">DÒNG TIỀN</span>
+                  <h2>Doanh thu theo phương thức</h2>
                 </div>
                 <Wallet size={20} />
               </div>
@@ -284,11 +298,16 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                   <strong className="chart-total">
                     {money(revenue.data.data.totalRevenue)}
                   </strong>
-                  <p>Tá»•ng doanh thu trong ká»³ Ä‘Ã£ chá»n</p>
+                  <p>Tổng thu trong kỳ đã chọn</p>
+                  <p>
+                    Đã hoàn: {money(revenue.data.data.refundedAmount)} · Thực
+                    nhận: {money(revenue.data.data.netRevenue)}
+                  </p>
+                  <p>{String(revenue.data.data.note || "")}</p>
                   <Bars values={revenue.data.data.revenueByMethod} currency />
                   <div className="chart-note">
                     <Activity size={15} />
-                    Dá»¯ liá»‡u tá»« thanh toÃ¡n táº¡i trung tÃ¢m
+                    Dữ liệu từ thanh toán tại trung tâm
                   </div>
                 </div>
               )}
@@ -296,8 +315,8 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
             <section className="panel">
               <div className="panel-heading">
                 <div>
-                  <span className="eyebrow">Cá»˜NG Äá»’NG</span>
-                  <h2>CÆ¡ cáº¥u há»™i viÃªn</h2>
+                  <span className="eyebrow">CỘNG ĐỒNG</span>
+                  <h2>Cơ cấu hội viên</h2>
                 </div>
                 <Users size={20} />
               </div>
@@ -314,15 +333,15 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                   <div className="member-mini">
                     <div>
                       <strong>{members.data.data.newMembers}</strong>
-                      <span>Há»™i viÃªn má»›i</span>
+                      <span>Hội viên mới</span>
                     </div>
                     <div>
                       <strong>{members.data.data.activeMembers}</strong>
-                      <span>CÃ²n hiá»‡u lá»±c</span>
+                      <span>Còn hiệu lực</span>
                     </div>
                     <div>
                       <strong>{members.data.data.expiredMembers}</strong>
-                      <span>Háº¿t háº¡n</span>
+                      <span>Hết hạn</span>
                     </div>
                   </div>
                 </div>
@@ -334,19 +353,19 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
               <div className="panel-heading">
                 <div>
                   <span className="eyebrow">
-                    {reports ? "Sá»¨C HÃšT Lá»šP Há»ŒC" : "NHá»ŠP Sá»NG TRUNG TÃ‚M"}
+                    {reports ? "SỨC HÚT LỚP HỌC" : "NHỊP SỐNG TRUNG TÂM"}
                   </span>
                   <h2>
                     {reports
-                      ? "Lá»›p há»c Ä‘Æ°á»£c yÃªu thÃ­ch"
-                      : "Lá»‹ch hoáº¡t Ä‘á»™ng hÃ´m nay"}
+                      ? "Lớp học được yêu thích"
+                      : "Lịch hoạt động hôm nay"}
                   </h2>
                 </div>
                 <Link
                   className="text-link"
                   to={reports ? "/manager/classes" : "/manager/schedules"}
                 >
-                  Xem táº¥t cáº£ <MoveUpRight size={15} />
+                  Xem tất cả <MoveUpRight size={15} />
                 </Link>
               </div>
               {reports ? (
@@ -363,12 +382,12 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                       <div className="ranking" key={c.classId}>
                         <span>{String(i + 1).padStart(2, "0")}</span>
                         <strong>{c.className}</strong>
-                        <span className="badge">{c.count} lÆ°á»£t</span>
+                        <span className="badge">{c.count} lượt</span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <Empty text="ChÆ°a cÃ³ lÆ°á»£t Ä‘Äƒng kÃ½ trong ká»³" />
+                  <Empty text="Chưa có lượt đăng ký trong kỳ" />
                 )
               ) : schedule.isPending ? (
                 <Loading />
@@ -399,27 +418,27 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                 </div>
               ) : (
                 <Empty
-                  text="HÃ´m nay chÆ°a cÃ³ lá»‹ch táº­p"
-                  detail="Táº¡o lá»‹ch Ä‘á»ƒ báº¯t Ä‘áº§u má»™t ngÃ y Ä‘áº§y nÄƒng lÆ°á»£ng."
+                  text="Hôm nay chưa có lịch tập"
+                  detail="Tạo lịch để bắt đầu một ngày đầy năng lượng."
                 />
               )}
             </section>
             <section className="quick-panel">
-              <span className="eyebrow">Sáº´N SÃ€NG CHO BÆ¯á»šC TIáº¾P THEO?</span>
+              <span className="eyebrow">SẴN SÀNG CHO BƯỚC TIẾP THEO?</span>
               <h2>
-                Ãt thao tÃ¡c hÆ¡n.
+                Ít thao tác hơn.
                 <br />
-                Nhiá»u chuyá»ƒn Ä‘á»™ng hÆ¡n.
+                Nhiều chuyển động hơn.
               </h2>
               <p>
-                Nhá»¯ng cÃ´ng viá»‡c thÆ°á»ng ngÃ y,
+                Những công việc thường ngày,
                 <br />
-                chá»‰ cÃ¡ch báº¡n má»™t cháº¡m.
+                chỉ cách bạn một chạm.
               </p>
               {[
-                ["/manager/members", "Quáº£n lÃ½ há»™i viÃªn", Users],
-                ["/manager/classes", "Tá»• chá»©c lá»›p há»c", Dumbbell],
-                ["/manager/membership-plans", "Thiáº¿t láº­p gÃ³i táº­p", CreditCard],
+                ["/manager/members", "Quản lý hội viên", Users],
+                ["/manager/classes", "Tổ chức lớp học", Dumbbell],
+                ["/manager/membership-plans", "Thiết lập gói tập", CreditCard],
               ].map(([to, title, Icon]) => {
                 const I = Icon as typeof Users;
                 return (
@@ -435,9 +454,9 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
           {reports && (
             <div className="dashboard-grid">
               {[
-                [revenue, "Chi tiáº¿t thanh toÃ¡n"],
-                [enrollments, "Chi tiáº¿t Ä‘Äƒng kÃ½ lá»›p"],
-                [memberships, "Chi tiáº¿t gÃ³i thÃ nh viÃªn"],
+                [revenue, "Chi tiết thanh toán"],
+                [enrollments, "Chi tiết đăng ký lớp"],
+                [memberships, "Chi tiết gói thành viên"],
               ].map(([raw, title]) => {
                 const q = raw as typeof revenue;
                 return (
@@ -457,7 +476,13 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                             <div className="report-line" key={k}>
                               <span>{label(k)}</span>
                               <strong>
-                                {k === "totalRevenue" ? money(v) : display(v)}
+                                {[
+                                  "totalRevenue",
+                                  "netRevenue",
+                                  "refundedAmount",
+                                ].includes(k)
+                                  ? money(v)
+                                  : display(v)}
                               </strong>
                             </div>
                           ))}
@@ -483,8 +508,8 @@ function Bars({
   const total = Object.values(values).reduce((a, b) => a + b, 0);
   return total === 0 ? (
     <Empty
-      text="ChÆ°a cÃ³ dá»¯ liá»‡u trong ká»³"
-      detail="Thá»­ chá»n má»™t khoáº£ng thá»i gian khÃ¡c."
+      text="Chưa có dữ liệu trong kỳ"
+      detail="Thử chọn một khoảng thời gian khác."
     />
   ) : (
     <div className="bars">
@@ -508,4 +533,3 @@ function Bars({
     </div>
   );
 }
-

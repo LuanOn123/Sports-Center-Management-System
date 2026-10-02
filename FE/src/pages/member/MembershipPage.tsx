@@ -1,12 +1,19 @@
 import { CancelSubscription } from "../../shared/CancelSubscription";
-import { effectiveSubscription } from "../../shared/businessRules";
+import "./membership.css";
+import {
+  effectiveSubscription,
+  isEffectiveSubscription,
+} from "../../shared/businessRules";
 import { formatMemberDate } from "../../shared/memberFormat";
 import { ErrorState } from "../../shared/feedback";
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../context/AuthContext";
 import { membershipApi } from "../../api/membership.api";
-import { CreditCard, Check } from "lucide-react";
+import { sepayApi } from "../../api/sepay.api";
+import { SepayCheckoutModal } from "../../shared/SepayCheckout";
+import type { MembershipPlan, SepayCheckout } from "../../types/member";
+import { CreditCard, Check, QrCode } from "lucide-react";
 import {
   LoadingSpinner,
   EmptyState,
@@ -16,6 +23,45 @@ import {
 export function MembershipPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<"current" | "plans">("current");
+  const [paymentPlan, setPaymentPlan] = useState<MembershipPlan | null>(null);
+  const storageKey = `pulse.pending-checkout.${user?.id}`;
+  const [checkout, setCheckout] = useState<SepayCheckout | null>(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem(storageKey) || "null");
+    } catch {
+      return null;
+    }
+  });
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  useEffect(() => {
+    if (checkout) sessionStorage.setItem(storageKey, JSON.stringify(checkout));
+  }, [checkout, storageKey]);
+  const createCheckout = useMutation({
+    mutationFn: (planId: string) => sepayApi.createCheckout(planId),
+    onSuccess: (data) => {
+      setCheckout(data);
+      setCheckoutOpen(true);
+    },
+    onError: (error) => {
+      const pending = sepayApi.pendingCheckoutFromError(error);
+      if (pending) {
+        setCheckout(pending);
+        setCheckoutOpen(true);
+      }
+    },
+  });
+
+  const startCheckout = (plan: MembershipPlan) => {
+    setPaymentPlan(plan);
+    setCheckout(null);
+    createCheckout.reset();
+    createCheckout.mutate(plan.id);
+  };
+
+  const closeCheckout = () => {
+    setCheckoutOpen(false);
+    createCheckout.reset();
+  };
 
   // Fetch current user subscriptions
   const {
@@ -27,6 +73,7 @@ export function MembershipPage() {
     queryFn: () =>
       user?.id ? membershipApi.getMySubscriptions(user.id) : null,
     enabled: Boolean(user?.id),
+    refetchOnWindowFocus: "always",
   });
 
   // Fetch all plans
@@ -58,10 +105,10 @@ export function MembershipPage() {
       {/* HEADER */}
       <div
         style={{
-          background: "var(--color-surface)",
-          borderRadius: "var(--radius-card)",
+          background: "var(--member-surface, #ffffff)",
+          borderRadius: 16,
           padding: "24px 28px",
-          border: "1px solid #e7ece9",
+          border: "1px solid var(--member-border, #e7ece9)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -73,8 +120,8 @@ export function MembershipPage() {
           <h1
             style={{
               fontSize: 24,
-              fontWeight: 700,
-              color: "var(--color-primary)",
+              fontWeight: 800,
+              color: "var(--member-text, #203d31)",
               margin: "0 0 6px",
             }}
           >
@@ -83,8 +130,8 @@ export function MembershipPage() {
           <p
             style={{
               margin: 0,
-              color: "var(--color-text-muted)",
-              fontSize: "var(--font-small)",
+              color: "var(--member-muted, #58695f)",
+              fontSize: 13,
             }}
           >
             Xem thông tin gói tập đang sử dụng, thời hạn còn lại và bảng giá các
@@ -99,23 +146,26 @@ export function MembershipPage() {
         <div
           style={{
             display: "flex",
-            backgroundColor: "#f2f5f3",
+            backgroundColor: "var(--member-surface-alt, #f2f5f3)",
             borderRadius: 8,
             padding: 3,
           }}
         >
           <button
+            className="member-button"
             onClick={() => setTab("current")}
             style={{
               border: "none",
               background:
-                tab === "current" ? "var(--color-surface)" : "transparent",
+                tab === "current"
+                  ? "var(--member-surface, #ffffff)"
+                  : "transparent",
               color:
                 tab === "current"
-                  ? "var(--color-primary)"
-                  : "var(--color-text-muted)",
+                  ? "var(--member-text, #203d31)"
+                  : "var(--member-muted, #58695f)",
               fontWeight: 700,
-              fontSize: "var(--font-small)",
+              fontSize: 13,
               padding: "8px 16px",
               borderRadius: 6,
               cursor: "pointer",
@@ -124,17 +174,20 @@ export function MembershipPage() {
             Gói của tôi
           </button>
           <button
+            className="member-button"
             onClick={() => setTab("plans")}
             style={{
               border: "none",
               background:
-                tab === "plans" ? "var(--color-surface)" : "transparent",
+                tab === "plans"
+                  ? "var(--member-surface, #ffffff)"
+                  : "transparent",
               color:
                 tab === "plans"
-                  ? "var(--color-primary)"
-                  : "var(--color-text-muted)",
+                  ? "var(--member-text, #203d31)"
+                  : "var(--member-muted, #58695f)",
               fontWeight: 700,
-              fontSize: "var(--font-small)",
+              fontSize: 13,
               padding: "8px 16px",
               borderRadius: 6,
               cursor: "pointer",
@@ -147,7 +200,7 @@ export function MembershipPage() {
 
       {tab === "current" ? (
         /* CURRENT MEMBERSHIP TAB */
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {subLoading ? (
             <LoadingSpinner text="Đang kiểm tra gói hội viên..." />
           ) : subError ? (
@@ -155,11 +208,13 @@ export function MembershipPage() {
           ) : activeSub ? (
             /* ACTIVE MEMBERSHIP HERO */
             <div
+              className="member-active-plan"
               style={{
-                background: "linear-gradient(135deg, #203d31 0%, #152720 100%)",
-                borderRadius: "var(--radius-card)",
+                background:
+                  "linear-gradient(135deg, var(--member-surface, #203d31) 0%, var(--member-surface-alt, #152720) 100%)",
+                borderRadius: 20,
                 padding: "32px",
-                color: "var(--color-surface)",
+                color: "var(--member-text, #ffffff)",
                 boxShadow: "0 10px 25px -5px rgba(32, 61, 49, 0.2)",
               }}
             >
@@ -176,10 +231,10 @@ export function MembershipPage() {
                 <div>
                   <span
                     style={{
-                      backgroundColor: "var(--color-secondary)",
-                      color: "var(--color-primary)",
-                      fontSize: "var(--font-caption)",
-                      fontWeight: 700,
+                      backgroundColor: "var(--member-accent, #d3f879)",
+                      color: "var(--member-ink, #203d31)",
+                      fontSize: 12,
+                      fontWeight: 800,
                       padding: "4px 10px",
                       borderRadius: 6,
                       textTransform: "uppercase",
@@ -191,9 +246,9 @@ export function MembershipPage() {
                   <h2
                     style={{
                       fontSize: 28,
-                      fontWeight: 700,
+                      fontWeight: 800,
                       margin: "12px 0 6px",
-                      color: "var(--color-surface)",
+                      color: "var(--member-text, #ffffff)",
                     }}
                   >
                     {activeSub.plan?.name}
@@ -201,8 +256,8 @@ export function MembershipPage() {
                   <p
                     style={{
                       margin: 0,
-                      color: "#b2c5bc",
-                      fontSize: "var(--font-small)",
+                      color: "var(--member-muted, #b2c5bc)",
+                      fontSize: 14,
                     }}
                   >
                     {activeSub.plan?.description ||
@@ -213,8 +268,8 @@ export function MembershipPage() {
                 <div style={{ textAlign: "right" }}>
                   <div
                     style={{
-                      fontSize: "var(--font-small)",
-                      color: "#b2c5bc",
+                      fontSize: 13,
+                      color: "var(--member-muted, #b2c5bc)",
                       marginBottom: 4,
                     }}
                   >
@@ -223,16 +278,16 @@ export function MembershipPage() {
                   <div
                     style={{
                       fontSize: 32,
-                      fontWeight: 700,
-                      color: "var(--color-secondary)",
+                      fontWeight: 800,
+                      color: "var(--member-accent, #d3f879)",
                     }}
                   >
                     {daysRemaining}{" "}
                     <span
                       style={{
-                        fontSize: "var(--font-body)",
+                        fontSize: 16,
                         fontWeight: 600,
-                        color: "var(--color-surface)",
+                        color: "var(--member-text, #ffffff)",
                       }}
                     >
                       ngày
@@ -253,65 +308,47 @@ export function MembershipPage() {
                 <div>
                   <div
                     style={{
-                      fontSize: "var(--font-caption)",
-                      color: "#8ca89b",
+                      fontSize: 12,
+                      color: "var(--member-muted, #8ca89b)",
                     }}
                   >
                     Hạng hội viên
                   </div>
-                  <div
-                    style={{
-                      fontSize: "var(--font-body)",
-                      fontWeight: 700,
-                      marginTop: 4,
-                    }}
-                  >
+                  <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
                     Hạng {activeSub.tier}
                   </div>
                 </div>
                 <div>
                   <div
                     style={{
-                      fontSize: "var(--font-caption)",
-                      color: "#8ca89b",
+                      fontSize: 12,
+                      color: "var(--member-muted, #8ca89b)",
                     }}
                   >
                     Ngày bắt đầu
                   </div>
-                  <div
-                    style={{
-                      fontSize: "var(--font-body)",
-                      fontWeight: 700,
-                      marginTop: 4,
-                    }}
-                  >
+                  <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
                     {formatMemberDate(activeSub.startDate)}
                   </div>
                 </div>
                 <div>
                   <div
                     style={{
-                      fontSize: "var(--font-caption)",
-                      color: "#8ca89b",
+                      fontSize: 12,
+                      color: "var(--member-muted, #8ca89b)",
                     }}
                   >
                     Ngày kết thúc
                   </div>
-                  <div
-                    style={{
-                      fontSize: "var(--font-body)",
-                      fontWeight: 700,
-                      marginTop: 4,
-                    }}
-                  >
+                  <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
                     {formatMemberDate(activeSub.endDate)}
                   </div>
                 </div>
                 <div>
                   <div
                     style={{
-                      fontSize: "var(--font-caption)",
-                      color: "#8ca89b",
+                      fontSize: 12,
+                      color: "var(--member-muted, #8ca89b)",
                     }}
                   >
                     Trạng thái
@@ -329,11 +366,12 @@ export function MembershipPage() {
               description="Hãy xem Bảng giá các gói để đăng ký gói tập luyện phù hợp với mục tiêu của bạn."
               action={
                 <button
+                  className="member-button member-button-primary"
                   onClick={() => setTab("plans")}
                   style={{
                     padding: "10px 20px",
-                    backgroundColor: "var(--color-primary)",
-                    color: "var(--color-surface)",
+                    backgroundColor: "var(--member-surface-alt, #203d31)",
+                    color: "var(--member-text, #ffffff)",
                     borderRadius: 8,
                     border: "none",
                     fontWeight: 700,
@@ -349,17 +387,17 @@ export function MembershipPage() {
           {/* SUBSCRIPTION HISTORY */}
           <div
             style={{
-              background: "var(--color-surface)",
-              borderRadius: "var(--radius-card)",
-              border: "1px solid #e7ece9",
+              background: "var(--member-surface, #ffffff)",
+              borderRadius: 16,
+              border: "1px solid var(--member-border, #e7ece9)",
               padding: 24,
             }}
           >
             <h3
               style={{
-                fontSize: "var(--font-body)",
+                fontSize: 16,
                 fontWeight: 700,
-                color: "var(--color-primary)",
+                color: "var(--member-text, #203d31)",
                 margin: "0 0 16px",
               }}
             >
@@ -368,10 +406,7 @@ export function MembershipPage() {
 
             {subscriptions.length === 0 ? (
               <div
-                style={{
-                  color: "var(--color-text-muted)",
-                  fontSize: "var(--font-small)",
-                }}
+                style={{ color: "var(--member-muted, #58695f)", fontSize: 13 }}
               >
                 Chưa có lịch sử đăng ký gói nào.
               </div>
@@ -388,8 +423,8 @@ export function MembershipPage() {
                       justifyContent: "space-between",
                       padding: "12px 16px",
                       borderRadius: 10,
-                      backgroundColor: "#f9fbfa",
-                      border: "1px solid #edf2ee",
+                      backgroundColor: "var(--member-surface-alt, #f9fbfa)",
+                      border: "1px solid var(--member-border, #edf2ee)",
                       flexWrap: "wrap",
                       gap: 12,
                     }}
@@ -398,16 +433,16 @@ export function MembershipPage() {
                       <div
                         style={{
                           fontWeight: 700,
-                          fontSize: "var(--font-small)",
-                          color: "var(--color-primary)",
+                          fontSize: 14,
+                          color: "var(--member-text, #203d31)",
                         }}
                       >
                         {sub.plan?.name || "Gói tập"} ({sub.tier})
                       </div>
                       <div
                         style={{
-                          fontSize: "var(--font-caption)",
-                          color: "var(--color-text-muted)",
+                          fontSize: 12,
+                          color: "var(--member-muted, #58695f)",
                           marginTop: 2,
                         }}
                       >
@@ -424,7 +459,39 @@ export function MembershipPage() {
         </div>
       ) : (
         /* MEMBERSHIP PLANS TAB */
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <section className="membership-hero">
+            <div>
+              <span className="membership-eyebrow">PULSE MEMBERSHIP</span>
+              <h2>
+                Đầu tư cho sức khỏe.
+                <br />
+                Bắt đầu từ hôm nay.
+              </h2>
+              <p>
+                Chọn gói phù hợp với nhịp sống của bạn và dành thời gian cho một
+                cơ thể khỏe hơn mỗi ngày.
+              </p>
+              <div className="membership-trust">
+                <span>
+                  <Check size={16} /> Thanh toán VietQR
+                </span>
+                <span>
+                  <Check size={16} /> Theo dõi gói trực tuyến
+                </span>
+              </div>
+            </div>
+            <div className="membership-hero-mark" aria-hidden="true">
+              <CreditCard size={68} />
+              <span>
+                MOVE.
+                <br />
+                GROW.
+                <br />
+                REPEAT.
+              </span>
+            </div>
+          </section>
           {plansLoading ? (
             <LoadingSpinner text="Đang tải danh sách gói tập..." />
           ) : plansError ? (
@@ -441,17 +508,21 @@ export function MembershipPage() {
             >
               {plans.map((p) => {
                 const isPremium = p.tier === "PREMIUM";
+                const registered = subscriptions.find(
+                  (s) => s.planId === p.id && isEffectiveSubscription(s),
+                );
                 const priceFormatted = Number(p.price).toLocaleString("vi-VN");
 
                 return (
                   <div
                     key={p.id}
+                    className={`membership-plan-card ${isPremium ? "premium" : ""}`}
                     style={{
-                      backgroundColor: "var(--color-surface)",
+                      backgroundColor: "var(--member-surface, #ffffff)",
                       borderRadius: 18,
                       border: isPremium
-                        ? "2px solid #203d31"
-                        : "1px solid #e7ece9",
+                        ? "2px solid var(--member-text, #203d31)"
+                        : "1px solid var(--member-border, #e7ece9)",
                       padding: 28,
                       display: "flex",
                       flexDirection: "column",
@@ -468,25 +539,25 @@ export function MembershipPage() {
                           position: "absolute",
                           top: -12,
                           right: 24,
-                          backgroundColor: "var(--color-primary)",
-                          color: "var(--color-secondary)",
-                          fontSize: "var(--font-caption)",
-                          fontWeight: 700,
+                          backgroundColor: "var(--member-surface-alt, #203d31)",
+                          color: "var(--member-accent, #d3f879)",
+                          fontSize: 11,
+                          fontWeight: 800,
                           padding: "3px 12px",
                           borderRadius: 999,
                           letterSpacing: 0.5,
                         }}
                       >
-                        PHỔ BIẾN NHẤT
+                        TRẢI NGHIỆM PREMIUM
                       </span>
                     )}
 
                     <div>
                       <div
                         style={{
-                          fontSize: "var(--font-small)",
+                          fontSize: 13,
                           fontWeight: 700,
-                          color: "#376228",
+                          color: "var(--member-accent, #376228)",
                           marginBottom: 6,
                         }}
                       >
@@ -495,17 +566,35 @@ export function MembershipPage() {
                       <h3
                         style={{
                           fontSize: 22,
-                          fontWeight: 700,
-                          color: "var(--color-primary)",
+                          fontWeight: 800,
+                          color: "var(--member-text, #203d31)",
                           margin: "0 0 8px",
                         }}
                       >
                         {p.name}
                       </h3>
+                      {registered && (
+                        <p className="membership-daily">
+                          <Check size={14} /> Đang sử dụng · đến{" "}
+                          {formatMemberDate(registered.endDate)}
+                        </p>
+                      )}
+                      {Number(p.price) > 0 && p.durationDays > 0 && (
+                        <div className="membership-daily">
+                          Khoảng{" "}
+                          <strong>
+                            {Math.round(
+                              Number(p.price) / p.durationDays,
+                            ).toLocaleString("vi-VN")}{" "}
+                            đ/ngày
+                          </strong>{" "}
+                          · {p.durationDays} ngày tập luyện
+                        </div>
+                      )}
                       <p
                         style={{
-                          fontSize: "var(--font-small)",
-                          color: "var(--color-text-muted)",
+                          fontSize: 13,
+                          color: "var(--member-muted, #667085)",
                           lineHeight: 1.5,
                           margin: "0 0 20px",
                         }}
@@ -519,15 +608,15 @@ export function MembershipPage() {
                           style={{
                             fontSize: 32,
                             fontWeight: 900,
-                            color: "var(--color-primary)",
+                            color: "var(--member-text, #203d31)",
                           }}
                         >
                           {priceFormatted}
                         </span>
                         <span
                           style={{
-                            fontSize: "var(--font-small)",
-                            color: "var(--color-text-muted)",
+                            fontSize: 14,
+                            color: "var(--member-muted, #58695f)",
                             marginLeft: 4,
                           }}
                         >
@@ -541,8 +630,8 @@ export function MembershipPage() {
                           display: "flex",
                           flexDirection: "column",
                           gap: 10,
-                          fontSize: "var(--font-small)",
-                          color: "#344054",
+                          fontSize: 13,
+                          color: "var(--member-text, #344054)",
                         }}
                       >
                         <div
@@ -552,7 +641,10 @@ export function MembershipPage() {
                             gap: 8,
                           }}
                         >
-                          <Check size={16} color="#267346" />
+                          <Check
+                            size={16}
+                            color="var(--member-success, #267346)"
+                          />
                           <span>
                             Thời hạn sử dụng:{" "}
                             <strong>{p.durationDays} ngày</strong>
@@ -565,7 +657,10 @@ export function MembershipPage() {
                             gap: 8,
                           }}
                         >
-                          <Check size={16} color="#267346" />
+                          <Check
+                            size={16}
+                            color="var(--member-success, #267346)"
+                          />
                           <span>
                             Quyền đặt lịch lớp học:{" "}
                             <strong>Không giới hạn</strong>
@@ -579,7 +674,10 @@ export function MembershipPage() {
                               gap: 8,
                             }}
                           >
-                            <Check size={16} color="#267346" />
+                            <Check
+                              size={16}
+                              color="var(--member-success, #267346)"
+                            />
                             <span>
                               Mở khóa toàn bộ các lớp{" "}
                               <strong>Premium Class ★</strong>
@@ -593,7 +691,10 @@ export function MembershipPage() {
                             gap: 8,
                           }}
                         >
-                          <Check size={16} color="#267346" />
+                          <Check
+                            size={16}
+                            color="var(--member-success, #267346)"
+                          />
                           <span>
                             Sử dụng tủ đồ, phòng tắm nước nóng miễn phí
                           </span>
@@ -605,24 +706,37 @@ export function MembershipPage() {
                       style={{
                         marginTop: 28,
                         paddingTop: 18,
-                        borderTop: "1px solid #f2f5f3",
+                        borderTop:
+                          "1px solid var(--member-surface-alt, #f2f5f3)",
                       }}
                     >
-                      <div
+                      <button
+                        className="button primary"
+                        style={{ width: "100%", justifyContent: "center" }}
+                        disabled={
+                          Number(p.price) <= 0 || createCheckout.isPending
+                        }
+                        onClick={() => startCheckout(p)}
+                      >
+                        <QrCode size={17} />
+                        {createCheckout.isPending && paymentPlan?.id === p.id
+                          ? "Đang tạo mã..."
+                          : registered
+                            ? "Gia hạn qua VietQR"
+                            : "Chuyển khoản VietQR"}
+                      </button>
+                      <p
                         style={{
                           textAlign: "center",
-                          fontSize: "var(--font-caption)",
-                          color: "var(--color-text-muted)",
+                          fontSize: 11,
+                          color: "var(--member-muted, #667085)",
                           lineHeight: 1.4,
-                          padding: "8px 12px",
-                          backgroundColor: "#f9fbfa",
-                          borderRadius: 8,
+                          margin: "10px 0 0",
                         }}
                       >
-                        ℹ️ Vui lòng liên hệ Lễ tân (Reception Desk) hoặc Hotline
-                        trung tâm để đăng ký / gia hạn trực tiếp qua chuyển
-                        khoản hoặc tiền mặt.
-                      </div>
+                        Quét mã bằng ứng dụng ngân hàng. Sau khi nhận tiền, hệ
+                        thống sẽ kích hoạt gói hoặc thông báo nếu cần đối soát.
+                      </p>
                     </div>
                   </div>
                 );
@@ -630,6 +744,23 @@ export function MembershipPage() {
             </div>
           )}
         </div>
+      )}
+      <SepayCheckoutModal
+        checkout={checkout}
+        open={checkoutOpen}
+        onConfirmed={() => sessionStorage.removeItem(storageKey)}
+        selectedPlan={paymentPlan}
+        onClose={closeCheckout}
+        onCreateNew={() => {
+          const plan =
+            paymentPlan ?? plans.find((p) => p.id === checkout?.plan?.id);
+          if (plan) startCheckout(plan);
+        }}
+      />
+      {checkout && !checkoutOpen && (
+        <button className="button" onClick={() => setCheckoutOpen(true)}>
+          Xem trạng thái giao dịch {checkout.orderCode}
+        </button>
       )}
     </div>
   );

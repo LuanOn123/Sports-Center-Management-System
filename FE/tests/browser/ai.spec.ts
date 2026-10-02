@@ -32,7 +32,9 @@ test("public chat sends real history, renders Markdown and recovers from errors"
     .getByRole("textbox", { name: "Câu hỏi cho AI" })
     .fill("Học lúc nào?");
   await page.getByRole("button", { name: "Gửi", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("AI chưa được cấu hình");
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
+    "AI chưa được cấu hình",
+  );
   await expect(
     page.getByRole("textbox", { name: "Câu hỏi cho AI" }),
   ).toHaveValue("Học lúc nào?");
@@ -79,7 +81,9 @@ test("member generation sends bearer without body, displays saved plan and refre
   await expect(
     page.getByRole("heading", { name: "Ngày 1", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("Đã tạo và lưu");
+  await expect(page.locator(".ai-plan").getByRole("status")).toContainText(
+    "Đã tạo và lưu",
+  );
   await page
     .getByRole("link", { name: "Xem tất cả kế hoạch tập luyện" })
     .click();

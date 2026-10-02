@@ -26,8 +26,12 @@ export function effectiveSubscription<
     )[0];
 }
 
-export function paymentTransitions(status: string, role: string): string[] {
-  if (role !== "MANAGER") return [];
+export function paymentTransitions(
+  status: string,
+  role: string,
+  gateway?: unknown,
+): string[] {
+  if (role !== "MANAGER" || gateway) return [];
   return status === "PENDING"
     ? ["SUCCESS", "FAILED"]
     : status === "SUCCESS"
@@ -96,7 +100,18 @@ export function refundEstimate(
         ? Math.round(amount * 0.3)
         : 0
       : durationDays > 0
-        ? Math.round((amount / durationDays) * daysLeft)
+        ? Math.min(amount, Math.round((amount / durationDays) * daysLeft))
         : 0;
   return { daysLeft, refundAmount };
+}
+
+export function canGenerateAttendanceQr(
+  schedule: { status?: unknown; startTime?: unknown; endTime?: unknown },
+  now = Date.now(),
+) {
+  return (
+    schedule.status === "SCHEDULED" &&
+    now >= Date.parse(String(schedule.startTime)) - 30 * 60_000 &&
+    now <= Date.parse(String(schedule.endTime)) + 30 * 60_000
+  );
 }

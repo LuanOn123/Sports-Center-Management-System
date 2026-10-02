@@ -17,6 +17,8 @@ import {
   ClipboardList,
   ContactRound,
   BookOpen,
+  Activity,
+  WandSparkles,
 } from "lucide-react";
 import type { ProfileOk } from "../../shared/generated";
 import { PortalLayout } from "../../shared/PortalLayout";
@@ -28,6 +30,8 @@ import { Profile } from "../../shared/Profile";
 import { MembershipPage } from "../reception/membership/MembershipPage";
 import { PaymentsPage } from "../reception/payments/PaymentsPage";
 import { ClassesPage } from "../reception/classes/ClassesPage";
+import { AttendancePenalties } from "./AttendancePenalties";
+import { ActivityPlanner } from "./ActivityPlanner";
 const navGroups: NavigationGroup[] = [
   { title: "TỔNG QUAN", items: [["dashboard", "Tổng quan", LayoutDashboard]] },
   {
@@ -47,9 +51,11 @@ const navGroups: NavigationGroup[] = [
       ["rooms", "Phòng tập", Warehouse],
       ["classes", "Lớp học", Trophy],
       ["schedules", "Lịch hoạt động", CalendarDays],
+      ["activity-planner", "Tạo lịch nhanh", WandSparkles],
       ["membership", "Đăng ký & gia hạn gói", Layers],
       ["payments", "Thanh toán & hóa đơn", Receipt],
       ["bookings", "Đăng ký lớp", BookOpen],
+      ["attendance-rules", "Chuyên cần", Activity],
     ],
   },
   {
@@ -90,6 +96,14 @@ export function ManagerLayout({
           element={<PaymentsPage role="MANAGER" />}
         />
         <Route path="/manager/bookings" element={<ClassesPage />} />
+        <Route
+          path="/manager/activity-planner"
+          element={<ActivityPlanner role="MANAGER" />}
+        />
+        <Route
+          path="/manager/attendance-rules"
+          element={<AttendancePenalties />}
+        />
         {resources.map((r) => (
           <Route
             key={r.slug}
