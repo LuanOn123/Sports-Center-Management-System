@@ -1,5 +1,5 @@
 import { classSports } from "../sports";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Check, LoaderCircle } from "lucide-react";
@@ -73,8 +73,8 @@ function Lookup({
       {q.isError && <ErrorState error={q.error} retry={() => q.refetch()} />}
       {name === "coachId" && q.data?.some((r) => !at(r, "coachProfile.id")) && (
         <p className="field-note">
-          Một số hồ sơ chưa được API cung cấp mã huấn luyện viên nên chưa thể
-          chọn.
+          Một số hồ sơ huấn luyện viên chưa đầy đủ nên chưa thể chọn. Vui lòng
+          kiểm tra hồ sơ trước khi phân công.
         </p>
       )}
     </>
@@ -120,9 +120,23 @@ export function SchemaForm({
     ...fixed,
   }));
   const [error, setError] = useState<unknown>();
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (error)
+      formRef.current
+        ?.querySelector<HTMLElement>(
+          '[aria-invalid="true"], .form-error-summary',
+        )
+        ?.focus();
+  }, [error]);
   const [busy, setBusy] = useState(false);
   if (!schema)
-    return <p>Swagger chưa cung cấp hợp đồng cập nhật cho chức năng này.</p>;
+    return (
+      <p>
+        Chức năng này hiện chưa hỗ trợ cập nhật. Bạn vẫn có thể xem thông tin đã
+        lưu.
+      </p>
+    );
   const change = (k: string, v: unknown) =>
     setValues((prev) => ({ ...prev, [k]: v }));
   async function submit(e: FormEvent) {
@@ -259,7 +273,7 @@ export function SchemaForm({
     }
   }
   return (
-    <form onSubmit={submit} aria-busy={busy}>
+    <form ref={formRef} onSubmit={submit} aria-busy={busy}>
       {/POST \/subscriptions/.test(operation) && (
         <p className="confirm-copy">
           Chỉ lưu sau khi đã nhận đủ tiền. Hệ thống sẽ ghi nhận thanh toán thành
@@ -445,7 +459,7 @@ export function SchemaForm({
           })}
       </fieldset>
       {error != null && (
-        <div id={errorId}>
+        <div id={errorId} className="form-error-summary" tabIndex={-1}>
           <ErrorState error={error} />
         </div>
       )}

@@ -94,7 +94,9 @@ async function transport(
         ...(body !== undefined && !(body instanceof FormData)
           ? { "Content-Type": "application/json" }
           : {}),
-        ...(authenticated && accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(authenticated && accessToken
+          ? { Authorization: `Bearer ${accessToken}` }
+          : {}),
       },
       ...(body !== undefined
         ? { body: body instanceof FormData ? body : JSON.stringify(body) }
@@ -291,6 +293,8 @@ export async function api<T = RecordData>(
   key: string,
   options: Parameters<typeof apiRequest>[1] = {},
 ): Promise<Envelope<T>> {
+  // Queries and AI chat show contextual feedback; avoid repeated background toasts.
+  const inlineFeedback = key.startsWith("GET ") || key === "POST /ai/chat";
   try {
     const result = await apiRequest<T>(key, options);
     if (key === "PATCH /auth/me/change-password") {
@@ -300,7 +304,7 @@ export async function api<T = RecordData>(
       return result;
     }
     if (
-      !key.startsWith("GET ") &&
+      !inlineFeedback &&
       !/\/auth\/refresh-token|\/notifications\/.*read|\/chat\//.test(key)
     ) {
       const message =
@@ -327,6 +331,7 @@ export async function api<T = RecordData>(
     ) {
       window.dispatchEvent(new Event("schedule-state-changed"));
     }
+    if (inlineFeedback) throw error;
     if (
       error instanceof ApiError &&
       error.status === 409 &&

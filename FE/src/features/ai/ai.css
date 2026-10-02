@@ -48,12 +48,17 @@ dialog:has(.ai-chat) {
   max-height: calc(100dvh - 112px);
 }
 .ai-chat-messages {
+  min-height: 0;
   height: min(48dvh, 420px);
   overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 8px;
+}
+.ai-chat-messages > *,
+.ai-chat-form {
+  flex-shrink: 0;
 }
 .ai-message {
   background: var(--color-background, #f4f6f4);

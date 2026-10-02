@@ -141,7 +141,8 @@ export function PaymentsPage({ role = "STAFF" }: { role?: string }) {
                         </button>
                         {Boolean(row.gateway) && (
                           <small>
-                            Giao dịch online được chốt qua webhook/đối soát.
+                            Giao dịch online được cập nhật sau khi hệ thống xác
+                            nhận thanh toán.
                           </small>
                         )}
                         {row.activationStatus === "REQUIRES_REVIEW" && (

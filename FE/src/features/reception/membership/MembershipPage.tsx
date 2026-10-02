@@ -158,7 +158,7 @@ export function MembershipPage({ role = "STAFF" }: { role?: string }) {
                         ).filter(
                           (s) => s !== "CANCELLED" || row.status !== "ACTIVE",
                         )}
-                        explanation="Tạm dừng sẽ lưu số ngày còn lại. Tiếp tục sẽ khôi phục thời hạn được bảo lưu. Hủy gói tạm dừng sẽ chấm dứt quyền lợi; backend hiện chưa áp dụng hoàn tiền và hủy lịch tự động cho gói tạm dừng."
+                        explanation="Tạm dừng sẽ lưu số ngày còn lại. Tiếp tục sẽ khôi phục thời hạn được bảo lưu. Hủy gói tạm dừng sẽ chấm dứt quyền lợi; thao tác này chưa tự động hoàn tiền hoặc hủy các lịch đã đặt."
                       />
                     </>
                   )}

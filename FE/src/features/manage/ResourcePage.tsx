@@ -337,6 +337,18 @@ export function ResourcePage({
               }}
             />
           ))}
+          {Object.values(query).some(Boolean) && (
+            <button
+              className="button small"
+              type="button"
+              onClick={() => {
+                setQuery({});
+                setPage(1);
+              }}
+            >
+              Xóa bộ lọc
+            </button>
+          )}
         </div>
         {q.isPending ? (
           <Loading />
@@ -467,8 +479,8 @@ export function ResourcePage({
       {["users", "members", "staff", "membership-plans"].includes(r.slug) &&
         !contract[update]?.body && (
           <p className="footnote">
-            Chỉnh sửa {r.title.toLowerCase()} sẽ được mở khi backend bổ sung hợp
-            đồng cập nhật.
+            Chỉnh sửa {r.title.toLowerCase()} hiện chưa khả dụng. Bạn vẫn có thể
+            xem chi tiết trong danh sách.
           </p>
         )}
       {modal && (
@@ -965,7 +977,10 @@ function CoachAssignments({
                 {confirm === coachId ? "Xác nhận gỡ" : "Gỡ phân công"}
               </button>
             ) : (
-              <small>API chưa trả mã hồ sơ để gỡ phân công.</small>
+              <small>
+                Hồ sơ chưa đầy đủ để gỡ phân công. Vui lòng kiểm tra thông tin
+                huấn luyện viên.
+              </small>
             )}
           </div>
         );

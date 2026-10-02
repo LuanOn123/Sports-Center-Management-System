@@ -105,7 +105,9 @@ test("incomplete profile links to editable profile", async ({ page }) => {
   await page
     .getByRole("button", { name: "Tạo Lịch Tập Thông Minh Bằng AI" })
     .click();
-  await expect(page.getByRole("alert")).toContainText("Vui lòng cập nhật");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "Vui lòng cập nhật",
+  );
   await page
     .getByRole("link", { name: "Cập nhật mục tiêu và trình độ trong hồ sơ" })
     .click();

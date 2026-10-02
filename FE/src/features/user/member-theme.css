@@ -47,6 +47,12 @@
   font-size: 14px;
   line-height: 1.55;
 }
+/* Match the browser canvas too, including exposed scroll boundaries. */
+html:has(.member-theme),
+body:has(.member-theme) {
+  background-color: #0b1018;
+}
+
 .member-theme :is(h1, h2, h3, h4, strong, legend) {
   color: inherit;
 }

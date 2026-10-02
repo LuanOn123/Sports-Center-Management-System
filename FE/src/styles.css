@@ -108,6 +108,16 @@ body {
   line-height: 1.6;
 }
 
+/* Keep portal scrolling within the document at its top and bottom edges. */
+html:has(.app-layout),
+body:has(.app-layout) {
+  overscroll-behavior-y: none;
+}
+
+html:has(.app-layout) {
+  scroll-padding-top: 100px;
+}
+
 button,
 input,
 select,
@@ -399,6 +409,11 @@ label > textarea {
   display: block;
 }
 
+/* Preserve navigation rows when the fixed sidebar is shorter than its content. */
+.sidebar > * {
+  flex-shrink: 0;
+}
+
 .workspace-chip {
   display: flex;
   align-items: center;
@@ -485,9 +500,20 @@ label > textarea {
   flex-direction: column;
   min-height: 100vh;
   min-width: 0;
+  flex-shrink: 0;
+}
+
+/* Let the document scroll instead of compressing the page into the shell. */
+.main-shell > .topbar,
+.main-shell > main,
+.main-shell > .main-footer {
+  flex-shrink: 0;
 }
 
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
   height: auto;
   background: var(--color-surface);
   border-bottom: 1px solid var(--border);

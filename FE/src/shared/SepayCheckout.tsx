@@ -398,7 +398,7 @@ export function SepayCheckoutModal({
                 message={
                   mockConfirm.error instanceof Error
                     ? mockConfirm.error.message
-                    : "Vui lòng kiểm tra SEPAY_MOCK_MODE ở backend."
+                    : "Chế độ thanh toán thử nghiệm chưa được bật. Liên hệ quản trị viên để kiểm tra."
                 }
               />
             )}

@@ -33,6 +33,8 @@ import {
 } from "./Communication";
 import { Policies } from "./Policies";
 import { AttendanceShortcut } from "./AttendanceShortcut";
+import { HelpPanel } from "./HelpPanel";
+import { ConnectionStatus } from "./ConnectionStatus";
 export type NavigationItem = readonly [
   path: string,
   name: string,
@@ -96,13 +98,19 @@ export function PortalLayout({
     },
   ];
   const pageTitle =
+    (location.pathname === `${base}/notifications`
+      ? "Thông báo"
+      : location.pathname === `${base}/chat`
+        ? "Tin nhắn"
+        : undefined) ||
     navigation
       .flatMap((g) => g.items)
       .find(
         ([path]) =>
           location.pathname === `${base}/${path}` ||
           location.pathname.startsWith(`${base}/${path}/`),
-      )?.[1] || "Tài khoản";
+      )?.[1] ||
+    "Tài khoản";
   useEffect(() => {
     document.title = `${pageTitle} · Pulse Sports Center`;
   }, [pageTitle]);
@@ -200,7 +208,8 @@ export function PortalLayout({
             <strong>{pageTitle}</strong>
           </div>
           <div className="topbar-actions">
-            <NotificationBell />
+            <HelpPanel role={user.role} base={base} />
+            <NotificationBell base={base} />
             <Link
               className="profile-link"
               to={base + "/profile"}
@@ -215,6 +224,7 @@ export function PortalLayout({
           </div>
         </header>
         <main id="main-content" tabIndex={-1}>
+          <ConnectionStatus />
           {location.pathname === `${base}/notifications` ? (
             <Notifications role={user.role} />
           ) : location.pathname === `${base}/chat` ? (
