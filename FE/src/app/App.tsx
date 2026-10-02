@@ -1,5 +1,11 @@
-import { BrowserRouter } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AIChatBubble } from "../features/ai/AIChatBubble";
+import { BrowserRouter, useLocation } from "react-router-dom";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from "@tanstack/react-query";
+import { authService, hasSession } from "../shared/api";
 import { Session } from "../features/auth/Session";
 import "../styles.css";
 import { ErrorBoundary } from "../shared/ErrorBoundary";
@@ -15,8 +21,24 @@ export default function App() {
       <QueryClientProvider client={client}>
         <BrowserRouter>
           <Session />
+          <SessionChat />
         </BrowserRouter>
       </QueryClientProvider>
     </ErrorBoundary>
+  );
+}
+
+function SessionChat() {
+  // Recheck session identity on navigation, including logout redirects.
+  useLocation();
+  const profile = useQuery({
+    queryKey: ["me"],
+    queryFn: authService.me,
+    enabled: false,
+  });
+  return (
+    <AIChatBubble
+      key={hasSession() ? profile.data?.data.id || "loading" : "anonymous"}
+    />
   );
 }

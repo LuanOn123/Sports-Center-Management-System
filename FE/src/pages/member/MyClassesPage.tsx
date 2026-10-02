@@ -26,9 +26,13 @@ export function MyClassesPage() {
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<EnrollmentStatus>("BOOKED");
-  const [selectedEnrollment, setSelectedEnrollment] = useState<Enrollment | null>(null);
+  const [selectedEnrollment, setSelectedEnrollment] =
+    useState<Enrollment | null>(null);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   // Fetch enrollments by status
   const { data, isLoading, error } = useQuery({
@@ -38,9 +42,13 @@ export function MyClassesPage() {
 
   // Cancel Mutation
   const cancelMutation = useMutation({
-    mutationFn: (enrollmentId: string) => enrollmentsApi.cancelEnrollment(enrollmentId),
+    mutationFn: (enrollmentId: string) =>
+      enrollmentsApi.cancelEnrollment(enrollmentId),
     onSuccess: () => {
-      setMessage({ type: "success", text: "Đã hủy đăng ký ca học thành công." });
+      setMessage({
+        type: "success",
+        text: "Đã hủy đăng ký ca học thành công.",
+      });
       setConfirmCancelOpen(false);
       setSelectedEnrollment(null);
 
@@ -52,7 +60,10 @@ export function MyClassesPage() {
     onError: (err: unknown) => {
       setMessage({
         type: "error",
-        text: err instanceof Error ? err.message : "Không thể hủy đăng ký ca học này.",
+        text:
+          err instanceof Error
+            ? err.message
+            : "Không thể hủy đăng ký ca học này.",
       });
       setConfirmCancelOpen(false);
     },
@@ -65,8 +76,8 @@ export function MyClassesPage() {
       {/* HEADER */}
       <div
         style={{
-          background: "#ffffff",
-          borderRadius: 16,
+          background: "var(--color-surface)",
+          borderRadius: "var(--radius-card)",
           padding: "24px 28px",
           border: "1px solid #e7ece9",
           display: "flex",
@@ -77,11 +88,25 @@ export function MyClassesPage() {
         }}
       >
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: "#203d31", margin: "0 0 6px" }}>
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              color: "var(--color-primary)",
+              margin: "0 0 6px",
+            }}
+          >
             Lớp học của tôi
           </h1>
-          <p style={{ margin: 0, color: "#58695f", fontSize: 13 }}>
-            Theo dõi danh sách các buổi học bạn đã đăng ký, buổi đã tham gia và lịch sử hủy lớp
+          <p
+            style={{
+              margin: 0,
+              color: "var(--color-text-muted)",
+              fontSize: "var(--font-small)",
+            }}
+          >
+            Theo dõi danh sách các buổi học bạn đã đăng ký, buổi đã tham gia và
+            lịch sử hủy lớp
           </p>
         </div>
 
@@ -92,11 +117,11 @@ export function MyClassesPage() {
             alignItems: "center",
             gap: 8,
             padding: "10px 18px",
-            backgroundColor: "#203d31",
-            color: "#ffffff",
+            backgroundColor: "var(--color-primary)",
+            color: "var(--color-surface)",
             border: "none",
             borderRadius: 10,
-            fontSize: 13,
+            fontSize: "var(--font-small)",
             fontWeight: 700,
             cursor: "pointer",
           }}
@@ -106,12 +131,7 @@ export function MyClassesPage() {
       </div>
 
       {/* FEEDBACK ALERT */}
-      {message && (
-        <AlertBanner
-          type={message.type}
-          message={message.text}
-        />
-      )}
+      {message && <AlertBanner type={message.type} message={message.text} />}
 
       {/* TABS */}
       <div
@@ -123,9 +143,21 @@ export function MyClassesPage() {
         }}
       >
         {[
-          { key: "BOOKED" as EnrollmentStatus, label: "Sắp tới (Đã đặt)", icon: CalendarCheck },
-          { key: "COMPLETED" as EnrollmentStatus, label: "Đã hoàn thành", icon: CheckCircle2 },
-          { key: "CANCELLED" as EnrollmentStatus, label: "Đã hủy", icon: CalendarX },
+          {
+            key: "BOOKED" as EnrollmentStatus,
+            label: "Sắp tới (Đã đặt)",
+            icon: CalendarCheck,
+          },
+          {
+            key: "COMPLETED" as EnrollmentStatus,
+            label: "Đã hoàn thành",
+            icon: CheckCircle2,
+          },
+          {
+            key: "CANCELLED" as EnrollmentStatus,
+            label: "Đã hủy",
+            icon: CalendarX,
+          },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
@@ -143,15 +175,24 @@ export function MyClassesPage() {
                 padding: "10px 18px",
                 border: "none",
                 background: "none",
-                fontSize: 14,
+                fontSize: "var(--font-small)",
                 fontWeight: isActive ? 700 : 500,
-                color: isActive ? "#203d31" : "#58695f",
-                borderBottom: isActive ? "3px solid #203d31" : "3px solid transparent",
+                color: isActive
+                  ? "var(--color-primary)"
+                  : "var(--color-text-muted)",
+                borderBottom: isActive
+                  ? "3px solid #203d31"
+                  : "3px solid transparent",
                 cursor: "pointer",
                 borderRadius: "4px 4px 0 0",
               }}
             >
-              <Icon size={16} color={isActive ? "#203d31" : "#58695f"} />
+              <Icon
+                size={16}
+                color={
+                  isActive ? "var(--color-primary)" : "var(--color-text-muted)"
+                }
+              />
               <span>{tab.label}</span>
             </button>
           );
@@ -173,8 +214,8 @@ export function MyClassesPage() {
             activeTab === "BOOKED"
               ? "Bạn chưa có lớp học nào sắp tới"
               : activeTab === "COMPLETED"
-              ? "Chưa có buổi học nào đã hoàn thành"
-              : "Không có lịch sử hủy lớp"
+                ? "Chưa có buổi học nào đã hoàn thành"
+                : "Không có lịch sử hủy lớp"
           }
           description={
             activeTab === "BOOKED"
@@ -187,11 +228,11 @@ export function MyClassesPage() {
                 onClick={() => navigate("/member/classes")}
                 style={{
                   padding: "9px 18px",
-                  backgroundColor: "#203d31",
-                  color: "#ffffff",
+                  backgroundColor: "var(--color-primary)",
+                  color: "var(--color-surface)",
                   border: "none",
                   borderRadius: 8,
-                  fontSize: 13,
+                  fontSize: "var(--font-small)",
                   fontWeight: 600,
                   cursor: "pointer",
                 }}
@@ -214,8 +255,8 @@ export function MyClassesPage() {
               <div
                 key={item.id}
                 style={{
-                  backgroundColor: "#ffffff",
-                  borderRadius: 16,
+                  backgroundColor: "var(--color-surface)",
+                  borderRadius: "var(--radius-card)",
                   border: "1px solid #e7ece9",
                   padding: "20px 24px",
                   display: "flex",
@@ -225,7 +266,7 @@ export function MyClassesPage() {
                   gap: 16,
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
                   {/* Date badge */}
                   {startTime && (
                     <div
@@ -238,33 +279,89 @@ export function MyClassesPage() {
                         padding: "10px 8px",
                       }}
                     >
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#376228", textTransform: "uppercase" }}>
-                        {startTime.toLocaleDateString("vi-VN", { weekday: "short" })}
+                      <div
+                        style={{
+                          fontSize: "var(--font-caption)",
+                          fontWeight: 700,
+                          color: "#376228",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {startTime.toLocaleDateString("vi-VN", {
+                          weekday: "short",
+                        })}
                       </div>
-                      <div style={{ fontSize: 19, fontWeight: 800, color: "#203d31" }}>
+                      <div
+                        style={{
+                          fontSize: 19,
+                          fontWeight: 700,
+                          color: "var(--color-primary)",
+                        }}
+                      >
                         {startTime.getDate()}/{startTime.getMonth() + 1}
                       </div>
                     </div>
                   )}
 
                   <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: "#203d31" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "var(--font-body)",
+                          fontWeight: 700,
+                          color: "var(--color-primary)",
+                        }}
+                      >
                         {sch?.class?.name || "Lớp học thể thao"}
                       </span>
                       <StatusBadge status={item.status} />
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 13, color: "#54655d", flexWrap: "wrap" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 16,
+                        fontSize: "var(--font-small)",
+                        color: "#54655d",
+                        flexWrap: "wrap",
+                      }}
+                    >
                       {startTime && endTime && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          <Clock size={15} color="#58695f" />
-                          {formatMemberDate(startTime, { hour: "2-digit", minute: "2-digit" })} -{" "}
-                          {formatMemberDate(endTime, { hour: "2-digit", minute: "2-digit" })}
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <Clock size={15} color="var(--color-text-muted)" />
+                          {formatMemberDate(startTime, {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}{" "}
+                          -{" "}
+                          {formatMemberDate(endTime, {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </span>
                       )}
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                        <MapPin size={15} color="#58695f" />
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        <MapPin size={15} color="var(--color-text-muted)" />
                         Phòng: <strong>{sch?.room?.name || "Sân tập"}</strong>
                       </span>
                       <span>
@@ -282,9 +379,9 @@ export function MyClassesPage() {
                       padding: "8px 14px",
                       borderRadius: 8,
                       border: "1px solid #d0d7d3",
-                      backgroundColor: "#ffffff",
-                      color: "#203d31",
-                      fontSize: 12,
+                      backgroundColor: "var(--color-surface)",
+                      color: "var(--color-primary)",
+                      fontSize: "var(--font-caption)",
                       fontWeight: 600,
                       cursor: "pointer",
                     }}
@@ -304,7 +401,7 @@ export function MyClassesPage() {
                         border: "1px solid #fecdca",
                         backgroundColor: "#fef3f2",
                         color: "#d92d20",
-                        fontSize: 12,
+                        fontSize: "var(--font-caption)",
                         fontWeight: 600,
                         cursor: "pointer",
                       }}

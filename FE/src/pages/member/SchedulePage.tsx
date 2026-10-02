@@ -13,7 +13,7 @@ import {
   List,
   Calendar as CalendarIcon,
 } from "lucide-react";
-import { LoadingSpinner, EmptyState} from "../../components/common";
+import { LoadingSpinner, EmptyState } from "../../components/common";
 
 export function SchedulePage() {
   const navigate = useNavigate();
@@ -33,7 +33,8 @@ export function SchedulePage() {
   // Fetch all booked enrollments
   const { data, isLoading, error } = useQuery({
     queryKey: ["my-enrollments", "BOOKED", 50],
-    queryFn: () => enrollmentsApi.getMyEnrollments({ status: "BOOKED", limit: 50 }),
+    queryFn: () =>
+      enrollmentsApi.getMyEnrollments({ status: "BOOKED", limit: 50 }),
   });
 
   const enrollments = data?.enrollments || [];
@@ -71,8 +72,8 @@ export function SchedulePage() {
       {/* HEADER & CONTROLS */}
       <div
         style={{
-          background: "#ffffff",
-          borderRadius: 16,
+          background: "var(--color-surface)",
+          borderRadius: "var(--radius-card)",
           padding: "20px 24px",
           border: "1px solid #e7ece9",
           display: "flex",
@@ -83,17 +84,45 @@ export function SchedulePage() {
         }}
       >
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: "#203d31", margin: "0 0 4px" }}>
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              color: "var(--color-primary)",
+              margin: "0 0 4px",
+            }}
+          >
             Lịch tập cá nhân
           </h1>
-          <p style={{ margin: 0, color: "#58695f", fontSize: 13 }}>
+          <p
+            style={{
+              margin: 0,
+              color: "var(--color-text-muted)",
+              fontSize: "var(--font-small)",
+            }}
+          >
             Thời khóa biểu các ca học đã đặt của bạn theo tuần
           </p>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
           {/* Week navigator */}
-          <div style={{ display: "flex", alignItems: "center", backgroundColor: "#f2f5f3", borderRadius: 10, padding: 3 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              backgroundColor: "#f2f5f3",
+              borderRadius: 10,
+              padding: 3,
+            }}
+          >
             <button
               onClick={prevWeek}
               style={{
@@ -102,7 +131,7 @@ export function SchedulePage() {
                 padding: "6px 8px",
                 cursor: "pointer",
                 display: "flex",
-                color: "#203d31",
+                color: "var(--color-primary)",
               }}
               title="Tuần trước"
             >
@@ -114,9 +143,9 @@ export function SchedulePage() {
                 background: "none",
                 border: "none",
                 padding: "6px 12px",
-                fontSize: 12,
+                fontSize: "var(--font-caption)",
                 fontWeight: 700,
-                color: "#203d31",
+                color: "var(--color-primary)",
                 cursor: "pointer",
               }}
             >
@@ -130,7 +159,7 @@ export function SchedulePage() {
                 padding: "6px 8px",
                 cursor: "pointer",
                 display: "flex",
-                color: "#203d31",
+                color: "var(--color-primary)",
               }}
               title="Tuần sau"
             >
@@ -138,21 +167,48 @@ export function SchedulePage() {
             </button>
           </div>
 
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#203d31" }}>
-            {weekDays[0].toLocaleDateString("vi-VN", { day: "numeric", month: "numeric" })} -{" "}
-            {weekDays[6].toLocaleDateString("vi-VN", { day: "numeric", month: "numeric", year: "numeric" })}
+          <span
+            style={{
+              fontSize: "var(--font-small)",
+              fontWeight: 700,
+              color: "var(--color-primary)",
+            }}
+          >
+            {weekDays[0].toLocaleDateString("vi-VN", {
+              day: "numeric",
+              month: "numeric",
+            })}{" "}
+            -{" "}
+            {weekDays[6].toLocaleDateString("vi-VN", {
+              day: "numeric",
+              month: "numeric",
+              year: "numeric",
+            })}
           </span>
 
           {/* Toggle View */}
-          <div style={{ display: "flex", backgroundColor: "#f2f5f3", borderRadius: 8, padding: 2 }}>
+          <div
+            style={{
+              display: "flex",
+              backgroundColor: "#f2f5f3",
+              borderRadius: 8,
+              padding: 2,
+            }}
+          >
             <button
               onClick={() => setViewMode("calendar")}
               style={{
                 border: "none",
-                background: viewMode === "calendar" ? "#ffffff" : "transparent",
-                color: viewMode === "calendar" ? "#203d31" : "#58695f",
+                background:
+                  viewMode === "calendar"
+                    ? "var(--color-surface)"
+                    : "transparent",
+                color:
+                  viewMode === "calendar"
+                    ? "var(--color-primary)"
+                    : "var(--color-text-muted)",
                 fontWeight: 600,
-                fontSize: 12,
+                fontSize: "var(--font-caption)",
                 padding: "6px 12px",
                 borderRadius: 6,
                 cursor: "pointer",
@@ -167,10 +223,14 @@ export function SchedulePage() {
               onClick={() => setViewMode("list")}
               style={{
                 border: "none",
-                background: viewMode === "list" ? "#ffffff" : "transparent",
-                color: viewMode === "list" ? "#203d31" : "#58695f",
+                background:
+                  viewMode === "list" ? "var(--color-surface)" : "transparent",
+                color:
+                  viewMode === "list"
+                    ? "var(--color-primary)"
+                    : "var(--color-text-muted)",
                 fontWeight: 600,
-                fontSize: 12,
+                fontSize: "var(--font-caption)",
                 padding: "6px 12px",
                 borderRadius: 6,
                 cursor: "pointer",
@@ -187,7 +247,9 @@ export function SchedulePage() {
 
       {isLoading ? (
         <LoadingSpinner text="Đang tải thời khóa biểu..." />
-      ) : error ? <ErrorState error={error} /> : viewMode === "calendar" ? (
+      ) : error ? (
+        <ErrorState error={error} />
+      ) : viewMode === "calendar" ? (
         /* WEEKLY CALENDAR VIEW */
         <div
           style={{
@@ -197,8 +259,7 @@ export function SchedulePage() {
           }}
         >
           {weekDays.map((date) => {
-            const isToday =
-              date.toDateString() === new Date().toDateString();
+            const isToday = date.toDateString() === new Date().toDateString();
 
             const dateStr = date.toISOString().split("T")[0];
             const dayClasses = enrollments.filter((item) => {
@@ -210,8 +271,8 @@ export function SchedulePage() {
               <div
                 key={dateStr}
                 style={{
-                  backgroundColor: "#ffffff",
-                  borderRadius: 14,
+                  backgroundColor: "var(--color-surface)",
+                  borderRadius: "var(--radius-card)",
                   border: isToday ? "2px solid #376228" : "1px solid #e7ece9",
                   minHeight: 320,
                   display: "flex",
@@ -228,18 +289,50 @@ export function SchedulePage() {
                     borderBottom: "1px solid #edf2ee",
                   }}
                 >
-                  <div style={{ fontSize: 11, fontWeight: 700, color: isToday ? "#376228" : "#58695f", textTransform: "uppercase" }}>
+                  <div
+                    style={{
+                      fontSize: "var(--font-caption)",
+                      fontWeight: 700,
+                      color: isToday ? "#376228" : "var(--color-text-muted)",
+                      textTransform: "uppercase",
+                    }}
+                  >
                     {date.toLocaleDateString("vi-VN", { weekday: "short" })}
                   </div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: isToday ? "#203d31" : "#475467" }}>
+                  <div
+                    style={{
+                      fontSize: "var(--font-body)",
+                      fontWeight: 700,
+                      color: isToday
+                        ? "var(--color-primary)"
+                        : "var(--color-text-muted)",
+                    }}
+                  >
                     {date.getDate()}/{date.getMonth() + 1}
                   </div>
                 </div>
 
                 {/* Day Content */}
-                <div style={{ padding: 8, display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
+                <div
+                  style={{
+                    padding: 8,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                    flex: 1,
+                  }}
+                >
                   {dayClasses.length === 0 ? (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, color: "#58695f", fontSize: 11 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flex: 1,
+                        color: "var(--color-text-muted)",
+                        fontSize: "var(--font-caption)",
+                      }}
+                    >
                       Nghỉ tập
                     </div>
                   ) : (
@@ -249,9 +342,12 @@ export function SchedulePage() {
                       const endTime = new Date(sch.endTime);
 
                       return (
-                        <div
+                        <button
+                          type="button"
                           key={item.id}
-                          onClick={() => navigate(`/member/classes/${item.classId}`)}
+                          onClick={() =>
+                            navigate(`/member/classes/${item.classId}`)
+                          }
                           style={{
                             backgroundColor: "#f2f8eb",
                             border: "1px solid #d4ebbf",
@@ -264,19 +360,49 @@ export function SchedulePage() {
                             transition: "transform 0.15s",
                           }}
                         >
-                          <div style={{ fontSize: 12, fontWeight: 700, color: "#203d31", lineHeight: 1.2 }}>
+                          <div
+                            style={{
+                              fontSize: "var(--font-caption)",
+                              fontWeight: 700,
+                              color: "var(--color-primary)",
+                              lineHeight: 1.2,
+                            }}
+                          >
                             {sch.class?.name}
                           </div>
-                          <div style={{ fontSize: 11, color: "#475467", display: "flex", alignItems: "center", gap: 4 }}>
-                            <Clock size={12} color="#58695f" />
-                            {formatMemberDate(startTime, { hour: "2-digit", minute: "2-digit" })} -{" "}
-                            {formatMemberDate(endTime, { hour: "2-digit", minute: "2-digit" })}
+                          <div
+                            style={{
+                              fontSize: "var(--font-caption)",
+                              color: "var(--color-text-muted)",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
+                            <Clock size={12} color="var(--color-text-muted)" />
+                            {formatMemberDate(startTime, {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}{" "}
+                            -{" "}
+                            {formatMemberDate(endTime, {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
                           </div>
-                          <div style={{ fontSize: 10, color: "#667085", display: "flex", alignItems: "center", gap: 4 }}>
-                            <MapPin size={11} color="#58695f" />
+                          <div
+                            style={{
+                              fontSize: "var(--font-caption)",
+                              color: "var(--color-text-muted)",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
+                            <MapPin size={11} color="var(--color-text-muted)" />
                             {sch.room?.name}
                           </div>
-                        </div>
+                        </button>
                       );
                     })
                   )}
@@ -299,8 +425,8 @@ export function SchedulePage() {
               <div
                 key={item.id}
                 style={{
-                  backgroundColor: "#ffffff",
-                  borderRadius: 14,
+                  backgroundColor: "var(--color-surface)",
+                  borderRadius: "var(--radius-card)",
                   border: "1px solid #e7ece9",
                   padding: "16px 20px",
                   display: "flex",
@@ -311,16 +437,36 @@ export function SchedulePage() {
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#203d31" }}>
+                  <div
+                    style={{
+                      fontSize: "var(--font-body)",
+                      fontWeight: 700,
+                      color: "var(--color-primary)",
+                    }}
+                  >
                     {item.schedule?.class?.name}
                   </div>
-                  <div style={{ display: "flex", gap: 16, marginTop: 4, fontSize: 13, color: "#475467" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 16,
+                      marginTop: 4,
+                      fontSize: "var(--font-small)",
+                      color: "var(--color-text-muted)",
+                    }}
+                  >
+                    <span>📅 {formatMemberDate(item.schedule?.startTime)}</span>
                     <span>
-                      📅 {formatMemberDate(item.schedule?.startTime)}
-                    </span>
-                    <span>
-                      ⏰ {formatMemberDate(item.schedule?.startTime, { hour: "2-digit", minute: "2-digit" })} -{" "}
-                      {formatMemberDate(item.schedule?.endTime, { hour: "2-digit", minute: "2-digit" })}
+                      ⏰{" "}
+                      {formatMemberDate(item.schedule?.startTime, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}{" "}
+                      -{" "}
+                      {formatMemberDate(item.schedule?.endTime, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
                     <span>🏛️ Phòng {item.schedule?.room?.name}</span>
                   </div>
@@ -331,10 +477,10 @@ export function SchedulePage() {
                   style={{
                     padding: "8px 16px",
                     backgroundColor: "#f2f8eb",
-                    color: "#203d31",
+                    color: "var(--color-primary)",
                     border: "1px solid #d4ebbf",
                     borderRadius: 8,
-                    fontSize: 12,
+                    fontSize: "var(--font-caption)",
                     fontWeight: 600,
                     cursor: "pointer",
                   }}

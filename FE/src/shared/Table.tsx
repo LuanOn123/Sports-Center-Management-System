@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { RecordData } from "./api";
 import { at, display, money } from "./config";
 import { Empty } from "./ui";
+import { StatusBadge } from "./StatusBadge";
 export function Table({
   rows,
   columns,
@@ -23,7 +24,15 @@ export function Table({
         <thead>
           <tr>
             {columns.map(([key, title]) => (
-              <th key={key} scope="col">
+              <th
+                key={key}
+                scope="col"
+                className={
+                  ["amount", "total", "price"].includes(key)
+                    ? "numeric"
+                    : undefined
+                }
+              >
                 {title}
               </th>
             ))}
@@ -34,10 +43,30 @@ export function Table({
           {rows.map((row, index) => (
             <tr key={String(row.id ?? index)}>
               {columns.map(([key]) => (
-                <td key={key}>
-                  {["amount", "total", "price"].includes(key)
-                    ? money(at(row, key))
-                    : display(at(row, key))}
+                <td
+                  key={key}
+                  className={
+                    ["amount", "total", "price"].includes(key)
+                      ? "numeric"
+                      : undefined
+                  }
+                >
+                  {["amount", "total", "price"].includes(key) ? (
+                    money(at(row, key))
+                  ) : ["status", "tier", "isActive", "classType"].includes(
+                      key,
+                    ) ? (
+                    <StatusBadge value={at(row, key)} />
+                  ) : key.endsWith("fullName") ? (
+                    <div className="name-cell">
+                      <span className="avatar" aria-hidden="true">
+                        {String(at(row, key) || "?").slice(0, 1)}
+                      </span>
+                      <strong>{display(at(row, key))}</strong>
+                    </div>
+                  ) : (
+                    display(at(row, key))
+                  )}
                 </td>
               ))}
               {actions && (

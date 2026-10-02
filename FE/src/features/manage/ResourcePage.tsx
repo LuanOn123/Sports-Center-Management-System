@@ -1,7 +1,12 @@
+import { StatusBadge } from "../../shared/StatusBadge";
+import { ResourceCollection } from "../../shared/ResourceCollection";
+import { ScheduleAgenda } from "../../shared/ScheduleAgenda";
 import { CoachFeedback } from "../../shared/CoachFeedback";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  LayoutGrid,
+  List,
   ArrowLeft,
   ArrowRight,
   Eye,
@@ -39,6 +44,17 @@ export function ResourcePage({
   userId?: string;
 }) {
   const client = useQueryClient();
+  const cardView = [
+    "rooms",
+    "sports",
+    "classes",
+    "coaches",
+    "staff",
+    "membership-plans",
+  ].includes(r.slug);
+  const [view, setView] = useState<"visual" | "table">(
+    cardView || r.slug === "schedules" ? "visual" : "table",
+  );
   const [query, setQuery] = useState<Record<string, string>>({});
   const [page, setPage] = useState(1);
   const search = useDebouncedValue(query.search);
@@ -99,6 +115,73 @@ export function ResourcePage({
       setBusy(false);
     }
   }
+  const rowActions = (row: RecordData) => (
+    <div className="row-actions">
+      <button
+        title="Xem chi tiết"
+        aria-label="Xem chi tiết"
+        className="icon-button"
+        onClick={() => {
+          setDetailTab("overview");
+          setModal({ kind: "detail", row });
+        }}
+      >
+        <Eye size={17} />
+      </button>
+      {contract[update]?.body && (
+        <button
+          disabled={r.slug === "schedules" && row.status !== "SCHEDULED"}
+          aria-label="Chỉnh sửa"
+          title="Chỉnh sửa"
+          className="icon-button"
+          onClick={() => setModal({ kind: "edit", row })}
+        >
+          <Pencil size={16} />
+        </button>
+      )}
+      {r.slug === "classes" && (
+        <button
+          aria-label="Phân công huấn luyện viên"
+          title="Phân công huấn luyện viên"
+          className="icon-button"
+          onClick={() => setModal({ kind: "assign", row })}
+        >
+          <UserPlus size={17} />
+        </button>
+      )}
+      {r.slug === "schedules" && (
+        <button
+          className="button small"
+          disabled={!canCompleteSchedule(row)}
+          onClick={() => {
+            setBError(undefined);
+            setModal({ kind: "complete", row });
+          }}
+        >
+          Hoàn tất
+        </button>
+      )}
+      {contract[remove] && (
+        <button
+          aria-label={r.slug === "schedules" ? "Hủy lịch" : "Ngừng hoạt động"}
+          title={r.slug === "schedules" ? "Hủy lịch" : "Ngừng hoạt động"}
+          className="icon-button danger-text"
+          disabled={
+            row.isActive === false ||
+            row.status === "CANCELLED" ||
+            row.status === "COMPLETED" ||
+            (r.path === "/users" && row.id === userId)
+          }
+          onClick={() => {
+            setBError(undefined);
+            setModal({ kind: "delete", row });
+          }}
+        >
+          <Trash2 size={16} />
+        </button>
+      )}
+    </div>
+  );
   return (
     <>
       <div className="page-heading">
@@ -128,7 +211,11 @@ export function ResourcePage({
       <section className="panel">
         <div className="panel-heading">
           <div>
-            <h2>Danh sách {r.title.toLowerCase()}</h2>
+            <h2>
+              {r.slug === "schedules"
+                ? "Lịch học tại trung tâm"
+                : `Danh sách ${r.title.toLowerCase()}`}
+            </h2>
             <p>
               {q.data?.pagination
                 ? `${q.data.pagination.total} kết quả`
@@ -144,6 +231,35 @@ export function ResourcePage({
             <RefreshCw size={18} className={q.isFetching ? "spin" : ""} />
           </button>
         </div>
+        {(cardView || r.slug === "schedules") && (
+          <div className="collection-toolbar">
+            <p>
+              {r.slug === "schedules"
+                ? "Thời gian, phòng tập và trạng thái từng buổi học."
+                : "Xem nhanh thông tin hoặc chuyển sang bảng để đối chiếu."}
+            </p>
+            <div
+              className="view-switch"
+              role="group"
+              aria-label="Kiểu hiển thị"
+            >
+              <button
+                aria-pressed={view === "visual"}
+                onClick={() => setView("visual")}
+              >
+                <LayoutGrid size={16} />
+                {r.slug === "schedules" ? "Lịch" : "Thẻ"}
+              </button>
+              <button
+                aria-pressed={view === "table"}
+                onClick={() => setView("table")}
+              >
+                <List size={16} />
+                Bảng
+              </button>
+            </div>
+          </div>
+        )}
         <div className="filters">
           {filters.map((p) => (
             <FilterField
@@ -167,6 +283,15 @@ export function ResourcePage({
             text="Không tìm thấy kết quả"
             detail="Thử thay đổi bộ lọc hoặc thêm dữ liệu mới."
           />
+        ) : view === "visual" && cardView ? (
+          <ResourceCollection
+            rows={q.data.data}
+            columns={r.columns}
+            kind={r.slug}
+            actions={rowActions}
+          />
+        ) : view === "visual" && r.slug === "schedules" ? (
+          <ScheduleAgenda rows={q.data.data} actions={rowActions} />
         ) : (
           <div
             className="table-scroll"
@@ -178,7 +303,9 @@ export function ResourcePage({
               <thead>
                 <tr>
                   {r.columns.map(([k, title]) => (
-                    <th key={k}>{title}</th>
+                    <th key={k} scope="col">
+                      {title}
+                    </th>
                   ))}
                   <th className="right">Thao tác</th>
                 </tr>
@@ -210,17 +337,7 @@ export function ResourcePage({
                             "role",
                             "trainingLevel",
                           ].includes(k) ? (
-                          <span
-                            className={
-                              "badge " +
-                              (at(row, k) === false ||
-                              at(row, k) === "CANCELLED"
-                                ? "muted"
-                                : "")
-                            }
-                          >
-                            {display(at(row, k))}
-                          </span>
+                          <StatusBadge value={at(row, k)} />
                         ) : k === "price" ? (
                           money(at(row, k))
                         ) : (
@@ -228,84 +345,7 @@ export function ResourcePage({
                         )}
                       </td>
                     ))}
-                    <td>
-                      <div className="row-actions">
-                        <button
-                          title="Xem chi tiết"
-                          aria-label="Xem chi tiết"
-                          className="icon-button"
-                          onClick={() => {
-                            setDetailTab("overview");
-                            setModal({ kind: "detail", row });
-                          }}
-                        >
-                          <Eye size={17} />
-                        </button>
-                        {contract[update]?.body && (
-                          <button
-                            disabled={
-                              r.slug === "schedules" &&
-                              row.status !== "SCHEDULED"
-                            }
-                            aria-label="Chỉnh sửa"
-                            title="Chỉnh sửa"
-                            className="icon-button"
-                            onClick={() => setModal({ kind: "edit", row })}
-                          >
-                            <Pencil size={16} />
-                          </button>
-                        )}
-                        {r.slug === "classes" && (
-                          <button
-                            aria-label="Phân công huấn luyện viên"
-                            title="Phân công huấn luyện viên"
-                            className="icon-button"
-                            onClick={() => setModal({ kind: "assign", row })}
-                          >
-                            <UserPlus size={17} />
-                          </button>
-                        )}
-                        {r.slug === "schedules" && (
-                          <button
-                            className="button small"
-                            disabled={!canCompleteSchedule(row)}
-                            onClick={() => {
-                              setBError(undefined);
-                              setModal({ kind: "complete", row });
-                            }}
-                          >
-                            Hoàn tất
-                          </button>
-                        )}
-                        {contract[remove] && (
-                          <button
-                            aria-label={
-                              r.slug === "schedules"
-                                ? "Hủy lịch"
-                                : "Ngừng hoạt động"
-                            }
-                            title={
-                              r.slug === "schedules"
-                                ? "Hủy lịch"
-                                : "Ngừng hoạt động"
-                            }
-                            className="icon-button danger-text"
-                            disabled={
-                              row.isActive === false ||
-                              row.status === "CANCELLED" ||
-                              row.status === "COMPLETED" ||
-                              (r.path === "/users" && row.id === userId)
-                            }
-                            onClick={() => {
-                              setBError(undefined);
-                              setModal({ kind: "delete", row });
-                            }}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                    <td>{rowActions(row)}</td>
                   </tr>
                 ))}
               </tbody>

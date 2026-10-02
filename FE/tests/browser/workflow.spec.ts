@@ -314,6 +314,7 @@ test("staff completes only ended sessions through dedicated API and cannot mark 
     return route.fulfill({ json: { success: true, data } });
   });
   await page.goto("/receptionist/schedules");
+  await page.getByRole("button", { name: "Bảng", exact: true }).click();
   const ended = page.getByRole("row").filter({ hasText: "Buổi đã kết thúc" });
   const future = page
     .getByRole("row")

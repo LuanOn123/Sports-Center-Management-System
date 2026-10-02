@@ -100,8 +100,8 @@ export function ClassDetailPage() {
             onClick={() => navigate("/member/classes")}
             style={{
               padding: "10px 18px",
-              backgroundColor: "#203d31",
-              color: "#ffffff",
+              backgroundColor: "var(--color-primary)",
+              color: "var(--color-surface)",
               borderRadius: 8,
               border: "none",
               cursor: "pointer",
@@ -138,7 +138,7 @@ export function ClassDetailPage() {
             background: "none",
             border: "none",
             color: "#54655d",
-            fontSize: 13,
+            fontSize: "var(--font-small)",
             fontWeight: 600,
             cursor: "pointer",
             padding: 0,
@@ -167,8 +167,8 @@ export function ClassDetailPage() {
       {/* CLASS OVERVIEW CARD */}
       <div
         style={{
-          background: "#ffffff",
-          borderRadius: 20,
+          background: "var(--color-surface)",
+          borderRadius: "var(--radius-card)",
           border: "1px solid #e7ece9",
           padding: 28,
         }}
@@ -186,9 +186,9 @@ export function ClassDetailPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span
               style={{
-                fontSize: 13,
+                fontSize: "var(--font-small)",
                 fontWeight: 700,
-                color: "#203d31",
+                color: "var(--color-primary)",
                 backgroundColor: "#f2f8eb",
                 padding: "4px 10px",
                 borderRadius: 6,
@@ -199,7 +199,12 @@ export function ClassDetailPage() {
             </span>
             <StatusBadge status={cls.classType} />
           </div>
-          <span style={{ fontSize: 13, color: "#58695f" }}>
+          <span
+            style={{
+              fontSize: "var(--font-small)",
+              color: "var(--color-text-muted)",
+            }}
+          >
             Tối đa: <strong>{cls.capacity} học viên/ca</strong>
           </span>
         </div>
@@ -207,8 +212,8 @@ export function ClassDetailPage() {
         <h1
           style={{
             fontSize: 26,
-            fontWeight: 800,
-            color: "#203d31",
+            fontWeight: 700,
+            color: "var(--color-primary)",
             margin: "0 0 10px",
           }}
         >
@@ -217,8 +222,8 @@ export function ClassDetailPage() {
 
         <p
           style={{
-            color: "#475467",
-            fontSize: 14,
+            color: "var(--color-text-muted)",
+            fontSize: "var(--font-small)",
             lineHeight: 1.6,
             margin: "0 0 24px",
             maxWidth: 780,
@@ -232,16 +237,21 @@ export function ClassDetailPage() {
         <div style={{ paddingTop: 18, borderTop: "1px solid #f2f5f3" }}>
           <h3
             style={{
-              fontSize: 14,
+              fontSize: "var(--font-small)",
               fontWeight: 700,
-              color: "#203d31",
+              color: "var(--color-primary)",
               marginBottom: 12,
             }}
           >
             Đội ngũ Huấn luyện viên
           </h3>
           {coaches.length === 0 ? (
-            <span style={{ fontSize: 13, color: "#58695f" }}>
+            <span
+              style={{
+                fontSize: "var(--font-small)",
+                color: "var(--color-text-muted)",
+              }}
+            >
               Chưa chỉ định huấn luyện viên
             </span>
           ) : (
@@ -264,13 +274,13 @@ export function ClassDetailPage() {
                       width: 36,
                       height: 36,
                       borderRadius: "50%",
-                      backgroundColor: "#203d31",
-                      color: "#d3f879",
+                      backgroundColor: "var(--color-primary)",
+                      color: "var(--color-secondary)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       fontWeight: 700,
-                      fontSize: 14,
+                      fontSize: "var(--font-small)",
                     }}
                   >
                     {c.coach?.user?.fullName?.charAt(0) || "C"}
@@ -279,13 +289,18 @@ export function ClassDetailPage() {
                     <div
                       style={{
                         fontWeight: 700,
-                        fontSize: 13,
-                        color: "#203d31",
+                        fontSize: "var(--font-small)",
+                        color: "var(--color-primary)",
                       }}
                     >
                       {c.coach?.user?.fullName}
                     </div>
-                    <div style={{ fontSize: 11, color: "#58695f" }}>
+                    <div
+                      style={{
+                        fontSize: "var(--font-caption)",
+                        color: "var(--color-text-muted)",
+                      }}
+                    >
                       {c.coach?.specialization ||
                         "Huấn luyện viên chuyên nghiệp"}
                     </div>
@@ -326,8 +341,8 @@ export function ClassDetailPage() {
       {/* SCHEDULES & BOOKING SECTION */}
       <div
         style={{
-          background: "#ffffff",
-          borderRadius: 20,
+          background: "var(--color-surface)",
+          borderRadius: "var(--radius-card)",
           border: "1px solid #e7ece9",
           padding: 28,
         }}
@@ -344,14 +359,20 @@ export function ClassDetailPage() {
             <h2
               style={{
                 fontSize: 18,
-                fontWeight: 800,
-                color: "#203d31",
+                fontWeight: 700,
+                color: "var(--color-primary)",
                 margin: "0 0 4px",
               }}
             >
               Lịch học sắp diễn ra
             </h2>
-            <p style={{ margin: 0, color: "#58695f", fontSize: 13 }}>
+            <p
+              style={{
+                margin: 0,
+                color: "var(--color-text-muted)",
+                fontSize: "var(--font-small)",
+              }}
+            >
               Chọn ca học phù hợp với thời gian của bạn và bấm Đặt chỗ
             </p>
           </div>
@@ -388,7 +409,7 @@ export function ClassDetailPage() {
                     flexWrap: "wrap",
                     gap: 16,
                     padding: "16px 20px",
-                    borderRadius: 14,
+                    borderRadius: "var(--radius-card)",
                     backgroundColor: isPast ? "#f9fafb" : "#fcfdfc",
                     border: "1px solid #e7ece9",
                   }}
@@ -397,7 +418,7 @@ export function ClassDetailPage() {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 20,
+                      gap: 24,
                       flexWrap: "wrap",
                     }}
                   >
@@ -414,7 +435,7 @@ export function ClassDetailPage() {
                     >
                       <div
                         style={{
-                          fontSize: 11,
+                          fontSize: "var(--font-caption)",
                           fontWeight: 700,
                           color: "#376228",
                           textTransform: "uppercase",
@@ -427,8 +448,8 @@ export function ClassDetailPage() {
                       <div
                         style={{
                           fontSize: 18,
-                          fontWeight: 800,
-                          color: "#203d31",
+                          fontWeight: 700,
+                          color: "var(--color-primary)",
                         }}
                       >
                         {startTime.getDate()}/{startTime.getMonth() + 1}
@@ -442,12 +463,12 @@ export function ClassDetailPage() {
                           display: "flex",
                           alignItems: "center",
                           gap: 8,
-                          fontSize: 15,
+                          fontSize: "var(--font-small)",
                           fontWeight: 700,
-                          color: "#203d31",
+                          color: "var(--color-primary)",
                         }}
                       >
-                        <Clock size={16} color="#58695f" />
+                        <Clock size={16} color="var(--color-text-muted)" />
                         <span>
                           {formatMemberDate(startTime, {
                             hour: "2-digit",
@@ -466,7 +487,7 @@ export function ClassDetailPage() {
                           alignItems: "center",
                           gap: 14,
                           marginTop: 4,
-                          fontSize: 13,
+                          fontSize: "var(--font-small)",
                           color: "#54655d",
                         }}
                       >
@@ -477,7 +498,7 @@ export function ClassDetailPage() {
                             gap: 4,
                           }}
                         >
-                          <MapPin size={14} color="#58695f" />
+                          <MapPin size={14} color="var(--color-text-muted)" />
                           Phòng: <strong>{sch.room?.name || "Sân tập"}</strong>
                         </span>
                         <span
@@ -487,7 +508,7 @@ export function ClassDetailPage() {
                             gap: 4,
                           }}
                         >
-                          <Users size={14} color="#58695f" />
+                          <Users size={14} color="var(--color-text-muted)" />
                           Còn trống:{" "}
                           <strong
                             style={{ color: isFull ? "#d92d20" : "#267346" }}
@@ -520,12 +541,13 @@ export function ClassDetailPage() {
                       style={{
                         padding: "10px 22px",
                         backgroundColor:
-                          isPast || isFull ? "#e4e7e6" : "#203d31",
-                        color: isPast || isFull ? "#8c9b94" : "#ffffff",
+                          isPast || isFull ? "#e4e7e6" : "var(--color-primary)",
+                        color:
+                          isPast || isFull ? "#8c9b94" : "var(--color-surface)",
                         border: "none",
                         borderRadius: 10,
                         fontWeight: 700,
-                        fontSize: 13,
+                        fontSize: "var(--font-small)",
                         cursor: isPast || isFull ? "not-allowed" : "pointer",
                         transition: "background 0.15s",
                       }}

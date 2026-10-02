@@ -131,6 +131,23 @@ function PlatformPreview() {
                 id={`preview-tab-${i}`}
                 role="tab"
                 aria-selected={tab === i}
+                tabIndex={tab === i ? 0 : -1}
+                onKeyDown={(event) => {
+                  const next =
+                    event.key === "ArrowRight"
+                      ? (i + 1) % tabs.length
+                      : event.key === "ArrowLeft"
+                        ? (i + tabs.length - 1) % tabs.length
+                        : event.key === "Home"
+                          ? 0
+                          : event.key === "End"
+                            ? tabs.length - 1
+                            : null;
+                  if (next === null) return;
+                  event.preventDefault();
+                  setTab(next);
+                  document.getElementById(`preview-tab-${next}`)?.focus();
+                }}
                 aria-controls="preview-panel"
                 onClick={() => setTab(i)}
               >
@@ -223,7 +240,6 @@ function PlatformPreview() {
 
 export function Landing({ signedIn }: { signedIn: boolean }) {
   const [menu, setMenu] = useState(false);
-  const hero = useRef<HTMLElement>(null);
   useEffect(() => {
     document.title = "Pulse Sports Center · Find your next level";
     window.scrollTo(0, 0);
@@ -241,24 +257,7 @@ export function Landing({ signedIn }: { signedIn: boolean }) {
       el.classList.add("p-reveal-ready");
       observer.observe(el);
     });
-    let frame = 0;
-    const scroll = () => {
-      if (frame || matchMedia("(prefers-reduced-motion: reduce)").matches)
-        return;
-      frame = requestAnimationFrame(() => {
-        hero.current?.style.setProperty(
-          "--parallax",
-          `${Math.min(window.scrollY * 0.16, 100)}px`,
-        );
-        frame = 0;
-      });
-    };
-    window.addEventListener("scroll", scroll, { passive: true });
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("scroll", scroll);
-      cancelAnimationFrame(frame);
-    };
+    return () => observer.disconnect();
   }, []);
   const start = signedIn ? "/login" : "/register";
   return (
@@ -309,7 +308,7 @@ export function Landing({ signedIn }: { signedIn: boolean }) {
         </div>
       </header>
       <main id="main">
-        <section className="p-hero" ref={hero}>
+        <section className="p-hero">
           <SportFilm />
           <div className="p-hero-shade" />
           <div className="p-hero-grid" aria-hidden="true" />

@@ -35,6 +35,7 @@ export type PostAttendanceRequest = { "scheduleId"?: string; "memberId"?: string
 export type PatchAttendanceIdRequest = { "status"?: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED" };
 export type PostAttendanceGenerateQrRequest = { "scheduleId": string };
 export type PostAttendanceScanQrRequest = { "qrToken": string };
+export type PostAiChatRequest = { "message": string; "history"?: Array<{ "role"?: "user" | "assistant" | "system"; "content"?: string }> };
 export type BadRequest = { "success": boolean; "message": string; "errors": Array<{ "field": string; "message": string }> };
 export type Unauthorized = { "success": boolean; "message": string };
 export type Forbidden = { "success": boolean; "message": string };

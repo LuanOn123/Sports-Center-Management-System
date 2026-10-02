@@ -1,3 +1,4 @@
+import { AITrainingPlanGenerator } from "../../features/ai/AITrainingPlanGenerator";
 import { effectiveSubscription } from "../../shared/businessRules";
 import { formatMemberDate } from "../../shared/memberFormat";
 import { ErrorState } from "../../shared/feedback";
@@ -74,18 +75,19 @@ export function DashboardPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <AITrainingPlanGenerator />
       {/* WELCOME BANNER */}
       <div
         style={{
           background: "linear-gradient(135deg, #203d31 0%, #152720 100%)",
-          borderRadius: 20,
+          borderRadius: "var(--radius-card)",
           padding: "28px 32px",
-          color: "#ffffff",
+          color: "var(--color-surface)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           flexWrap: "wrap",
-          gap: 20,
+          gap: 24,
           boxShadow: "0 12px 24px -6px rgba(32, 61, 49, 0.25)",
         }}
       >
@@ -101,8 +103,8 @@ export function DashboardPage() {
             <span
               style={{
                 backgroundColor: "#315444",
-                color: "#d3f879",
-                fontSize: 12,
+                color: "var(--color-secondary)",
+                fontSize: "var(--font-caption)",
                 fontWeight: 700,
                 padding: "3px 10px",
                 borderRadius: 999,
@@ -117,15 +119,20 @@ export function DashboardPage() {
           <h2
             style={{
               fontSize: 28,
-              fontWeight: 800,
+              fontWeight: 700,
               margin: "0 0 6px",
-              color: "#ffffff",
+              color: "var(--color-surface)",
             }}
           >
             Chào mừng trở lại, {user?.fullName || "Học viên"}!
           </h2>
           <p
-            style={{ margin: 0, color: "#b2c5bc", fontSize: 14, maxWidth: 520 }}
+            style={{
+              margin: 0,
+              color: "#b2c5bc",
+              fontSize: "var(--font-small)",
+              maxWidth: 520,
+            }}
           >
             Sẵn sàng cho buổi tập tiếp theo hôm nay. Hãy theo dõi lịch và duy
             trì năng lượng tích cực!
@@ -143,12 +150,12 @@ export function DashboardPage() {
               alignItems: "center",
               gap: 8,
               padding: "12px 20px",
-              backgroundColor: "#d3f879",
-              color: "#203d31",
+              backgroundColor: "var(--color-secondary)",
+              color: "var(--color-primary)",
               border: "none",
               borderRadius: 12,
               fontWeight: 700,
-              fontSize: 14,
+              fontSize: "var(--font-small)",
               cursor: "pointer",
             }}
           >
@@ -162,11 +169,11 @@ export function DashboardPage() {
               gap: 8,
               padding: "12px 18px",
               backgroundColor: "rgba(255, 255, 255, 0.12)",
-              color: "#ffffff",
+              color: "var(--color-surface)",
               border: "1px solid rgba(255, 255, 255, 0.2)",
               borderRadius: 12,
               fontWeight: 600,
-              fontSize: 14,
+              fontSize: "var(--font-small)",
               cursor: "pointer",
             }}
           >
@@ -180,13 +187,13 @@ export function DashboardPage() {
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-          gap: 20,
+          gap: 24,
         }}
       >
         {/* MEMBERSHIP CARD */}
         <div
           style={{
-            background: "#ffffff",
+            background: "var(--color-surface)",
             borderRadius: 18,
             padding: 24,
             border: "1px solid #e7ece9",
@@ -223,14 +230,19 @@ export function DashboardPage() {
                   <h3
                     style={{
                       margin: 0,
-                      fontSize: 16,
+                      fontSize: "var(--font-body)",
                       fontWeight: 700,
-                      color: "#203d31",
+                      color: "var(--color-primary)",
                     }}
                   >
                     Gói hội viên hiện tại
                   </h3>
-                  <span style={{ fontSize: 12, color: "#58695f" }}>
+                  <span
+                    style={{
+                      fontSize: "var(--font-caption)",
+                      color: "var(--color-text-muted)",
+                    }}
+                  >
                     Trạng thái tài khoản
                   </span>
                 </div>
@@ -247,7 +259,7 @@ export function DashboardPage() {
                   style={{
                     backgroundColor: "#fef3f2",
                     color: "#d92d20",
-                    fontSize: 12,
+                    fontSize: "var(--font-caption)",
                     fontWeight: 700,
                     padding: "3px 8px",
                     borderRadius: 6,
@@ -274,13 +286,17 @@ export function DashboardPage() {
                   }}
                 >
                   <span
-                    style={{ fontSize: 20, fontWeight: 800, color: "#203d31" }}
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 700,
+                      color: "var(--color-primary)",
+                    }}
                   >
                     {activeSub.plan.name}
                   </span>
                   <span
                     style={{
-                      fontSize: 13,
+                      fontSize: "var(--font-small)",
                       fontWeight: 700,
                       color: "#376228",
                       backgroundColor: "#eef8e6",
@@ -296,11 +312,11 @@ export function DashboardPage() {
                     display: "flex",
                     alignItems: "center",
                     gap: 8,
-                    fontSize: 13,
+                    fontSize: "var(--font-small)",
                     color: "#54655d",
                   }}
                 >
-                  <Clock size={16} color="#58695f" />
+                  <Clock size={16} color="var(--color-text-muted)" />
                   <span>
                     Còn lại: <strong>{daysRemaining} ngày</strong> (Hết hạn{" "}
                     {formatMemberDate(activeSub.endDate)})
@@ -309,7 +325,11 @@ export function DashboardPage() {
               </div>
             ) : (
               <div
-                style={{ padding: "12px 0", color: "#667085", fontSize: 13 }}
+                style={{
+                  padding: "12px 0",
+                  color: "var(--color-text-muted)",
+                  fontSize: "var(--font-small)",
+                }}
               >
                 Bạn chưa đăng ký gói hội viên hoặc gói đã hết hạn. Hãy khám phá
                 các gói để mở khóa toàn bộ quyền lợi tập luyện.
@@ -327,9 +347,9 @@ export function DashboardPage() {
             <Link
               to="/member/membership"
               style={{
-                fontSize: 13,
+                fontSize: "var(--font-small)",
                 fontWeight: 700,
-                color: "#203d31",
+                color: "var(--color-primary)",
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 6,
@@ -343,7 +363,7 @@ export function DashboardPage() {
         {/* UPCOMING CLASS CARD */}
         <div
           style={{
-            background: "#ffffff",
+            background: "var(--color-surface)",
             borderRadius: 18,
             padding: 24,
             border: "1px solid #e7ece9",
@@ -380,14 +400,19 @@ export function DashboardPage() {
                   <h3
                     style={{
                       margin: 0,
-                      fontSize: 16,
+                      fontSize: "var(--font-body)",
                       fontWeight: 700,
-                      color: "#203d31",
+                      color: "var(--color-primary)",
                     }}
                   >
                     Buổi tập tiếp theo
                   </h3>
-                  <span style={{ fontSize: 12, color: "#58695f" }}>
+                  <span
+                    style={{
+                      fontSize: "var(--font-caption)",
+                      color: "var(--color-text-muted)",
+                    }}
+                  >
                     Lịch đã xác nhận
                   </span>
                 </div>
@@ -407,7 +432,11 @@ export function DashboardPage() {
                 style={{ display: "flex", flexDirection: "column", gap: 10 }}
               >
                 <div
-                  style={{ fontSize: 18, fontWeight: 800, color: "#203d31" }}
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: "var(--color-primary)",
+                  }}
                 >
                   {nextClass.schedule?.class?.name}
                 </div>
@@ -416,8 +445,8 @@ export function DashboardPage() {
                     display: "flex",
                     alignItems: "center",
                     gap: 16,
-                    fontSize: 13,
-                    color: "#475467",
+                    fontSize: "var(--font-small)",
+                    color: "var(--color-text-muted)",
                   }}
                 >
                   <span
@@ -427,7 +456,7 @@ export function DashboardPage() {
                       gap: 6,
                     }}
                   >
-                    <Clock size={15} color="#58695f" />
+                    <Clock size={15} color="var(--color-text-muted)" />
                     {formatMemberDate(nextClass.schedule.startTime, {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -445,11 +474,11 @@ export function DashboardPage() {
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
-                    fontSize: 13,
-                    color: "#475467",
+                    fontSize: "var(--font-small)",
+                    color: "var(--color-text-muted)",
                   }}
                 >
-                  <MapPin size={15} color="#58695f" />
+                  <MapPin size={15} color="var(--color-text-muted)" />
                   <span>
                     Phòng:{" "}
                     <strong>
@@ -460,7 +489,11 @@ export function DashboardPage() {
               </div>
             ) : (
               <div
-                style={{ padding: "12px 0", color: "#667085", fontSize: 13 }}
+                style={{
+                  padding: "12px 0",
+                  color: "var(--color-text-muted)",
+                  fontSize: "var(--font-small)",
+                }}
               >
                 Bạn chưa đặt lịch buổi tập nào sắp tới. Hãy xem danh sách lớp để
                 chọn giờ học phù hợp nhất.
@@ -478,9 +511,9 @@ export function DashboardPage() {
             <Link
               to="/member/my-classes"
               style={{
-                fontSize: 13,
+                fontSize: "var(--font-small)",
                 fontWeight: 700,
-                color: "#203d31",
+                color: "var(--color-primary)",
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 6,
@@ -499,7 +532,7 @@ export function DashboardPage() {
           style={{
             fontSize: 17,
             fontWeight: 700,
-            color: "#203d31",
+            color: "var(--color-primary)",
             marginBottom: 14,
           }}
         >
@@ -515,9 +548,9 @@ export function DashboardPage() {
           <div
             onClick={() => navigate("/member/classes")}
             style={{
-              backgroundColor: "#ffffff",
+              backgroundColor: "var(--color-surface)",
               border: "1px solid #e7ece9",
-              borderRadius: 14,
+              borderRadius: "var(--radius-card)",
               padding: 16,
               cursor: "pointer",
               display: "flex",
@@ -541,10 +574,21 @@ export function DashboardPage() {
               <Volleyball size={20} />
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: "#203d31" }}>
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: "var(--font-small)",
+                  color: "var(--color-primary)",
+                }}
+              >
                 Tìm kiếm lớp
               </div>
-              <div style={{ fontSize: 12, color: "#58695f" }}>
+              <div
+                style={{
+                  fontSize: "var(--font-caption)",
+                  color: "var(--color-text-muted)",
+                }}
+              >
                 Đặt chỗ ca học mới
               </div>
             </div>
@@ -553,9 +597,9 @@ export function DashboardPage() {
           <div
             onClick={() => navigate("/member/schedule")}
             style={{
-              backgroundColor: "#ffffff",
+              backgroundColor: "var(--color-surface)",
               border: "1px solid #e7ece9",
-              borderRadius: 14,
+              borderRadius: "var(--radius-card)",
               padding: 16,
               cursor: "pointer",
               display: "flex",
@@ -578,10 +622,21 @@ export function DashboardPage() {
               <CalendarDays size={20} />
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: "#203d31" }}>
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: "var(--font-small)",
+                  color: "var(--color-primary)",
+                }}
+              >
                 Lịch tập tuần
               </div>
-              <div style={{ fontSize: 12, color: "#58695f" }}>
+              <div
+                style={{
+                  fontSize: "var(--font-caption)",
+                  color: "var(--color-text-muted)",
+                }}
+              >
                 Theo dõi thời khóa biểu
               </div>
             </div>
@@ -590,9 +645,9 @@ export function DashboardPage() {
           <div
             onClick={() => navigate("/member/training")}
             style={{
-              backgroundColor: "#ffffff",
+              backgroundColor: "var(--color-surface)",
               border: "1px solid #e7ece9",
-              borderRadius: 14,
+              borderRadius: "var(--radius-card)",
               padding: 16,
               cursor: "pointer",
               display: "flex",
@@ -615,10 +670,21 @@ export function DashboardPage() {
               <Dumbbell size={20} />
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: "#203d31" }}>
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: "var(--font-small)",
+                  color: "var(--color-primary)",
+                }}
+              >
                 Mục tiêu tập
               </div>
-              <div style={{ fontSize: 12, color: "#58695f" }}>
+              <div
+                style={{
+                  fontSize: "var(--font-caption)",
+                  color: "var(--color-text-muted)",
+                }}
+              >
                 Kế hoạch & cấp độ
               </div>
             </div>
@@ -627,9 +693,9 @@ export function DashboardPage() {
           <div
             onClick={() => navigate("/member/profile")}
             style={{
-              backgroundColor: "#ffffff",
+              backgroundColor: "var(--color-surface)",
               border: "1px solid #e7ece9",
-              borderRadius: 14,
+              borderRadius: "var(--radius-card)",
               padding: 16,
               cursor: "pointer",
               display: "flex",
@@ -652,10 +718,21 @@ export function DashboardPage() {
               <UserCircle size={20} />
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: "#203d31" }}>
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: "var(--font-small)",
+                  color: "var(--color-primary)",
+                }}
+              >
                 Hồ sơ cá nhân
               </div>
-              <div style={{ fontSize: 12, color: "#58695f" }}>
+              <div
+                style={{
+                  fontSize: "var(--font-caption)",
+                  color: "var(--color-text-muted)",
+                }}
+              >
                 Cập nhật thông tin
               </div>
             </div>
@@ -666,7 +743,7 @@ export function DashboardPage() {
       {/* UPCOMING CLASSES LIST */}
       <div
         style={{
-          backgroundColor: "#ffffff",
+          backgroundColor: "var(--color-surface)",
           borderRadius: 18,
           border: "1px solid #e7ece9",
           padding: 24,
@@ -684,7 +761,7 @@ export function DashboardPage() {
             style={{
               fontSize: 17,
               fontWeight: 700,
-              color: "#203d31",
+              color: "var(--color-primary)",
               margin: 0,
             }}
           >
@@ -693,7 +770,7 @@ export function DashboardPage() {
           <Link
             to="/member/my-classes"
             style={{
-              fontSize: 13,
+              fontSize: "var(--font-small)",
               fontWeight: 600,
               color: "#376228",
               textDecoration: "none",
@@ -712,8 +789,8 @@ export function DashboardPage() {
             style={{
               padding: "32px 16px",
               textAlign: "center",
-              color: "#667085",
-              fontSize: 13,
+              color: "var(--color-text-muted)",
+              fontSize: "var(--font-small)",
             }}
           >
             Chưa có lịch đăng ký sắp tới. Hãy nhấn vào{" "}
@@ -738,7 +815,11 @@ export function DashboardPage() {
               >
                 <div>
                   <div
-                    style={{ fontWeight: 700, fontSize: 15, color: "#203d31" }}
+                    style={{
+                      fontWeight: 700,
+                      fontSize: "var(--font-small)",
+                      color: "var(--color-primary)",
+                    }}
                   >
                     {item.schedule?.class?.name}
                   </div>
@@ -748,7 +829,7 @@ export function DashboardPage() {
                       flexWrap: "wrap",
                       gap: "6px 16px",
                       marginTop: 4,
-                      fontSize: 13,
+                      fontSize: "var(--font-small)",
                       color: "#54655d",
                     }}
                   >
@@ -777,9 +858,9 @@ export function DashboardPage() {
                       padding: "7px 14px",
                       borderRadius: 8,
                       border: "1px solid #d0d7d3",
-                      backgroundColor: "#ffffff",
-                      color: "#203d31",
-                      fontSize: 12,
+                      backgroundColor: "var(--color-surface)",
+                      color: "var(--color-primary)",
+                      fontSize: "var(--font-caption)",
                       fontWeight: 600,
                       cursor: "pointer",
                     }}

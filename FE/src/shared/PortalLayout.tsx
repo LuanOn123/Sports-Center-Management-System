@@ -1,7 +1,26 @@
 import { useEffect, useId, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { Menu, X, LogOut, ChevronRight } from "lucide-react";
+import {
+  Menu,
+  X,
+  LogOut,
+  ChevronRight,
+  Bell,
+  MessageCircle,
+  ShieldCheck,
+  LayoutDashboard,
+  CalendarDays,
+  Dumbbell,
+  CreditCard,
+  UserRound,
+  ClipboardCheck,
+  Target,
+  Users,
+  Building2,
+  Volleyball,
+  LifeBuoy,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useSidebar } from "./useSidebar";
 import { Brand } from "./Brand";
@@ -16,6 +35,26 @@ export type NavigationItem = readonly [
 export type NavigationGroup = {
   title: string;
   items: readonly NavigationItem[];
+};
+const navigationIcons: Record<string, LucideIcon> = {
+  members: Users,
+  rooms: Building2,
+  sports: Volleyball,
+  support: LifeBuoy,
+  catalogue: Dumbbell,
+  schedules: CalendarDays,
+  dashboard: LayoutDashboard,
+  notifications: Bell,
+  chat: MessageCircle,
+  policies: ShieldCheck,
+  classes: Dumbbell,
+  "my-classes": Dumbbell,
+  schedule: CalendarDays,
+  membership: CreditCard,
+  payments: CreditCard,
+  attendance: ClipboardCheck,
+  training: Target,
+  profile: UserRound,
 };
 export function PortalLayout({
   user,
@@ -103,12 +142,18 @@ export function PortalLayout({
           {navigation.map((group) => (
             <div className="nav-group" key={group.title}>
               <span>{group.title}</span>
-              {group.items.map(([path, name, Icon = ChevronRight]) => (
-                <NavLink key={path} to={base + "/" + path}>
-                  <Icon size={18} aria-hidden="true" />
-                  <span>{name}</span>
-                </NavLink>
-              ))}
+              {group.items.map(
+                ([
+                  path,
+                  name,
+                  Icon = navigationIcons[path] || ChevronRight,
+                ]) => (
+                  <NavLink key={path} to={base + "/" + path}>
+                    <Icon size={16} aria-hidden="true" />
+                    <span>{name}</span>
+                  </NavLink>
+                ),
+              )}
             </div>
           ))}
         </nav>
@@ -125,7 +170,7 @@ export function PortalLayout({
               }
             }}
           >
-            <LogOut size={18} />
+            <LogOut size={16} />
             {busy ? "Đang đăng xuất…" : "Đăng xuất"}
           </button>
         </div>
@@ -145,17 +190,26 @@ export function PortalLayout({
             </button>
             <strong>{pageTitle}</strong>
           </div>
-          <Link
-            className="profile-link"
-            to={base + "/profile"}
-            aria-label={`Tài khoản của ${user.fullName}`}
-          >
-            <div>
-              <strong>{user.fullName}</strong>
-              <small>{title}</small>
-            </div>
-            <span className="avatar">{user.fullName.slice(0, 1)}</span>
-          </Link>
+          <div className="topbar-actions">
+            <Link
+              className="icon-button notification-link"
+              to={base + "/notifications"}
+              aria-label="Xem thông báo"
+            >
+              <Bell size={18} />
+            </Link>
+            <Link
+              className="profile-link"
+              to={base + "/profile"}
+              aria-label={`Tài khoản của ${user.fullName}`}
+            >
+              <div>
+                <strong>{user.fullName}</strong>
+                <small>{title}</small>
+              </div>
+              <span className="avatar">{user.fullName.slice(0, 1)}</span>
+            </Link>
+          </div>
         </header>
         <main id="main-content" tabIndex={-1}>
           {location.pathname === `${base}/notifications` ? (

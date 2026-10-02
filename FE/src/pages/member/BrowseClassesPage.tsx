@@ -52,8 +52,8 @@ export function BrowseClassesPage() {
       {/* HEADER BANNER */}
       <div
         style={{
-          background: "#ffffff",
-          borderRadius: 16,
+          background: "var(--color-surface)",
+          borderRadius: "var(--radius-card)",
           padding: "24px 28px",
           border: "1px solid #e7ece9",
           display: "flex",
@@ -67,14 +67,20 @@ export function BrowseClassesPage() {
           <h1
             style={{
               fontSize: 24,
-              fontWeight: 800,
-              color: "#203d31",
+              fontWeight: 700,
+              color: "var(--color-primary)",
               margin: "0 0 6px",
             }}
           >
             Khám phá Lớp học Thể thao
           </h1>
-          <p style={{ margin: 0, color: "#58695f", fontSize: 13 }}>
+          <p
+            style={{
+              margin: 0,
+              color: "var(--color-text-muted)",
+              fontSize: "var(--font-small)",
+            }}
+          >
             Lựa chọn môn thể thao yêu thích, xem lịch học và đặt chỗ trực tuyến
             nhanh chóng
           </p>
@@ -84,8 +90,8 @@ export function BrowseClassesPage() {
       {/* SEARCH AND FILTER BAR */}
       <div
         style={{
-          background: "#ffffff",
-          borderRadius: 14,
+          background: "var(--color-surface)",
+          borderRadius: "var(--radius-card)",
           padding: "16px 20px",
           border: "1px solid #e7ece9",
           display: "flex",
@@ -98,7 +104,7 @@ export function BrowseClassesPage() {
         <div style={{ position: "relative", flex: "1 1 260px" }}>
           <Search
             size={17}
-            color="#58695f"
+            color="var(--color-text-muted)"
             style={{
               position: "absolute",
               left: 12,
@@ -166,9 +172,9 @@ export function BrowseClassesPage() {
               background: "none",
               border: "1px dashed #d0d5dd",
               borderRadius: 8,
-              fontSize: 12,
+              fontSize: "var(--font-caption)",
               fontWeight: 600,
-              color: "#475467",
+              color: "var(--color-text-muted)",
               cursor: "pointer",
             }}
           >
@@ -192,32 +198,17 @@ export function BrowseClassesPage() {
           description="Hãy thử đổi từ khóa tìm kiếm hoặc chọn bộ môn khác."
         />
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-            gap: 20,
-          }}
-        >
+        <div className="browse-class-grid">
           {classes.map((c) => {
             const coaches = c.coaches || [];
             const primaryCoach = coaches[0]?.coach?.user?.fullName;
 
             return (
-              <div
-                key={c.id}
-                style={{
-                  backgroundColor: "#ffffff",
-                  borderRadius: 16,
-                  border: "1px solid #e7ece9",
-                  padding: 22,
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.02)",
-                  transition: "box-shadow 0.2s, transform 0.2s",
-                }}
-              >
+              <div key={c.id} className="browse-class-card">
+                <div className="browse-class-visual" aria-hidden="true">
+                  <Volleyball size={36} strokeWidth={1.2} />
+                  <span className="court-lines" />
+                </div>
                 <div>
                   <div
                     style={{
@@ -229,9 +220,9 @@ export function BrowseClassesPage() {
                   >
                     <span
                       style={{
-                        fontSize: 12,
+                        fontSize: "var(--font-caption)",
                         fontWeight: 700,
-                        color: "#203d31",
+                        color: "var(--color-primary)",
                         backgroundColor: "#f2f8eb",
                         padding: "3px 9px",
                         borderRadius: 6,
@@ -246,8 +237,8 @@ export function BrowseClassesPage() {
                   <h3
                     style={{
                       fontSize: 18,
-                      fontWeight: 800,
-                      color: "#203d31",
+                      fontWeight: 700,
+                      color: "var(--color-primary)",
                       margin: "0 0 8px",
                       lineHeight: 1.3,
                     }}
@@ -257,8 +248,8 @@ export function BrowseClassesPage() {
 
                   <p
                     style={{
-                      fontSize: 13,
-                      color: "#667085",
+                      fontSize: "var(--font-small)",
+                      color: "var(--color-text-muted)",
                       lineHeight: 1.5,
                       margin: "0 0 16px",
                       display: "-webkit-box",
@@ -276,14 +267,14 @@ export function BrowseClassesPage() {
                       display: "flex",
                       flexDirection: "column",
                       gap: 8,
-                      fontSize: 12,
-                      color: "#475467",
+                      fontSize: "var(--font-caption)",
+                      color: "var(--color-text-muted)",
                     }}
                   >
                     <div
                       style={{ display: "flex", alignItems: "center", gap: 6 }}
                     >
-                      <Users size={14} color="#58695f" />
+                      <Users size={14} color="var(--color-text-muted)" />
                       <span>
                         Sức chứa: <strong>{c.capacity} học viên</strong>
                       </span>
@@ -297,7 +288,7 @@ export function BrowseClassesPage() {
                           gap: 6,
                         }}
                       >
-                        <Sparkles size={14} color="#58695f" />
+                        <Sparkles size={14} color="var(--color-text-muted)" />
                         <span>
                           HLV chính: <strong>{primaryCoach}</strong>
                         </span>
@@ -319,10 +310,10 @@ export function BrowseClassesPage() {
                       width: "100%",
                       padding: "10px 16px",
                       backgroundColor: "#f2f8eb",
-                      color: "#203d31",
+                      color: "var(--color-primary)",
                       border: "1px solid #d4ebbf",
                       borderRadius: 10,
-                      fontSize: 13,
+                      fontSize: "var(--font-small)",
                       fontWeight: 700,
                       display: "flex",
                       alignItems: "center",

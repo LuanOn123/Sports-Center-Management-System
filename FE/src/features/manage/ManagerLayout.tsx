@@ -6,6 +6,8 @@ import {
   CreditCard,
   Dumbbell,
   LayoutDashboard,
+  Layers,
+  Receipt,
   ShieldCheck,
   Trophy,
   UserRound,
@@ -14,6 +16,7 @@ import {
   Warehouse,
   ClipboardList,
   ContactRound,
+  BookOpen,
 } from "lucide-react";
 import type { ProfileOk } from "../../shared/generated";
 import { PortalLayout } from "../../shared/PortalLayout";
@@ -44,9 +47,9 @@ const navGroups: NavigationGroup[] = [
       ["rooms", "Phòng tập", Warehouse],
       ["classes", "Lớp học", Trophy],
       ["schedules", "Lịch hoạt động", CalendarDays],
-      ["membership", "Đăng ký & gia hạn gói", CreditCard],
-      ["payments", "Thanh toán & hóa đơn", CreditCard],
-      ["bookings", "Đăng ký lớp", CalendarDays],
+      ["membership", "Đăng ký & gia hạn gói", Layers],
+      ["payments", "Thanh toán & hóa đơn", Receipt],
+      ["bookings", "Đăng ký lớp", BookOpen],
     ],
   },
   {

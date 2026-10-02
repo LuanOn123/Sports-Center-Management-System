@@ -322,25 +322,21 @@ export function SchemaForm({
                     onChange={(v) => change(k, v)}
                   />
                 ) : s.type === "boolean" ? (
-                  <select
-                    aria-invalid={
-                      (error instanceof ApiError &&
-                        error.errors?.some((e) => e.field === k)) ||
-                      undefined
-                    }
-                    aria-describedby={error ? errorId : undefined}
-                    value={String(value)}
-                    onChange={(e) =>
-                      change(
-                        k,
-                        e.target.value === "" ? "" : e.target.value === "true",
-                      )
-                    }
-                  >
-                    <option value="">Không thay đổi</option>
-                    <option value="true">Có</option>
-                    <option value="false">Không</option>
-                  </select>
+                  <span className="toggle-wrap">
+                    <label className="toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={value === true || value === "true"}
+                        onChange={(e) => change(k, e.target.checked)}
+                      />
+                      <span className="toggle-track">
+                        <span className="toggle-thumb" />
+                      </span>
+                    </label>
+                    <span className="toggle-label">
+                      {value === true || value === "true" ? "Có" : "Không"}
+                    </span>
+                  </span>
                 ) : s.enum ? (
                   <select
                     aria-invalid={

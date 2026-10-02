@@ -1,3 +1,4 @@
+import { StatusBadge as Badge } from "../../shared/StatusBadge";
 import { sportNames } from "../../shared/sports";
 import { Attendance } from "../../shared/Attendance";
 import { TrainingPlans } from "../../shared/TrainingPlans";
@@ -46,13 +47,6 @@ export function Heading({
         <p>{description}</p>
       </div>
     </div>
-  );
-}
-function Badge({ value }: { value: unknown }) {
-  return (
-    <span className={`coach-badge coach-state-${String(value).toLowerCase()}`}>
-      {state(value)}
-    </span>
   );
 }
 export function CoachWorkspace({
