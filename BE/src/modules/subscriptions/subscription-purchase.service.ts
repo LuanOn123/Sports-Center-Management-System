@@ -19,8 +19,8 @@ export interface PlanPurchaseContext {
   isUpgrade: boolean;
   oldPlanName: string;
   /**
-   * Số ngày còn dư của gói TRẢ PHÍ cũ (MEMBERSHIP/PREMIUM), được cộng dồn vào gói mới.
-   * Gói FREE hệ thống luôn trả 0 — xem `inspectPlanPurchase`.
+   * Số ngày còn dư của gói TRẢ PHÍ cũ (MEMBERSHIP/PREMIUM) — chỉ dùng cho thông tin/hoàn tiền.
+   * KHÔNG còn cộng dồn vào gói mới. Gói FREE hệ thống luôn trả 0.
    */
   remainingDays: number;
 }
@@ -30,9 +30,8 @@ export interface PlanPurchaseContext {
  *
  * - Không cho hạ hạng: tier mới thấp hơn tier ACTIVE ⇒ 400.
  * - Cùng hạng: không cho mua gói ít ngày hơn gói đang dùng ⇒ 400.
- * - `remainingDays` CHỈ tính từ gói TRẢ PHÍ (MEMBERSHIP/PREMIUM) đang ACTIVE.
- *   Gói FREE hệ thống (auto-provision, durationDays = 3650) luôn ⇒ 0; nếu cộng dồn,
- *   mua gói 30 ngày sẽ nhận gần 10 năm sử dụng.
+ * - `remainingDays` CHỈ dùng cho thông tin (notification/hoàn tiền), KHÔNG cộng dồn vào gói mới.
+ *   Gói FREE hệ thống (auto-provision, durationDays = 3650) luôn ⇒ 0.
  *
  * Dùng để "fail fast" trước khi tạo giao dịch online (không tạo Payment rác),
  * còn lúc chốt giao dịch thì `applyPlanSwitchRules` chạy lại trong transaction.
@@ -138,7 +137,7 @@ export interface ActivateSubscriptionParams {
  * Trong CÙNG transaction:
  * 1. Áp luật đổi gói (chặn hạ hạng) + suspend gói ACTIVE cũ (`applyPlanSwitchRules`).
  * 2. Tạo `MembershipSubscription` ACTIVE: startDate = now,
- *    endDate = now + durationDays + ngày dư (chỉ cộng ngày dư của gói TRẢ PHÍ; gói FREE hệ thống không cộng).
+ *    endDate = now + durationDays (KHÔNG cộng dồn ngày dư từ gói cũ).
  * 3. Cập nhật Payment → `SUCCESS`, `paidAt`, gắn `subscriptionId`.
  * 4. Tạo Invoice kèm snapshot BR-25 (memberName/planName/planTier).
  * 5. Gửi notification `PAYMENT_SUCCESS` (fire-and-forget, không làm fail transaction).
@@ -164,7 +163,9 @@ export async function activateSubscriptionForPayment(
 
   const startDate = params.startDate ?? now;
   const endDate = new Date(startDate);
-  endDate.setDate(endDate.getDate() + purchasedPlan.durationDays + context.remainingDays);
+  // Gói mới CHỈ tính theo durationDays của plan mới — KHÔNG cộng dồn ngày dư từ gói cũ.
+  // Ngày dư gói cũ (nếu có) đã được xử lý bởi chính sách hoàn tiền khi hủy.
+  endDate.setDate(endDate.getDate() + purchasedPlan.durationDays);
 
   const subscription = await tx.membershipSubscription.create({
     data: {
@@ -221,9 +222,7 @@ export async function activateSubscriptionForPayment(
       title: "Nâng cấp gói thành công!",
       body:
         `Chúc mừng bạn đã nâng cấp thành công từ gói ${context.oldPlanName} lên ${purchasedPlan.name} (${purchasedPlan.tier}).` +
-        (context.remainingDays > 0
-          ? " Số ngày sử dụng còn dư đã được cộng dồn vào thời hạn gói mới."
-          : ""),
+        ` Gói mới có thời hạn ${purchasedPlan.durationDays} ngày kể từ ngày kích hoạt.`,
       metadata: { subscriptionId: subscription.id, paymentId: payment.id },
     });
   } else {
@@ -233,7 +232,7 @@ export async function activateSubscriptionForPayment(
       title: "Đăng ký gói thành công!",
       body:
         `Gói ${purchasedPlan.name} (${purchasedPlan.tier}) của bạn đã được kích hoạt thành công.` +
-        (context.remainingDays > 0 ? " Thời gian dư từ gói cũ đã được cộng dồn." : ""),
+        ` Thời hạn: ${purchasedPlan.durationDays} ngày kể từ ngày kích hoạt.`,
       metadata: { subscriptionId: subscription.id, paymentId: payment.id },
     });
   }

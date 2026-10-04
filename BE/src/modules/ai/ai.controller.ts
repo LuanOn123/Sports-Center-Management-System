@@ -11,13 +11,3 @@ export async function chat(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-export async function generatePlan(req: Request, res: Response, next: NextFunction) {
-  try {
-    // req.user.id đến từ middleware authenticate
-    const userId = req.user!.id;
-    const plan = await aiService.generateTrainingPlan(userId);
-    sendSuccess(res, plan, "Đã tạo lịch tập thành công");
-  } catch (err) {
-    next(err);
-  }
-}
