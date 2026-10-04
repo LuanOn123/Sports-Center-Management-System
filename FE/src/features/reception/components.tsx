@@ -9,6 +9,7 @@ import { at, display } from "../../shared/config";
 import { ErrorState, Loading, Modal, SchemaForm } from "../../shared/ui";
 import { useReceptionList } from "./api";
 import { useDebouncedValue } from "../../shared/useDebouncedValue";
+import { Check } from "lucide-react";
 export function Heading({
   title,
   children,
@@ -70,15 +71,20 @@ export function MemberPicker({
     !value,
   );
   return (
-    <section className="panel reception-section">
+    <section
+      className={`panel reception-section member-picker ${value ? "has-selection" : ""}`}
+    >
       <h2>Chọn hội viên</h2>
       {value ? (
         <div className="reception-actions">
+          <span className="avatar" aria-hidden="true">
+            {String(at(value, "user.fullName") || "?").slice(0, 1)}
+          </span>
           <strong>
             {display(at(value, "user.fullName"))} ·{" "}
             {display(at(value, "user.email"))}
           </strong>
-          <button className="button" onClick={() => onChange(null)}>
+          <button className="button small" onClick={() => onChange(null)}>
             Đổi hội viên
           </button>
         </div>
@@ -107,7 +113,7 @@ export function MemberPicker({
                 ]}
                 actions={(row) => (
                   <button
-                    className="button small"
+                    className="button small primary"
                     onClick={() => onChange(row)}
                   >
                     Chọn
@@ -118,7 +124,7 @@ export function MemberPicker({
           </ListState>
           <div className="pagination">
             <button
-              className="button"
+              className="button ghost"
               disabled={page <= 1 || q.isFetching}
               onClick={() => setPage(page - 1)}
             >
@@ -126,7 +132,7 @@ export function MemberPicker({
             </button>
             <span>Trang {page}</span>
             <button
-              className="button"
+              className="button ghost"
               disabled={
                 q.isFetching ||
                 !q.data?.pagination ||
@@ -168,14 +174,25 @@ export function ActionForm({
   return (
     <Modal title={title} onClose={onClose} dismissible={!busy}>
       {success ? (
-        <>
-          <p className="success" role="status">
+        <div style={{ padding: "32px 24px", textAlign: "center" }}>
+          <span style={{
+            display: "inline-flex",
+            background: "var(--color-success-bg)",
+            borderRadius: "50%",
+            padding: "16px",
+            marginBottom: "16px",
+            color: "var(--color-success)",
+          }}>
+            <Check size={28} />
+          </span>
+          <p className="success" role="status"
+            style={{ display: "block", textAlign: "center" }}>
             Đã lưu thay đổi thành công.
           </p>
-          <button className="button" onClick={onClose}>
+          <button className="button primary" onClick={onClose}>
             Đóng
           </button>
-        </>
+        </div>
       ) : contract[operation]?.body ? (
         <SchemaForm
           operation={operation}

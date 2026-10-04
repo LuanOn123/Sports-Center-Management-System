@@ -1,4 +1,5 @@
-import { AlertCircle, Inbox } from "lucide-react";
+import { AlertCircle, Inbox, RefreshCw } from "lucide-react";
+import type { ReactNode } from "react";
 import { ApiError } from "./api";
 import { label } from "./config";
 export function ErrorState({
@@ -10,10 +11,10 @@ export function ErrorState({
 }) {
   return (
     <div className="error-state" role="alert">
-      <AlertCircle size={21} />
+      <AlertCircle size={18} />
       <div>
         <strong>Chưa thể hoàn tất yêu cầu</strong>
-        <p>{error instanceof Error ? error.message : "Đã xảy ra lỗi."}</p>
+        <p>{error instanceof Error ? error.message : "Đã xảy ra lỗi không xác định."}</p>
         {error instanceof ApiError &&
           error.errors?.map((e, i) => (
             <p key={i}>
@@ -22,6 +23,7 @@ export function ErrorState({
           ))}
         {retry && (
           <button className="button small" onClick={retry}>
+            <RefreshCw size={13} />
             Thử lại
           </button>
         )}
@@ -63,17 +65,20 @@ export function Loading({
 export function Empty({
   text = "Chưa có dữ liệu",
   detail = "Dữ liệu sẽ xuất hiện tại đây khi trung tâm có hoạt động.",
+  icon,
+  action,
 }: {
   text?: string;
   detail?: string;
+  icon?: ReactNode;
+  action?: ReactNode;
 }) {
   return (
     <div className="empty">
-      <span>
-        <Inbox size={29} />
-      </span>
+      <span>{icon || <Inbox size={24} />}</span>
       <h3>{text}</h3>
       <p>{detail}</p>
+      {action && <div className="empty-action">{action}</div>}
     </div>
   );
 }

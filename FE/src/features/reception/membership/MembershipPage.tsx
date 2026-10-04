@@ -92,8 +92,9 @@ export function MembershipPage({ role = "STAFF" }: { role?: string }) {
             <p>
               Đăng ký hoặc gia hạn sẽ ghi nhận đã thu tiền và phát hành hóa đơn
               ngay. Chỉ xác nhận sau khi đã nhận đủ tiền. Đăng ký gói mới sẽ tạm
-              dừng gói ACTIVE và cộng ngày dư vào gói mới, không cho phép hạ
-              hạng hoặc giảm thời hạn cùng hạng. Gia hạn tạo một kỳ gói mới.
+              dừng gói ACTIVE và cộng ngày dư của gói trả phí vào gói mới (gói
+              FREE không cộng), không cho phép hạ hạng hoặc giảm thời hạn cùng
+              hạng. Gia hạn tạo một kỳ gói mới.
             </p>
             <button
               className="button primary"
@@ -157,7 +158,7 @@ export function MembershipPage({ role = "STAFF" }: { role?: string }) {
                         ).filter(
                           (s) => s !== "CANCELLED" || row.status !== "ACTIVE",
                         )}
-                        explanation="Tạm dừng sẽ lưu số ngày còn lại. Tiếp tục sẽ khôi phục thời hạn được bảo lưu. Hủy gói tạm dừng sẽ chấm dứt quyền lợi; backend hiện chưa áp dụng hoàn tiền và hủy lịch tự động cho gói tạm dừng."
+                        explanation="Tạm dừng sẽ lưu số ngày còn lại. Tiếp tục sẽ khôi phục thời hạn được bảo lưu. Hủy gói tạm dừng sẽ chấm dứt quyền lợi; thao tác này chưa tự động hoàn tiền hoặc hủy các lịch đã đặt."
                       />
                     </>
                   )}

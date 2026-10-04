@@ -1,16 +1,24 @@
+import { canGenerateAttendanceQr } from "./businessRules";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
-import { api, ApiError } from "./api";
+import { api, ApiError, type RecordData } from "./api";
 import { ErrorState, Loading } from "./ui";
 
-export function AttendanceQr({ scheduleId }: { scheduleId: string }) {
+export function AttendanceQr({
+  scheduleId,
+  schedule,
+}: {
+  scheduleId: string;
+  schedule: RecordData;
+}) {
   const [enabled, setEnabled] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const inWindow = canGenerateAttendanceQr(schedule, now);
   const q = useQuery({
     queryKey: ["attendance-qr", scheduleId],
-    enabled,
+    enabled: enabled && inWindow,
     queryFn: async ({ signal }) => {
       const started = Date.now();
       const result = await api<{
@@ -18,27 +26,22 @@ export function AttendanceQr({ scheduleId }: { scheduleId: string }) {
         expiresIn: number;
         manualCode: string;
         manualCodeExpiresIn: number;
-      }>(
-        "POST /attendance/generate-qr",
-        { body: { scheduleId }, signal },
-      );
+      }>("POST /attendance/generate-qr", { body: { scheduleId }, signal });
       return {
         ...result.data,
         expiresAt: started + result.data.expiresIn * 1000,
-        manualCodeExpiresAt:
-          started + result.data.manualCodeExpiresIn * 1000,
+        manualCodeExpiresAt: started + result.data.manualCodeExpiresIn * 1000,
       };
     },
     staleTime: 0,
     gcTime: 0,
     retry: false,
-    refetchInterval: enabled ? 55000 : false,
+    refetchInterval: enabled && inWindow ? 55000 : false,
   });
   useEffect(() => {
-    if (!enabled) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [enabled]);
+  }, []);
   const seconds = Math.max(
     0,
     Math.ceil(((q.data?.expiresAt || 0) - now) / 1000),
@@ -50,7 +53,12 @@ export function AttendanceQr({ scheduleId }: { scheduleId: string }) {
         Hội viên có thể quét QR hoặc nhập mã dự phòng. Tạo mã mới sẽ thu hồi mã
         dự phòng cũ của buổi học.
       </p>
-      {!enabled ? (
+      {!inWindow ? (
+        <p role="status">
+          QR chỉ mở cho buổi đã lên lịch, từ 30 phút trước giờ bắt đầu đến 30
+          phút sau giờ kết thúc.
+        </p>
+      ) : !enabled ? (
         <button
           className="button primary"
           onClick={() => {
@@ -84,13 +92,21 @@ export function AttendanceQr({ scheduleId }: { scheduleId: string }) {
                   {q.data.manualCode || "—"}
                 </p>
                 <p>
-                  Hết hạn sau {Math.max(0, Math.ceil(((q.data.manualCodeExpiresAt || now) - now) / 1000))}
-                  {" "}giây
+                  Hết hạn sau{" "}
+                  {Math.max(
+                    0,
+                    Math.ceil(
+                      ((q.data.manualCodeExpiresAt || now) - now) / 1000,
+                    ),
+                  )}{" "}
+                  giây
                 </p>
                 <button
                   className="button small"
                   disabled={!q.data.manualCode}
-                  onClick={() => void navigator.clipboard?.writeText(q.data.manualCode)}
+                  onClick={() =>
+                    void navigator.clipboard?.writeText(q.data.manualCode)
+                  }
                 >
                   Sao chép mã
                 </button>
@@ -240,13 +256,12 @@ export function ScanAttendanceQr() {
         </p>
       )}
       {scan.error && <ErrorState error={scan.error} />}
-      {scan.error instanceof ApiError &&
-        scan.error.status === 429 && (
-          <p role="alert">
-            Bạn đã nhập sai quá nhiều lần. Hãy chờ rồi thử lại hoặc nhờ huấn
-            luyện viên điểm danh trực tiếp.
-          </p>
-        )}
+      {scan.error instanceof ApiError && scan.error.status === 429 && (
+        <p role="alert">
+          Bạn đã nhập sai quá nhiều lần. Hãy chờ rồi thử lại hoặc nhờ huấn luyện
+          viên điểm danh trực tiếp.
+        </p>
+      )}
       {scan.error instanceof ApiError &&
         scan.error.status === 403 &&
         /gói|hết hạn/i.test(scan.error.message) && (

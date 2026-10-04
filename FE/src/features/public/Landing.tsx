@@ -1,305 +1,125 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowDown,
   ArrowUpRight,
+  ArrowRight,
+  ArrowDown,
+  Menu,
+  X,
   CalendarDays,
   Check,
-  ChevronRight,
   Dumbbell,
-  HeartPulse,
-  Menu,
-  Play,
-  ShieldCheck,
-  Users,
-  Wallet,
-  X,
-  Zap,
-  Activity,
-  LayoutGrid,
   Bell,
-  TrendingUp,
+  Plus,
 } from "lucide-react";
 import { Brand } from "../../shared/Brand";
-import { SportFilm } from "./SportFilm";
-import "./public.css";
+import "./landing.css";
+import { AmbientMotion, usePublicMotion } from "../../shared/PublicMotion";
 
-const photos = {
-  hero: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=2000&q=85",
-  strength:
-    "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=850&q=80",
-  yoga: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=850&q=80",
-  basketball:
-    "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=850&q=80",
-};
-const features = [
+const movements = [
   {
-    icon: Users,
-    name: "Hội viên trong tầm tay",
-    text: "Hồ sơ, mục tiêu và gói tập. Tất cả kết nối trong một không gian.",
-    tag: "MEMBERSHIP",
+    name: "Sức mạnh",
+    tag: "STRENGTH & CONDITIONING",
+    title: "Thêm một lần nữa.\nMạnh hơn một chút.",
+    text: "Dành thời gian cho sức mạnh, sức bền và cảm giác vượt qua chính mình. Tìm lớp tập phù hợp với mục tiêu của bạn.",
+    image: "photo-1534438327276-14e5300c3a48",
+    alt: "Không gian phòng tập với tạ và thiết bị rèn luyện sức mạnh",
+    note: "Từng hiệp tập. Từng bước tiến.",
   },
   {
-    icon: CalendarDays,
-    name: "Lịch tập theo nhịp bạn",
-    text: "Khám phá lớp học, sắp xếp lịch và đăng ký buổi tập thuận tiện.",
-    tag: "SMART SCHEDULING",
+    name: "Yoga",
+    tag: "BALANCE & MOBILITY",
+    title: "Chậm lại một nhịp.\nKết nối với cơ thể.",
+    text: "Một khoảng dành riêng cho hơi thở và chuyển động. Khám phá các lớp yoga để rèn sự dẻo dai và tìm lại cân bằng.",
+    image: "photo-1544367567-0f2fcb009e0b",
+    alt: "Người tập yoga trong không gian sáng và yên tĩnh",
+    note: "Hít sâu. Thả lỏng. Bắt đầu lại.",
   },
   {
-    icon: Dumbbell,
-    name: "Kết nối huấn luyện viên",
-    text: "Tìm lớp học cùng huấn luyện viên phù hợp với hành trình của bạn.",
-    tag: "COACH & CONNECT",
-  },
-  {
-    icon: Wallet,
-    name: "Quản lý thật rõ ràng",
-    text: "Theo dõi gói thành viên, thanh toán và hóa đơn ở cùng một nơi.",
-    tag: "PAYMENTS & REPORTS",
+    name: "Đồng đội",
+    tag: "TEAM SPORTS",
+    title: "Có đồng đội.\nCó thêm động lực.",
+    text: "Niềm vui của một đường chuyền đẹp, một pha phối hợp ăn ý. Khám phá các bộ môn và tìm lớp để cùng nhau ra sân.",
+    image: "photo-1546519638-68e109498ffc",
+    alt: "Sân bóng rổ trong nhà với vạch sân và khán đài",
+    note: "Cuộc hẹn tiếp theo, ở trên sân.",
   },
 ];
-
-function Counter({ value, label }: { value: number; label: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [count, setCount] = useState(value);
-  useEffect(() => {
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    let frame = 0;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting) return;
-      const start = performance.now();
-      const tick = (now: number) => {
-        const progress = Math.min((now - start) / 1000, 1);
-        setCount(Math.round(value * (1 - (1 - progress) ** 3)));
-        if (progress < 1) frame = requestAnimationFrame(tick);
-      };
-      frame = requestAnimationFrame(tick);
-      observer.disconnect();
-    });
-    if (ref.current) observer.observe(ref.current);
-    return () => {
-      observer.disconnect();
-      cancelAnimationFrame(frame);
-    };
-  }, [value]);
-  return (
-    <div ref={ref} className="p-stat">
-      <strong>
-        {String(count).padStart(2, "0")}
-        <span> /</span>
-      </strong>
-      <span>{label}</span>
-    </div>
-  );
-}
-
-function PlatformPreview() {
-  const [tab, setTab] = useState(0);
-  const tabs = ["Lịch tập", "Hội viên", "Báo cáo"];
-  return (
-    <div className="p-preview">
-      <div className="p-preview-top">
-        <span>
-          <Activity size={18} /> pulse<span className="p-dot">.</span>
-        </span>
-        <span className="p-preview-label">BẢN XEM TRƯỚC MINH HỌA</span>
-        <Bell size={16} />
-      </div>
-      <div className="p-preview-body">
-        <aside aria-hidden="true">
-          <LayoutGrid />
-          <CalendarDays />
-          <Users />
-          <TrendingUp />
-        </aside>
-        <div className="p-preview-main">
-          <div className="p-preview-heading">
-            <div>
-              <small>KHÔNG GIAN CỦA BẠN</small>
-              <h3>Mỗi ngày, tốt hơn một chút.</h3>
-            </div>
-            <span className="p-avatar">P</span>
-          </div>
-          <div
-            className="p-preview-tabs"
-            role="tablist"
-            aria-label="Xem trước nền tảng"
-          >
-            {tabs.map((name, i) => (
-              <button
-                key={name}
-                id={`preview-tab-${i}`}
-                role="tab"
-                aria-selected={tab === i}
-                aria-controls="preview-panel"
-                onClick={() => setTab(i)}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
-          <div
-            role="tabpanel"
-            id="preview-panel"
-            aria-labelledby={`preview-tab-${tab}`}
-          >
-            {tab === 0 ? (
-              <>
-                <div className="p-week">
-                  {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d, i) => (
-                    <span className={i === 2 ? "selected" : ""} key={d}>
-                      {d}
-                      <b>{14 + i}</b>
-                    </span>
-                  ))}
-                </div>
-                <div className="p-workout">
-                  <span>
-                    06:30
-                    <br />
-                    <small>07:30</small>
-                  </span>
-                  <div>
-                    <b>Strength & Conditioning</b>
-                    <small>
-                      <Dumbbell size={12} /> Phòng Functional · Coach Minh
-                    </small>
-                  </div>
-                  <span className="p-status">Đã đăng ký</span>
-                </div>
-                <div className="p-workout muted">
-                  <span>
-                    17:00
-                    <br />
-                    <small>18:00</small>
-                  </span>
-                  <div>
-                    <b>Yoga Flow</b>
-                    <small>
-                      <HeartPulse size={12} /> Studio 02 · Coach Linh
-                    </small>
-                  </div>
-                  <ChevronRight size={16} />
-                </div>
-              </>
-            ) : tab === 1 ? (
-              <div className="p-member-demo">
-                <ShieldCheck size={34} />
-                <small>THẺ HỘI VIÊN MINH HỌA</small>
-                <h3>
-                  Một tài khoản.
-                  <br />
-                  Cả thế giới vận động.
-                </h3>
-                <span>Gói tập · Hồ sơ · Lịch cá nhân</span>
-              </div>
-            ) : (
-              <div className="p-report-demo">
-                <small>LƯỢT THAM GIA · DỮ LIỆU MINH HỌA</small>
-                <div
-                  className="p-bars"
-                  aria-label="Biểu đồ minh họa lượt tham gia tăng qua sáu tháng"
-                >
-                  {[38, 54, 44, 70, 62, 90].map((h, i) => (
-                    <div key={i}>
-                      <span style={{ height: h }} />
-                      <small>T{i + 1}</small>
-                    </div>
-                  ))}
-                </div>
-                <p>Nhìn rõ hoạt động. Lên kế hoạch tốt hơn.</p>
-              </div>
-            )}
-          </div>
-          <div className="p-preview-bottom">
-            <span className="p-live-dot" /> Một nơi cho mọi hoạt động của bạn{" "}
-            <ArrowUpRight size={15} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+const photo = (id: string, width = 1400) =>
+  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${width}&q=85`;
+const questions = [
+  [
+    "Tôi chưa từng tập, có thể tham gia không?",
+    "Bạn có thể tạo tài khoản, xem thông tin lớp và huấn luyện viên trước khi chọn. Nếu chưa biết bắt đầu từ đâu, hãy trao đổi với lễ tân để được tư vấn lớp phù hợp.",
+  ],
+  [
+    "Tạo tài khoản có mất phí không?",
+    "Tạo tài khoản là miễn phí. Chi phí gói thành viên và điều kiện đăng ký lớp được hiển thị trong không gian hội viên để bạn xem trước khi lựa chọn.",
+  ],
+  [
+    "Tôi đăng ký lớp và xem lịch ở đâu?",
+    "Sau khi đăng nhập, vào Khám phá lớp học để tìm lớp. Các lớp đã đăng ký và lịch tập được quản lý trong Lớp của tôi và Lịch tập.",
+  ],
+  [
+    "Tôi có thể theo dõi gói tập và thanh toán không?",
+    "Có. Trong tài khoản hội viên, bạn có thể xem gói thành viên, trạng thái thanh toán và hóa đơn của mình.",
+  ],
+];
 
 export function Landing({ signedIn }: { signedIn: boolean }) {
+  const motionRoot = usePublicMotion<HTMLDivElement>();
   const [menu, setMenu] = useState(false);
-  const hero = useRef<HTMLElement>(null);
-  useEffect(() => {
-    document.title = "Pulse Sports Center · Find your next level";
-    window.scrollTo(0, 0);
-    const observer = new IntersectionObserver(
-      (entries) =>
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("p-visible");
-            observer.unobserve(entry.target);
-          }
-        }),
-      { threshold: 0.08 },
-    );
-    document.querySelectorAll("[data-reveal]").forEach((el) => {
-      el.classList.add("p-reveal-ready");
-      observer.observe(el);
-    });
-    let frame = 0;
-    const scroll = () => {
-      if (frame || matchMedia("(prefers-reduced-motion: reduce)").matches)
-        return;
-      frame = requestAnimationFrame(() => {
-        hero.current?.style.setProperty(
-          "--parallax",
-          `${Math.min(window.scrollY * 0.16, 100)}px`,
-        );
-        frame = 0;
-      });
-    };
-    window.addEventListener("scroll", scroll, { passive: true });
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("scroll", scroll);
-      cancelAnimationFrame(frame);
-    };
-  }, []);
+  const [active, setActive] = useState(0);
+  const movement = movements[active];
   const start = signedIn ? "/login" : "/register";
+  useEffect(() => {
+    document.title = "Pulse Sports Center · Hẹn bạn ở buổi tập tới";
+    window.scrollTo(0, 0);
+  }, []);
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenu(false);
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, []);
   return (
-    <div className="pulse-public">
-      <a className="p-skip" href="#main">
+    <div ref={motionRoot} className="pulse-landing">
+      <AmbientMotion />
+      <a className="lp-skip" href="#main">
         Đến nội dung chính
       </a>
-      <header className="p-header">
-        <div className="p-container p-nav">
+      <header className="lp-header">
+        <div className="lp-container lp-nav">
           <Link to="/" aria-label="Pulse Sports Center — Trang chủ">
-            <Brand />
+            <Brand member />
           </Link>
           <nav
-            id="public-navigation"
+            id="landing-navigation"
             className={menu ? "is-open" : ""}
             aria-label="Điều hướng chính"
           >
-            <a href="#platform" onClick={() => setMenu(false)}>
-              Nền tảng
-            </a>
             <a href="#sports" onClick={() => setMenu(false)}>
-              Bộ môn
+              Tìm bộ môn
             </a>
-            <a href="#features" onClick={() => setMenu(false)}>
-              Tính năng
+            <a href="#platform" onClick={() => setMenu(false)}>
+              Không gian hội viên
             </a>
-            <a href="#community" onClick={() => setMenu(false)}>
-              Cộng đồng
+            <a href="#questions" onClick={() => setMenu(false)}>
+              Hỏi & đáp
             </a>
           </nav>
-          <div className="p-nav-actions">
-            <Link className="p-login-link" to="/login">
-              {signedIn ? "Không gian của tôi" : "Đăng nhập"}
+          <div className="lp-nav-actions">
+            <Link className="lp-login" to="/login">
+              {signedIn ? "Vào tài khoản" : "Đăng nhập"}
             </Link>
-            <Link className="p-button p-small" to={start}>
-              Bắt đầu ngay <ArrowUpRight size={16} />
+            <Link className="lp-button lp-nav-cta" to={start}>
+              Tham gia Pulse <ArrowUpRight size={17} />
             </Link>
             <button
-              className="p-menu"
+              className="lp-menu"
               aria-label={menu ? "Đóng menu" : "Mở menu"}
-              aria-controls="public-navigation"
+              aria-controls="landing-navigation"
               aria-expanded={menu}
               onClick={() => setMenu(!menu)}
             >
@@ -309,364 +129,328 @@ export function Landing({ signedIn }: { signedIn: boolean }) {
         </div>
       </header>
       <main id="main">
-        <section className="p-hero" ref={hero}>
-          <SportFilm />
-          <div className="p-hero-shade" />
-          <div className="p-hero-grid" aria-hidden="true" />
-          <div className="p-container p-hero-inner">
-            <div className="p-hero-copy">
-              <div className="p-eyebrow">
-                <span className="p-live-dot" /> KHỞI ĐẦU MỚI. NĂNG LƯỢNG MỚI.
-              </div>
-              <h1>
-                Đánh thức
-                <br />
-                giới hạn.
-                <br />
-                <em>Bứt phá cùng nhau.</em>
-              </h1>
-              <p>
-                Mỗi buổi tập là một bước tiến. Kết nối với lớp học,
-                <br className="p-desktop-break" /> huấn luyện viên và cộng đồng
-                của bạn — cùng Pulse.
-              </p>
-              <div className="p-hero-actions">
-                <Link to={start} className="p-button">
-                  Bắt đầu hành trình <ArrowUpRight size={19} />
-                </Link>
-                <a className="p-button p-button-ghost" href="#platform">
-                  <Play size={15} fill="currentColor" /> Khám phá nền tảng
-                </a>
-              </div>
-              <div className="p-hero-note">
-                <ShieldCheck size={16} /> Đăng ký tài khoản miễn phí{" "}
-                <span>·</span> Sẵn sàng cho bước đầu tiên
-              </div>
+        <section className="lp-hero lp-container">
+          <div className="lp-hero-copy">
+            <div className="lp-overline">
+              <span className="lp-dot" /> PULSE SPORTS CENTER
             </div>
-            <div className="p-hero-side">
-              <span>01 / THE START OF SOMETHING GREAT</span>
-              <div className="p-hero-card">
-                <span className="p-card-icon">
-                  <Activity size={23} />
-                </span>
-                <div>
-                  <small>ONE PLATFORM. EVERY MOVE.</small>
-                  <strong>Giữ nhịp đam mê.</strong>
-                </div>
-                <ArrowUpRight size={18} />
-              </div>
-            </div>
+            <h1>
+              Hẹn bạn
+              <br />ở buổi tập
+              <br />
+              <em>tới.</em>
+              <span className="lp-title-arrow" aria-hidden="true">
+                ↗
+              </span>
+            </h1>
+            <p>
+              Bỏ lại một ngày dài. Dành một giờ cho mình.
+              <br />
+              Một lớp tập hợp gu, vài người bạn mới — và lý do để bạn muốn quay
+              lại.
+            </p>
+            <Link to={start} className="lp-button">
+              Bắt đầu hành trình <ArrowUpRight size={20} />
+            </Link>
+            <span className="lp-hero-small">
+              Tạo tài khoản miễn phí. Chọn nhịp tập của bạn.
+            </span>
           </div>
-          <div className="p-hero-bottom p-container">
-            <span>TRAIN SMART. MOVE BETTER. GO FURTHER.</span>
+          <div className="lp-hero-visual">
+            <img
+              className="lp-hero-photo"
+              src={photo("photo-1517836357463-d25dfeac3438")}
+              alt="Vận động viên rèn luyện sức mạnh trong phòng tập"
+              fetchPriority="high"
+            />
+            <div className="lp-photo-label">
+              <span className="lp-dot" /> YOUR TIME. YOUR PACE.
+            </div>
+            <span className="lp-photo-index">PULSE / 01</span>
+            <div className="lp-photo-caption">
+              <span>ĐẾN VÌ MỤC TIÊU.</span>
+              <strong>Ở lại vì cảm giác.</strong>
+            </div>
+            <a
+              className="lp-photo-link"
+              href="#sports"
+              aria-label="Khám phá các bộ môn"
+            >
+              <ArrowDown size={25} />
+            </a>
+          </div>
+          <div className="lp-hero-foot">
+            <span>KHÔNG CẦN HOÀN HẢO. CHỈ CẦN BẮT ĐẦU.</span>
             <a href="#sports">
-              CUỘN ĐỂ KHÁM PHÁ <ArrowDown size={15} />
+              Tìm nhịp của bạn <ArrowDown size={15} />
             </a>
           </div>
         </section>
-        <div className="p-trust">
-          <div className="p-container">
-            <span>
-              MỘT NHỊP KẾT NỐI.
-              <br />
-              <strong>CHO CẢ TRUNG TÂM.</strong>
-            </span>
-            {[
-              { icon: Users, name: "Hội viên" },
-              { icon: Dumbbell, name: "Huấn luyện viên" },
-              { icon: ShieldCheck, name: "Quản lý trung tâm" },
-              { icon: HeartPulse, name: "Lễ tân" },
-            ].map(({ icon: Icon, name }) => (
-              <div key={name}>
-                <Icon size={21} />
-                {name}
-              </div>
-            ))}
-          </div>
+        <div className="lp-strip" aria-hidden="true">
+          <span>MOVE AT YOUR PACE</span>
+          <span>↗</span>
+          <span>FIND YOUR PEOPLE</span>
+          <span>↗</span>
+          <span>KEEP SHOWING UP</span>
+          <span>↗</span>
         </div>
-        <section id="sports" className="p-section p-container" data-reveal>
-          <div className="p-section-head">
+        <section id="sports" className="lp-section lp-container">
+          <div className="lp-section-heading">
             <div>
-              <div className="p-eyebrow">01 / FIND YOUR MOVEMENT</div>
+              <div className="lp-overline">01 / CHỌN CÁCH BẠN CHUYỂN ĐỘNG</div>
               <h2>
-                Đam mê của bạn.
+                Tập điều bạn thích.
                 <br />
-                <span>Không gian của bạn.</span>
+                <span>Thích việc mình tập.</span>
               </h2>
             </div>
             <p>
-              Từ những bước khởi đầu đến cột mốc mới.
+              Không phải ai cũng có cùng một đích đến.
               <br />
-              Tìm nhịp vận động khiến bạn muốn quay lại mỗi ngày.
+              Tìm bộ môn khiến bạn thấy mỗi buổi tập
+              <br />
+              là một cuộc hẹn đáng mong chờ.
             </p>
           </div>
-          <div className="p-sports-grid">
-            {[
-              {
-                image: photos.strength,
-                title: "SỨC MẠNH",
-                sub: "Strength & Conditioning",
-                num: "01",
-              },
-              {
-                image: photos.yoga,
-                title: "CÂN BẰNG",
-                sub: "Yoga & Mindfulness",
-                num: "02",
-              },
-              {
-                image: photos.basketball,
-                title: "ĐỒNG ĐỘI",
-                sub: "Team Sports",
-                num: "03",
-              },
-            ].map((s) => (
-              <Link to={start} className="p-sport-card" key={s.num}>
-                <img src={s.image} alt={s.sub} loading="lazy" />
-                <span className="p-sport-number">/ {s.num}</span>
-                <div>
-                  <small>{s.sub}</small>
-                  <h3>{s.title}</h3>
-                </div>
-                <span className="p-sport-arrow">
-                  <ArrowUpRight />
-                </span>
-              </Link>
-            ))}
-          </div>
-          <p className="p-section-caption">
-            Khám phá tinh thần thể thao cùng Pulse. Lớp học khả dụng được hiển
-            thị trong tài khoản.
-          </p>
-        </section>
-        <section id="features" className="p-feature-section">
-          <div className="p-container p-section" data-reveal>
-            <div className="p-section-head">
-              <div>
-                <div className="p-eyebrow">
-                  02 / LESS FRICTION. MORE ACTION.
-                </div>
-                <h2>
-                  Tập trung vào đam mê.
-                  <br />
-                  <span>Pulse lo phần kết nối.</span>
-                </h2>
-              </div>
-              <a href="#platform" className="p-text-link">
-                Xem cách Pulse hoạt động <ArrowUpRight size={18} />
-              </a>
-            </div>
-            <div className="p-features">
-              {features.map(({ icon: Icon, name, text, tag }, i) => (
-                <article className="p-feature" key={name}>
-                  <div className="p-feature-top">
-                    <Icon size={27} />
-                    <span>0{i + 1}</span>
-                  </div>
-                  <small>{tag}</small>
-                  <h3>{name}</h3>
-                  <p>{text}</p>
-                </article>
+          <div className="lp-movements">
+            <div className="lp-movement-list">
+              {movements.map((item, index) => (
+                <button
+                  key={item.name}
+                  className={active === index ? "is-active" : ""}
+                  aria-pressed={active === index}
+                  aria-label={item.name}
+                  aria-controls="movement-detail"
+                  onClick={() => setActive(index)}
+                >
+                  <span>0{index + 1}</span>
+                  <strong>{item.name}</strong>
+                  <ArrowUpRight size={25} />
+                </button>
               ))}
+              <p>
+                Lớp học và lịch đang mở được cập nhật
+                <br />
+                trong tài khoản hội viên.
+              </p>
+            </div>
+            <div id="movement-detail" className="lp-movement-detail">
+              <img
+                key={movement.image}
+                src={photo(movement.image, 1000)}
+                alt={movement.alt}
+                loading="lazy"
+              />
+              <div className="lp-movement-caption">
+                <span>{movement.tag}</span>
+                <p>{movement.note}</p>
+              </div>
+              <div className="lp-movement-text" aria-live="polite">
+                <h3>{movement.title}</h3>
+                <p>{movement.text}</p>
+                <Link to={start}>
+                  Khám phá lớp học <ArrowUpRight size={18} />
+                </Link>
+              </div>
             </div>
           </div>
         </section>
-        <section
-          id="platform"
-          className="p-section p-container p-platform"
-          data-reveal
-        >
+        <section id="platform" className="lp-platform-section">
+          <div className="lp-container lp-platform">
+            <div className="lp-platform-copy">
+              <div className="lp-overline">02 / MỌI THỨ ĐÃ SẴN SÀNG</div>
+              <h2>
+                Việc của bạn
+                <br />
+                là <em>đến tập.</em>
+              </h2>
+              <p>
+                Lịch tập, lớp học, gói thành viên — mở Pulse là thấy. Bớt thời
+                gian sắp xếp, thêm thời gian cho điều bạn thích.
+              </p>
+              <div className="lp-benefit">
+                <CalendarDays size={21} />
+                <div>
+                  <h3>Lịch tập đi cùng nhịp sống</h3>
+                  <p>Xem lịch và các lớp đã đăng ký ở cùng một nơi.</p>
+                </div>
+              </div>
+              <div className="lp-benefit">
+                <Dumbbell size={21} />
+                <div>
+                  <h3>Chọn lớp có cơ sở</h3>
+                  <p>Xem bộ môn, lịch học và huấn luyện viên trước khi chọn.</p>
+                </div>
+              </div>
+              <div className="lp-benefit">
+                <Check size={21} />
+                <div>
+                  <h3>Gói tập rõ ràng</h3>
+                  <p>Theo dõi gói thành viên, thanh toán và hóa đơn.</p>
+                </div>
+              </div>
+              <Link to={start} className="lp-text-link">
+                Mở không gian của bạn <ArrowUpRight size={19} />
+              </Link>
+            </div>
+            <div className="lp-preview-wrap">
+              <div className="lp-preview">
+                <div className="lp-preview-top">
+                  <Brand member />
+                  <Bell size={18} />
+                </div>
+                <div className="lp-preview-body">
+                  <div className="lp-preview-greeting">
+                    <span>KHÔNG GIAN HỘI VIÊN</span>
+                    <span className="lp-preview-avatar">P</span>
+                  </div>
+                  <h3>
+                    Một lịch tập.
+                    <br />
+                    Nhiều điều mong chờ.
+                  </h3>
+                  <div className="lp-preview-week">
+                    {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map(
+                      (day, i) => (
+                        <div key={day} className={i === 2 ? "selected" : ""}>
+                          <span>{day}</span>
+                          <strong>{12 + i}</strong>
+                          {i === 2 && <i />}
+                        </div>
+                      ),
+                    )}
+                  </div>
+                  <div className="lp-preview-session">
+                    <span className="lp-overline">BUỔI TẬP TIẾP THEO</span>
+                    <div>
+                      <span className="lp-preview-sport">
+                        <Dumbbell size={26} />
+                      </span>
+                      <div>
+                        <h4>Strength & Conditioning</h4>
+                        <p>18:00 – 19:00 · Phòng tập</p>
+                      </div>
+                    </div>
+                    <span className="lp-preview-status">
+                      <Check size={13} /> Đã đăng ký
+                    </span>
+                  </div>
+                  <div className="lp-preview-bottom">
+                    <CalendarDays size={17} />
+                    <span>Lịch của bạn. Luôn trong tầm tay.</span>
+                    <ArrowRight size={17} />
+                  </div>
+                </div>
+              </div>
+              <p className="lp-preview-note">
+                Giao diện minh họa · Lịch và lớp thực tế theo tài khoản của bạn
+              </p>
+            </div>
+          </div>
+        </section>
+        <section className="lp-container lp-section lp-start">
           <div>
-            <div className="p-eyebrow">03 / YOUR PERSONAL SPORTS HUB</div>
+            <div className="lp-overline">03 / BẮT ĐẦU THẬT ĐƠN GIẢN</div>
             <h2>
-              Cả hành trình.
+              Buổi tập đầu tiên
               <br />
-              Một <span>điểm chạm.</span>
+              bắt đầu từ đây.
             </h2>
-            <p>
-              Không cần ghi nhớ mọi lịch tập. Không bỏ lỡ thông tin gói thành
-              viên. Pulse giúp việc quản lý thể thao trở nên gọn gàng và liền
-              mạch.
-            </p>
-            <ul className="p-checks">
-              <li>
-                <Check /> Lịch học và đăng ký lớp tập trung
-              </li>
-              <li>
-                <Check /> Hồ sơ hội viên, gói tập rõ ràng
-              </li>
-              <li>
-                <Check /> Không gian riêng theo từng vai trò
-              </li>
-            </ul>
-            <Link to={start} className="p-button">
-              Khám phá không gian của bạn <ArrowUpRight size={18} />
+            <Link className="lp-text-link" to={start}>
+              Cùng Pulse bắt đầu <ArrowUpRight size={20} />
             </Link>
           </div>
-          <PlatformPreview />
-        </section>
-        <section className="p-stats-section">
-          <div className="p-container" data-reveal>
-            <div className="p-eyebrow">BUILT TO KEEP EVERYONE MOVING</div>
-            <div className="p-stats">
-              <Counter value={4} label="Vai trò cùng kết nối" />
-              <Counter value={3} label="Luồng quản lý cốt lõi" />
-              <Counter value={1} label="Không gian tập trung" />
-              <div className="p-stat">
-                <strong>∞</strong>
-                <span>Tinh thần tiến về phía trước</span>
-              </div>
-            </div>
-            <p>
-              Hội viên & gói tập · Lớp học & lịch tập · Thanh toán & báo cáo
-            </p>
-          </div>
-        </section>
-        <section className="p-section p-container p-why" data-reveal>
-          <div>
-            <div className="p-eyebrow">04 / MADE FOR YOUR EVERYDAY</div>
-            <h2>
-              Bớt phức tạp.
-              <br />
-              <span>Thêm động lực.</span>
-            </h2>
-            <p>
-              Một trải nghiệm dễ bắt đầu,
-              <br />
-              đủ rõ ràng để gắn bó mỗi ngày.
-            </p>
-          </div>
-          <div>
+          <ol>
             {[
-              {
-                title: "Mọi thứ ở đúng nơi",
-                text: "Từ hồ sơ đến lịch học, thông tin được tổ chức nhất quán và dễ tìm.",
-              },
-              {
-                title: "Kết nối cả đội ngũ",
-                text: "Hội viên, huấn luyện viên, lễ tân và quản lý cùng một nhịp hoạt động.",
-              },
-              {
-                title: "Sẵn sàng ở mọi màn hình",
-                text: "Trải nghiệm gọn gàng trên máy tính, máy tính bảng và điện thoại.",
-              },
-            ].map((item, i) => (
-              <article key={item.title}>
+              [
+                "Tạo tài khoản",
+                "Một vài thông tin cơ bản để có không gian hội viên của riêng bạn.",
+              ],
+              [
+                "Tìm lớp hợp gu",
+                "Khám phá lớp học, xem lịch và chọn gói tập phù hợp.",
+              ],
+              [
+                "Hẹn gặp ở buổi tập",
+                "Đăng ký lớp, theo dõi lịch cá nhân và sẵn sàng đến tập.",
+              ],
+            ].map(([title, text], i) => (
+              <li key={title}>
                 <span>0{i + 1}</span>
                 <div>
-                  <h3>{item.title}</h3>
-                  <p>{item.text}</p>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
                 </div>
                 <ArrowUpRight size={22} />
-              </article>
+              </li>
+            ))}
+          </ol>
+        </section>
+        <section id="questions" className="lp-container lp-faq">
+          <div>
+            <div className="lp-overline">TRƯỚC KHI BẠN BẮT ĐẦU</div>
+            <h2>
+              Có thể bạn
+              <br />
+              đang thắc mắc.
+            </h2>
+          </div>
+          <div>
+            {questions.map(([q, a]) => (
+              <details key={q}>
+                <summary>
+                  {q}
+                  <Plus size={19} />
+                </summary>
+                <p>{a}</p>
+              </details>
             ))}
           </div>
         </section>
-        <section id="community" className="p-community p-section">
-          <div className="p-container" data-reveal>
-            <div className="p-eyebrow">05 / STRONGER TOGETHER</div>
-            <h2>
-              Khác mục tiêu.
-              <br />
-              <span>Chung một nhịp.</span>
-            </h2>
-            <div className="p-quotes">
-              {[
-                {
-                  quote:
-                    "Tôi muốn tìm lớp phù hợp và chủ động sắp xếp thời gian cho bản thân.",
-                  role: "Góc nhìn hội viên",
-                  initials: "HV",
-                },
-                {
-                  quote:
-                    "Tôi cần một lịch dạy rõ ràng để dành nhiều thời gian hơn cho học viên.",
-                  role: "Góc nhìn huấn luyện viên",
-                  initials: "HL",
-                },
-                {
-                  quote:
-                    "Tôi muốn kết nối hoạt động của trung tâm trong một không gian dễ quản lý.",
-                  role: "Góc nhìn quản lý",
-                  initials: "QL",
-                },
-              ].map((item) => (
-                <figure key={item.role}>
-                  <span className="p-quote-mark">“</span>
-                  <blockquote>{item.quote}</blockquote>
-                  <figcaption>
-                    <span className="p-avatar">{item.initials}</span>
-                    <div>
-                      <strong>{item.role}</strong>
-                      <small>Tình huống sử dụng minh họa</small>
-                    </div>
-                  </figcaption>
-                </figure>
-              ))}
+        <section className="lp-container lp-cta-wrap">
+          <div className="lp-cta">
+            <div className="lp-overline">
+              HÔM NAY LÀ MỘT NGÀY ĐẸP ĐỂ BẮT ĐẦU.
             </div>
-          </div>
-        </section>
-        <section className="p-container p-cta-wrap" data-reveal>
-          <div className="p-cta">
-            <div className="p-cta-track" aria-hidden="true" />
-            <div>
-              <div className="p-eyebrow">
-                <Zap size={15} /> MAKE YOUR NEXT MOVE
-              </div>
+            <div className="lp-cta-row">
               <h2>
-                Khởi đầu nhỏ.
+                Dành một giờ.
                 <br />
-                Bứt phá lớn.
+                <span>Cho chính bạn.</span>
               </h2>
-              <p>Hành trình tiếp theo của bạn bắt đầu ngay tại đây.</p>
+              <div>
+                <Link to={start} className="lp-button">
+                  {signedIn
+                    ? "Vào không gian của tôi"
+                    : "Tạo tài khoản miễn phí"}
+                  <ArrowUpRight size={22} />
+                </Link>
+                <p>Hẹn bạn ở buổi tập tới.</p>
+              </div>
             </div>
-            <div>
-              <Link className="p-button p-button-dark" to={start}>
-                Tạo tài khoản miễn phí <ArrowUpRight size={20} />
-              </Link>
-              <span>Không cần thẻ thanh toán để tạo tài khoản.</span>
-            </div>
+            <span className="lp-cta-decoration" aria-hidden="true">
+              ↗
+            </span>
           </div>
         </section>
       </main>
-      <footer className="p-footer p-container">
+      <footer className="lp-container lp-footer">
         <div>
           <Link to="/" aria-label="Pulse — Trang chủ">
-            <Brand />
+            <Brand member />
           </Link>
-          <p>Kết nối đam mê. Nâng tầm mỗi chuyển động.</p>
+          <p>Chuyển động theo cách của bạn.</p>
         </div>
-        <div>
-          <strong>KHÁM PHÁ</strong>
-          <a href="#platform">Nền tảng</a>
-          <a href="#sports">Bộ môn</a>
-          <a href="#features">Tính năng</a>
+        <div className="lp-footer-links">
+          <a href="#sports">Tìm bộ môn</a>
+          <a href="#questions">Hỏi & đáp</a>
+          <Link to="/login">
+            Đăng nhập <ArrowUpRight size={14} />
+          </Link>
         </div>
-        <div>
-          <strong>CÙNG PULSE</strong>
-          <Link to="/register">Trở thành hội viên</Link>
-          <Link to="/login">Đăng nhập</Link>
-          <a href="#community">Cộng đồng</a>
-        </div>
-        <div>
-          <strong>LUÔN KẾT NỐI</strong>
-          <p>
-            Cần tư vấn lớp học hoặc gói tập?
-            <br />
-            Liên hệ lễ tân tại trung tâm.
-          </p>
-          <span className="p-footer-motto">
-            KEEP YOUR PULSE GOING. <ArrowUpRight size={18} />
-          </span>
-        </div>
-        <div className="p-footer-bottom">
-          <span>
-            © {new Date().getFullYear()} Pulse Sports Center. All rights
-            reserved.
-          </span>
-          <span>
-            DESIGNED FOR THE WAY YOU MOVE <Activity size={14} />
-          </span>
+        <div className="lp-footer-bottom">
+          <span>© {new Date().getFullYear()} Pulse Sports Center</span>
+          <span>SEE YOU AT THE NEXT SESSION.</span>
         </div>
       </footer>
     </div>

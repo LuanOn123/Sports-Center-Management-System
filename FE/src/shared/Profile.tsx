@@ -46,6 +46,9 @@ export function Profile({ user }: { user: ProfileOk["data"] }) {
             {success}
           </div>
         )}
+        {tab === "password" && (
+          <p>Đổi mật khẩu sẽ đăng xuất khỏi tất cả thiết bị.</p>
+        )}
         <SchemaForm
           key={tab}
           operation={
@@ -56,6 +59,7 @@ export function Profile({ user }: { user: ProfileOk["data"] }) {
           initial={tab === "profile" ? user : {}}
           onBusyChange={setBusy}
           onSuccess={() => {
+            if (tab === "password") return;
             setSuccess("Cập nhật thành công.");
             void client.invalidateQueries({ queryKey: ["me"] });
           }}
