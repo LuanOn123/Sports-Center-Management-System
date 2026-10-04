@@ -2,7 +2,11 @@
 
 Source: BE/src/config/swagger.ts + BE/src/modules/**/*.routes.ts (local checkout)
 
+<<<<<<< HEAD
 Snapshot: 2026-09-28. Production base: https://sports-center-management-system.onrender.com/api/v1
+=======
+Snapshot: 2026-10-04. Production base: https://sports-center-management-system.onrender.com/api/v1
+>>>>>>> develop
 
 Response examples are documentation only, never application data. The client sends the documented HTTP Bearer token.
 
@@ -776,6 +780,7 @@ Responses/status codes:
 }
 ```
 
+<<<<<<< HEAD
 ## GET /training-plans
 undefined
 
@@ -1050,6 +1055,8 @@ Responses/status codes:
 }
 ```
 
+=======
+>>>>>>> develop
 ## POST /subscriptions
 Register member to a membership plan
 
@@ -5788,7 +5795,6 @@ Parameters:
         "SCHEDULE_UPDATED",
         "ENROLLMENT_CONFIRMED",
         "ENROLLMENT_CANCELLED",
-        "TRAINING_PLAN_ASSIGNED",
         "NEW_CLASS",
         "COACH_CHANGED",
         "PAYMENT_SUCCESS",
@@ -7824,7 +7830,6 @@ Request body:
   "properties": {
     "coachId": {
       "type": "string",
-      "format": "uuid",
       "description": "CoachProfile ID"
     },
     "classId": {
@@ -7957,8 +7962,7 @@ Parameters:
     "name": "coachId",
     "required": true,
     "schema": {
-      "type": "string",
-      "format": "uuid"
+      "type": "string"
     },
     "description": "CoachProfile ID cần xem đánh giá"
   },
@@ -8407,7 +8411,6 @@ Request body:
     },
     "memberId": {
       "type": "string",
-      "format": "uuid",
       "description": "Required when booked by Staff/Manager"
     }
   }
@@ -13714,6 +13717,176 @@ Responses/status codes:
 }
 ```
 
+## POST /auth/forgot-password
+Gửi OTP đặt lại mật khẩu qua email
+
+Authentication: []
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "required": [
+    "email"
+  ],
+  "properties": {
+    "email": {
+      "type": "string",
+      "format": "email"
+    }
+  }
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Simple confirmation (data is null)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": true,
+            "message": "Logged out successfully",
+            "data": null
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Bad request (validation or malformed body)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Validation failed",
+            "errors": [
+              {
+                "field": "email",
+                "message": "Invalid email address"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## POST /auth/reset-password
+Đặt lại mật khẩu bằng OTP nhận qua email
+
+Authentication: []
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "required": [
+    "email",
+    "otp",
+    "newPassword"
+  ],
+  "properties": {
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "otp": {
+      "type": "string",
+      "minLength": 6,
+      "maxLength": 6,
+      "description": "Mã 6 chữ số nhận qua email"
+    },
+    "newPassword": {
+      "type": "string",
+      "minLength": 6
+    }
+  }
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Simple confirmation (data is null)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": true,
+            "message": "Logged out successfully",
+            "data": null
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Bad request (validation or malformed body)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Validation failed",
+            "errors": [
+              {
+                "field": "email",
+                "message": "Invalid email address"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
 ## GET /attendance
 Get attendance roster of a schedule (MANAGER/STAFF: full roster; COACH: only own classes; MEMBER: only own records)
 
@@ -15158,8 +15331,13 @@ Responses/status codes:
 }
 ```
 
+<<<<<<< HEAD
 ## POST /auth/forgot-password
 Gửi OTP đặt lại mật khẩu qua email
+=======
+## POST /ai/chat
+Trò chuyện với Smart Chatbot Assistant
+>>>>>>> develop
 
 Authentication: []
 
@@ -15172,6 +15350,7 @@ Request body:
 {
   "type": "object",
   "required": [
+<<<<<<< HEAD
     "email"
   ],
   "properties": {
@@ -15179,6 +15358,36 @@ Request body:
       "type": "string",
       "format": "email"
     }
+=======
+    "message"
+  ],
+  "properties": {
+    "message": {
+      "type": "string"
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant",
+              "system"
+            ]
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "example": {
+    "message": "Trung tâm có gói tập nào và tuần này có lớp Yoga không?"
+>>>>>>> develop
   }
 }
 ```
@@ -15186,11 +15395,16 @@ Responses/status codes:
 ```json
 {
   "200": {
+<<<<<<< HEAD
     "description": "Simple confirmation (data is null)",
+=======
+    "description": "Thành công",
+>>>>>>> develop
     "content": {
       "application/json": {
         "schema": {
           "type": "object",
+<<<<<<< HEAD
           "example": {
             "success": true,
             "message": "Logged out successfully",
@@ -15215,6 +15429,26 @@ Responses/status codes:
                 "message": "Invalid email address"
               }
             ]
+=======
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "example": true
+            },
+            "message": {
+              "type": "string",
+              "example": "AI responded successfully"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "reply": {
+                  "type": "string",
+                  "example": "Dạ chào anh/chị, hiện tại bên em có gói Premium giá..."
+                }
+              }
+            }
+>>>>>>> develop
           }
         }
       }
@@ -15233,6 +15467,7 @@ Responses/status codes:
         }
       }
     }
+<<<<<<< HEAD
   }
 }
 ```
@@ -15324,9 +15559,14 @@ Responses/status codes:
         }
       }
     }
+=======
+  },
+  "503": {
+    "description": "AI chưa được cấu hình"
+>>>>>>> develop
   }
 }
 ```
 
 ## Verified workflow contracts
-Additional operations and missing bodies/parameters are preserved in workflow-contract-overrides.json, checked against backend commit 9d4af0efb8c3e910af233eb3e30b4e7b04dae238. See WORKFLOW_ALIGNMENT.md.
+Additional operations and missing bodies/parameters are preserved in workflow-contract-overrides.json, reviewed against the backend checkout. See WORKFLOW_ALIGNMENT.md and BACKEND_SYNC_2026-10-04.md.

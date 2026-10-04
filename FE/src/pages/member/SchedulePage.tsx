@@ -257,6 +257,12 @@ export function SchedulePage() {
         /* WEEKLY CALENDAR VIEW */
         <div
           className="member-week-grid"
+<<<<<<< HEAD
+=======
+          tabIndex={0}
+          role="region"
+          aria-label="Lịch tập trong tuần"
+>>>>>>> develop
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
@@ -361,6 +367,7 @@ export function SchedulePage() {
                       const endTime = new Date(sch.endTime);
 
                       return (
+<<<<<<< HEAD
                         <div
                           className="member-calendar-event"
                           role="button"
@@ -371,6 +378,11 @@ export function SchedulePage() {
                               navigate(`/member/classes/${item.classId}`);
                             }
                           }}
+=======
+                        <button
+                          type="button"
+                          className="member-calendar-event"
+>>>>>>> develop
                           key={item.id}
                           onClick={() =>
                             navigate(`/member/classes/${item.classId}`)
@@ -437,7 +449,7 @@ export function SchedulePage() {
                             />
                             {sch.room?.name}
                           </div>
-                        </div>
+                        </button>
                       );
                     })
                   )}

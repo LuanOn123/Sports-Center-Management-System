@@ -28,9 +28,17 @@
   --color-secondary: var(--member-accent);
   --color-background: #0b1018;
   --color-surface: var(--member-surface);
+<<<<<<< HEAD
   --color-border: var(--member-border);
   --color-text: var(--member-text);
   --color-text-muted: var(--member-muted);
+=======
+  --color-surface-muted: var(--member-surface-alt);
+  --color-border: var(--member-border);
+  --color-text: var(--member-text);
+  --color-text-muted: var(--member-muted);
+  --color-text-caption: var(--member-muted);
+>>>>>>> develop
   --color-success: var(--member-success);
   --color-warning: var(--member-warning);
   --color-error: var(--member-danger);
@@ -45,6 +53,15 @@
   font-size: 14px;
   line-height: 1.55;
 }
+<<<<<<< HEAD
+=======
+/* Match the browser canvas too, including exposed scroll boundaries. */
+html:has(.member-theme),
+body:has(.member-theme) {
+  background-color: #0b1018;
+}
+
+>>>>>>> develop
 .member-theme :is(h1, h2, h3, h4, strong, legend) {
   color: inherit;
 }

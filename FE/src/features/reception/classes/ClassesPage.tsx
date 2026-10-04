@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { CalendarDays } from "lucide-react";
+import { ScheduleAgenda } from "../../../shared/ScheduleAgenda";
 import type { RecordData } from "../../../shared/api";
 import { at, display } from "../../../shared/config";
 import { useReceptionList } from "../api";
@@ -12,11 +14,13 @@ import {
 export function ClassesPage() {
   const [member, setMember] = useState<RecordData | null>(null);
   const [page, setPage] = useState(1);
+  const [date, setDate] = useState("");
   const [schedule, setSchedule] = useState<RecordData | null>(null);
   const [action, setAction] = useState<{ cancelId?: string } | null>(null);
   const schedules = useReceptionList("GET /class-schedules", {
     page: String(page),
     limit: "10",
+    ...(date ? { date } : {}),
   });
   const enrollments = useReceptionList(
     "GET /enrollments/schedule/{scheduleId}",
@@ -27,6 +31,19 @@ export function ClassesPage() {
   return (
     <>
       <Heading title="Đăng ký lớp học" />
+      <ol className="booking-steps" aria-label="Các bước đăng ký">
+        <li className={!member ? "current" : "done"}>
+          <span>1</span>Chọn hội viên
+        </li>
+        <li
+          className={member && !schedule ? "current" : schedule ? "done" : ""}
+        >
+          <span>2</span>Chọn buổi học
+        </li>
+        <li className={member && schedule ? "current" : ""}>
+          <span>3</span>Xác nhận đăng ký
+        </li>
+      </ol>
       <MemberPicker
         value={member}
         onChange={(m) => {
@@ -36,17 +53,38 @@ export function ClassesPage() {
       />
       <section className="panel reception-section">
         <h2>Lịch học</h2>
+        <div className="collection-toolbar">
+          <p>Chọn một buổi học để xem danh sách đăng ký và hỗ trợ hội viên.</p>
+          <label className="agenda-filter">
+            <CalendarDays size={18} aria-hidden="true" />
+            <span className="sr-only">Ngày học</span>
+            <input
+              aria-label="Ngày học"
+              type="date"
+              value={date}
+              onChange={(e) => {
+                setDate(e.target.value);
+                setPage(1);
+              }}
+            />
+          </label>
+          {date && (
+            <button
+              className="button small"
+              onClick={() => {
+                setDate("");
+                setPage(1);
+              }}
+            >
+              Tất cả ngày
+            </button>
+          )}
+        </div>
         <ListState result={schedules}>
           {(rows) => (
-            <Table
+            <ScheduleAgenda
               rows={rows}
-              columns={[
-                ["class.name", "Lớp học"],
-                ["room.name", "Phòng"],
-                ["startTime", "Bắt đầu"],
-                ["endTime", "Kết thúc"],
-                ["status", "Trạng thái"],
-              ]}
+              selectedId={schedule ? String(schedule.id) : undefined}
               actions={(row) => (
                 <button
                   className="button small"

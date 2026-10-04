@@ -1,7 +1,11 @@
+import { StatusBadge } from "../../shared/StatusBadge";
+import { ResourceCollection } from "../../shared/ResourceCollection";
 import { CoachFeedback } from "../../shared/CoachFeedback";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  LayoutGrid,
+  List,
   ArrowLeft,
   ArrowRight,
   Eye,
@@ -17,7 +21,6 @@ import { api, contract } from "../../shared/api";
 import { canCompleteSchedule } from "../../shared/businessRules";
 import { Attendance } from "../../shared/Attendance";
 import { allPages } from "../../shared/pagedApi";
-import { TrainingPlans } from "../../shared/TrainingPlans";
 import type { RecordData } from "../../shared/api";
 import type { Resource } from "./config";
 import {
@@ -46,6 +49,17 @@ export function ResourcePage({
   userId?: string;
 }) {
   const client = useQueryClient();
+  const cardView = [
+    "rooms",
+    "sports",
+    "classes",
+    "coaches",
+    "staff",
+    "membership-plans",
+  ].includes(r.slug);
+  const [view, setView] = useState<"visual" | "table">(
+    cardView || r.slug === "schedules" ? "visual" : "table",
+  );
   const [query, setQuery] = useState<Record<string, string>>({});
   const [page, setPage] = useState(1);
   const search = useDebouncedValue(query.search);
@@ -57,14 +71,28 @@ export function ResourcePage({
   const [bError, setBError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
-  const [calendarView, setCalendarView] = useState<ScheduleCalendarView>("week");
+  const [calendarView, setCalendarView] =
+    useState<ScheduleCalendarView>("week");
   const [calendarCursor, setCalendarCursor] = useState(() => new Date());
   const listKey = "GET " + r.path;
   const params = contract[listKey].parameters.filter((p) => p.in === "query");
   const paginated = params.some((p) => p.name === "page");
   const filters = params.filter((p) => {
-    if (["page", "limit"].includes(p.name) || (p.name === "role" && r.role)) return false;
-    if (r.slug === "schedules" && ["date", "startAfter", "startBefore", "from", "to", "weekday", "weekdays"].includes(p.name)) return false;
+    if (["page", "limit"].includes(p.name) || (p.name === "role" && r.role))
+      return false;
+    if (
+      r.slug === "schedules" &&
+      [
+        "date",
+        "startAfter",
+        "startBefore",
+        "from",
+        "to",
+        "weekday",
+        "weekdays",
+      ].includes(p.name)
+    )
+      return false;
     return true;
   });
   const visibleCalendarRange = calendarRange(calendarCursor, calendarView);
@@ -77,13 +105,16 @@ export function ResourcePage({
           from: visibleCalendarRange.start.toISOString(),
           to: visibleCalendarRange.end.toISOString(),
         }
-      : paginated ? { page: String(page), limit: "10" } : {}),
+      : paginated
+        ? { page: String(page), limit: "10" }
+        : {}),
   };
   const q = useQuery({
     queryKey: ["resource", r.slug, requestQuery],
-    queryFn: ({ signal }) => r.slug === "schedules"
-      ? allPages<RecordData>(listKey, { query: requestQuery, signal })
-      : api<RecordData[]>(listKey, { query: requestQuery, signal }),
+    queryFn: ({ signal }) =>
+      r.slug === "schedules"
+        ? allPages<RecordData>(listKey, { query: requestQuery, signal })
+        : api<RecordData[]>(listKey, { query: requestQuery, signal }),
   });
   const create = "POST " + (r.create || r.path);
   const update = "PATCH " + r.path + "/{id}";
@@ -116,8 +147,7 @@ export function ResourcePage({
             ...(cancelReason.trim() ? { reason: cancelReason.trim() } : {}),
           },
         });
-      else
-        await api(remove, { params: { id: String(modal!.row!.id) } });
+      else await api(remove, { params: { id: String(modal!.row!.id) } });
       done();
     } catch (e) {
       setBError(e);
@@ -125,6 +155,94 @@ export function ResourcePage({
       setBusy(false);
     }
   }
+  const rowActions = (row: RecordData) => (
+    <div className="row-actions">
+      <button
+        title="Xem chi tiết"
+        aria-label="Xem chi tiết"
+        className="icon-button"
+        onClick={() => {
+          setDetailTab("overview");
+          setModal({ kind: "detail", row });
+        }}
+      >
+        <Eye size={17} />
+      </button>
+      {contract[update]?.body && (
+        <button
+          disabled={r.slug === "schedules" && row.status !== "SCHEDULED"}
+          aria-label="Chỉnh sửa"
+          title="Chỉnh sửa"
+          className="icon-button"
+          onClick={() => setModal({ kind: "edit", row })}
+        >
+          <Pencil size={16} />
+        </button>
+      )}
+      {r.slug === "classes" && (
+        <button
+          aria-label="Phân công huấn luyện viên"
+          title="Phân công huấn luyện viên"
+          className="icon-button"
+          onClick={() => setModal({ kind: "assign", row })}
+        >
+          <UserPlus size={17} />
+        </button>
+      )}
+      {r.slug === "classes" && (
+        <button
+          aria-label="Phân công huấn luyện viên hỗ trợ"
+          title="Phân công huấn luyện viên hỗ trợ"
+          className="icon-button"
+          onClick={() => setModal({ kind: "assignSupport", row })}
+        >
+          <UsersRound size={17} />
+        </button>
+      )}
+      {r.slug === "schedules" && (
+        <button
+          className="button small"
+          disabled={!canCompleteSchedule(row)}
+          onClick={() => {
+            setBError(undefined);
+            setModal({ kind: "complete", row });
+          }}
+        >
+          Hoàn tất
+        </button>
+      )}
+      {r.slug === "rooms" && row.isActive !== false && (
+        <button
+          aria-label="Chuyển lịch sang phòng khác"
+          title="Chuyển lịch sang phòng khác"
+          className="icon-button"
+          onClick={() => setModal({ kind: "transferRoom", row })}
+        >
+          <Repeat2 size={17} />
+        </button>
+      )}
+      {contract[remove] && (
+        <button
+          aria-label={r.slug === "schedules" ? "Hủy lịch" : "Ngừng hoạt động"}
+          title={r.slug === "schedules" ? "Hủy lịch" : "Ngừng hoạt động"}
+          className="icon-button danger-text"
+          disabled={
+            row.isActive === false ||
+            row.status === "CANCELLED" ||
+            row.status === "COMPLETED" ||
+            (r.path === "/users" && row.id === userId)
+          }
+          onClick={() => {
+            setBError(undefined);
+            setCancelReason("");
+            setModal({ kind: "delete", row });
+          }}
+        >
+          <Trash2 size={16} />
+        </button>
+      )}
+    </div>
+  );
   return (
     <>
       <div className="page-heading">
@@ -154,13 +272,17 @@ export function ResourcePage({
       <section className="panel">
         <div className="panel-heading">
           <div>
-            <h2>{r.slug === "schedules" ? "Thời khóa biểu" : `Danh sách ${r.title.toLowerCase()}`}</h2>
+            <h2>
+              {r.slug === "schedules"
+                ? "Lịch học tại trung tâm"
+                : `Danh sách ${r.title.toLowerCase()}`}
+            </h2>
             <p>
               {r.slug === "schedules"
                 ? `${q.data?.data.length || 0} buổi trong khoảng đang xem`
                 : q.data?.pagination
-                ? `${q.data.pagination.total} kết quả`
-                : "Dữ liệu trung tâm"}
+                  ? `${q.data.pagination.total} kết quả`
+                  : "Dữ liệu trung tâm"}
             </p>
           </div>
           <button
@@ -172,6 +294,35 @@ export function ResourcePage({
             <RefreshCw size={18} className={q.isFetching ? "spin" : ""} />
           </button>
         </div>
+        {(cardView || r.slug === "schedules") && (
+          <div className="collection-toolbar">
+            <p>
+              {r.slug === "schedules"
+                ? "Thời gian, phòng tập và trạng thái từng buổi học."
+                : "Xem nhanh thông tin hoặc chuyển sang bảng để đối chiếu."}
+            </p>
+            <div
+              className="view-switch"
+              role="group"
+              aria-label="Kiểu hiển thị"
+            >
+              <button
+                aria-pressed={view === "visual"}
+                onClick={() => setView("visual")}
+              >
+                <LayoutGrid size={16} />
+                {r.slug === "schedules" ? "Lịch" : "Thẻ"}
+              </button>
+              <button
+                aria-pressed={view === "table"}
+                onClick={() => setView("table")}
+              >
+                <List size={16} />
+                Bảng
+              </button>
+            </div>
+          </div>
+        )}
         <div className="filters">
           {filters.map((p) => (
             <FilterField
@@ -185,6 +336,18 @@ export function ResourcePage({
               }}
             />
           ))}
+          {Object.values(query).some(Boolean) && (
+            <button
+              className="button small"
+              type="button"
+              onClick={() => {
+                setQuery({});
+                setPage(1);
+              }}
+            >
+              Xóa bộ lọc
+            </button>
+          )}
         </div>
         {q.isPending ? (
           <Loading />
@@ -195,7 +358,14 @@ export function ResourcePage({
             text="Không tìm thấy kết quả"
             detail="Thử thay đổi bộ lọc hoặc thêm dữ liệu mới."
           />
-        ) : r.slug === "schedules" ? (
+        ) : view === "visual" && cardView ? (
+          <ResourceCollection
+            rows={q.data.data}
+            columns={r.columns}
+            kind={r.slug}
+            actions={rowActions}
+          />
+        ) : view === "visual" && r.slug === "schedules" ? (
           <ScheduleCalendar
             rows={q.data.data}
             cursor={calendarCursor}
@@ -218,7 +388,9 @@ export function ResourcePage({
               <thead>
                 <tr>
                   {r.columns.map(([k, title]) => (
-                    <th key={k}>{title}</th>
+                    <th key={k} scope="col">
+                      {title}
+                    </th>
                   ))}
                   <th className="right">Thao tác</th>
                 </tr>
@@ -250,17 +422,7 @@ export function ResourcePage({
                             "role",
                             "trainingLevel",
                           ].includes(k) ? (
-                          <span
-                            className={
-                              "badge " +
-                              (at(row, k) === false ||
-                              at(row, k) === "CANCELLED"
-                                ? "muted"
-                                : "")
-                            }
-                          >
-                            {display(at(row, k))}
-                          </span>
+                          <StatusBadge value={at(row, k)} />
                         ) : k === "price" ? (
                           money(at(row, k))
                         ) : (
@@ -268,107 +430,7 @@ export function ResourcePage({
                         )}
                       </td>
                     ))}
-                    <td>
-                      <div className="row-actions">
-                        <button
-                          title="Xem chi tiết"
-                          aria-label="Xem chi tiết"
-                          className="icon-button"
-                          onClick={() => {
-                            setDetailTab("overview");
-                            setModal({ kind: "detail", row });
-                          }}
-                        >
-                          <Eye size={17} />
-                        </button>
-                        {contract[update]?.body && (
-                          <button
-                            disabled={
-                              r.slug === "schedules" &&
-                              row.status !== "SCHEDULED"
-                            }
-                            aria-label="Chỉnh sửa"
-                            title="Chỉnh sửa"
-                            className="icon-button"
-                            onClick={() => setModal({ kind: "edit", row })}
-                          >
-                            <Pencil size={16} />
-                          </button>
-                        )}
-                        {r.slug === "classes" && (
-                          <button
-                            aria-label="Phân công huấn luyện viên"
-                            title="Phân công huấn luyện viên"
-                            className="icon-button"
-                            onClick={() => setModal({ kind: "assign", row })}
-                          >
-                            <UserPlus size={17} />
-                          </button>
-                        )}
-                        {r.slug === "classes" && (
-                          <button
-                            aria-label="Phân công huấn luyện viên hỗ trợ"
-                            title="Phân công huấn luyện viên hỗ trợ"
-                            className="icon-button"
-                            onClick={() =>
-                              setModal({ kind: "assignSupport", row })
-                            }
-                          >
-                            <UsersRound size={17} />
-                          </button>
-                        )}
-                        {r.slug === "schedules" && (
-                          <button
-                            className="button small"
-                            disabled={!canCompleteSchedule(row)}
-                            onClick={() => {
-                              setBError(undefined);
-                              setModal({ kind: "complete", row });
-                            }}
-                          >
-                            Hoàn tất
-                          </button>
-                        )}
-                        {r.slug === "rooms" && row.isActive !== false && (
-                          <button
-                            aria-label="Chuyển lịch sang phòng khác"
-                            title="Chuyển lịch sang phòng khác"
-                            className="icon-button"
-                            onClick={() => setModal({ kind: "transferRoom", row })}
-                          >
-                            <Repeat2 size={17} />
-                          </button>
-                        )}
-                        {contract[remove] && (
-                          <button
-                            aria-label={
-                              r.slug === "schedules"
-                                ? "Hủy lịch"
-                                : "Ngừng hoạt động"
-                            }
-                            title={
-                              r.slug === "schedules"
-                                ? "Hủy lịch"
-                                : "Ngừng hoạt động"
-                            }
-                            className="icon-button danger-text"
-                            disabled={
-                              row.isActive === false ||
-                              row.status === "CANCELLED" ||
-                              row.status === "COMPLETED" ||
-                              (r.path === "/users" && row.id === userId)
-                            }
-                            onClick={() => {
-                              setBError(undefined);
-                              setCancelReason("");
-                              setModal({ kind: "delete", row });
-                            }}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                    <td>{rowActions(row)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -416,8 +478,8 @@ export function ResourcePage({
       {["users", "members", "staff", "membership-plans"].includes(r.slug) &&
         !contract[update]?.body && (
           <p className="footnote">
-            Chỉnh sửa {r.title.toLowerCase()} sẽ được mở khi backend bổ sung hợp
-            đồng cập nhật.
+            Chỉnh sửa {r.title.toLowerCase()} hiện chưa khả dụng. Bạn vẫn có thể
+            xem chi tiết trong danh sách.
           </p>
         )}
       {modal && (
@@ -434,13 +496,13 @@ export function ResourcePage({
                     ? "Phân công huấn luyện viên hỗ trợ"
                     : modal.kind === "transferRoom"
                       ? "Chuyển lịch sang phòng khác"
-                  : modal.kind === "edit"
-                    ? "Chỉnh sửa thông tin"
-                    : modal.kind === "delete"
-                      ? r.slug === "schedules"
-                        ? "Hủy lịch hoạt động"
-                        : "Ngừng hoạt động"
-                      : "Chi tiết " + r.title.toLowerCase()
+                      : modal.kind === "edit"
+                        ? "Chỉnh sửa thông tin"
+                        : modal.kind === "delete"
+                          ? r.slug === "schedules"
+                            ? "Hủy lịch hoạt động"
+                            : "Ngừng hoạt động"
+                          : "Chi tiết " + r.title.toLowerCase()
           }
           onClose={() => {
             if (!busy) setModal(null);
@@ -453,7 +515,9 @@ export function ResourcePage({
               onCancel={() => setModal(null)}
               onBusyChange={setBusy}
             />
-          ) : ["create", "edit", "assign", "assignSupport"].includes(modal.kind) ? (
+          ) : ["create", "edit", "assign", "assignSupport"].includes(
+              modal.kind,
+            ) ? (
             <SchemaForm
               operation={
                 modal.kind === "create"
@@ -462,7 +526,7 @@ export function ResourcePage({
                     ? "POST /classes/{id}/coaches"
                     : modal.kind === "assignSupport"
                       ? "POST /classes/{id}/coaches/support"
-                    : update
+                      : update
               }
               params={{ id: String(modal.row?.id) }}
               initial={
@@ -608,12 +672,6 @@ export function ResourcePage({
               {detailTab === "related" && r.slug === "members" && (
                 <>
                   <MemberStatus id={String(modal.row?.id)} />
-                  <div className="workflow-card">
-                    <TrainingPlans
-                      memberId={String(modal.row?.id)}
-                      role={role}
-                    />
-                  </div>
                 </>
               )}
               {detailTab === "related" && r.slug === "schedules" && (
@@ -709,27 +767,68 @@ function RoomScheduleTransfer({
         <fieldset className="form-grid" disabled={busy}>
           <label>
             Phòng đích <b className="required">*</b>
-            <select value={targetRoomId} onChange={(event) => { setTargetRoomId(event.target.value); setPreview(undefined); }}>
+            <select
+              value={targetRoomId}
+              onChange={(event) => {
+                setTargetRoomId(event.target.value);
+                setPreview(undefined);
+              }}
+            >
               <option value="">Chọn phòng đang hoạt động</option>
               {rooms.data.data
                 .filter((room) => room.id !== source.id)
                 .map((room) => (
                   <option key={String(room.id)} value={String(room.id)}>
-                    {display(room.name)} · {display(room.areaType)} · {display(room.capacity)} chỗ
+                    {display(room.name)} · {display(room.areaType)} ·{" "}
+                    {display(room.capacity)} chỗ
                   </option>
                 ))}
             </select>
           </label>
-          <label>Từ thời điểm<input type="datetime-local" value={from} onChange={(event) => { setFrom(event.target.value); setPreview(undefined); }} /></label>
-          <label>Đến thời điểm<input type="datetime-local" min={from} value={to} onChange={(event) => { setTo(event.target.value); setPreview(undefined); }} /></label>
-          <label className="wide">Lý do<textarea maxLength={500} value={reason} onChange={(event) => { setReason(event.target.value); setPreview(undefined); }} placeholder="Ví dụ: Phòng đang bảo trì" /></label>
+          <label>
+            Từ thời điểm
+            <input
+              type="datetime-local"
+              value={from}
+              onChange={(event) => {
+                setFrom(event.target.value);
+                setPreview(undefined);
+              }}
+            />
+          </label>
+          <label>
+            Đến thời điểm
+            <input
+              type="datetime-local"
+              min={from}
+              value={to}
+              onChange={(event) => {
+                setTo(event.target.value);
+                setPreview(undefined);
+              }}
+            />
+          </label>
+          <label className="wide">
+            Lý do
+            <textarea
+              maxLength={500}
+              value={reason}
+              onChange={(event) => {
+                setReason(event.target.value);
+                setPreview(undefined);
+              }}
+              placeholder="Ví dụ: Phòng đang bảo trì"
+            />
+          </label>
         </fieldset>
       )}
       {preview && (
         <section className="detail-section" role="status">
           <h3>Kết quả xem trước</h3>
           <p>
-            Tổng {display(preview.totalSchedules)} lịch · hợp lệ {display(preview.validSchedules)} · không hợp lệ {display(preview.invalidSchedules)}
+            Tổng {display(preview.totalSchedules)} lịch · hợp lệ{" "}
+            {display(preview.validSchedules)} · không hợp lệ{" "}
+            {display(preview.invalidSchedules)}
           </p>
           {conflicts.map((conflict, index) => (
             <p className="error" key={String(conflict.scheduleId || index)}>
@@ -740,9 +839,23 @@ function RoomScheduleTransfer({
       )}
       {error != null && <ErrorState error={error} />}
       <div className="modal-footer">
-        <button className="button" disabled={busy} onClick={onCancel}>Đóng</button>
-        <button className="button" disabled={!targetRoomId || busy || Boolean(to && from && to <= from)} onClick={() => void run(false)}>{busy ? "Đang kiểm tra…" : "Xem trước"}</button>
-        <button className="button primary" disabled={busy || preview?.canTransfer !== true} onClick={() => void run(true)}>Xác nhận chuyển lịch</button>
+        <button className="button" disabled={busy} onClick={onCancel}>
+          Đóng
+        </button>
+        <button
+          className="button"
+          disabled={!targetRoomId || busy || Boolean(to && from && to <= from)}
+          onClick={() => void run(false)}
+        >
+          {busy ? "Đang kiểm tra…" : "Xem trước"}
+        </button>
+        <button
+          className="button primary"
+          disabled={busy || preview?.canTransfer !== true}
+          onClick={() => void run(true)}
+        >
+          Xác nhận chuyển lịch
+        </button>
       </div>
     </div>
   );
@@ -857,7 +970,10 @@ function CoachAssignments({
                 {confirm === coachId ? "Xác nhận gỡ" : "Gỡ phân công"}
               </button>
             ) : (
-              <small>API chưa trả mã hồ sơ để gỡ phân công.</small>
+              <small>
+                Hồ sơ chưa đầy đủ để gỡ phân công. Vui lòng kiểm tra thông tin
+                huấn luyện viên.
+              </small>
             )}
           </div>
         );

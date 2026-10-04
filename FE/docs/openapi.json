@@ -1674,10 +1674,6 @@
       "description": "Class attendance tracking"
     },
     {
-      "name": "Training",
-      "description": "Personalized training plans and results"
-    },
-    {
       "name": "Notifications",
       "description": "Manage user notifications"
     },
@@ -1990,6 +1986,7 @@
         }
       }
     },
+<<<<<<< HEAD
     "/training-plans": {
       "get": {
         "tags": [
@@ -2176,6 +2173,8 @@
         }
       }
     },
+=======
+>>>>>>> develop
     "/subscriptions": {
       "post": {
         "summary": "Register member to a membership plan",
@@ -4453,7 +4452,6 @@
                 "SCHEDULE_UPDATED",
                 "ENROLLMENT_CONFIRMED",
                 "ENROLLMENT_CANCELLED",
-                "TRAINING_PLAN_ASSIGNED",
                 "NEW_CLASS",
                 "COACH_CHANGED",
                 "PAYMENT_SUCCESS",
@@ -5260,7 +5258,6 @@
                 "properties": {
                   "coachId": {
                     "type": "string",
-                    "format": "uuid",
                     "description": "CoachProfile ID"
                   },
                   "classId": {
@@ -5363,8 +5360,7 @@
             "name": "coachId",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             },
             "description": "CoachProfile ID cần xem đánh giá"
           },
@@ -5641,7 +5637,6 @@
                   },
                   "memberId": {
                     "type": "string",
-                    "format": "uuid",
                     "description": "Required when booked by Staff/Manager"
                   }
                 }
@@ -7806,6 +7801,98 @@
         }
       }
     },
+    "/auth/forgot-password": {
+      "post": {
+        "summary": "Gửi OTP đặt lại mật khẩu qua email",
+        "description": "Sinh mã OTP 6 chữ số, hợp lệ trong **5 phút**, gửi về địa chỉ email đã đăng ký.\nLuôn trả HTTP 200 với cùng thông điệp dù email không tồn tại (chống user enumeration).\n",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/MessageOk"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "summary": "Đặt lại mật khẩu bằng OTP nhận qua email",
+        "description": "Xác minh OTP rồi cập nhật mật khẩu mới. OTP chỉ dùng được **một lần** và hết hạn sau 5 phút.\nSau khi thành công, toàn bộ phiên đăng nhập cũ (refresh token) sẽ bị thu hồi.\n",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "otp",
+                  "newPassword"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "minLength": 6,
+                    "maxLength": 6,
+                    "description": "Mã 6 chữ số nhận qua email"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 6
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/MessageOk"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
     "/attendance": {
       "get": {
         "summary": "Get attendance roster of a schedule (MANAGER/STAFF: full roster; COACH: only own classes; MEMBER: only own records)",
@@ -8709,6 +8796,7 @@
         }
       }
     },
+<<<<<<< HEAD
     "/auth/forgot-password": {
       "post": {
         "summary": "Gửi OTP đặt lại mật khẩu qua email",
@@ -8716,6 +8804,15 @@
           "Auth"
         ],
         "security": [],
+=======
+    "/ai/chat": {
+      "post": {
+        "summary": "Trò chuyện với Smart Chatbot Assistant",
+        "description": "Gửi tin nhắn cho AI Assistant. AI được tự động nạp ngữ cảnh (RAG) về danh sách gói tập và lịch học 3 ngày tới của trung tâm.\nAPI này là public để khách chưa đăng nhập cũng có thể hỏi thông tin.\n",
+        "tags": [
+          "AI Assistant"
+        ],
+>>>>>>> develop
         "requestBody": {
           "required": true,
           "content": {
@@ -8723,6 +8820,7 @@
               "schema": {
                 "type": "object",
                 "required": [
+<<<<<<< HEAD
                   "email"
                 ],
                 "properties": {
@@ -8730,6 +8828,36 @@
                     "type": "string",
                     "format": "email"
                   }
+=======
+                  "message"
+                ],
+                "properties": {
+                  "message": {
+                    "type": "string"
+                  },
+                  "history": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "user",
+                            "assistant",
+                            "system"
+                          ]
+                        },
+                        "content": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Trung tâm có gói tập nào và tuần này có lớp Yoga không?"
+>>>>>>> develop
                 }
               }
             }
@@ -8737,6 +8865,7 @@
         },
         "responses": {
           "200": {
+<<<<<<< HEAD
             "$ref": "#/components/responses/MessageOk"
           },
           "400": {
@@ -8780,10 +8909,36 @@
                   "newPassword": {
                     "type": "string",
                     "minLength": 6
+=======
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "AI responded successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "reply": {
+                          "type": "string",
+                          "example": "Dạ chào anh/chị, hiện tại bên em có gói Premium giá..."
+                        }
+                      }
+                    }
+>>>>>>> develop
                   }
                 }
               }
             }
+<<<<<<< HEAD
           }
         },
         "responses": {
@@ -8797,6 +8952,17 @@
             "$ref": "#/components/responses/ServerError"
           }
         }
+=======
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "503": {
+            "description": "AI chưa được cấu hình"
+          }
+        },
+        "security": []
+>>>>>>> develop
       }
     }
   }

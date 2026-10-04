@@ -1,9 +1,6 @@
 // Generated from Swagger. Response types describe documented examples, not exhaustive schemas.
 export type PostUsersRequest = { "email": string; "password": string; "fullName": string; "role": "MEMBER" | "COACH" | "STAFF" | "MANAGER"; "fitnessGoal"?: string; "trainingLevel"?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED"; "trainingPreference"?: string };
 export type PatchUsersIdRequest = { "fullName"?: string; "phone"?: string; "gender"?: "MALE" | "FEMALE" | "OTHER"; "dateOfBirth"?: string; "isActive"?: boolean; "role"?: "MEMBER" | "COACH" | "STAFF" | "MANAGER" };
-export type PostTrainingPlansRequest = { "memberId"?: string; "coachId"?: string; "name"?: string; "startDate"?: string; "endDate"?: string };
-export type PatchTrainingPlansIdRequest = { "coachId": string };
-export type PostTrainingPlansResultsRequest = { "planId"?: string; "date"?: string };
 export type PostSubscriptionsRequest = { "memberId": string; "planId": string; "startDate"?: string; "paymentMethod": "CASH" | "BANK_TRANSFER"; "note"?: string };
 export type PostSubscriptionsIdRenewRequest = { "planId": string; "paymentMethod": "CASH" | "BANK_TRANSFER"; "note"?: string };
 export type PatchSubscriptionsIdStatusRequest = { "status": "ACTIVE" | "CANCELLED" | "SUSPENDED" };
@@ -41,6 +38,8 @@ export type PostAuthLogoutRequest = { "refreshToken": string };
 export type PostAuthRefreshTokenRequest = { "refreshToken": string };
 export type PatchAuthMeRequest = { "fullName"?: string; "phone"?: string; "gender"?: "MALE" | "FEMALE" | "OTHER"; "dateOfBirth"?: string; "fitnessGoal"?: string; "trainingLevel"?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED"; "trainingPreference"?: string };
 export type PatchAuthMeChangePasswordRequest = { "currentPassword": string; "newPassword": string };
+export type PostAuthForgotPasswordRequest = { "email": string };
+export type PostAuthResetPasswordRequest = { "email": string; "otp": string; "newPassword": string };
 export type PostAttendanceRequest = { "scheduleId"?: string; "memberId"?: string; "status"?: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED" };
 export type PatchAttendanceIdRequest = { "status"?: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED" };
 export type PostAttendanceGenerateQrRequest = { "scheduleId": string };
@@ -49,8 +48,12 @@ export type PostAttendanceWarningsScanRequest = { "classId"?: string };
 export type PostAttendancePenaltiesApplyRequest = { "memberId": string; "classId": string; "reason"?: string };
 export type PostAttendancePenaltiesIdAppealRequest = { "reason": string };
 export type PostAttendancePenaltiesIdRevokeRequest = { "reason"?: string; "restoreSlots"?: boolean };
+<<<<<<< HEAD
 export type PostAuthForgotPasswordRequest = { "email": string };
 export type PostAuthResetPasswordRequest = { "email": string; "otp": string; "newPassword": string };
+=======
+export type PostAiChatRequest = { "message": string; "history"?: Array<{ "role"?: "user" | "assistant" | "system"; "content"?: string }> };
+>>>>>>> develop
 export type BadRequest = { "success": boolean; "message": string; "errors": Array<{ "field": string; "message": string }> };
 export type Unauthorized = { "success": boolean; "message": string };
 export type Forbidden = { "success": boolean; "message": string };

@@ -1,6 +1,7 @@
 import React from "react";
+import { StatusBadge as SharedStatusBadge } from "../shared/StatusBadge";
 import { Modal as SharedModal } from "../shared/ui";
-import { Loading, type SkeletonVariant } from "../shared/feedback";
+import { Empty, Loading, type SkeletonVariant } from "../shared/feedback";
 import { AlertCircle, CheckCircle2, Info, XCircle } from "lucide-react";
 
 export interface BadgeProps {
@@ -9,6 +10,7 @@ export interface BadgeProps {
 }
 
 export function Badge({ variant = "neutral", children }: BadgeProps) {
+<<<<<<< HEAD
   const styles: Record<string, { bg: string; color: string; border: string }> =
     {
       success: {
@@ -64,31 +66,13 @@ export function Badge({ variant = "neutral", children }: BadgeProps) {
       {children}
     </span>
   );
+=======
+  return <span className={`badge badge-${variant}`}>{children}</span>;
+>>>>>>> develop
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  switch (status?.toUpperCase()) {
-    case "ACTIVE":
-    case "BOOKED":
-    case "SUCCESS":
-    case "COMPLETED":
-      return <Badge variant="success">{status}</Badge>;
-    case "EXPIRING_SOON":
-    case "PENDING":
-    case "SCHEDULED":
-      return <Badge variant="warning">{status}</Badge>;
-    case "EXPIRED":
-    case "CANCELLED":
-    case "FAILED":
-      return <Badge variant="danger">{status}</Badge>;
-    case "PREMIUM":
-      return <Badge variant="primary">★ PREMIUM</Badge>;
-    case "REGULAR":
-    case "MEMBERSHIP":
-      return <Badge variant="info">{status}</Badge>;
-    default:
-      return <Badge variant="neutral">{status || "UNKNOWN"}</Badge>;
-  }
+  return <SharedStatusBadge value={status} />;
 }
 
 export interface ModalProps {
@@ -152,6 +136,7 @@ export function ConfirmModal({
       maxWidth={440}
       dismissible={!loading}
     >
+<<<<<<< HEAD
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <p
           style={{
@@ -208,6 +193,18 @@ export function ConfirmModal({
               gap: 6,
               opacity: loading ? 0.7 : 1,
             }}
+=======
+      <div className="confirmation-body">
+        <p>{message}</p>
+        <div className="confirmation-actions">
+          <button className="button" onClick={onClose} disabled={loading}>
+            {cancelText}
+          </button>
+          <button
+            className={"button " + (isDanger ? "danger" : "primary")}
+            onClick={onConfirm}
+            disabled={loading}
+>>>>>>> develop
           >
             {loading ? "Đang xử lý..." : confirmText}
           </button>
@@ -229,6 +226,7 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
+<<<<<<< HEAD
     <div
       style={{
         padding: "48px 24px",
@@ -270,6 +268,14 @@ export function EmptyState({
       )}
       {action && <div style={{ marginTop: 12 }}>{action}</div>}
     </div>
+=======
+    <Empty
+      text={title}
+      detail={description || ""}
+      icon={icon}
+      action={action}
+    />
+>>>>>>> develop
   );
 }
 

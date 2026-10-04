@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { X } from "lucide-react";
 import { display, label, money } from "./config";
 import { classSports } from "./sports";
+import { StatusBadge } from "./StatusBadge";
 export { Empty, ErrorState, Loading } from "./feedback";
 export { SchemaForm, FilterField } from "./forms/SchemaForm";
 export const MemberPortalContext = createContext(false);
@@ -168,7 +169,7 @@ export function Details({
         ) : moneyFields.includes(k) ? (
           money(v)
         ) : ["status", "tier", "classType", "role"].includes(k) ? (
-          <span className="badge">{display(v)}</span>
+          <StatusBadge value={v} />
         ) : (
           display(v)
         )}

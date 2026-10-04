@@ -101,7 +101,7 @@ const overrideUrl = new URL(
 if (fs.existsSync(overrideUrl)) {
   Object.assign(ops, JSON.parse(fs.readFileSync(overrideUrl, "utf8")));
   md +=
-    "\n## Verified workflow contracts\nAdditional operations and missing bodies/parameters are preserved in workflow-contract-overrides.json, checked against backend commit 9d4af0efb8c3e910af233eb3e30b4e7b04dae238. See WORKFLOW_ALIGNMENT.md.\n";
+    "\n## Verified workflow contracts\nAdditional operations and missing bodies/parameters are preserved in workflow-contract-overrides.json, reviewed against the backend checkout. See WORKFLOW_ALIGNMENT.md and BACKEND_SYNC_2026-10-04.md.\n";
 }
 fs.writeFileSync(new URL("../src/shared/generated.ts", import.meta.url), ts);
 fs.writeFileSync(

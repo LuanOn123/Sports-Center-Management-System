@@ -47,8 +47,20 @@ export const ChangePasswordSchema = z.object({
   newPassword: z.string().min(6, "New password must be at least 6 characters"),
 });
 
+export const ForgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address").transform(v => v.toLowerCase().trim()),
+});
+
+export const ResetPasswordSchema = z.object({
+  email: z.string().email("Invalid email address").transform(v => v.toLowerCase().trim()),
+  otp: z.string().length(6, "OTP must be exactly 6 digits").regex(/^\d{6}$/, "OTP must be numeric"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+});
+
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 export type LoginInput = z.infer<typeof LoginSchema>;
 export type RefreshTokenInput = z.infer<typeof RefreshTokenSchema>;
 export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>;
 export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;
+export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;

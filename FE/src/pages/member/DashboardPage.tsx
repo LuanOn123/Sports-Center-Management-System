@@ -15,7 +15,6 @@ import {
   Clock,
   MapPin,
   Sparkles,
-  Dumbbell,
 } from "lucide-react";
 import { StatusBadge, LoadingSpinner } from "../../components/common";
 
@@ -639,6 +638,7 @@ export function DashboardPage() {
           </div>
 
           <div
+<<<<<<< HEAD
             onClick={() => navigate("/member/training")}
             style={{
               backgroundColor: "var(--member-surface, #ffffff)",
@@ -684,6 +684,8 @@ export function DashboardPage() {
           </div>
 
           <div
+=======
+>>>>>>> develop
             onClick={() => navigate("/member/profile")}
             style={{
               backgroundColor: "var(--member-surface, #ffffff)",

@@ -2,8 +2,11 @@ import type { Page } from "@playwright/test";
 import fs from "node:fs";
 const doc = JSON.parse(fs.readFileSync("docs/openapi.json", "utf8"));
 export async function setup(page: Page, role = "STAFF", longText = false) {
-  await page.addInitScript(() =>
-    sessionStorage.setItem("pulse.access", "fixture-token"),
+  await page.addInitScript(
+    () => (
+      sessionStorage.setItem("pulse.identity-version", "mongo-identities-v1"),
+      sessionStorage.setItem("pulse.access", "fixture-token")
+    ),
   );
   await page.route("**/api/v1/**", async (route) => {
     const url = new URL(route.request().url());
@@ -163,7 +166,6 @@ export async function setup(page: Page, role = "STAFF", longText = false) {
     // Current Swagger also uses inline responses and omits examples for these
     // collections. Keep explicit empty fixtures instead of dereferencing $ref.
     const emptyLists = [
-      "/training-plans",
       "/notifications",
       "/attendance",
       "/chat/contacts",

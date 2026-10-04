@@ -114,13 +114,6 @@ const messages: Record<string, string> = {
   "membership plan not found or inactive":
     "Gói tập không tồn tại hoặc đã ngừng bán.",
   "membership plan not found": "Không tìm thấy gói tập.",
-  "cannot assign training plan: user is not an active member":
-    "Chỉ được giao kế hoạch cho hội viên đang hoạt động.",
-  "training plan not found": "Không tìm thấy kế hoạch tập luyện.",
-  "forbidden: you can only manage your own training plans":
-    "Bạn chỉ được quản lý kế hoạch do mình phụ trách.",
-  "forbidden: you do not have permission to manage training plans":
-    "Bạn không có quyền quản lý kế hoạch tập luyện.",
   "cannot deactivate your own account":
     "Bạn không thể tự khóa tài khoản đang đăng nhập.",
   "cannot change your own role":
@@ -163,8 +156,11 @@ const messages: Record<string, string> = {
     "Nội dung ảnh đại diện không hợp lệ. Vui lòng chọn ảnh JPEG/PNG/WebP/GIF thật.",
   "attachment not found": "Tệp đính kèm không còn khả dụng.",
   "attachment file not found on storage": "Tệp đính kèm không còn khả dụng.",
+<<<<<<< HEAD
   "forbidden: you can only view your own training plans":
     "Bạn chỉ được xem kế hoạch tập luyện của mình.",
+=======
+>>>>>>> develop
   forbidden: "Bạn không có quyền thực hiện thao tác này.",
   "record not found": "Không tìm thấy dữ liệu được yêu cầu.",
   "internal server error": "Máy chủ gặp lỗi. Vui lòng thử lại sau.",

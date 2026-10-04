@@ -7,7 +7,10 @@ import {
   Search,
   BookOpen,
   CalendarDays,
+<<<<<<< HEAD
   Dumbbell,
+=======
+>>>>>>> develop
   CircleCheck,
   Bell,
   UserRound,
@@ -56,11 +59,6 @@ const Profile = lazy(() =>
     default: m.ProfilePage,
   })),
 );
-const Training = lazy(() =>
-  import("../../pages/member/TrainingPage").then((m) => ({
-    default: m.TrainingPage,
-  })),
-);
 const Attendance = lazy(() =>
   import("../../pages/member/AttendancePage").then((m) => ({
     default: m.AttendancePage,
@@ -78,7 +76,10 @@ const items = [
   ["classes", "Khám phá lớp học", Search],
   ["my-classes", "Lớp của tôi", BookOpen],
   ["schedule", "Lịch tập", CalendarDays],
+<<<<<<< HEAD
   ["training", "Mục tiêu tập luyện", Dumbbell],
+=======
+>>>>>>> develop
   ["attendance", "Điểm danh", CircleCheck],
   ["notifications", "Thông báo", Bell],
   ["profile", "Tài khoản", UserRound],
@@ -112,7 +113,10 @@ export function UserLayout(props: PortalProps) {
                 <Route path="/member/classes/:id" element={<ClassDetail />} />
                 <Route path="/member/my-classes" element={<MyClasses />} />
                 <Route path="/member/schedule" element={<Schedule />} />
+<<<<<<< HEAD
                 <Route path="/member/training" element={<Training />} />
+=======
+>>>>>>> develop
                 <Route path="/member/attendance" element={<Attendance />} />
                 <Route
                   path="/member/notifications"
