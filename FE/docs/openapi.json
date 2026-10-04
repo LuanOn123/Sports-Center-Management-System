@@ -222,6 +222,7 @@
                   "phone": "0900000001",
                   "gender": "MALE",
                   "dateOfBirth": "2005-06-27T17:00:00.000Z",
+                  "avatarUrl": "https://res.cloudinary.com/demo/image/upload/v1789050000/sports-center/avatars/b311dfe5-8575-4ed4-9efd-8bc81a149f14.jpg",
                   "role": "MEMBER",
                   "isActive": true,
                   "createdAt": "2026-09-11T14:20:14.910Z",
@@ -255,6 +256,7 @@
                     "phone": "0900000002",
                     "gender": "FEMALE",
                     "dateOfBirth": null,
+                    "avatarUrl": null,
                     "role": "STAFF",
                     "isActive": true,
                     "createdAt": "2026-09-11T14:20:14.910Z",
@@ -321,6 +323,7 @@
                   "phone": "0900000005",
                   "gender": "MALE",
                   "dateOfBirth": null,
+                  "avatarUrl": null,
                   "role": "MEMBER",
                   "isActive": true,
                   "memberProfile": {
@@ -1449,14 +1452,17 @@
                 "message": "Revenue report retrieved successfully",
                 "data": {
                   "totalRevenue": 900000,
-                  "totalPayments": 2,
+                  "refundedAmount": 300000,
+                  "netRevenue": 600000,
+                  "totalPayments": 3,
                   "successPayments": 2,
+                  "refundedPayments": 1,
                   "failedPayments": 0,
                   "pendingPayments": 0,
-                  "refundedPayments": 0,
                   "revenueByMethod": {
                     "CASH": 300000,
-                    "BANK_TRANSFER": 600000
+                    "BANK_TRANSFER": 600000,
+                    "SEPAY": 300000
                   },
                   "recentPayments": [
                     {
@@ -1989,6 +1995,7 @@
         "tags": [
           "Training"
         ],
+        "description": "Phạm vi theo NGƯỜI ĐĂNG NHẬP (không tin query từ client):\n- MANAGER/STAFF: xem toàn bộ (lọc `memberId` nếu truyền).\n- COACH: chỉ plan do chính mình phụ trách.\n- MEMBER: chỉ plan của chính mình; truyền `memberId` của người khác ⇒ 403.\n",
         "parameters": [
           {
             "in": "query",
@@ -2001,6 +2008,9 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           }
         }
       },
@@ -3768,7 +3778,8 @@
               "type": "string",
               "enum": [
                 "CASH",
-                "BANK_TRANSFER"
+                "BANK_TRANSFER",
+                "SEPAY"
               ]
             }
           },
@@ -3846,7 +3857,8 @@
     },
     "/payments/{id}/status": {
       "patch": {
-        "summary": "Update payment status",
+        "summary": "Update payment status (thanh toán tại quầy)",
+        "description": "Chỉ áp dụng cho giao dịch ghi nhận TẠI QUẦY (CASH/BANK_TRANSFER — không có `gateway`).\nGiao dịch ONLINE (SePay) bị từ chối **400**: trạng thái chỉ được chốt bởi\nwebhook / đối soát / mock-confirm để không lệch entitlement và hóa đơn.\n",
         "tags": [
           "Payments"
         ],
@@ -3896,6 +3908,513 @@
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/payments/{id}/retry-activation": {
+      "post": {
+        "summary": "Kích hoạt bù cho giao dịch online đã thu tiền nhưng chưa cấp gói (Manager only)",
+        "description": "Dùng khi `activationStatus = REQUIRES_REVIEW` (tiền ĐÃ về nhưng gói không kích hoạt tự động,\nVD bị chặn hạ hạng trong lúc chờ chuyển khoản). Cấp gói theo ĐÚNG snapshot điều khoản của đơn.\n- 400: không phải giao dịch SePay / chưa thu tiền / đã có gói / không ở trạng thái cần xử lý.\n- 409: vẫn không kích hoạt được (VD gói hiện tại vẫn chặn) — giữ nguyên review, cập nhật lý do.\n",
+        "tags": [
+          "Payments"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/PaymentOk"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/payments/sepay/checkout": {
+      "post": {
+        "summary": "Member tạo đơn chuyển khoản VietQR (SePay) để tự mua gói hội viên",
+        "description": "**Thanh toán online qua SePay (chuyển khoản ngân hàng + ảnh VietQR) — Member tự mua gói, không cần quầy.**\n\nLuồng:\n1. BE kiểm tra gói + luật đổi gói (chặn hạ hạng / cùng hạng ít ngày hơn) — fail fast.\n2. Tạo `Payment` PENDING (`method = SEPAY`, `gateway = SEPAY`, `planId` = gói muốn mua,\n   `transactionCode` = mã thanh toán riêng, VD `SEVQR12345678` — cũng là nội dung chuyển khoản).\n3. Trả ảnh QR động (`qrUrl`) + số tài khoản + số tiền + nội dung CK cho FE hiển thị.\n4. Hội viên quét QR / chuyển khoản đúng nội dung → SePay phát hiện giao dịch và gọi\n   `POST /payments/sepay/webhook` → BE kích hoạt `MembershipSubscription` + `Invoice` + notification.\n\n**Gói CHỈ được kích hoạt khi SePay xác nhận ĐÃ THU TIỀN** — không activate ở bước này.\nFE polling `GET /payments/sepay/{id}` để biết trạng thái (PENDING → SUCCESS).\nChỉ MEMBER đang hoạt động gọi được (không nhận `memberId` ⇒ không mua hộ người khác).\n",
+        "tags": [
+          "Payments"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "planId"
+                ],
+                "properties": {
+                  "planId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "MembershipPlan.id (tier MEMBERSHIP/PREMIUM)"
+                  }
+                }
+              },
+              "example": {
+                "planId": "b7f1c0d2-0000-0000-0000-000000000001"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Đơn đã tạo — trả ảnh VietQR + thông tin chuyển khoản",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "message": "SePay checkout created successfully",
+                  "data": {
+                    "paymentId": "c1a2b3c4-0000-0000-0000-000000000001",
+                    "orderCode": "SEVQR12345678",
+                    "amount": 300000,
+                    "currency": "VND",
+                    "status": "PENDING",
+                    "gateway": "SEPAY",
+                    "expiresAt": "2026-09-25T15:30:00.000Z",
+                    "qrUrl": "https://qr.sepay.vn/img?acc=0703339186&bank=SACOMBANK&amount=300000&des=SEVQR12345678&template=compact",
+                    "transferContent": "SEVQR12345678",
+                    "bank": {
+                      "id": "SACOMBANK",
+                      "accountNumber": "0703339186",
+                      "accountHolder": "NGUYEN TRAN TU"
+                    },
+                    "plan": {
+                      "id": "b7f1c0d2-...",
+                      "name": "Gói Membership 1 tháng",
+                      "tier": "MEMBERSHIP",
+                      "durationDays": 30
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Gói FREE / user không phải MEMBER đang hoạt động / hạ hạng hoặc giảm số ngày cùng hạng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "examples": {
+                  "free_plan": {
+                    "value": {
+                      "success": false,
+                      "message": "Gói FREE không cần thanh toán. Vui lòng chọn gói MEMBERSHIP hoặc PREMIUM."
+                    }
+                  },
+                  "downgrade": {
+                    "value": {
+                      "success": false,
+                      "message": "Không thể mua gói thấp hơn hạng hiện tại. Bạn chỉ có thể nâng cấp."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Còn giao dịch chuyển khoản PENDING cho cùng gói (chưa quá TTL) — trả kèm QR để FE tiếp tục",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Bạn đang có giao dịch chuyển khoản chờ thanh toán cho gói \"Gói Membership 1 tháng\". Vui lòng hoàn tất hoặc thử lại sau 14 phút.",
+                  "errors": {
+                    "code": "SEPAY_PAYMENT_PENDING",
+                    "gateway": "SEPAY",
+                    "paymentId": "c1a2b3c4-0000-0000-0000-000000000001",
+                    "orderCode": "SEVQR12345678",
+                    "amount": 300000,
+                    "expiresAt": "2026-09-25T15:30:00.000Z",
+                    "qrUrl": "https://qr.sepay.vn/img?acc=0703339186&bank=SACOMBANK&amount=300000&des=SEVQR12345678",
+                    "transferContent": "SEVQR12345678"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "503": {
+            "description": "Chưa cấu hình tài khoản nhận tiền (VIETQR_BANK_ID / VIETQR_ACCOUNT_NO)"
+          }
+        }
+      }
+    },
+    "/payments/sepay/webhook": {
+      "post": {
+        "summary": "SePay gọi server-to-server khi phát hiện giao dịch chuyển khoản",
+        "description": "**Endpoint công khai (KHÔNG Bearer)** — SePay gọi trực tiếp, bảo vệ bằng 1 trong 2\nphương thức (chọn ở bước Bảo mật khi tạo webhook trên my.sepay.vn):\n\n1. **HMAC-SHA256** (khuyến nghị): header `X-SePay-Signature: sha256={hex}` +\n   `X-SePay-Timestamp` (unix seconds) — ký trên `{timestamp}.{rawBody}` bằng\n   `SEPAY_WEBHOOK_SECRET`. D07: timestamp phải nằm trong cửa sổ\n   `SEPAY_WEBHOOK_MAX_SKEW_SECONDS` (mặc định **3600s** — phủ retry window ~33 phút của SePay);\n   chữ ký đúng nhưng timestamp quá cũ ⇒ 401 chống replay (đặt `0` để tắt kiểm tra).\n2. **API Key**: header `Authorization: Apikey <SEPAY_WEBHOOK_API_KEY>`.\n\nRequest có header chữ ký ⇒ kiểm tra HMAC; không có ⇒ kiểm tra API Key.\nSai/thiếu ⇒ **401** (`SEPAY_INVALID_SIGNATURE` / `SEPAY_INVALID_API_KEY`) và KHÔNG xử lý gì.\n\nKiểm tra theo thứ tự:\n1. Header API key hợp lệ.\n2. Là TIỀN VÀO (`transferType = in`) — tiền ra bỏ qua.\n3. Mã đơn: `code` (SePay bóc tách theo \"Cấu trúc mã thanh toán\", VD tiền tố `SEVQR`) hoặc\n   tự tìm trong `content` ⇒ không khớp đơn nào thì bỏ qua.\n4. Số tài khoản nhận tiền (`accountNumber`/`subAccount`) phải khớp `VIETQR_ACCOUNT_NO` ⇒ lệch ghi nhận MISMATCH.\n5. Số tiền (`transferAmount`) phải khớp CHÍNH XÁC `Payment.amount` ⇒ lệch ghi nhận MISMATCH.\n6. Chống trùng: `payload.id` (sepayId) lưu UNIQUE ở bảng `SepayWebhookEvent` — SePay retry/replay\n   không xử lý lại; giao dịch đã SUCCESS ⇒ DUPLICATE.\n7. Hợp lệ ⇒ Payment → `SUCCESS`, tạo `MembershipSubscription` ACTIVE\n   (áp luật hạ hạng + cộng ngày dư của gói trả phí; gói FREE hệ thống không cộng),\n   tạo `Invoice` snapshot (BR-25), gửi notification `PAYMENT_SUCCESS` — TẤT CẢ trong cùng transaction.\n   A06: `Payment.activationStatus` tách khỏi trạng thái tiền — tiền đã thu nhưng không cấp được\n   gói (VD chặn hạ hạng, thiếu plan, tiền về muộn) ⇒ `REQUIRES_REVIEW` + `reviewReason` để\n   quản lý xử lý (`POST /payments/{id}/retry-activation`).\n   A07: gói cấp theo ĐÚNG snapshot điều khoản lưu trên Payment lúc tạo đơn (không đọc plan live).\n\nTiền về khi giao dịch đã đóng (hết hạn/thất bại) ⇒ ghi nhận LATE để đối soát, KHÔNG kích hoạt gói.\nMọi trường hợp (trừ sai API key / chưa cấu hình) đều ACK để SePay không retry vô hạn.\n\nTrả **200** kèm đúng body `{ \"success\": true }` khi đã ghi nhận xong.\n",
+        "tags": [
+          "Payments"
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "`Apikey <SEPAY_WEBHOOK_API_KEY>` (phương thức API Key)"
+          },
+          {
+            "in": "header",
+            "name": "X-SePay-Signature",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "`sha256={hex}` — chữ ký HMAC-SHA256 (phương thức HMAC)"
+          },
+          {
+            "in": "header",
+            "name": "X-SePay-Timestamp",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Unix timestamp (seconds) khi SePay ký — tham gia nội dung ký"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "transferType",
+                  "transferAmount",
+                  "accountNumber"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "ID giao dịch trên SePay — khoá chống trùng"
+                  },
+                  "gateway": {
+                    "type": "string",
+                    "description": "Tên ngân hàng, VD SACOMBANK"
+                  },
+                  "transactionDate": {
+                    "type": "string",
+                    "description": "YYYY-MM-DD HH:mm:ss (giờ VN)"
+                  },
+                  "accountNumber": {
+                    "type": "string"
+                  },
+                  "subAccount": {
+                    "type": "string",
+                    "description": "Số VA nếu có, rỗng nếu không"
+                  },
+                  "code": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Mã thanh toán SePay bóc tách được, VD SEVQR12345678"
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "Nội dung chuyển khoản gốc"
+                  },
+                  "transferType": {
+                    "type": "string",
+                    "enum": [
+                      "in",
+                      "out"
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "transferAmount": {
+                    "type": "integer"
+                  },
+                  "accumulated": {
+                    "type": "integer"
+                  },
+                  "referenceCode": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "id": 92704,
+                "gateway": "SACOMBANK",
+                "transactionDate": "2026-09-25 11:08:33",
+                "accountNumber": "0703339186",
+                "subAccount": "",
+                "code": "SEVQR12345678",
+                "content": "SEVQR12345678 chuyen tien",
+                "transferType": "in",
+                "description": "NGUYEN VAN A chuyen tien",
+                "transferAmount": 300000,
+                "accumulated": 105000000,
+                "referenceCode": "FT24012345678"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Đã ghi nhận (SePay không cần retry) — kể cả khi lệch tiền/tài khoản hoặc lặp webhook",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Payload không hợp lệ (thiếu id/transferType/transferAmount…)"
+          },
+          "401": {
+            "description": "Xác thực không hợp lệ (API key sai hoặc chữ ký HMAC sai)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Chữ ký webhook SePay không hợp lệ.",
+                  "errors": {
+                    "code": "SEPAY_INVALID_SIGNATURE",
+                    "gateway": "SEPAY",
+                    "sepayId": 92704
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "503": {
+            "description": "Server chưa cấu hình webhook SePay (SEPAY_WEBHOOK_API_KEY / SEPAY_WEBHOOK_SECRET)"
+          }
+        }
+      }
+    },
+    "/payments/sepay/mock-confirm": {
+      "post": {
+        "summary": "DEV/DEMO — mô phỏng SePay xác nhận đã thu tiền (chỉ khi SEPAY_MOCK_MODE=true)",
+        "description": "Dùng cho môi trường dev/demo/e2e khi KHÔNG có giao dịch ngân hàng thật / SePay không gọi được\nwebhook vào localhost: tạo đơn bằng `POST /payments/sepay/checkout` rồi gọi endpoint này để chạy\nĐÚNG luồng chốt giao dịch như webhook thật (kích hoạt gói + invoice + notification).\n\nQuyền: MEMBER chỉ xác nhận giao dịch CỦA MÌNH; MANAGER/STAFF được xác nhận hộ (phục vụ demo).\n`SEPAY_MOCK_MODE != true` ⇒ 403 `SEPAY_MOCK_DISABLED`.\n",
+        "tags": [
+          "Payments"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "paymentId"
+                ],
+                "properties": {
+                  "paymentId": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "paymentId": "c1a2b3c4-0000-0000-0000-000000000001"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Đã mô phỏng giao dịch chuyển khoản thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "message": "SePay payment simulated successfully",
+                  "data": {
+                    "sepayId": 1927040001,
+                    "orderCode": "SEVQR12345678",
+                    "paymentId": "c1a2b3c4-0000-0000-0000-000000000001",
+                    "processed": true,
+                    "status": "PROCESSED",
+                    "paymentStatus": "SUCCESS",
+                    "subscriptionId": "d2b3c4d5-0000-0000-0000-000000000001",
+                    "mock": true
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Không phải chủ giao dịch / mock mode đang tắt"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/payments/sepay/{id}": {
+      "get": {
+        "summary": "Xem trạng thái giao dịch chuyển khoản SePay (FE polling sau khi hội viên CK)",
+        "description": "Trả lại đầy đủ thông tin đơn để FE hiển thị lại QR (kể cả sau khi reload trang) và trạng thái\nmới nhất: `PENDING` (chưa nhận được tiền) → `SUCCESS` (webhook đã xác nhận, gói đã kích hoạt).\n\nKhi `status = SUCCESS` response có thêm `paidAt` + `subscriptionId` (gói đã được kích hoạt tự động).\nQuyền: chủ giao dịch (MEMBER) hoặc MANAGER/STAFF; COACH bị chặn.\n",
+        "tags": [
+          "Payments"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Payment.id nhận được từ `POST /payments/sepay/checkout`"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thông tin đơn + trạng thái hiện tại",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "examples": {
+                  "pending": {
+                    "summary": "Chưa nhận được tiền",
+                    "value": {
+                      "success": true,
+                      "message": "SePay checkout retrieved successfully",
+                      "data": {
+                        "paymentId": "c1a2b3c4-0000-0000-0000-000000000001",
+                        "orderCode": "SEVQR12345678",
+                        "amount": 300000,
+                        "currency": "VND",
+                        "status": "PENDING",
+                        "gateway": "SEPAY",
+                        "expiresAt": "2026-09-25T15:30:00.000Z",
+                        "qrUrl": "https://qr.sepay.vn/img?acc=0703339186&bank=SACOMBANK&amount=300000&des=SEVQR12345678&template=compact",
+                        "transferContent": "SEVQR12345678",
+                        "bank": {
+                          "id": "SACOMBANK",
+                          "accountNumber": "0703339186",
+                          "accountHolder": "NGUYEN TRAN TU"
+                        },
+                        "paidAt": null,
+                        "subscriptionId": null
+                      }
+                    }
+                  },
+                  "paid": {
+                    "summary": "Webhook đã xác nhận — gói được kích hoạt",
+                    "value": {
+                      "success": true,
+                      "message": "SePay checkout retrieved successfully",
+                      "data": {
+                        "paymentId": "c1a2b3c4-0000-0000-0000-000000000001",
+                        "orderCode": "SEVQR12345678",
+                        "amount": 300000,
+                        "status": "SUCCESS",
+                        "paidAt": "2026-09-25T11:08:35.000Z",
+                        "subscriptionId": "d2b3c4d5-0000-0000-0000-000000000001"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Không phải chủ giao dịch / COACH bị chặn"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -4829,7 +5348,7 @@
       },
       "get": {
         "summary": "Xem danh sách đánh giá của một HLV (public)",
-        "description": "Trả về danh sách feedback và điểm trung bình (averageRating) của HLV.\nCác feedback có `isAnonymous: true` sẽ hiển thị tên là **\"Ẩn danh\"**.\n",
+        "description": "Trả về danh sách feedback và điểm trung bình (averageRating) của HLV.\nFeedback `isAnonymous: true` KHÔNG trả `memberId`/`member` cho bất kỳ ai (ẩn danh thật);\nchính tác giả xem bản của mình qua `GET /feedbacks/my`. Mỗi item kèm `isOwn`.\n",
         "tags": [
           "Feedbacks"
         ],
@@ -4911,11 +5430,7 @@
                         "rating": 4,
                         "comment": "Tốt",
                         "isAnonymous": true,
-                        "member": {
-                          "user": {
-                            "fullName": "Ẩn danh"
-                          }
-                        }
+                        "isOwn": false
                       }
                     ],
                     "summary": {
@@ -5269,6 +5784,127 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/enrollments/bulk": {
+      "post": {
+        "summary": "Enroll in a WHOLE course (all upcoming sessions of a class) — Member self-enrolls; Staff/Manager for a member",
+        "description": "**Đăng ký TRỌN KHÓA — ALL-OR-NOTHING.**\n\nTạo (hoặc kích hoạt lại) Enrollment cho **tất cả** buổi `ClassSchedule.status = SCHEDULED`\nchưa bắt đầu của Class. Cả khóa chỉ chiếm **1 quota** lớp học song song (distinct Class).\n\n**Chốt chặn nghiệp vụ (chạy sau khi đã advisory-lock memberQuota → memberClass → schedules):**\n- Class tồn tại, đang hoạt động và **có ít nhất 1 buổi sắp diễn ra** (400 nếu không).\n- Gói tập `ACTIVE` và **`endDate` phủ tới buổi CUỐI của khóa** (`SUBSCRIPTION_ENDS_BEFORE_COURSE_END`).\n- Class `PREMIUM` yêu cầu gói tier `PREMIUM` (`PREMIUM_REQUIRED`).\n- Không bị hình phạt chuyên cần đang hiệu lực ở Class này (`ATTENDANCE_PENALTY_ACTIVE`).\n- Không vượt `MembershipPlan.maxConcurrentClasses` (`CONCURRENT_CLASS_LIMIT_REACHED`).\n- MỌI buổi còn sức chứa (`SESSION_FULL`) và không trùng giờ với buổi khác đã đặt (`TIME_CONFLICT`).\n\n**Chỉ cần 1 điều kiện fail ⇒ HTTP 409 `COURSE_ENROLLMENT_FAILED` với `errors.details[]`\n(mỗi phần tử có `code`, `message`, `sessionId` khi lỗi thuộc một buổi) và transaction ROLLBACK:\nKHÔNG buổi nào được tạo.** Điều kiện cấp khóa (gói tập / tier / quota / hình phạt) không có `sessionId`.\n\n**Idempotent**: buổi đã `BOOKED`/`COMPLETED` của chính hội viên trả về `status = ALREADY_BOOKED`\n(không lỗi, không tạo trùng); buổi từng `CANCELLED` được kích hoạt lại (`REACTIVATED`, BR-07).\nChỉ gửi **1 notification** `ENROLLMENT_CONFIRMED` cho cả khóa thay vì N notification.\n",
+        "tags": [
+          "Enrollments"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "classId"
+                ],
+                "properties": {
+                  "classId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "memberId": {
+                    "type": "string",
+                    "description": "Required when enrolled by Staff/Manager (nhận cả userId hoặc MemberProfile.id)"
+                  }
+                }
+              },
+              "example": {
+                "classId": "a1b2c3d4-0000-0000-0000-000000000010"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/EnrollmentCreated"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Một hoặc nhiều buổi không đủ điều kiện (all-or-nothing — không buổi nào được tạo)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "examples": {
+                  "session_full": {
+                    "summary": "Một buổi trong khóa đã hết chỗ",
+                    "value": {
+                      "success": false,
+                      "message": "Không thể đăng ký trọn khóa \"Yoga sáng\": 1 điều kiện chưa đạt.",
+                      "errors": {
+                        "code": "COURSE_ENROLLMENT_FAILED",
+                        "classId": "a1b2c3d4-0000-0000-0000-000000000010",
+                        "className": "Yoga sáng",
+                        "totalSessions": 12,
+                        "failedCount": 1,
+                        "details": [
+                          {
+                            "code": "SESSION_FULL",
+                            "message": "Buổi 18:00 05/10/2026 (Phòng Yoga 1) đã hết chỗ.",
+                            "sessionId": "b2c3d4e5-0000-0000-0000-000000000005",
+                            "roomName": "Phòng Yoga 1",
+                            "details": {
+                              "bookedCount": 20,
+                              "capacity": 20
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "subscription_expires": {
+                    "summary": "Gói tập hết hạn trước buổi cuối của khóa",
+                    "value": {
+                      "success": false,
+                      "message": "Không thể đăng ký trọn khóa \"Yoga sáng\": 1 điều kiện chưa đạt.",
+                      "errors": {
+                        "code": "COURSE_ENROLLMENT_FAILED",
+                        "failedCount": 1,
+                        "details": [
+                          {
+                            "code": "SUBSCRIPTION_ENDS_BEFORE_COURSE_END",
+                            "message": "Gói tập của bạn hết hạn ngày 20/10/2026, trước buổi cuối của khóa ngày 19/11/2026. Vui lòng gia hạn gói để đăng ký trọn khóa.",
+                            "details": {
+                              "planEndDate": "2026-10-20T00:00:00.000Z",
+                              "lastSessionStartTime": "2026-11-19T01:00:00.000Z",
+                              "coveredSessions": 6,
+                              "totalSessions": 12
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "500": {
             "$ref": "#/components/responses/ServerError"
@@ -5940,6 +6576,45 @@
         }
       }
     },
+    "/classes/{id}/course-plan": {
+      "get": {
+        "summary": "View a class as ONE course (grouped recurring timetable) + whole-course enrollment eligibility",
+        "description": "**\"Nguyên cái lịch trình\" của một Class** — dùng cho màn hình chi tiết lớp của hội viên.\n\nThay vì liệt kê từng buổi rời rạc, BE gom TẤT CẢ buổi `SCHEDULED` chưa bắt đầu thành:\n- `course.slots[]`: khung lịch lặp lại theo (Thứ + giờ + phòng), ví dụ \"Thứ 2 · 18:00–19:30 · Phòng Yoga\",\n  kèm `sessionCount`, `firstSessionStart`, `lastSessionStart`, `sessionIds`.\n- `course`: tổng số buổi, buổi đầu/cuối, các thứ, các phòng, `timeSlots`, `availability`\n  (`minRemainingSlots` = chỗ trống ít nhất qua các buổi, `fullSessionCount`, `isFullyBookable`).\n- `sessions[]`: từng buổi kèm `weekdayLabel`/`timeLabel` (giờ VN), `remainingSlots`, `isFull`,\n  `canBook`, `myEnrollmentStatus` của chính hội viên (nếu caller là MEMBER).\n- `registration` (chỉ MEMBER): preview điều kiện **đăng ký trọn khóa** theo đúng bộ luật\n  all-or-nothing của `POST /enrollments/bulk` — `eligible`, `blockers[]` (code + message + sessionId),\n  `subscription`, `quota`, `penalty`, `registeredSessions`, `isFullyRegistered`.\n\nThứ/giờ được tính theo múi giờ **Asia/Ho_Chi_Minh**, không phụ thuộc timezone của server.\n",
+        "tags": [
+          "Classes"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Class ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ClassOk"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
     "/classes/{id}/coaches": {
       "post": {
         "summary": "Assign coach to class (Sends COACH_CHANGED notification to enrolled members)",
@@ -6109,6 +6784,41 @@
           },
           "500": {
             "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/class-schedules/activity-plan": {
+      "post": {
+        "summary": "Atomically create a sport (optional), class, coach assignments and schedules",
+        "tags": [
+          "Class Schedules"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/ScheduleCreated"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
           }
         }
       }
@@ -6612,6 +7322,45 @@
         }
       }
     },
+    "/chat/attachments/{id}": {
+      "get": {
+        "summary": "Tải file đính kèm của tin nhắn (yêu cầu đăng nhập + phân quyền)",
+        "description": "D03 — file chat KHÔNG còn phục vụ tĩnh công khai. Quyền tải:\n- chủ file (người gửi), người nhận, hoặc MANAGER;\n- tin nhắn PHÒNG CHUNG (`receiverId = null`) → mọi user đã đăng nhập.\nSai quyền ⇒ 403; không tồn tại ⇒ 404. Response `Content-Type` theo MIME đã xác thực\nlúc upload + `X-Content-Type-Options: nosniff`.\n",
+        "tags": [
+          "Chat"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File stream"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
     "/chat/messages/read": {
       "patch": {
         "summary": "Mark messages as read",
@@ -6963,6 +7712,52 @@
         }
       }
     },
+    "/auth/me/avatar": {
+      "post": {
+        "summary": "Upload avatar image for the current user profile",
+        "description": "Upload ảnh đại diện (chọn từ file) dạng `multipart/form-data`, field name **avatar**.\nChấp nhận jpeg / jpg / png / webp / gif, dung lượng tối đa **5MB**.\nNơi lưu ảnh phụ thuộc env `AVATAR_STORAGE`:\n- `local` (mặc định khi chưa có credentials): lưu `uploads/avatars/`, phục vụ tĩnh qua `GET /uploads/avatars/<filename>`;\n- `cloudinary` (tự bật khi điền đủ `CLOUDINARY_*`): ảnh resize 512x512, nén q_auto/f_auto,\n  lưu 1 asset/user nên thay ảnh mới GHI ĐÈ ảnh cũ (không sinh rác).\nURL được lưu vào `User.avatarUrl` và trả về trong `GET /auth/me`.\n",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "avatar"
+                ],
+                "properties": {
+                  "avatar": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Image file (jpeg, jpg, png, webp, gif), max 5MB"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ProfileOk"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
     "/auth/me/change-password": {
       "patch": {
         "summary": "Change current user password",
@@ -7152,7 +7947,7 @@
     "/attendance/generate-qr": {
       "post": {
         "summary": "Generate a short-lived QR token + manual backup code for attendance (Coach/Manager only)",
-        "description": "Trả về 2 cách điểm danh cho buổi học:\n- `qrToken`: JWT token (mặc định 600 giây = 10 phút) để member quét QR.\n- `manualCode`: mã dự phòng 6 ký tự (alphabet A-HJ-NP-Z2-9, không có 0/O/1/I) cho member\n  KHÔNG quét được QR (camera hỏng). TTL 90 giây.\n\nMỗi lần gọi endpoint này sẽ THU HỒI mã dự phòng cũ còn hiệu lực của CÙNG buổi học —\ntại một thời điểm chỉ có đúng một mã hợp lệ trên mỗi schedule.\n",
+        "description": "Trả về 2 cách điểm danh cho buổi học:\n- `qrToken`: JWT token (mặc định 600 giây = 10 phút) để member quét QR.\n- `manualCode`: mã dự phòng 6 ký tự (alphabet A-HJ-NP-Z2-9, không có 0/O/1/I) cho member\n  KHÔNG quét được QR (camera hỏng). TTL 90 giây.\n\nMỗi lần gọi endpoint này sẽ THU HỒI mã dự phòng cũ còn hiệu lực của CÙNG buổi học —\ntại một thời điểm chỉ có đúng một mã hợp lệ trên mỗi schedule.\n\nChỉ cấp QR/mã khi buổi học đang `SCHEDULED` và nằm TRONG CỬA SỔ ĐIỂM DANH do server\nquyết định ([startTime − 30 phút, endTime + 30 phút]); ngoài cửa sổ → **409**.\n",
         "tags": [
           "Attendance"
         ],
@@ -7222,7 +8017,7 @@
     "/attendance/scan-qr": {
       "post": {
         "summary": "Check in by QR token OR manual backup code (Member only)",
-        "description": "Gửi ĐÚNG MỘT trong hai field — member KHÔNG gửi `scheduleId` (key lạ bị 400):\n- `qrToken`: JWT trong mã QR do COACH/MANAGER hiển thị.\n- `code`: mã dự phòng 6 ký tự cho member không quét được QR (camera hỏng).\n  Nhận cả chữ thường và khoảng trắng thừa (tự chuẩn hoá trim + uppercase).\n\n**Chốt chặn 2:** tại thời điểm điểm danh, hệ thống kiểm tra lại member có enrollment\nBOOKED/COMPLETED cho buổi học và gói tập còn hạn hay không. Dù đã đặt lịch thành công\ntrước đó, nếu gói hết hạn trước khi đi học → bị từ chối điểm danh.\n\n**Chống dò mã (chỉ áp dụng cho `code`):** sai/hết hạn/thu hồi/không tồn tại dùng chung\nmột message; một mã bị dùng hỏng 5 lần → thu hồi; một member sai 10 lần trong 15 phút → 429.\n",
+        "description": "Gửi ĐÚNG MỘT trong hai field — member KHÔNG gửi `scheduleId` (key lạ bị 400):\n- `qrToken`: JWT trong mã QR do COACH/MANAGER hiển thị.\n- `code`: mã dự phòng 6 ký tự cho member không quét được QR (camera hỏng).\n  Nhận cả chữ thường và khoảng trắng thừa (tự chuẩn hoá trim + uppercase).\n\n**Chốt chặn 2:** tại thời điểm điểm danh, hệ thống kiểm tra lại member có enrollment\nBOOKED/COMPLETED cho buổi học và gói tập còn hạn hay không. Dù đã đặt lịch thành công\ntrước đó, nếu gói hết hạn trước khi đi học → bị từ chối điểm danh.\n\n**Chốt chặn 3 — cửa sổ điểm danh (server-side, không tin thời gian client):** buổi học\nphải đang `SCHEDULED` và thời điểm quét nằm trong [startTime − 30 phút, endTime + 30 phút];\nquét trước/sau cửa sổ → **409** (không ghi attendance).\n\n**Không ghi đè kết quả đã chốt:** nếu buổi đã được ghi `ABSENT/LATE/EXCUSED` (do HLV/quản lý),\nquét lại → **409**; nếu đã `PRESENT` thì idempotent (chỉ cập nhật nguồn QR/mã dự phòng).\n\n**Chống dò mã (chỉ áp dụng cho `code`):** sai/hết hạn/thu hồi/không tồn tại dùng chung\nmột message; một mã bị dùng hỏng 5 lần → thu hồi; một member sai 10 lần trong 15 phút → 429.\n",
         "tags": [
           "Attendance"
         ],
@@ -7907,6 +8702,208 @@
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "summary": "Gửi OTP đặt lại mật khẩu qua email",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/MessageOk"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "summary": "Đặt lại mật khẩu bằng OTP nhận qua email",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "otp",
+                  "newPassword"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "minLength": 6,
+                    "maxLength": 6,
+                    "pattern": "^[0-9]{6}$"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 6
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/MessageOk"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/ai/chat": {
+      "post": {
+        "summary": "Trò chuyện với Smart Chatbot Assistant",
+        "description": "Gửi tin nhắn cho AI Assistant. AI được tự động nạp ngữ cảnh (RAG) về danh sách gói tập và lịch học 3 ngày tới của trung tâm.\nAPI này là public để khách chưa đăng nhập cũng có thể hỏi thông tin.\n",
+        "tags": [
+          "AI Assistant"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "message"
+                ],
+                "properties": {
+                  "message": {
+                    "type": "string"
+                  },
+                  "history": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "user",
+                            "assistant",
+                            "system"
+                          ]
+                        },
+                        "content": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Trung tâm có gói tập nào và tuần này có lớp Yoga không?"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "AI responded successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "reply": {
+                          "type": "string",
+                          "example": "Dạ chào anh/chị, hiện tại bên em có gói Premium giá..."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "503": {
+            "description": "AI chưa được cấu hình"
+          }
+        },
+        "security": []
+      }
+    },
+    "/ai/generate-training-plan": {
+      "post": {
+        "summary": "Tạo lịch tập và dinh dưỡng cá nhân hoá bằng AI",
+        "description": "Dành cho Hội viên (MEMBER). Hệ thống sẽ đọc dữ liệu từ hồ sơ của hội viên (Tuổi, Giới tính, Mục tiêu, Trình độ, Sở thích) để nhờ AI viết lịch tập 7 ngày. Lịch tập sẽ được tạo và lưu luôn vào danh sách Lịch tập của hội viên. Một tài khoản \"Trợ Lý AI\" sẽ được tự động tạo với vai trò Coach.",
+        "tags": [
+          "AI Assistant"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công"
+          },
+          "400": {
+            "description": "Hội viên chưa cập nhật Mục tiêu (fitnessGoal) và Trình độ (trainingLevel) trong hồ sơ."
           },
           "500": {
             "$ref": "#/components/responses/ServerError"

@@ -56,6 +56,10 @@ export function clearSession() {
   sessionStorage.removeItem("pulse.access");
   sessionStorage.removeItem("pulse.refresh");
 }
+export function endSession(message: string) {
+  clearSession();
+  window.dispatchEvent(new CustomEvent("session-expired", { detail: message }));
+}
 export function saveTokens(tokens: LoginOk["data"]) {
   accessToken = tokens.accessToken;
   refreshToken = tokens.refreshToken;
@@ -78,6 +82,7 @@ async function transport(
   method: string,
   body?: unknown,
   signal?: AbortSignal,
+  authenticated = true,
 ) {
   let res: Response;
   try {
@@ -89,7 +94,9 @@ async function transport(
         ...(body !== undefined && !(body instanceof FormData)
           ? { "Content-Type": "application/json" }
           : {}),
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(authenticated && accessToken
+          ? { Authorization: `Bearer ${accessToken}` }
+          : {}),
       },
       ...(body !== undefined
         ? { body: body instanceof FormData ? body : JSON.stringify(body) }
@@ -156,6 +163,53 @@ async function refresh() {
     })();
   return refreshing;
 }
+// Never send Bearer credentials to an external URL or legacy public upload.
+export function attachmentLocation(value: string): URL | null {
+  try {
+    const base = new URL(BASE_URL);
+    const url = new URL(value, base.origin);
+    if (url.hostname === base.hostname && base.protocol === "https:")
+      url.protocol = "https:";
+    if (
+      url.origin !== base.origin ||
+      url.username ||
+      url.password ||
+      !url.pathname.startsWith(base.pathname + "/chat/attachments/") ||
+      !/^[^/]+$/.test(
+        url.pathname.slice((base.pathname + "/chat/attachments/").length),
+      )
+    )
+      return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+export async function fetchAttachment(
+  value: string,
+  signal?: AbortSignal,
+): Promise<Blob> {
+  const url = attachmentLocation(value);
+  if (!url) throw new Error("Tệp cũ không còn khả dụng.");
+  const request = () =>
+    fetch(url.href, {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      signal,
+      redirect: "error",
+      cache: "no-store",
+    });
+  let response = await request();
+  if (response.status === 401 && refreshToken) {
+    await refresh();
+    response = await request();
+  }
+  if (response.status === 401)
+    endSession("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+  if (!response.ok)
+    throw new ApiError("Không thể tải tệp đính kèm.", response.status);
+  return response.blob();
+}
+
 async function apiRequest<T = RecordData>(
   key: string,
   options: {
@@ -191,6 +245,7 @@ async function apiRequest<T = RecordData>(
       op.method,
       options.body,
       options.signal,
+      op.security.length > 0,
     )) as Envelope<T>;
   } catch (e) {
     if (
@@ -238,10 +293,18 @@ export async function api<T = RecordData>(
   key: string,
   options: Parameters<typeof apiRequest>[1] = {},
 ): Promise<Envelope<T>> {
+  // Queries and AI chat show contextual feedback; avoid repeated background toasts.
+  const inlineFeedback = key.startsWith("GET ") || key === "POST /ai/chat";
   try {
     const result = await apiRequest<T>(key, options);
+    if (key === "PATCH /auth/me/change-password") {
+      endSession(
+        "Đã đổi mật khẩu. Vui lòng đăng nhập lại trên tất cả thiết bị.",
+      );
+      return result;
+    }
     if (
-      !key.startsWith("GET ") &&
+      !inlineFeedback &&
       !/\/auth\/refresh-token|\/notifications\/.*read|\/chat\//.test(key)
     ) {
       const message =
@@ -262,6 +325,13 @@ export async function api<T = RecordData>(
       error instanceof ApiError
         ? (error.details as { code?: string } | undefined)?.code
         : undefined;
+    if (
+      code === "SCHEDULE_STATE_CHANGED" ||
+      code === "SCHEDULE_NOT_AVAILABLE"
+    ) {
+      window.dispatchEvent(new Event("schedule-state-changed"));
+    }
+    if (inlineFeedback) throw error;
     if (
       error instanceof ApiError &&
       error.status === 409 &&
@@ -285,6 +355,10 @@ export async function api<T = RecordData>(
   }
 }
 export const authService = {
+  forgotPassword: (email: string) =>
+    api<null>("POST /auth/forgot-password", { body: { email } }),
+  resetPassword: (body: { email: string; otp: string; newPassword: string }) =>
+    api<null>("POST /auth/reset-password", { body }),
   async login(body: PostAuthLoginRequest) {
     const r = await api<LoginOk["data"]>("POST /auth/login", { body });
     saveTokens(r.data);

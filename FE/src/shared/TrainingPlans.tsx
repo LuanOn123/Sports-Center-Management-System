@@ -1,3 +1,4 @@
+import { AIMarkdown } from "../features/ai/AIMarkdown";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type RecordData } from "./api";
@@ -69,7 +70,7 @@ export function TrainingPlans({
         q.data.map((p) => (
           <article key={p.id} className="panel workflow-card">
             <h3>{p.name}</h3>
-            <p>{p.description}</p>
+            <AIMarkdown>{p.description || ""}</AIMarkdown>
             <p>
               {display(p.startDate)} – {display(p.endDate)}
             </p>

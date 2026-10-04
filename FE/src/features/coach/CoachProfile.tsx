@@ -40,8 +40,8 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
     mutationFn: ({ key, body }: { key: string; body: Row }) =>
       api(key, { body }),
     onSuccess: () => {
+      if (tab === "password") return;
       setSuccess(tab === "profile" ? "Đã cập nhật hồ sơ." : "Đã đổi mật khẩu.");
-      if (tab === "password") formRef.current?.reset();
       void client.invalidateQueries({ queryKey: ["me"] });
     },
     onError: (e) => {
@@ -63,7 +63,7 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
           <span className="avatar">{user.fullName.slice(0, 1)}</span>
           <h2>{user.fullName}</h2>
           <p>{user.email}</p>
-          <span className="coach-badge">Huấn luyện viên</span>
+          <span className="badge badge-neutral">Huấn luyện viên</span>
           <dl>
             <dt>Chuyên môn</dt>
             <dd>{str(coach.specialization)}</dd>
@@ -103,6 +103,9 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
               </button>
             ))}
           </div>
+          {tab === "password" && (
+            <p>Đổi mật khẩu sẽ đăng xuất khỏi tất cả thiết bị.</p>
+          )}
           <form
             key={tab}
             ref={formRef}

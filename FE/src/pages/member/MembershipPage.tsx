@@ -105,10 +105,10 @@ export function MembershipPage() {
       {/* HEADER */}
       <div
         style={{
-          background: "#ffffff",
+          background: "var(--member-surface, #ffffff)",
           borderRadius: 16,
           padding: "24px 28px",
-          border: "1px solid #e7ece9",
+          border: "1px solid var(--member-border, #e7ece9)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -121,13 +121,19 @@ export function MembershipPage() {
             style={{
               fontSize: 24,
               fontWeight: 800,
-              color: "#203d31",
+              color: "var(--member-text, #203d31)",
               margin: "0 0 6px",
             }}
           >
             Quản lý Gói hội viên
           </h1>
-          <p style={{ margin: 0, color: "#58695f", fontSize: 13 }}>
+          <p
+            style={{
+              margin: 0,
+              color: "var(--member-muted, #58695f)",
+              fontSize: 13,
+            }}
+          >
             Xem thông tin gói tập đang sử dụng, thời hạn còn lại và bảng giá các
             gói tập luyện tại Pulse Sports
           </p>
@@ -140,17 +146,24 @@ export function MembershipPage() {
         <div
           style={{
             display: "flex",
-            backgroundColor: "#f2f5f3",
+            backgroundColor: "var(--member-surface-alt, #f2f5f3)",
             borderRadius: 8,
             padding: 3,
           }}
         >
           <button
+            className="member-button"
             onClick={() => setTab("current")}
             style={{
               border: "none",
-              background: tab === "current" ? "#ffffff" : "transparent",
-              color: tab === "current" ? "#203d31" : "#58695f",
+              background:
+                tab === "current"
+                  ? "var(--member-surface, #ffffff)"
+                  : "transparent",
+              color:
+                tab === "current"
+                  ? "var(--member-text, #203d31)"
+                  : "var(--member-muted, #58695f)",
               fontWeight: 700,
               fontSize: 13,
               padding: "8px 16px",
@@ -161,11 +174,18 @@ export function MembershipPage() {
             Gói của tôi
           </button>
           <button
+            className="member-button"
             onClick={() => setTab("plans")}
             style={{
               border: "none",
-              background: tab === "plans" ? "#ffffff" : "transparent",
-              color: tab === "plans" ? "#203d31" : "#58695f",
+              background:
+                tab === "plans"
+                  ? "var(--member-surface, #ffffff)"
+                  : "transparent",
+              color:
+                tab === "plans"
+                  ? "var(--member-text, #203d31)"
+                  : "var(--member-muted, #58695f)",
               fontWeight: 700,
               fontSize: 13,
               padding: "8px 16px",
@@ -188,11 +208,13 @@ export function MembershipPage() {
           ) : activeSub ? (
             /* ACTIVE MEMBERSHIP HERO */
             <div
+              className="member-active-plan"
               style={{
-                background: "linear-gradient(135deg, #203d31 0%, #152720 100%)",
+                background:
+                  "linear-gradient(135deg, var(--member-surface, #203d31) 0%, var(--member-surface-alt, #152720) 100%)",
                 borderRadius: 20,
                 padding: "32px",
-                color: "#ffffff",
+                color: "var(--member-text, #ffffff)",
                 boxShadow: "0 10px 25px -5px rgba(32, 61, 49, 0.2)",
               }}
             >
@@ -209,8 +231,8 @@ export function MembershipPage() {
                 <div>
                   <span
                     style={{
-                      backgroundColor: "#d3f879",
-                      color: "#203d31",
+                      backgroundColor: "var(--member-accent, #d3f879)",
+                      color: "var(--member-ink, #203d31)",
                       fontSize: 12,
                       fontWeight: 800,
                       padding: "4px 10px",
@@ -226,12 +248,18 @@ export function MembershipPage() {
                       fontSize: 28,
                       fontWeight: 800,
                       margin: "12px 0 6px",
-                      color: "#ffffff",
+                      color: "var(--member-text, #ffffff)",
                     }}
                   >
                     {activeSub.plan?.name}
                   </h2>
-                  <p style={{ margin: 0, color: "#b2c5bc", fontSize: 14 }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      color: "var(--member-muted, #b2c5bc)",
+                      fontSize: 14,
+                    }}
+                  >
                     {activeSub.plan?.description ||
                       "Toàn quyền sử dụng trang thiết bị và đăng ký các lớp học tiêu chuẩn."}
                   </p>
@@ -239,19 +267,27 @@ export function MembershipPage() {
 
                 <div style={{ textAlign: "right" }}>
                   <div
-                    style={{ fontSize: 13, color: "#b2c5bc", marginBottom: 4 }}
+                    style={{
+                      fontSize: 13,
+                      color: "var(--member-muted, #b2c5bc)",
+                      marginBottom: 4,
+                    }}
                   >
                     Thời hạn còn lại
                   </div>
                   <div
-                    style={{ fontSize: 32, fontWeight: 800, color: "#d3f879" }}
+                    style={{
+                      fontSize: 32,
+                      fontWeight: 800,
+                      color: "var(--member-accent, #d3f879)",
+                    }}
                   >
                     {daysRemaining}{" "}
                     <span
                       style={{
                         fontSize: 16,
                         fontWeight: 600,
-                        color: "#ffffff",
+                        color: "var(--member-text, #ffffff)",
                       }}
                     >
                       ngày
@@ -270,7 +306,12 @@ export function MembershipPage() {
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 12, color: "#8ca89b" }}>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--member-muted, #8ca89b)",
+                    }}
+                  >
                     Hạng hội viên
                   </div>
                   <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
@@ -278,7 +319,12 @@ export function MembershipPage() {
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 12, color: "#8ca89b" }}>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--member-muted, #8ca89b)",
+                    }}
+                  >
                     Ngày bắt đầu
                   </div>
                   <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
@@ -286,7 +332,12 @@ export function MembershipPage() {
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 12, color: "#8ca89b" }}>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--member-muted, #8ca89b)",
+                    }}
+                  >
                     Ngày kết thúc
                   </div>
                   <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
@@ -294,7 +345,12 @@ export function MembershipPage() {
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 12, color: "#8ca89b" }}>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--member-muted, #8ca89b)",
+                    }}
+                  >
                     Trạng thái
                   </div>
                   <div style={{ marginTop: 4 }}>
@@ -310,11 +366,12 @@ export function MembershipPage() {
               description="Hãy xem Bảng giá các gói để đăng ký gói tập luyện phù hợp với mục tiêu của bạn."
               action={
                 <button
+                  className="member-button member-button-primary"
                   onClick={() => setTab("plans")}
                   style={{
                     padding: "10px 20px",
-                    backgroundColor: "#203d31",
-                    color: "#ffffff",
+                    backgroundColor: "var(--member-surface-alt, #203d31)",
+                    color: "var(--member-text, #ffffff)",
                     borderRadius: 8,
                     border: "none",
                     fontWeight: 700,
@@ -330,9 +387,9 @@ export function MembershipPage() {
           {/* SUBSCRIPTION HISTORY */}
           <div
             style={{
-              background: "#ffffff",
+              background: "var(--member-surface, #ffffff)",
               borderRadius: 16,
-              border: "1px solid #e7ece9",
+              border: "1px solid var(--member-border, #e7ece9)",
               padding: 24,
             }}
           >
@@ -340,7 +397,7 @@ export function MembershipPage() {
               style={{
                 fontSize: 16,
                 fontWeight: 700,
-                color: "#203d31",
+                color: "var(--member-text, #203d31)",
                 margin: "0 0 16px",
               }}
             >
@@ -348,7 +405,9 @@ export function MembershipPage() {
             </h3>
 
             {subscriptions.length === 0 ? (
-              <div style={{ color: "#58695f", fontSize: 13 }}>
+              <div
+                style={{ color: "var(--member-muted, #58695f)", fontSize: 13 }}
+              >
                 Chưa có lịch sử đăng ký gói nào.
               </div>
             ) : (
@@ -364,8 +423,8 @@ export function MembershipPage() {
                       justifyContent: "space-between",
                       padding: "12px 16px",
                       borderRadius: 10,
-                      backgroundColor: "#f9fbfa",
-                      border: "1px solid #edf2ee",
+                      backgroundColor: "var(--member-surface-alt, #f9fbfa)",
+                      border: "1px solid var(--member-border, #edf2ee)",
                       flexWrap: "wrap",
                       gap: 12,
                     }}
@@ -375,13 +434,17 @@ export function MembershipPage() {
                         style={{
                           fontWeight: 700,
                           fontSize: 14,
-                          color: "#203d31",
+                          color: "var(--member-text, #203d31)",
                         }}
                       >
                         {sub.plan?.name || "Gói tập"} ({sub.tier})
                       </div>
                       <div
-                        style={{ fontSize: 12, color: "#58695f", marginTop: 2 }}
+                        style={{
+                          fontSize: 12,
+                          color: "var(--member-muted, #58695f)",
+                          marginTop: 2,
+                        }}
                       >
                         {formatMemberDate(sub.startDate)} -{" "}
                         {formatMemberDate(sub.endDate)}
@@ -455,11 +518,11 @@ export function MembershipPage() {
                     key={p.id}
                     className={`membership-plan-card ${isPremium ? "premium" : ""}`}
                     style={{
-                      backgroundColor: "#ffffff",
+                      backgroundColor: "var(--member-surface, #ffffff)",
                       borderRadius: 18,
                       border: isPremium
-                        ? "2px solid #203d31"
-                        : "1px solid #e7ece9",
+                        ? "2px solid var(--member-text, #203d31)"
+                        : "1px solid var(--member-border, #e7ece9)",
                       padding: 28,
                       display: "flex",
                       flexDirection: "column",
@@ -476,8 +539,8 @@ export function MembershipPage() {
                           position: "absolute",
                           top: -12,
                           right: 24,
-                          backgroundColor: "#203d31",
-                          color: "#d3f879",
+                          backgroundColor: "var(--member-surface-alt, #203d31)",
+                          color: "var(--member-accent, #d3f879)",
                           fontSize: 11,
                           fontWeight: 800,
                           padding: "3px 12px",
@@ -494,7 +557,7 @@ export function MembershipPage() {
                         style={{
                           fontSize: 13,
                           fontWeight: 700,
-                          color: "#376228",
+                          color: "var(--member-accent, #376228)",
                           marginBottom: 6,
                         }}
                       >
@@ -504,7 +567,7 @@ export function MembershipPage() {
                         style={{
                           fontSize: 22,
                           fontWeight: 800,
-                          color: "#203d31",
+                          color: "var(--member-text, #203d31)",
                           margin: "0 0 8px",
                         }}
                       >
@@ -531,7 +594,7 @@ export function MembershipPage() {
                       <p
                         style={{
                           fontSize: 13,
-                          color: "#667085",
+                          color: "var(--member-muted, #667085)",
                           lineHeight: 1.5,
                           margin: "0 0 20px",
                         }}
@@ -545,7 +608,7 @@ export function MembershipPage() {
                           style={{
                             fontSize: 32,
                             fontWeight: 900,
-                            color: "#203d31",
+                            color: "var(--member-text, #203d31)",
                           }}
                         >
                           {priceFormatted}
@@ -553,7 +616,7 @@ export function MembershipPage() {
                         <span
                           style={{
                             fontSize: 14,
-                            color: "#58695f",
+                            color: "var(--member-muted, #58695f)",
                             marginLeft: 4,
                           }}
                         >
@@ -568,7 +631,7 @@ export function MembershipPage() {
                           flexDirection: "column",
                           gap: 10,
                           fontSize: 13,
-                          color: "#344054",
+                          color: "var(--member-text, #344054)",
                         }}
                       >
                         <div
@@ -578,7 +641,10 @@ export function MembershipPage() {
                             gap: 8,
                           }}
                         >
-                          <Check size={16} color="#267346" />
+                          <Check
+                            size={16}
+                            color="var(--member-success, #267346)"
+                          />
                           <span>
                             Thời hạn sử dụng:{" "}
                             <strong>{p.durationDays} ngày</strong>
@@ -591,7 +657,10 @@ export function MembershipPage() {
                             gap: 8,
                           }}
                         >
-                          <Check size={16} color="#267346" />
+                          <Check
+                            size={16}
+                            color="var(--member-success, #267346)"
+                          />
                           <span>
                             Quyền đặt lịch lớp học:{" "}
                             <strong>Không giới hạn</strong>
@@ -605,7 +674,10 @@ export function MembershipPage() {
                               gap: 8,
                             }}
                           >
-                            <Check size={16} color="#267346" />
+                            <Check
+                              size={16}
+                              color="var(--member-success, #267346)"
+                            />
                             <span>
                               Mở khóa toàn bộ các lớp{" "}
                               <strong>Premium Class ★</strong>
@@ -619,7 +691,10 @@ export function MembershipPage() {
                             gap: 8,
                           }}
                         >
-                          <Check size={16} color="#267346" />
+                          <Check
+                            size={16}
+                            color="var(--member-success, #267346)"
+                          />
                           <span>
                             Sử dụng tủ đồ, phòng tắm nước nóng miễn phí
                           </span>
@@ -631,7 +706,8 @@ export function MembershipPage() {
                       style={{
                         marginTop: 28,
                         paddingTop: 18,
-                        borderTop: "1px solid #f2f5f3",
+                        borderTop:
+                          "1px solid var(--member-surface-alt, #f2f5f3)",
                       }}
                     >
                       <button
@@ -653,13 +729,13 @@ export function MembershipPage() {
                         style={{
                           textAlign: "center",
                           fontSize: 11,
-                          color: "#667085",
+                          color: "var(--member-muted, #667085)",
                           lineHeight: 1.4,
                           margin: "10px 0 0",
                         }}
                       >
-                        Quét mã bằng ứng dụng ngân hàng. Gói được kích hoạt sau
-                        khi SePay xác nhận tiền vào.
+                        Quét mã bằng ứng dụng ngân hàng. Sau khi nhận tiền, hệ
+                        thống sẽ kích hoạt gói hoặc thông báo nếu cần đối soát.
                       </p>
                     </div>
                   </div>

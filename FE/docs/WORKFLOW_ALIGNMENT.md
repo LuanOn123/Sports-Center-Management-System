@@ -1,3 +1,22 @@
+# Cập nhật tích hợp audit — 27/09/2026
+
+Đối chiếu hai tài liệu tích hợp/remediation ngày 27/09 với BE trong checkout hiện tại.
+
+- Chat: tải attachment riêng tư qua Bearer, refresh token khi hết hạn, blob URL được thu hồi; chặn URL ngoài origin API và file legacy; chỉ nhận ảnh JPEG/PNG/WebP/GIF hoặc PDF tối đa 10MB.
+- SePay: `REQUIRES_REVIEW`/`requiresReview` hiển thị đã nhận tiền, chưa cấp gói; không gọi callback xác nhận hay invalidate quyền lợi/hóa đơn. Nút kiểm tra lại cập nhật kết quả đối soát; không gộp cờ review cũ vào response mới. Production không hiện nút mock.
+- Payments: không đổi trạng thái thủ công khi có gateway; hiện nhãn cần đối soát. Endpoint retry-activation có trong hợp đồng mới; nút kích hoạt bù tùy chọn chưa triển khai.
+- Phiên: đổi mật khẩu thành công hoặc socket bị server ngắt sẽ xóa phiên và chuyển /login. Refresh thất bại 400/401/403 tiếp tục dùng cơ chế session-expired chung.
+- Lịch/điểm danh: QR chỉ mở trong cửa sổ ±30 phút và trạng thái SCHEDULED; lỗi server được giữ nguyên tiếng Việt, SCHEDULE_MOVE_IMPACT bổ sung tên người bị ảnh hưởng; lỗi trạng thái lịch kích hoạt refetch.
+- Feedback: quyền xóa của member theo isOwn, tên feedback ẩn danh vẫn được ẩn; chỉnh sửa dùng /feedbacks/my.
+- Gói/report: sửa nội dung carry-over không cộng FREE; ước tính hoàn tiền manager không vượt tiền gốc; dashboard hiển thị thực nhận/đã hoàn và số đơn tạo. Ghi chú giới hạn refund ledger lấy từ BE.
+- Không có giao diện upload avatar hiện hành; đã bổ sung bản dịch lỗi nội dung/MIME/dung lượng để dùng khi endpoint được gọi.
+
+`openapi.json`, `operations.json`, `generated.ts`, `API_INVENTORY.md` được tạo từ Swagger BE local. Các snapshot có hậu tố ngày 18/09 và openapi-live.json giữ nguyên như bằng chứng lịch sử, không đại diện hợp đồng mới hay xác nhận production đã cập nhật.
+
+Phạm vi là đồng bộ FE với các fix BE đã có. Các khoản nợ ở mục 6 tài liệu remediation (refund ledger, migration provenance, member-level lock, các race/policy còn lại) chưa được xử lý trong đợt FE này. Chưa kiểm thử SePay thật hoặc migration DB mới.
+
+---
+
 # Đối chiếu workflow và cập nhật web — 18/09/2026
 
 ## Nguồn và giới hạn xác minh

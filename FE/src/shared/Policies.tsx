@@ -48,7 +48,8 @@ export function Policies({ role }: { role: string }) {
         <p>
           Đăng ký gói mới sẽ tạm dừng các gói đang hoạt động. Gia hạn tạo kỳ gói
           tiếp theo. Mua gói mới không cho phép hạ hạng hoặc giảm số ngày cùng
-          hạng; ngày dư được cộng vào gói mới.
+          hạng; ngày dư của gói trả phí được cộng vào gói mới (gói FREE không
+          cộng).
         </p>
         <p>
           Chỉ thanh toán thành công mới được ghi nhận hoàn tiền, do quản lý xử

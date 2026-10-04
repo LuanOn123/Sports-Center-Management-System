@@ -1,4 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { ProtectedAttachment } from "./ProtectedAttachment";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { io, type Socket } from "socket.io-client";
 import {
@@ -13,8 +22,14 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
-import { api, BASE_URL, getAccessToken, type RecordData } from "./api";
-import { Empty, ErrorState, Loading } from "./ui";
+import {
+  api,
+  BASE_URL,
+  getAccessToken,
+  endSession,
+  type RecordData,
+} from "./api";
+import { Empty, ErrorState, Loading, Modal } from "./ui";
 import { display } from "./config";
 import "./workflow.css";
 import "./communication.css";
@@ -28,8 +43,12 @@ type Notification = {
   createdAt: string;
 };
 
-export function NotificationBell() {
+export function NotificationBell({ base }: { base: string }) {
   const [open, setOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLElement>(null);
+  const panelId = useId();
   const root = useRef<HTMLDivElement>(null);
   const cache = useQueryClient();
   const count = useQuery({
@@ -61,11 +80,15 @@ export function NotificationBell() {
   });
   useEffect(() => {
     if (!open) return;
+    panel.current?.focus();
     const close = (event: MouseEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
     };
     const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        trigger.current?.focus();
+      }
     };
     document.addEventListener("mousedown", close);
     document.addEventListener("keydown", escape);
@@ -76,14 +99,26 @@ export function NotificationBell() {
   }, [open]);
   const unreadCount = count.data?.data.unreadCount || 0;
   return (
-    <div className="notification-bell" ref={root}>
+    <div
+      className="notification-bell"
+      ref={root}
+      onBlur={(event) => {
+        if (
+          event.relatedTarget instanceof Node &&
+          !event.currentTarget.contains(event.relatedTarget)
+        )
+          setOpen(false);
+      }}
+    >
       <button
+        ref={trigger}
         type="button"
         className={`topbar-icon ${unreadCount ? "has-unread attention" : ""}`}
         aria-label={
           unreadCount ? `${unreadCount} thông báo chưa đọc` : "Thông báo"
         }
         aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
         onClick={() => setOpen((value) => !value)}
       >
         <Bell size={20} />
@@ -95,13 +130,20 @@ export function NotificationBell() {
       </button>
       {open && (
         <section
+          ref={panel}
+          id={panelId}
+          tabIndex={-1}
           className="notification-popover"
           aria-label="Thông báo gần đây"
         >
           <header>
             <div>
               <strong>Thông báo</strong>
-              <small>{unreadCount} chưa đọc</small>
+              <small>
+                {count.data
+                  ? `${unreadCount} chưa đọc`
+                  : "Chưa cập nhật số chưa đọc"}
+              </small>
             </div>
             <button
               type="button"
@@ -113,27 +155,60 @@ export function NotificationBell() {
             >
               <CheckCheck size={18} />
             </button>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Đóng thông báo"
+              onClick={() => {
+                setOpen(false);
+                trigger.current?.focus();
+              }}
+            >
+              <X size={18} />
+            </button>
           </header>
+          {markRead.error && <ErrorState error={markRead.error} />}
+          {count.error && !list.error && (
+            <ErrorState error={count.error} retry={() => count.refetch()} />
+          )}
+          {markRead.isPending && (
+            <p className="notification-feedback" role="status">
+              Đang cập nhật trạng thái đọc…
+            </p>
+          )}
           <div className="notification-popover-list">
             {list.isPending ? (
               <Loading variant="cards" />
             ) : list.error ? (
               <ErrorState error={list.error} retry={() => list.refetch()} />
             ) : !list.data.data.length ? (
-              <Empty text="Không có thông báo." />
+              <Empty
+                text="Không có thông báo."
+                detail="Lịch tập, thanh toán và cập nhật từ trung tâm sẽ xuất hiện tại đây."
+              />
             ) : (
               list.data.data.map((item) => (
                 <button
                   type="button"
                   key={item.id}
-                  className={`notification-popover-item ${item.isRead ? "" : "unread"}`}
+                  className={`notification-popover-item ${item.isRead ? "" : "unread"} ${expandedId === item.id ? "expanded" : ""}`}
+                  aria-expanded={expandedId === item.id}
+                  disabled={markRead.isPending}
                   onClick={() => {
+                    setExpandedId((value) =>
+                      value === item.id ? null : item.id,
+                    );
                     if (!item.isRead) markRead.mutate(item.id);
                   }}
                 >
                   <span className="notification-dot" />
                   <span>
                     <strong>{item.title}</strong>
+                    {!item.isRead && (
+                      <small className="notification-unread-label">
+                        Chưa đọc
+                      </small>
+                    )}
                     <p>{item.body}</p>
                     <small>{display(item.createdAt)}</small>
                   </span>
@@ -141,6 +216,12 @@ export function NotificationBell() {
               ))
             )}
           </div>
+          <footer>
+            <Link to={`${base}/notifications`} onClick={() => setOpen(false)}>
+              Xem tất cả thông báo
+            </Link>
+            <small>Chọn thông báo để đọc đầy đủ.</small>
+          </footer>
         </section>
       )}
     </div>
@@ -148,6 +229,7 @@ export function NotificationBell() {
 }
 
 export function Notifications({ role }: { role: string }) {
+  const [confirmReminders, setConfirmReminders] = useState(false);
   const [page, setPage] = useState(1),
     [unread, setUnread] = useState(false);
   const cache = useQueryClient();
@@ -183,7 +265,10 @@ export function Notifications({ role }: { role: string }) {
   const reminders = useMutation({
     mutationFn: () =>
       api<{ sent: number }>("POST /notifications/trigger-upcoming-reminders"),
-    onSuccess: () => cache.invalidateQueries({ queryKey: ["notifications"] }),
+    onSuccess: () => {
+      setConfirmReminders(false);
+      return cache.invalidateQueries({ queryKey: ["notifications"] });
+    },
   });
   return (
     <div className="workflow-page">
@@ -277,13 +362,47 @@ export function Notifications({ role }: { role: string }) {
           <button
             className="button"
             disabled={reminders.isPending}
-            onClick={() => reminders.mutate()}
+            onClick={() => {
+              reminders.reset();
+              setConfirmReminders(true);
+            }}
           >
             {reminders.isPending ? "Đang gửi…" : "Gửi nhắc lịch"}
           </button>
           {reminders.error && <ErrorState error={reminders.error} />}
           {reminders.isSuccess && (
             <p role="status">Đã gửi {reminders.data.data.sent} thông báo.</p>
+          )}
+          {confirmReminders && (
+            <Modal
+              title="Xác nhận gửi nhắc lịch"
+              onClose={() => setConfirmReminders(false)}
+              dismissible={!reminders.isPending}
+            >
+              <div className="help-panel">
+                <p>
+                  Thông báo sẽ được gửi trong hệ thống cho các hội viên đã đặt
+                  lớp trong 24 giờ tới. Bạn muốn gửi ngay?
+                </p>
+                {reminders.error && <ErrorState error={reminders.error} />}
+                <div className="modal-footer">
+                  <button
+                    className="button"
+                    disabled={reminders.isPending}
+                    onClick={() => setConfirmReminders(false)}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    className="button primary"
+                    disabled={reminders.isPending}
+                    onClick={() => reminders.mutate()}
+                  >
+                    {reminders.isPending ? "Đang gửi…" : "Xác nhận gửi"}
+                  </button>
+                </div>
+              </div>
+            </Modal>
           )}
         </section>
       )}
@@ -344,6 +463,7 @@ export function FloatingChat({ userId }: { userId: string }) {
       reconnectionDelay: 800,
       reconnectionDelayMax: 5000,
     });
+    socket.on("disconnect", handleDisconnect);
     socket.on("newMessage", () => {
       void cache.invalidateQueries({ queryKey: ["chat"] });
     });
@@ -400,17 +520,11 @@ export function FloatingChat({ userId }: { userId: string }) {
   );
 }
 
-function attachmentUrl(value?: string) {
-  if (!value) return null;
-  try {
-    const u = new URL(value, BASE_URL.replace(/\/api\/v1$/, "") + "/");
-    const base = new URL(BASE_URL);
-    if (u.hostname === base.hostname && base.protocol === "https:")
-      u.protocol = "https:";
-    return ["https:", "http:"].includes(u.protocol) ? u.href : null;
-  } catch {
-    return null;
-  }
+function handleDisconnect(reason: string) {
+  if (reason === "io server disconnect")
+    endSession(
+      "Phiên đăng nhập đã kết thúc ở thiết bị khác. Vui lòng đăng nhập lại.",
+    );
 }
 export function Chat({
   userId,
@@ -452,6 +566,7 @@ export function Chat({
     });
     socket.on("disconnect", () => setConnected(false));
     socket.on("connect_error", () => setConnected(false));
+    socket.on("disconnect", handleDisconnect);
     socket.on("newMessage", () => {
       void cache.invalidateQueries({ queryKey: ["chat"] });
     });
@@ -721,6 +836,19 @@ function Conversation({
       setValidation("Tệp tối đa 10 MB.");
       return;
     }
+    if (
+      file &&
+      ![
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+        "application/pdf",
+      ].includes(file.type)
+    ) {
+      setValidation("Chỉ gửi được ảnh JPEG/PNG/WebP/GIF hoặc PDF.");
+      return;
+    }
     const body = new FormData();
     if (target) body.set("receiverId", target);
     if (content.trim()) body.set("content", content.trim());
@@ -783,38 +911,7 @@ function Conversation({
             >
               {m.senderId !== userId && <strong>{m.sender?.fullName}</strong>}
               {m.content && <p>{m.content}</p>}
-              {attachmentUrl(m.fileUrl) && (
-                <a
-                  href={attachmentUrl(m.fileUrl)!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {/\.(png|jpe?g|gif|webp|avif)(?:\?|$)/i.test(
-                    m.fileUrl || "",
-                  ) ? (
-                    <img
-                      className="chat-image"
-                      src={attachmentUrl(m.fileUrl)!}
-                      alt="Ảnh đính kèm"
-                      loading="lazy"
-                      onError={(event) => {
-                        event.currentTarget.alt =
-                          "Không tải được ảnh — nhấn để mở tệp";
-                      }}
-                      onLoad={() => {
-                        if (log.current)
-                          log.current.scrollTop = log.current.scrollHeight;
-                      }}
-                    />
-                  ) : (
-                    <span className="chat-document">
-                      <Paperclip size={18} />{" "}
-                      {m.fileUrl?.split("/").pop()?.split("?")[0] ||
-                        "Mở tệp đính kèm"}
-                    </span>
-                  )}
-                </a>
-              )}
+              {m.fileUrl && <ProtectedAttachment url={m.fileUrl} />}
               <small>
                 {new Date(m.createdAt).toLocaleTimeString("vi-VN", {
                   hour: "2-digit",
@@ -854,11 +951,14 @@ function Conversation({
           <div className="chat-compose-row">
             <label className="chat-attach" title="Đính kèm tệp">
               <Paperclip size={19} />
-              <span className="sr-only">Tệp đính kèm · tối đa 10 MB</span>
+              <span className="sr-only">
+                Ảnh (JPEG/PNG/WebP/GIF) hoặc PDF · tối đa 10 MB
+              </span>
               <input
-                aria-label="Tệp đính kèm · tối đa 10 MB"
+                aria-label="Ảnh (JPEG/PNG/WebP/GIF) hoặc PDF · tối đa 10 MB"
                 key={send.isSuccess && !file ? "empty" : "file"}
                 type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
                 onChange={(event) => setFile(event.target.files?.[0] || null)}
               />
             </label>

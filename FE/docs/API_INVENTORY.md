@@ -2,7 +2,7 @@
 
 Source: https://sports-center-management-system.onrender.com/api/v1/docs/swagger-ui-init.js
 
-Snapshot: 2026-09-25. Production base: https://sports-center-management-system.onrender.com/api/v1
+Snapshot: 2026-10-02. Production base: https://sports-center-management-system.onrender.com/api/v1
 
 Response examples are documentation only, never application data. The client sends the documented HTTP Bearer token.
 
@@ -85,6 +85,7 @@ Responses/status codes:
                 "phone": "0900000002",
                 "gender": "FEMALE",
                 "dateOfBirth": null,
+                "avatarUrl": null,
                 "role": "STAFF",
                 "isActive": true,
                 "createdAt": "2026-09-11T14:20:14.910Z",
@@ -381,6 +382,7 @@ Responses/status codes:
               "phone": "0900000005",
               "gender": "MALE",
               "dateOfBirth": null,
+              "avatarUrl": null,
               "role": "MEMBER",
               "isActive": true,
               "memberProfile": {
@@ -547,6 +549,7 @@ Responses/status codes:
               "phone": "0900000005",
               "gender": "MALE",
               "dateOfBirth": null,
+              "avatarUrl": null,
               "role": "MEMBER",
               "isActive": true,
               "memberProfile": {
@@ -680,6 +683,7 @@ Responses/status codes:
               "phone": "0900000005",
               "gender": "MALE",
               "dateOfBirth": null,
+              "avatarUrl": null,
               "role": "MEMBER",
               "isActive": true,
               "memberProfile": {
@@ -798,6 +802,20 @@ Responses/status codes:
 {
   "200": {
     "description": "Success"
+  },
+  "403": {
+    "description": "Insufficient role permissions",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Forbidden: insufficient permissions"
+          }
+        }
+      }
+    }
   }
 }
 ```
@@ -3612,14 +3630,17 @@ Responses/status codes:
             "message": "Revenue report retrieved successfully",
             "data": {
               "totalRevenue": 900000,
-              "totalPayments": 2,
+              "refundedAmount": 300000,
+              "netRevenue": 600000,
+              "totalPayments": 3,
               "successPayments": 2,
+              "refundedPayments": 1,
               "failedPayments": 0,
               "pendingPayments": 0,
-              "refundedPayments": 0,
               "revenueByMethod": {
                 "CASH": 300000,
-                "BANK_TRANSFER": 600000
+                "BANK_TRANSFER": 600000,
+                "SEPAY": 300000
               },
               "recentPayments": [
                 {
@@ -4594,7 +4615,8 @@ Parameters:
       "type": "string",
       "enum": [
         "CASH",
-        "BANK_TRANSFER"
+        "BANK_TRANSFER",
+        "SEPAY"
       ]
     }
   },
@@ -4863,7 +4885,7 @@ Responses/status codes:
 ```
 
 ## PATCH /payments/{id}/status
-Update payment status
+Update payment status (thanh toán tại quầy)
 
 Authentication: [{"BearerAuth":[]}]
 
@@ -4984,6 +5006,732 @@ Responses/status codes:
         }
       }
     }
+  },
+  "404": {
+    "description": "Resource not found",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Record not found"
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## POST /payments/{id}/retry-activation
+Kích hoạt bù cho giao dịch online đã thu tiền nhưng chưa cấp gói (Manager only)
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "in": "path",
+    "name": "id",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Single payment",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": true,
+            "message": "Payment retrieved successfully",
+            "data": {
+              "id": "322da21d-5040-44b8-90cc-cfc9eeff2631",
+              "amount": "300000",
+              "method": "CASH",
+              "status": "SUCCESS",
+              "member": {
+                "user": {
+                  "fullName": "John Doe"
+                }
+              },
+              "subscription": {
+                "plan": {
+                  "name": "Membership Monthly",
+                  "tier": "MEMBERSHIP"
+                }
+              },
+              "invoice": {
+                "invoiceNumber": "INV-1789136414987-001"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Bad request (validation or malformed body)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Validation failed",
+            "errors": [
+              {
+                "field": "email",
+                "message": "Invalid email address"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "401": {
+    "description": "Missing, invalid or expired token",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Unauthorized: invalid or expired token"
+          }
+        }
+      }
+    }
+  },
+  "403": {
+    "description": "Insufficient role permissions",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Forbidden: insufficient permissions"
+          }
+        }
+      }
+    }
+  },
+  "404": {
+    "description": "Resource not found",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Record not found"
+          }
+        }
+      }
+    }
+  },
+  "409": {
+    "description": "Duplicate value or business conflict",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Duplicate value for: email"
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## POST /payments/sepay/checkout
+Member tạo đơn chuyển khoản VietQR (SePay) để tự mua gói hội viên
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "required": [
+    "planId"
+  ],
+  "properties": {
+    "planId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "MembershipPlan.id (tier MEMBERSHIP/PREMIUM)"
+    }
+  }
+}
+```
+Responses/status codes:
+```json
+{
+  "201": {
+    "description": "Đơn đã tạo — trả ảnh VietQR + thông tin chuyển khoản",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object"
+        },
+        "example": {
+          "success": true,
+          "message": "SePay checkout created successfully",
+          "data": {
+            "paymentId": "c1a2b3c4-0000-0000-0000-000000000001",
+            "orderCode": "SEVQR12345678",
+            "amount": 300000,
+            "currency": "VND",
+            "status": "PENDING",
+            "gateway": "SEPAY",
+            "expiresAt": "2026-09-25T15:30:00.000Z",
+            "qrUrl": "https://qr.sepay.vn/img?acc=0703339186&bank=SACOMBANK&amount=300000&des=SEVQR12345678&template=compact",
+            "transferContent": "SEVQR12345678",
+            "bank": {
+              "id": "SACOMBANK",
+              "accountNumber": "0703339186",
+              "accountHolder": "NGUYEN TRAN TU"
+            },
+            "plan": {
+              "id": "b7f1c0d2-...",
+              "name": "Gói Membership 1 tháng",
+              "tier": "MEMBERSHIP",
+              "durationDays": 30
+            }
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Gói FREE / user không phải MEMBER đang hoạt động / hạ hạng hoặc giảm số ngày cùng hạng",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object"
+        },
+        "examples": {
+          "free_plan": {
+            "value": {
+              "success": false,
+              "message": "Gói FREE không cần thanh toán. Vui lòng chọn gói MEMBERSHIP hoặc PREMIUM."
+            }
+          },
+          "downgrade": {
+            "value": {
+              "success": false,
+              "message": "Không thể mua gói thấp hơn hạng hiện tại. Bạn chỉ có thể nâng cấp."
+            }
+          }
+        }
+      }
+    }
+  },
+  "401": {
+    "description": "Missing, invalid or expired token",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Unauthorized: invalid or expired token"
+          }
+        }
+      }
+    }
+  },
+  "403": {
+    "description": "Insufficient role permissions",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Forbidden: insufficient permissions"
+          }
+        }
+      }
+    }
+  },
+  "404": {
+    "description": "Resource not found",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Record not found"
+          }
+        }
+      }
+    }
+  },
+  "409": {
+    "description": "Còn giao dịch chuyển khoản PENDING cho cùng gói (chưa quá TTL) — trả kèm QR để FE tiếp tục",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object"
+        },
+        "example": {
+          "success": false,
+          "message": "Bạn đang có giao dịch chuyển khoản chờ thanh toán cho gói \"Gói Membership 1 tháng\". Vui lòng hoàn tất hoặc thử lại sau 14 phút.",
+          "errors": {
+            "code": "SEPAY_PAYMENT_PENDING",
+            "gateway": "SEPAY",
+            "paymentId": "c1a2b3c4-0000-0000-0000-000000000001",
+            "orderCode": "SEVQR12345678",
+            "amount": 300000,
+            "expiresAt": "2026-09-25T15:30:00.000Z",
+            "qrUrl": "https://qr.sepay.vn/img?acc=0703339186&bank=SACOMBANK&amount=300000&des=SEVQR12345678",
+            "transferContent": "SEVQR12345678"
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  },
+  "503": {
+    "description": "Chưa cấu hình tài khoản nhận tiền (VIETQR_BANK_ID / VIETQR_ACCOUNT_NO)"
+  }
+}
+```
+
+## POST /payments/sepay/webhook
+SePay gọi server-to-server khi phát hiện giao dịch chuyển khoản
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "in": "header",
+    "name": "Authorization",
+    "required": false,
+    "schema": {
+      "type": "string"
+    },
+    "description": "`Apikey <SEPAY_WEBHOOK_API_KEY>` (phương thức API Key)"
+  },
+  {
+    "in": "header",
+    "name": "X-SePay-Signature",
+    "required": false,
+    "schema": {
+      "type": "string"
+    },
+    "description": "`sha256={hex}` — chữ ký HMAC-SHA256 (phương thức HMAC)"
+  },
+  {
+    "in": "header",
+    "name": "X-SePay-Timestamp",
+    "required": false,
+    "schema": {
+      "type": "string"
+    },
+    "description": "Unix timestamp (seconds) khi SePay ký — tham gia nội dung ký"
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "required": [
+    "id",
+    "transferType",
+    "transferAmount",
+    "accountNumber"
+  ],
+  "properties": {
+    "id": {
+      "type": "integer",
+      "description": "ID giao dịch trên SePay — khoá chống trùng"
+    },
+    "gateway": {
+      "type": "string",
+      "description": "Tên ngân hàng, VD SACOMBANK"
+    },
+    "transactionDate": {
+      "type": "string",
+      "description": "YYYY-MM-DD HH:mm:ss (giờ VN)"
+    },
+    "accountNumber": {
+      "type": "string"
+    },
+    "subAccount": {
+      "type": "string",
+      "description": "Số VA nếu có, rỗng nếu không"
+    },
+    "code": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mã thanh toán SePay bóc tách được, VD SEVQR12345678"
+    },
+    "content": {
+      "type": "string",
+      "description": "Nội dung chuyển khoản gốc"
+    },
+    "transferType": {
+      "type": "string",
+      "enum": [
+        "in",
+        "out"
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
+    "transferAmount": {
+      "type": "integer"
+    },
+    "accumulated": {
+      "type": "integer"
+    },
+    "referenceCode": {
+      "type": "string"
+    }
+  }
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Đã ghi nhận (SePay không cần retry) — kể cả khi lệch tiền/tài khoản hoặc lặp webhook",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object"
+        },
+        "example": {
+          "success": true
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Payload không hợp lệ (thiếu id/transferType/transferAmount…)"
+  },
+  "401": {
+    "description": "Xác thực không hợp lệ (API key sai hoặc chữ ký HMAC sai)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object"
+        },
+        "example": {
+          "success": false,
+          "message": "Chữ ký webhook SePay không hợp lệ.",
+          "errors": {
+            "code": "SEPAY_INVALID_SIGNATURE",
+            "gateway": "SEPAY",
+            "sepayId": 92704
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  },
+  "503": {
+    "description": "Server chưa cấu hình webhook SePay (SEPAY_WEBHOOK_API_KEY / SEPAY_WEBHOOK_SECRET)"
+  }
+}
+```
+
+## POST /payments/sepay/mock-confirm
+DEV/DEMO — mô phỏng SePay xác nhận đã thu tiền (chỉ khi SEPAY_MOCK_MODE=true)
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "required": [
+    "paymentId"
+  ],
+  "properties": {
+    "paymentId": {
+      "type": "string"
+    }
+  }
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Đã mô phỏng giao dịch chuyển khoản thành công",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object"
+        },
+        "example": {
+          "success": true,
+          "message": "SePay payment simulated successfully",
+          "data": {
+            "sepayId": 1927040001,
+            "orderCode": "SEVQR12345678",
+            "paymentId": "c1a2b3c4-0000-0000-0000-000000000001",
+            "processed": true,
+            "status": "PROCESSED",
+            "paymentStatus": "SUCCESS",
+            "subscriptionId": "d2b3c4d5-0000-0000-0000-000000000001",
+            "mock": true
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Bad request (validation or malformed body)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Validation failed",
+            "errors": [
+              {
+                "field": "email",
+                "message": "Invalid email address"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "401": {
+    "description": "Missing, invalid or expired token",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Unauthorized: invalid or expired token"
+          }
+        }
+      }
+    }
+  },
+  "403": {
+    "description": "Không phải chủ giao dịch / mock mode đang tắt"
+  },
+  "404": {
+    "description": "Resource not found",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Record not found"
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## GET /payments/sepay/{id}
+Xem trạng thái giao dịch chuyển khoản SePay (FE polling sau khi hội viên CK)
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "in": "path",
+    "name": "id",
+    "required": true,
+    "schema": {
+      "type": "string"
+    },
+    "description": "Payment.id nhận được từ `POST /payments/sepay/checkout`"
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Thông tin đơn + trạng thái hiện tại",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object"
+        },
+        "examples": {
+          "pending": {
+            "summary": "Chưa nhận được tiền",
+            "value": {
+              "success": true,
+              "message": "SePay checkout retrieved successfully",
+              "data": {
+                "paymentId": "c1a2b3c4-0000-0000-0000-000000000001",
+                "orderCode": "SEVQR12345678",
+                "amount": 300000,
+                "currency": "VND",
+                "status": "PENDING",
+                "gateway": "SEPAY",
+                "expiresAt": "2026-09-25T15:30:00.000Z",
+                "qrUrl": "https://qr.sepay.vn/img?acc=0703339186&bank=SACOMBANK&amount=300000&des=SEVQR12345678&template=compact",
+                "transferContent": "SEVQR12345678",
+                "bank": {
+                  "id": "SACOMBANK",
+                  "accountNumber": "0703339186",
+                  "accountHolder": "NGUYEN TRAN TU"
+                },
+                "paidAt": null,
+                "subscriptionId": null
+              }
+            }
+          },
+          "paid": {
+            "summary": "Webhook đã xác nhận — gói được kích hoạt",
+            "value": {
+              "success": true,
+              "message": "SePay checkout retrieved successfully",
+              "data": {
+                "paymentId": "c1a2b3c4-0000-0000-0000-000000000001",
+                "orderCode": "SEVQR12345678",
+                "amount": 300000,
+                "status": "SUCCESS",
+                "paidAt": "2026-09-25T11:08:35.000Z",
+                "subscriptionId": "d2b3c4d5-0000-0000-0000-000000000001"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "401": {
+    "description": "Missing, invalid or expired token",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Unauthorized: invalid or expired token"
+          }
+        }
+      }
+    }
+  },
+  "403": {
+    "description": "Không phải chủ giao dịch / COACH bị chặn"
   },
   "404": {
     "description": "Resource not found",
@@ -7283,11 +8031,7 @@ Responses/status codes:
                 "rating": 4,
                 "comment": "Tốt",
                 "isAnonymous": true,
-                "member": {
-                  "user": {
-                    "fullName": "Ẩn danh"
-                  }
-                }
+                "isOwn": false
               }
             ],
             "summary": {
@@ -8057,6 +8801,211 @@ Responses/status codes:
           "example": {
             "success": false,
             "message": "Record not found"
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## POST /enrollments/bulk
+Enroll in a WHOLE course (all upcoming sessions of a class) — Member self-enrolls; Staff/Manager for a member
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "required": [
+    "classId"
+  ],
+  "properties": {
+    "classId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "memberId": {
+      "type": "string",
+      "description": "Required when enrolled by Staff/Manager (nhận cả userId hoặc MemberProfile.id)"
+    }
+  }
+}
+```
+Responses/status codes:
+```json
+{
+  "201": {
+    "description": "Class booked successfully",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": true,
+            "message": "Class booked successfully",
+            "data": {
+              "id": "6b6b6b6b-0000-4000-8000-000000000201",
+              "status": "BOOKED",
+              "bookedAt": "2026-09-12T08:00:00.000Z",
+              "schedule": {
+                "startTime": "2026-09-15T07:00:00.000Z",
+                "endTime": "2026-09-15T08:00:00.000Z",
+                "class": {
+                  "name": "Morning Yoga",
+                  "sports": [
+                    {
+                      "name": "Yoga"
+                    }
+                  ]
+                },
+                "room": {
+                  "name": "Yoga Room A"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Bad request (validation or malformed body)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Validation failed",
+            "errors": [
+              {
+                "field": "email",
+                "message": "Invalid email address"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "401": {
+    "description": "Missing, invalid or expired token",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Unauthorized: invalid or expired token"
+          }
+        }
+      }
+    }
+  },
+  "403": {
+    "description": "Insufficient role permissions",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Forbidden: insufficient permissions"
+          }
+        }
+      }
+    }
+  },
+  "404": {
+    "description": "Resource not found",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Record not found"
+          }
+        }
+      }
+    }
+  },
+  "409": {
+    "description": "Một hoặc nhiều buổi không đủ điều kiện (all-or-nothing — không buổi nào được tạo)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object"
+        },
+        "examples": {
+          "session_full": {
+            "summary": "Một buổi trong khóa đã hết chỗ",
+            "value": {
+              "success": false,
+              "message": "Không thể đăng ký trọn khóa \"Yoga sáng\": 1 điều kiện chưa đạt.",
+              "errors": {
+                "code": "COURSE_ENROLLMENT_FAILED",
+                "classId": "a1b2c3d4-0000-0000-0000-000000000010",
+                "className": "Yoga sáng",
+                "totalSessions": 12,
+                "failedCount": 1,
+                "details": [
+                  {
+                    "code": "SESSION_FULL",
+                    "message": "Buổi 18:00 05/10/2026 (Phòng Yoga 1) đã hết chỗ.",
+                    "sessionId": "b2c3d4e5-0000-0000-0000-000000000005",
+                    "roomName": "Phòng Yoga 1",
+                    "details": {
+                      "bookedCount": 20,
+                      "capacity": 20
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "subscription_expires": {
+            "summary": "Gói tập hết hạn trước buổi cuối của khóa",
+            "value": {
+              "success": false,
+              "message": "Không thể đăng ký trọn khóa \"Yoga sáng\": 1 điều kiện chưa đạt.",
+              "errors": {
+                "code": "COURSE_ENROLLMENT_FAILED",
+                "failedCount": 1,
+                "details": [
+                  {
+                    "code": "SUBSCRIPTION_ENDS_BEFORE_COURSE_END",
+                    "message": "Gói tập của bạn hết hạn ngày 20/10/2026, trước buổi cuối của khóa ngày 19/11/2026. Vui lòng gia hạn gói để đăng ký trọn khóa.",
+                    "details": {
+                      "planEndDate": "2026-10-20T00:00:00.000Z",
+                      "lastSessionStartTime": "2026-11-19T01:00:00.000Z",
+                      "coveredSessions": 6,
+                      "totalSessions": 12
+                    }
+                  }
+                ]
+              }
+            }
           }
         }
       }
@@ -9782,6 +10731,115 @@ Responses/status codes:
 }
 ```
 
+## GET /classes/{id}/course-plan
+View a class as ONE course (grouped recurring timetable) + whole-course enrollment eligibility
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "in": "path",
+    "name": "id",
+    "required": true,
+    "schema": {
+      "type": "string"
+    },
+    "description": "Class ID"
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Single class with coaches and upcoming schedules",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": true,
+            "message": "Class retrieved successfully",
+            "data": {
+              "id": "class-yoga-001",
+              "name": "Morning Yoga",
+              "sports": [
+                {
+                  "name": "Yoga"
+                }
+              ],
+              "capacity": 15,
+              "classType": "REGULAR",
+              "areaType": "INDOOR",
+              "isActive": true,
+              "coaches": [
+                {
+                  "isPrimary": true,
+                  "coach": {
+                    "user": {
+                      "fullName": "Coach One"
+                    }
+                  }
+                }
+              ],
+              "schedules": []
+            }
+          }
+        }
+      }
+    }
+  },
+  "401": {
+    "description": "Missing, invalid or expired token",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Unauthorized: invalid or expired token"
+          }
+        }
+      }
+    }
+  },
+  "404": {
+    "description": "Resource not found",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Record not found"
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
 ## POST /classes/{id}/coaches
 Assign coach to class (Sends COACH_CHANGED notification to enrolled members)
 
@@ -10253,6 +11311,117 @@ Responses/status codes:
           "example": {
             "success": false,
             "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## POST /class-schedules/activity-plan
+Atomically create a sport (optional), class, coach assignments and schedules
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+{
+  "type": "object"
+}
+```
+Responses/status codes:
+```json
+{
+  "201": {
+    "description": "Schedule created",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": true,
+            "message": "Schedule created successfully",
+            "data": {
+              "id": "sch-yoga-001",
+              "startTime": "2026-09-15T07:00:00.000Z",
+              "endTime": "2026-09-15T08:00:00.000Z",
+              "status": "SCHEDULED",
+              "class": {
+                "name": "Morning Yoga",
+                "areaType": "INDOOR"
+              },
+              "room": {
+                "name": "Yoga Room A",
+                "areaType": "INDOOR"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Bad request (validation or malformed body)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Validation failed",
+            "errors": [
+              {
+                "field": "email",
+                "message": "Invalid email address"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "401": {
+    "description": "Missing, invalid or expired token",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Unauthorized: invalid or expired token"
+          }
+        }
+      }
+    }
+  },
+  "403": {
+    "description": "Insufficient role permissions",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Forbidden: insufficient permissions"
+          }
+        }
+      }
+    }
+  },
+  "409": {
+    "description": "Duplicate value or business conflict",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Duplicate value for: email"
           }
         }
       }
@@ -11455,6 +12624,80 @@ Responses/status codes:
 }
 ```
 
+## GET /chat/attachments/{id}
+Tải file đính kèm của tin nhắn (yêu cầu đăng nhập + phân quyền)
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "in": "path",
+    "name": "id",
+    "required": true,
+    "schema": {
+      "type": "string",
+      "format": "uuid"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "File stream"
+  },
+  "401": {
+    "description": "Missing, invalid or expired token",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Unauthorized: invalid or expired token"
+          }
+        }
+      }
+    }
+  },
+  "403": {
+    "description": "Insufficient role permissions",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Forbidden: insufficient permissions"
+          }
+        }
+      }
+    }
+  },
+  "404": {
+    "description": "Resource not found",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Record not found"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
 ## PATCH /chat/messages/read
 Mark messages as read
 
@@ -12030,6 +13273,7 @@ Responses/status codes:
               "phone": "0900000001",
               "gender": "MALE",
               "dateOfBirth": "2005-06-27T17:00:00.000Z",
+              "avatarUrl": "https://res.cloudinary.com/demo/image/upload/v1789050000/sports-center/avatars/b311dfe5-8575-4ed4-9efd-8bc81a149f14.jpg",
               "role": "MEMBER",
               "isActive": true,
               "createdAt": "2026-09-11T14:20:14.910Z",
@@ -12163,6 +13407,121 @@ Responses/status codes:
               "phone": "0900000001",
               "gender": "MALE",
               "dateOfBirth": "2005-06-27T17:00:00.000Z",
+              "avatarUrl": "https://res.cloudinary.com/demo/image/upload/v1789050000/sports-center/avatars/b311dfe5-8575-4ed4-9efd-8bc81a149f14.jpg",
+              "role": "MEMBER",
+              "isActive": true,
+              "createdAt": "2026-09-11T14:20:14.910Z",
+              "memberProfile": {
+                "id": "aecd9439-82e2-47da-90a2-2830bbe04dc4",
+                "fitnessGoal": "Lose weight",
+                "trainingLevel": "BEGINNER"
+              },
+              "coachProfile": null,
+              "managerProfile": null
+            }
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Bad request (validation or malformed body)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Validation failed",
+            "errors": [
+              {
+                "field": "email",
+                "message": "Invalid email address"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "401": {
+    "description": "Missing, invalid or expired token",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Unauthorized: invalid or expired token"
+          }
+        }
+      }
+    }
+  },
+  "404": {
+    "description": "Resource not found",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Record not found"
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## POST /auth/me/avatar
+Upload avatar image for the current user profile
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Current user profile (with role-specific profile)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": true,
+            "message": "Profile retrieved successfully",
+            "data": {
+              "id": "b311dfe5-8575-4ed4-9efd-8bc81a149f14",
+              "email": "member@example.com",
+              "fullName": "John Doe",
+              "phone": "0900000001",
+              "gender": "MALE",
+              "dateOfBirth": "2005-06-27T17:00:00.000Z",
+              "avatarUrl": "https://res.cloudinary.com/demo/image/upload/v1789050000/sports-center/avatars/b311dfe5-8575-4ed4-9efd-8bc81a149f14.jpg",
               "role": "MEMBER",
               "isActive": true,
               "createdAt": "2026-09-11T14:20:14.910Z",
@@ -13781,6 +15140,312 @@ Responses/status codes:
         }
       }
     }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## POST /auth/forgot-password
+Gửi OTP đặt lại mật khẩu qua email
+
+Authentication: []
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "required": [
+    "email"
+  ],
+  "properties": {
+    "email": {
+      "type": "string",
+      "format": "email"
+    }
+  }
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Simple confirmation (data is null)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": true,
+            "message": "Logged out successfully",
+            "data": null
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Bad request (validation or malformed body)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Validation failed",
+            "errors": [
+              {
+                "field": "email",
+                "message": "Invalid email address"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## POST /auth/reset-password
+Đặt lại mật khẩu bằng OTP nhận qua email
+
+Authentication: []
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "required": [
+    "email",
+    "otp",
+    "newPassword"
+  ],
+  "properties": {
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "otp": {
+      "type": "string",
+      "minLength": 6,
+      "maxLength": 6,
+      "pattern": "^[0-9]{6}$"
+    },
+    "newPassword": {
+      "type": "string",
+      "minLength": 6
+    }
+  }
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Simple confirmation (data is null)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": true,
+            "message": "Logged out successfully",
+            "data": null
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Bad request (validation or malformed body)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Validation failed",
+            "errors": [
+              {
+                "field": "email",
+                "message": "Invalid email address"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## POST /ai/chat
+Trò chuyện với Smart Chatbot Assistant
+
+Authentication: []
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "required": [
+    "message"
+  ],
+  "properties": {
+    "message": {
+      "type": "string"
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant",
+              "system"
+            ]
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "example": {
+    "message": "Trung tâm có gói tập nào và tuần này có lớp Yoga không?"
+  }
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Thành công",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "example": true
+            },
+            "message": {
+              "type": "string",
+              "example": "AI responded successfully"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "reply": {
+                  "type": "string",
+                  "example": "Dạ chào anh/chị, hiện tại bên em có gói Premium giá..."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  },
+  "503": {
+    "description": "AI chưa được cấu hình"
+  }
+}
+```
+
+## POST /ai/generate-training-plan
+Tạo lịch tập và dinh dưỡng cá nhân hoá bằng AI
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Thành công"
+  },
+  "400": {
+    "description": "Hội viên chưa cập nhật Mục tiêu (fitnessGoal) và Trình độ (trainingLevel) trong hồ sơ."
   },
   "500": {
     "description": "Unexpected internal server error",

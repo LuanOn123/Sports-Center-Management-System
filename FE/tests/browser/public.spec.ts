@@ -7,7 +7,7 @@ for (const width of [375, 768, 1440]) {
   }) => {
     await page.setViewportSize({ width, height: 960 });
     await page.emulateMedia({ reducedMotion: "reduce" });
-    for (const path of ["/", "/register"]) {
+    for (const path of ["/", "/register", "/login"]) {
       await page.goto(path);
       await expect(page.locator("h1")).toBeVisible();
       await page.evaluate(() => document.fonts.ready);
@@ -24,33 +24,44 @@ for (const width of [375, 768, 1440]) {
         })),
       ).toEqual([]);
       await page.screenshot({
-        path: `artifacts/${path === "/" ? "landing" : "register"}-${width}.png`,
+        path: `artifacts/${path === "/" ? "landing" : path.slice(1)}-${width}.png`,
         fullPage: true,
       });
     }
   });
 }
 
-test("mobile navigation, preview tabs and registration links work", async ({
+test("mobile navigation, sports selector, FAQ and registration links work", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
+  await expect(page.locator("header .brand-mark img")).toHaveAttribute(
+    "src",
+    "/brand/pulse-member.svg",
+  );
   await page.getByRole("button", { name: "Mở menu" }).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "Nền tảng" })
+    .getByRole("link", { name: "Tìm bộ môn" })
     .click();
   await expect(page.getByRole("button", { name: "Mở menu" })).toHaveAttribute(
     "aria-expanded",
     "false",
   );
-  await page.getByRole("tab", { name: "Hội viên", exact: true }).click();
-  await expect(page.getByRole("tabpanel")).toContainText(
-    "THẺ HỘI VIÊN MINH HỌA",
+  await page.getByRole("button", { name: "Yoga", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Yoga", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#movement-detail")).toContainText(
+    "Chậm lại một nhịp.",
   );
-  await page.getByRole("tab", { name: "Báo cáo" }).click();
-  await expect(page.getByRole("tabpanel")).toContainText("DỮ LIỆU MINH HỌA");
+  await page
+    .getByText("Tạo tài khoản có mất phí không?", { exact: true })
+    .click();
+  await expect(
+    page.getByText("Tạo tài khoản là miễn phí.", { exact: false }),
+  ).toBeVisible();
   await page.getByRole("link", { name: "Bắt đầu hành trình" }).click();
   await expect(page).toHaveURL(/\/register$/);
 });
@@ -129,13 +140,13 @@ test("registration shows conflict, server validation and connection errors with 
   await page.locator("#confirmPassword").fill("test-password");
   const submit = page.getByRole("button", { name: "Tạo tài khoản miễn phí" });
   await submit.click();
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "Email này đã được sử dụng",
   );
   await submit.click();
   await expect(page.locator("#email-error")).toHaveText("Email không hợp lệ");
   await submit.click();
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "Không thể kết nối máy chủ",
   );
   await expect(submit).toBeEnabled();
@@ -157,7 +168,7 @@ test("duplicate phone is translated and attached to phone, never email", async (
   await page.locator("#password").fill("test-password");
   await page.locator("#confirmPassword").fill("test-password");
   await page.getByRole("button", { name: "Tạo tài khoản miễn phí" }).click();
-  await expect(page.getByRole("alert")).toHaveText(
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
     "Số điện thoại này đã được sử dụng.",
   );
   await expect(page.locator("#phone-error")).toHaveText(
@@ -167,22 +178,18 @@ test("duplicate phone is translated and attached to phone, never email", async (
   await expect(page.locator("#email")).toHaveAttribute("aria-invalid", "false");
 });
 
-test("sport video respects reduced motion, switches sports and falls back on failure", async ({
+test("landing remains usable with reduced motion and unavailable remote images", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.route("**/assets.mixkit.co/**", (route) => route.abort());
+  await page.route("**/images.unsplash.com/**", (route) => route.abort());
   await page.goto("/");
-  const video = page.locator("video");
-  await expect(video).not.toHaveAttribute("src");
-  await page.getByRole("button", { name: "Yoga", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Yoga", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "Phát video" }).click();
-  await expect(video).toHaveAttribute("src", /1053/);
-  await expect(page.getByRole("status")).toContainText(
-    "Video tạm thời chưa khả dụng",
+    page.getByRole("link", { name: "Bắt đầu hành trình" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Yoga", exact: true }).click();
+  await expect(page.locator("#movement-detail")).toContainText(
+    "Chậm lại một nhịp.",
   );
-  await expect(page.locator(".p-hero-image")).toBeVisible();
 });

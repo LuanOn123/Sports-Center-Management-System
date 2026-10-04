@@ -38,24 +38,40 @@ function blockerText(blocker: CourseRegistrationBlocker) {
 
 function sessionLabel(session: CoursePlanSession) {
   if (session.myEnrollmentStatus === "BOOKED")
-    return { text: "Đã đặt", color: "#267346", background: "#edfcf2" };
+    return {
+      text: "Đã đặt",
+      color: "var(--member-success, #267346)",
+      background: "var(--member-success-soft, #edfcf2)",
+    };
   if (session.myEnrollmentStatus === "COMPLETED")
-    return { text: "Đã hoàn thành", color: "#026aa2", background: "#f0f9ff" };
+    return {
+      text: "Đã hoàn thành",
+      color: "var(--member-info, #026aa2)",
+      background: "var(--member-info-soft, #f0f9ff)",
+    };
   if (session.isFull)
-    return { text: "Hết chỗ", color: "#d92d20", background: "#fef3f2" };
+    return {
+      text: "Hết chỗ",
+      color: "var(--member-danger, #d92d20)",
+      background: "var(--member-danger-soft, #fef3f2)",
+    };
   if (session.conflictWith)
     return {
       text: `Trùng giờ với ${session.conflictWith.className}`,
-      color: "#b54708",
-      background: "#fffaeb",
+      color: "var(--member-warning, #b54708)",
+      background: "var(--member-warning-soft, #fffaeb)",
     };
-  return { text: "Chưa đặt", color: "#475467", background: "#f2f4f7" };
+  return {
+    text: "Chưa đặt",
+    color: "var(--member-muted, #475467)",
+    background: "var(--member-surface-alt, #f2f4f7)",
+  };
 }
 
 const cardStyle = {
-  background: "#ffffff",
+  background: "var(--member-surface, #ffffff)",
   borderRadius: 20,
-  border: "1px solid #e7ece9",
+  border: "1px solid var(--member-border, #e7ece9)",
   padding: 28,
 };
 
@@ -198,6 +214,7 @@ export function ClassDetailPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <button
+        className="member-button"
         onClick={() => navigate("/member/classes")}
         style={{
           alignSelf: "flex-start",
@@ -206,7 +223,7 @@ export function ClassDetailPage() {
           gap: 8,
           background: "none",
           border: "none",
-          color: "#54655d",
+          color: "var(--member-muted, #54655d)",
           fontSize: 13,
           fontWeight: 600,
           cursor: "pointer",
@@ -254,18 +271,18 @@ export function ClassDetailPage() {
               style={{
                 fontSize: 13,
                 fontWeight: 700,
-                color: "#203d31",
-                backgroundColor: "#f2f8eb",
+                color: "var(--member-text, #203d31)",
+                backgroundColor: "var(--member-accent-soft, #f2f8eb)",
                 padding: "4px 10px",
                 borderRadius: 6,
-                border: "1px solid #d4ebbf",
+                border: "1px solid var(--member-accent-border, #d4ebbf)",
               }}
             >
               {sportNames(cls)}
             </span>
             <StatusBadge status={cls.classType} />
           </div>
-          <span style={{ fontSize: 13, color: "#58695f" }}>
+          <span style={{ fontSize: 13, color: "var(--member-muted, #58695f)" }}>
             Tối đa: <strong>{cls.capacity} học viên/ca</strong>
           </span>
         </div>
@@ -273,7 +290,7 @@ export function ClassDetailPage() {
           style={{
             fontSize: 26,
             fontWeight: 800,
-            color: "#203d31",
+            color: "var(--member-text, #203d31)",
             margin: "0 0 10px",
           }}
         >
@@ -281,7 +298,7 @@ export function ClassDetailPage() {
         </h1>
         <p
           style={{
-            color: "#475467",
+            color: "var(--member-muted, #475467)",
             fontSize: 14,
             lineHeight: 1.6,
             margin: "0 0 24px",
@@ -291,19 +308,26 @@ export function ClassDetailPage() {
           {cls.description ||
             "Lớp học được thiết kế chuyên sâu giúp học viên nâng cao kỹ thuật, phát triển thể lực và giữ vững phong độ."}
         </p>
-        <div style={{ paddingTop: 18, borderTop: "1px solid #f2f5f3" }}>
+        <div
+          style={{
+            paddingTop: 18,
+            borderTop: "1px solid var(--member-surface-alt, #f2f5f3)",
+          }}
+        >
           <h3
             style={{
               fontSize: 14,
               fontWeight: 700,
-              color: "#203d31",
+              color: "var(--member-text, #203d31)",
               marginBottom: 12,
             }}
           >
             Đội ngũ Huấn luyện viên
           </h3>
           {coaches.length === 0 ? (
-            <span style={{ fontSize: 13, color: "#58695f" }}>
+            <span
+              style={{ fontSize: 13, color: "var(--member-muted, #58695f)" }}
+            >
               Chưa chỉ định huấn luyện viên
             </span>
           ) : (
@@ -315,8 +339,8 @@ export function ClassDetailPage() {
                     display: "flex",
                     alignItems: "center",
                     gap: 12,
-                    backgroundColor: "#f9fbfa",
-                    border: "1px solid #e7ece9",
+                    backgroundColor: "var(--member-surface-alt, #f9fbfa)",
+                    border: "1px solid var(--member-border, #e7ece9)",
                     padding: "10px 16px",
                     borderRadius: 12,
                   }}
@@ -326,8 +350,8 @@ export function ClassDetailPage() {
                       width: 36,
                       height: 36,
                       borderRadius: "50%",
-                      backgroundColor: "#203d31",
-                      color: "#d3f879",
+                      backgroundColor: "var(--member-surface-alt, #203d31)",
+                      color: "var(--member-accent, #d3f879)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -337,10 +361,20 @@ export function ClassDetailPage() {
                     {assigned.coach?.user?.fullName?.charAt(0) || "C"}
                   </div>
                   <div>
-                    <strong style={{ fontSize: 13, color: "#203d31" }}>
+                    <strong
+                      style={{
+                        fontSize: 13,
+                        color: "var(--member-text, #203d31)",
+                      }}
+                    >
                       {assigned.coach?.user?.fullName}
                     </strong>
-                    <div style={{ fontSize: 11, color: "#58695f" }}>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "var(--member-muted, #58695f)",
+                      }}
+                    >
                       {assigned.isPrimary ? "HLV chính" : "HLV hỗ trợ"}
                       {assigned.coach?.specialization
                         ? ` · ${assigned.coach.specialization}`
@@ -386,13 +420,19 @@ export function ClassDetailPage() {
           style={{
             fontSize: 18,
             fontWeight: 800,
-            color: "#203d31",
+            color: "var(--member-text, #203d31)",
             margin: "0 0 4px",
           }}
         >
           Khóa học
         </h2>
-        <p style={{ margin: "0 0 20px", color: "#58695f", fontSize: 13 }}>
+        <p
+          style={{
+            margin: "0 0 20px",
+            color: "var(--member-muted, #58695f)",
+            fontSize: 13,
+          }}
+        >
           Toàn bộ lịch trình của lớp — đăng ký một lần cho cả khóa
         </p>
         {planError ? (
@@ -412,7 +452,7 @@ export function ClassDetailPage() {
                 display: "flex",
                 flexWrap: "wrap",
                 gap: 10,
-                color: "#475467",
+                color: "var(--member-muted, #475467)",
                 fontSize: 13,
               }}
             >
@@ -436,18 +476,27 @@ export function ClassDetailPage() {
                     flexWrap: "wrap",
                     gap: 12,
                     padding: "14px 16px",
-                    border: "1px solid #d4ebbf",
-                    background: "#f8fcef",
+                    border: "1px solid var(--member-accent-border, #d4ebbf)",
+                    background: "var(--member-accent-soft, #f8fcef)",
                     borderRadius: 12,
                   }}
                 >
                   <div>
-                    <strong style={{ color: "#203d31", fontSize: 14 }}>
+                    <strong
+                      style={{
+                        color: "var(--member-text, #203d31)",
+                        fontSize: 14,
+                      }}
+                    >
                       {slot.weekdayLabel} · {slot.startTime}–{slot.endTime} ·{" "}
                       {slot.roomName}
                     </strong>
                     <div
-                      style={{ color: "#667085", fontSize: 12, marginTop: 4 }}
+                      style={{
+                        color: "var(--member-muted, #667085)",
+                        fontSize: 12,
+                        marginTop: 4,
+                      }}
                     >
                       {formatMemberDate(slot.firstSessionStart)} →{" "}
                       {formatMemberDate(slot.lastSessionStart)}
@@ -455,11 +504,11 @@ export function ClassDetailPage() {
                   </div>
                   <span
                     style={{
-                      background: "#ffffff",
-                      border: "1px solid #d4ebbf",
+                      background: "var(--member-surface, #ffffff)",
+                      border: "1px solid var(--member-accent-border, #d4ebbf)",
                       borderRadius: 999,
                       padding: "5px 10px",
-                      color: "#376228",
+                      color: "var(--member-accent, #376228)",
                       fontSize: 12,
                       fontWeight: 700,
                     }}
@@ -484,8 +533,8 @@ export function ClassDetailPage() {
                   gap: 6,
                   color:
                     course.availability.minRemainingSlots === 0
-                      ? "#d92d20"
-                      : "#267346",
+                      ? "var(--member-danger, #d92d20)"
+                      : "var(--member-success, #267346)",
                   fontSize: 13,
                   fontWeight: 700,
                 }}
@@ -494,7 +543,12 @@ export function ClassDetailPage() {
                 {course.capacity} chỗ/buổi
               </span>
               {course.availability.fullSessionCount > 0 && (
-                <span style={{ color: "#d92d20", fontSize: 13 }}>
+                <span
+                  style={{
+                    color: "var(--member-danger, #d92d20)",
+                    fontSize: 13,
+                  }}
+                >
                   Có {course.availability.fullSessionCount} buổi đã hết chỗ
                 </span>
               )}
@@ -547,12 +601,17 @@ export function ClassDetailPage() {
                         flexWrap: "wrap",
                         gap: 14,
                         padding: "14px 16px",
-                        border: "1px solid #e7ece9",
+                        border: "1px solid var(--member-border, #e7ece9)",
                         borderRadius: 12,
                       }}
                     >
                       <div>
-                        <strong style={{ color: "#203d31", fontSize: 13 }}>
+                        <strong
+                          style={{
+                            color: "var(--member-text, #203d31)",
+                            fontSize: 13,
+                          }}
+                        >
                           <Clock
                             size={14}
                             style={{ verticalAlign: "middle" }}
@@ -561,7 +620,7 @@ export function ClassDetailPage() {
                         </strong>
                         <div
                           style={{
-                            color: "#667085",
+                            color: "var(--member-muted, #667085)",
                             fontSize: 12,
                             marginTop: 5,
                           }}

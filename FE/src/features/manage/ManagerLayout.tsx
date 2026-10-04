@@ -6,6 +6,8 @@ import {
   CreditCard,
   Dumbbell,
   LayoutDashboard,
+  Layers,
+  Receipt,
   ShieldCheck,
   Trophy,
   UserRound,
@@ -14,6 +16,7 @@ import {
   Warehouse,
   ClipboardList,
   ContactRound,
+  BookOpen,
   Activity,
   WandSparkles,
 } from "lucide-react";
@@ -49,9 +52,9 @@ const navGroups: NavigationGroup[] = [
       ["classes", "Lớp học", Trophy],
       ["schedules", "Lịch hoạt động", CalendarDays],
       ["activity-planner", "Tạo lịch nhanh", WandSparkles],
-      ["membership", "Đăng ký & gia hạn gói", CreditCard],
-      ["payments", "Thanh toán & hóa đơn", CreditCard],
-      ["bookings", "Đăng ký lớp", CalendarDays],
+      ["membership", "Đăng ký & gia hạn gói", Layers],
+      ["payments", "Thanh toán & hóa đơn", Receipt],
+      ["bookings", "Đăng ký lớp", BookOpen],
       ["attendance-rules", "Chuyên cần", Activity],
     ],
   },
@@ -182,8 +185,8 @@ function Unavailable({ type }: { type: "roles" | "audit" }) {
         </h2>
         <p>
           {type === "roles"
-            ? "Backend hiện cung cấp bốn vai trò cố định. Chưa có API đọc hoặc thay đổi quyền chi tiết cho từng vai trò."
-            : "Backend hiện chưa cung cấp API nhật ký hoạt động để hiển thị dữ liệu tại đây."}
+            ? "Hệ thống có bốn vai trò cố định. Hiện chưa hỗ trợ thay đổi quyền chi tiết cho từng vai trò."
+            : "Nhật ký hoạt động hiện chưa khả dụng. Bạn có thể quay lại Tổng quan để tiếp tục công việc."}
         </p>
         <Link
           className="button"

@@ -10,6 +10,7 @@ import { roleHome } from "../../app/roles";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Landing } from "../public/Landing";
 import { Register } from "./Register";
+import { ForgotPassword } from "./ForgotPassword";
 export function Session() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -26,8 +27,10 @@ export function Session() {
   });
   useEffect(() => {
     const expired = (event: Event) => {
+      clearSession();
       setSession(false);
       cache.clear();
+      navigate("/login", { replace: true });
       setError(
         new Error(
           (event as CustomEvent<string>).detail ||
@@ -35,9 +38,16 @@ export function Session() {
         ),
       );
     };
+    const refreshSchedules = () => {
+      void cache.invalidateQueries();
+    };
+    window.addEventListener("schedule-state-changed", refreshSchedules);
     window.addEventListener("session-expired", expired);
-    return () => window.removeEventListener("session-expired", expired);
-  }, [cache]);
+    return () => {
+      window.removeEventListener("session-expired", expired);
+      window.removeEventListener("schedule-state-changed", refreshSchedules);
+    };
+  }, [cache, navigate]);
   async function login(email: string, password: string) {
     setLoginBusy(true);
     setError(undefined);
@@ -66,6 +76,7 @@ export function Session() {
         ),
       );
     } finally {
+      clearSession();
       setSession(false);
       cache.clear();
       navigate("/login", { replace: true });
@@ -73,6 +84,15 @@ export function Session() {
   }
   if (pathname === "/" && !session) return <Landing signedIn={false} />;
   if (!session && pathname === "/register") return <Register />;
+  if (!session && pathname === "/forgot-password")
+    return <ForgotPassword onComplete={async () => {
+      await cache.cancelQueries();
+      clearSession();
+      cache.clear();
+      setError(undefined);
+      setSession(false);
+      navigate("/login", { replace: true });
+    }} />;
   if (!session) return <Login onLogin={login} busy={loginBusy} error={error} />;
   if (q.isPending)
     return (
