@@ -1,4 +1,8 @@
-import { prisma } from "../../config/prisma.js";
+import { User } from "../../models/User.js";
+import { MemberProfile } from "../../models/MemberProfile.js";
+import { CoachProfile } from "../../models/CoachProfile.js";
+import { ManagerProfile } from "../../models/ManagerProfile.js";
+import { RefreshToken } from "../../models/RefreshToken.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { hashPassword, comparePassword } from "../../utils/bcrypt.js";
 import {
@@ -14,80 +18,88 @@ import { ensureActiveFreeSubscription } from "../subscriptions/free-subscription
 import { disconnectUserSockets } from "../chat/chat.socket.js";
 import { sendOtpEmail } from "../../utils/mailer.js";
 import { randomInt, createHash } from "crypto";
+import { prisma } from "../../config/prisma.js";
+import mongoose from "mongoose";
 import type { RegisterInput, UpdateProfileInput, ForgotPasswordInput, ResetPasswordInput } from "./auth.schema.js";
 
 export async function register(data: RegisterInput) {
-  const existing = await prisma.user.findUnique({ where: { email: data.email } });
+  const existing = await User.findOne({ email: data.email });
   if (existing) throw new AppError("Email is already in use", 409);
 
   const hashed = await hashPassword(data.password);
 
-  // Tạo user + MemberProfile + subscription FREE ACTIVE trong CÙNG transaction:
-  // mọi MEMBER mới luôn có gói ACTIVE (tier FREE, maxConcurrentClasses = 0), không rơi vào
-  // trạng thái "không có subscription". Idempotent: đã có ACTIVE subscription thì không tạo thêm.
-  const user = await prisma.$transaction(async (tx) => {
-    const created = await tx.user.create({
-      data: {
-        email: data.email,
-        password: hashed,
-        fullName: data.fullName,
-        phone: data.phone,
-        gender: data.gender,
-        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
-        role: "MEMBER",
-        memberProfile: { create: {} },
-      },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        phone: true,
-        gender: true,
-        dateOfBirth: true,
-        role: true,
-        isActive: true,
-        memberProfile: true,
-      },
+  // Tạo user + MemberProfile trong MongoDB
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const created = new User({
+      email: data.email,
+      password: hashed,
+      fullName: data.fullName,
+      phone: data.phone || null,
+      gender: data.gender || null,
+      dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+      role: "MEMBER",
     });
+    await created.save({ session });
+    const userId = created._id.toString();
 
-    if (created.memberProfile) {
-      await ensureActiveFreeSubscription(tx, created.memberProfile.id);
-    }
+    const memberProfile = new MemberProfile({ userId });
+    await memberProfile.save({ session });
 
-    return created;
-  });
+    await session.commitTransaction();
 
-  // Gửi thông báo chào mừng (fire-and-forget, không block response)
-  createNotification(
-    user.id,
-    "MEMBER_REGISTERED",
-    "Chào mừng đến với Trung tâm Thể thao!",
-    `Xin chào ${user.fullName}! Tài khoản của bạn đã được tạo thành công. Hãy khám phá các gói tập và lớp học phù hợp với bạn.`
-  ).catch(() => {}); // Không để lỗi notification phá vỡ response đăng ký
+    // Tạo FREE subscription trong PostgreSQL (cross-database, ngoài mongo transaction)
+    const memberProfileId = memberProfile._id.toString();
+    await prisma.$transaction((tx) =>
+      ensureActiveFreeSubscription(tx, memberProfileId)
+    );
 
-  return user;
+    // Gửi thông báo chào mừng (fire-and-forget)
+    createNotification(
+      userId,
+      "MEMBER_REGISTERED",
+      "Chào mừng đến với Trung tâm Thể thao!",
+      `Xin chào ${created.fullName}! Tài khoản của bạn đã được tạo thành công. Hãy khám phá các gói tập và lớp học phù hợp với bạn.`
+    ).catch(() => {});
+
+    return {
+      id: userId,
+      email: created.email,
+      fullName: created.fullName,
+      phone: created.phone,
+      gender: created.gender,
+      dateOfBirth: created.dateOfBirth,
+      role: created.role,
+      isActive: created.isActive,
+      memberProfile: memberProfile.toJSON(),
+    };
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    session.endSession();
+  }
 }
 
 
 export async function login(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await User.findOne({ email }).select("+password");
   if (!user) throw new AppError("Invalid email or password", 401);
   if (!user.isActive) throw new AppError("Your account has been deactivated", 403);
 
   const valid = await comparePassword(password, user.password);
   if (!valid) throw new AppError("Invalid email or password", 401);
 
-  const payload = { id: user.id, role: user.role };
+  const userId = user._id.toString();
+  const payload = { id: userId, role: user.role };
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
 
-  // BR-27: Store hash of refresh token, not the raw token
-  await prisma.refreshToken.create({
-    data: {
-      token: hashToken(refreshToken),
-      userId: user.id,
-      expiresAt: getRefreshTokenExpiryDate(),
-    },
+  await RefreshToken.create({
+    token: hashToken(refreshToken),
+    userId,
+    expiresAt: getRefreshTokenExpiryDate(),
   });
 
   return { accessToken, refreshToken };
@@ -95,13 +107,13 @@ export async function login(email: string, password: string) {
 
 export async function logout(token: string) {
   const tokenHash = hashToken(token);
-  const existing = await prisma.refreshToken.findUnique({ where: { token: tokenHash } });
+  const existing = await RefreshToken.findOne({ token: tokenHash });
   if (!existing) throw new AppError("Refresh token not found", 404);
 
-  await prisma.refreshToken.update({
-    where: { token: tokenHash },
-    data: { revokedAt: new Date() },
-  });
+  await RefreshToken.updateOne(
+    { token: tokenHash },
+    { revokedAt: new Date() }
+  );
 }
 
 export async function refreshAccessToken(token: string) {
@@ -113,66 +125,72 @@ export async function refreshAccessToken(token: string) {
   }
 
   const tokenHash = hashToken(token);
-  const stored = await prisma.refreshToken.findUnique({ where: { token: tokenHash } });
+  const stored = await RefreshToken.findOne({ token: tokenHash });
   if (!stored) throw new AppError("Refresh token not found", 401);
   if (stored.revokedAt) throw new AppError("Refresh token has been revoked", 401);
   if (stored.expiresAt < new Date()) throw new AppError("Refresh token has expired", 401);
 
-  const user = await prisma.user.findUnique({ where: { id: payload.id } });
+  const user = await User.findById(payload.id);
   if (!user || !user.isActive) throw new AppError("User not found or inactive", 401);
 
-  const accessToken = signAccessToken({ id: user.id, role: user.role });
+  const accessToken = signAccessToken({ id: user._id.toString(), role: user.role });
   return { accessToken };
 }
 
 export async function getMe(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      email: true,
-      fullName: true,
-      phone: true,
-      gender: true,
-      dateOfBirth: true,
-      avatarUrl: true,
-      role: true,
-      isActive: true,
-      createdAt: true,
-      memberProfile: true,
-      coachProfile: true,
-      managerProfile: true,
-    },
-  });
+  const user = await User.findById(userId).lean();
   if (!user) throw new AppError("User not found", 404);
-  return user;
+
+  const uid = (user._id as any).toString();
+  const memberProfile = await MemberProfile.findOne({ userId: uid }).lean();
+  const coachProfile = await CoachProfile.findOne({ userId: uid }).lean();
+  const managerProfile = await ManagerProfile.findOne({ userId: uid }).lean();
+
+  const transform = (doc: any) => {
+    if (!doc) return null;
+    return { ...doc, id: doc._id.toString(), _id: undefined, __v: undefined };
+  };
+
+  return {
+    id: uid,
+    email: user.email,
+    fullName: user.fullName,
+    phone: user.phone,
+    gender: user.gender,
+    dateOfBirth: user.dateOfBirth,
+    avatarUrl: user.avatarUrl,
+    role: user.role,
+    isActive: user.isActive,
+    createdAt: user.createdAt,
+    memberProfile: transform(memberProfile),
+    coachProfile: transform(coachProfile),
+    managerProfile: transform(managerProfile),
+  };
 }
 
 export async function updateMe(userId: string, data: UpdateProfileInput) {
   const { fitnessGoal, trainingLevel, trainingPreference, ...userFields } = data;
 
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const user = await User.findById(userId);
   if (!user) throw new AppError("User not found", 404);
 
-  const profileData: Record<string, unknown> = {};
-  if (fitnessGoal !== undefined) profileData.fitnessGoal = fitnessGoal;
-  if (trainingLevel !== undefined) profileData.trainingLevel = trainingLevel;
-  if (trainingPreference !== undefined) profileData.trainingPreference = trainingPreference;
+  // Cập nhật user fields
+  if (Object.keys(userFields).length > 0) {
+    const updateData: any = { ...userFields };
+    if (userFields.dateOfBirth) updateData.dateOfBirth = new Date(userFields.dateOfBirth);
+    await User.updateOne({ _id: userId }, updateData);
+  }
 
-  // User + profile phải cập nhật ATOMIC: lỗi giữa chừng không để dữ liệu nửa vời (F02).
-  await prisma.$transaction(async (tx) => {
-    await tx.user.update({
-      where: { id: userId },
-      data: {
-        ...userFields,
-        dateOfBirth: userFields.dateOfBirth ? new Date(userFields.dateOfBirth) : undefined,
-      },
-    });
-
-    if (user.role === "MEMBER" && Object.keys(profileData).length > 0) {
-      await tx.memberProfile.update({ where: { userId }, data: profileData });
+  // Cập nhật member profile fields
+  if (user.role === "MEMBER") {
+    const profileData: any = {};
+    if (fitnessGoal !== undefined) profileData.fitnessGoal = fitnessGoal;
+    if (trainingLevel !== undefined) profileData.trainingLevel = trainingLevel;
+    if (trainingPreference !== undefined) profileData.trainingPreference = trainingPreference;
+    if (Object.keys(profileData).length > 0) {
+      await MemberProfile.updateOne({ userId: user._id.toString() }, profileData);
     }
-  });
+  }
 
   return getMe(userId);
 }
@@ -182,87 +200,55 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string
 ) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const user = await User.findById(userId).select("+password");
   if (!user) throw new AppError("User not found", 404);
 
   const valid = await comparePassword(currentPassword, user.password);
   if (!valid) throw new AppError("Current password is incorrect", 400);
 
   const hashed = await hashPassword(newPassword);
-  // Đổi mật khẩu (đặc biệt khi nghi lộ tài khoản) phải thu hồi MỌI refresh token cũ —
-  // nếu không thiết bị khác vẫn refresh được access token mới.
-  await prisma.$transaction([
-    prisma.user.update({ where: { id: userId }, data: { password: hashed } }),
-    prisma.refreshToken.deleteMany({ where: { userId } }),
-  ]);
+  await User.updateOne({ _id: userId }, { password: hashed });
+  await RefreshToken.deleteMany({ userId: user._id.toString() });
 
-  // Đồng thời ngắt socket đang mở (handshake chỉ xác thực một lần).
   disconnectUserSockets(userId);
 }
 
-/**
- * Cập nhật avatar cho user. `avatarUrl` do controller lấy từ utils/avatarStorage
- * (local `uploads/avatars/...` hoặc Cloudinary), sau đó trả về profile đầy đủ như `GET /auth/me`.
- */
 export async function updateAvatar(userId: string, avatarUrl: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { avatarUrl: true },
-  });
+  const user = await User.findById(userId).select("avatarUrl");
   if (!user) throw new AppError("User not found", 404);
 
-  await prisma.user.update({ where: { id: userId }, data: { avatarUrl } });
-
-  // Dọn avatar cũ sau khi DB update thành công. Với Cloudinary, `public_id` cố định theo user
-  // nên upload mới đã ghi đè asset cũ — không cần (và không được) xoá (xem utils/avatarStorage.ts).
-  removeStoredAvatar(user.avatarUrl);
+  const oldAvatarUrl = user.avatarUrl ?? null;
+  await User.updateOne({ _id: userId }, { avatarUrl });
+  if (oldAvatarUrl) removeStoredAvatar(oldAvatarUrl);
 
   return getMe(userId);
 }
 
-/** Băm OTP bằng SHA-256 trước khi lưu DB — tránh lộ OTP cleartext nếu DB bị dump. */
+/** Băm OTP bằng SHA-256 trước khi lưu DB */
 function hashOtp(otp: string): string {
   return createHash("sha256").update(otp).digest("hex");
 }
 
-/**
- * Bước 1 — Quên mật khẩu: sinh OTP 6 chữ số, lưu hash + expiry vào User,
- * sau đó gửi mail. Luôn trả HTTP 200 cùng thông điệp chung dù email không tồn tại
- * (chống user enumeration).
- */
 export async function forgotPassword(data: ForgotPasswordInput) {
-  const OTP_TTL_MS = 5 * 60 * 1000; // 5 phút
-
-  const user = await prisma.user.findUnique({ where: { email: data.email } });
-
-  // Trả sớm nếu không tìm thấy — KHÔNG tiết lộ email có tồn tại hay không.
+  const OTP_TTL_MS = 5 * 60 * 1000;
+  const user = await User.findOne({ email: data.email });
   if (!user || !user.isActive) return;
 
-  const otp = String(randomInt(100_000, 999_999)); // 6 chữ số, đủ ngẫu nhiên
+  const otp = String(randomInt(100_000, 999_999));
   const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      resetPasswordOtp: hashOtp(otp),
-      resetPasswordOtpExpiresAt: expiresAt,
-    },
-  });
+  await User.updateOne(
+    { _id: user._id },
+    { resetPasswordOtp: hashOtp(otp), resetPasswordOtpExpiresAt: expiresAt }
+  );
 
-  // Fire-and-forget: không await để API trả 200 NGAY, gửi mail ở nền.
-  // OTP đã được lưu DB — dù mail chưa đến tay user thì API đã sẵn sàng xác minh.
-  sendOtpEmail(user.email, otp).catch((mailErr) => {
-    console.error('[forgotPassword] Failed to send OTP email to', user.email, mailErr);
+  sendOtpEmail(user.email, otp).catch((mailErr: any) => {
+    console.error("[forgotPassword] Failed to send OTP email to", user.email, mailErr);
   });
 }
 
-/**
- * Bước 2 — Đặt lại mật khẩu: xác minh OTP (hash, expiry, one-time-use),
- * cập nhật password mới, thu hồi toàn bộ refresh token và đóng socket.
- */
 export async function resetPassword(data: ResetPasswordInput) {
-  const user = await prisma.user.findUnique({ where: { email: data.email } });
-
+  const user = await User.findOne({ email: data.email });
   if (!user || !user.isActive) {
     throw new AppError("OTP không hợp lệ hoặc đã hết hạn.", 400);
   }
@@ -281,20 +267,13 @@ export async function resetPassword(data: ResetPasswordInput) {
   }
 
   const hashed = await hashPassword(data.newPassword);
+  const userId = user._id.toString();
 
-  // Đặt lại password + xóa OTP (one-time-use) + thu hồi mọi refresh token — atomic.
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: user.id },
-      data: {
-        password: hashed,
-        resetPasswordOtp: null,
-        resetPasswordOtpExpiresAt: null,
-      },
-    }),
-    prisma.refreshToken.deleteMany({ where: { userId: user.id } }),
-  ]);
+  await User.updateOne(
+    { _id: user._id },
+    { password: hashed, resetPasswordOtp: null, resetPasswordOtpExpiresAt: null }
+  );
+  await RefreshToken.deleteMany({ userId });
 
-  // Đóng các socket đang mở.
-  disconnectUserSockets(user.id);
+  disconnectUserSockets(userId);
 }
