@@ -237,13 +237,6 @@ export function SchemaForm({
         return;
       }
     }
-    if (
-      operation === "POST /training-plans" &&
-      Date.parse(String(body.endDate)) <= Date.parse(String(body.startDate))
-    ) {
-      setError(new Error("Ngày kết thúc phải sau ngày bắt đầu kế hoạch."));
-      return;
-    }
     if (operation === "PATCH /class-schedules/{id}") {
       // Lifecycle actions must use their dedicated endpoints and confirmations.
       delete body.status;

@@ -1,3 +1,4 @@
+import { migrateIdentityStorage } from "./identityStorage";
 import operations from "./operations.json";
 import { toast } from "./toast";
 import { localizeApiError } from "./apiErrors";
@@ -46,6 +47,7 @@ export const BASE_URL = (
     .VITE_API_BASE_URL ||
   "https://sports-center-management-system.onrender.com/api/v1"
 ).replace(/\/$/, "");
+migrateIdentityStorage();
 let accessToken = sessionStorage.getItem("pulse.access") || "";
 let refreshToken = sessionStorage.getItem("pulse.refresh") || "";
 export const getAccessToken = () => accessToken;

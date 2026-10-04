@@ -194,7 +194,8 @@ test("member cannot enter manager routes", async ({ page }) => {
 test("API errors are visible and retry restores the list", async ({ page }) => {
   await fixtureApi(page);
   await page.addInitScript(() => {
-    sessionStorage.setItem("pulse.access", "test-only");
+    (sessionStorage.setItem("pulse.identity-version", "mongo-identities-v1"),
+      sessionStorage.setItem("pulse.access", "test-only"));
   });
   let fail = true;
   await page.route("**/api/v1/sports?**", async (route) => {

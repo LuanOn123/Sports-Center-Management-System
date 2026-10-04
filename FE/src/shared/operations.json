@@ -250,171 +250,6 @@
       "500"
     ]
   },
-  "GET /training-plans": {
-    "path": "/training-plans",
-    "method": "GET",
-    "summary": "GET /training-plans",
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ],
-    "parameters": [
-      {
-        "in": "query",
-        "name": "memberId",
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404"
-    ]
-  },
-  "POST /training-plans": {
-    "path": "/training-plans",
-    "method": "POST",
-    "summary": "POST /training-plans",
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ],
-    "parameters": [],
-    "body": {
-      "type": "object",
-      "properties": {
-        "memberId": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "coachId": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1
-        },
-        "description": {
-          "type": "string"
-        },
-        "startDate": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "endDate": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "memberId",
-        "coachId",
-        "name",
-        "startDate",
-        "endDate"
-      ]
-    },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404"
-    ]
-  },
-  "PATCH /training-plans/{id}": {
-    "path": "/training-plans/{id}",
-    "method": "PATCH",
-    "summary": "Change the coach of a training plan (Member changes own plan, Coach current plan, Manager any plan)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
-    ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "description": "TrainingPlan ID"
-      }
-    ],
-    "body": {
-      "type": "object",
-      "required": [
-        "coachId"
-      ],
-      "properties": {
-        "coachId": {
-          "type": "string",
-          "format": "uuid",
-          "description": "CoachProfile.id của HLV mới (khác HLV hiện tại)"
-        }
-      }
-    },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "409",
-      "500"
-    ]
-  },
-  "POST /training-plans/results": {
-    "path": "/training-plans/results",
-    "method": "POST",
-    "summary": "POST /training-plans/results",
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ],
-    "parameters": [],
-    "body": {
-      "type": "object",
-      "properties": {
-        "planId": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "date": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "metrics": {
-          "type": "object"
-        },
-        "coachNote": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "planId",
-        "date"
-      ]
-    },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404"
-    ]
-  },
   "POST /subscriptions": {
     "path": "/subscriptions",
     "method": "POST",
@@ -2617,7 +2452,6 @@
       "properties": {
         "coachId": {
           "type": "string",
-          "format": "uuid",
           "description": "CoachProfile ID"
         },
         "classId": {
@@ -2668,8 +2502,7 @@
         "name": "coachId",
         "required": true,
         "schema": {
-          "type": "string",
-          "format": "uuid"
+          "type": "string"
         },
         "description": "CoachProfile ID cần xem đánh giá"
       },
@@ -2807,7 +2640,6 @@
         },
         "memberId": {
           "type": "string",
-          "format": "uuid",
           "description": "Required when booked by Staff/Manager"
         }
       }
@@ -4042,8 +3874,7 @@
       "type": "object",
       "properties": {
         "receiverId": {
-          "type": "string",
-          "format": "uuid"
+          "type": "string"
         },
         "content": {
           "type": "string"
@@ -4105,8 +3936,7 @@
       "type": "object",
       "properties": {
         "targetId": {
-          "type": "string",
-          "format": "uuid"
+          "type": "string"
         }
       },
       "required": []
@@ -4404,6 +4234,66 @@
       "500"
     ]
   },
+  "POST /auth/forgot-password": {
+    "path": "/auth/forgot-password",
+    "method": "POST",
+    "summary": "Gửi OTP đặt lại mật khẩu qua email",
+    "security": [],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "required": [
+        "email"
+      ],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        }
+      }
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "500"
+    ]
+  },
+  "POST /auth/reset-password": {
+    "path": "/auth/reset-password",
+    "method": "POST",
+    "summary": "Đặt lại mật khẩu bằng OTP nhận qua email",
+    "security": [],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "required": [
+        "email",
+        "otp",
+        "newPassword"
+      ],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "otp": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 6,
+          "description": "Mã 6 chữ số nhận qua email"
+        },
+        "newPassword": {
+          "type": "string",
+          "minLength": 6
+        }
+      }
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "500"
+    ]
+  },
   "GET /attendance": {
     "path": "/attendance",
     "method": "GET",
@@ -4449,8 +4339,7 @@
           "format": "uuid"
         },
         "memberId": {
-          "type": "string",
-          "format": "uuid"
+          "type": "string"
         },
         "status": {
           "type": "string",
@@ -4898,66 +4787,6 @@
       "500"
     ]
   },
-  "POST /auth/forgot-password": {
-    "path": "/auth/forgot-password",
-    "method": "POST",
-    "summary": "Gửi OTP đặt lại mật khẩu qua email",
-    "security": [],
-    "parameters": [],
-    "body": {
-      "type": "object",
-      "required": [
-        "email"
-      ],
-      "properties": {
-        "email": {
-          "type": "string",
-          "format": "email"
-        }
-      }
-    },
-    "statusCodes": [
-      "200",
-      "400",
-      "500"
-    ]
-  },
-  "POST /auth/reset-password": {
-    "path": "/auth/reset-password",
-    "method": "POST",
-    "summary": "Đặt lại mật khẩu bằng OTP nhận qua email",
-    "security": [],
-    "parameters": [],
-    "body": {
-      "type": "object",
-      "required": [
-        "email",
-        "otp",
-        "newPassword"
-      ],
-      "properties": {
-        "email": {
-          "type": "string",
-          "format": "email"
-        },
-        "otp": {
-          "type": "string",
-          "minLength": 6,
-          "maxLength": 6,
-          "pattern": "^[0-9]{6}$"
-        },
-        "newPassword": {
-          "type": "string",
-          "minLength": 6
-        }
-      }
-    },
-    "statusCodes": [
-      "200",
-      "400",
-      "500"
-    ]
-  },
   "POST /ai/chat": {
     "path": "/ai/chat",
     "method": "POST",
@@ -5001,23 +4830,6 @@
       "200",
       "500",
       "503"
-    ]
-  },
-  "POST /ai/generate-training-plan": {
-    "path": "/ai/generate-training-plan",
-    "method": "POST",
-    "summary": "Tạo lịch tập và dinh dưỡng cá nhân hoá bằng AI",
-    "security": [
-      {
-        "BearerAuth": []
-      }
-    ],
-    "parameters": [],
-    "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "500"
     ]
   }
 }

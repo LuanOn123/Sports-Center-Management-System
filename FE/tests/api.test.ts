@@ -11,7 +11,9 @@ const envelope = (data: unknown, status = 200) =>
 beforeEach(() => {
   vi.resetModules();
   vi.unstubAllGlobals();
-  const store = new Map<string, string>();
+  const store = new Map<string, string>([
+    ["pulse.identity-version", "mongo-identities-v1"],
+  ]);
   vi.stubGlobal("sessionStorage", {
     getItem: (k: string) => store.get(k) || null,
     setItem: (k: string, v: string) => store.set(k, v),
@@ -20,6 +22,40 @@ beforeEach(() => {
   vi.stubGlobal("window", { dispatchEvent: vi.fn() });
 });
 describe("API client contract and authentication", () => {
+  it("rejects deleted training operations before network access", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const { api, contract } = await import("../src/shared/api");
+    expect(
+      Object.keys(contract).filter((key) =>
+        /\/training-plans|\/ai\/generate-training-plan/.test(key),
+      ),
+    ).toEqual([]);
+    await expect(api("GET /training-plans")).rejects.toThrow(
+      "Undocumented operation",
+    );
+    await expect(api("POST /ai/generate-training-plan")).rejects.toThrow(
+      "Undocumented operation",
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("keeps Mongo identity paths and PostgreSQL entity IDs as opaque strings", async () => {
+    sessionStorage.setItem("pulse.access", "mongo-session");
+    const fetch = vi.fn().mockImplementation(async () => envelope(null));
+    vi.stubGlobal("fetch", fetch);
+    const { api } = await import("../src/shared/api");
+    const memberId = "670123abc456def789012345";
+    const coachId = "670123abc456def789012346";
+    const classId = "a1b2c3d4-e5f6-4789-abcd-ef1234567890";
+    await api("GET /members/{id}", { params: { id: memberId } });
+    await api("GET /classes", { query: { coachId } });
+    await api("GET /classes/{id}", { params: { id: classId } });
+    expect(fetch.mock.calls[0][0]).toContain(`/members/${memberId}`);
+    expect(fetch.mock.calls[1][0]).toContain(`coachId=${coachId}`);
+    expect(fetch.mock.calls[2][0]).toContain(`/classes/${classId}`);
+    for (const [, options] of fetch.mock.calls)
+      expect(options.headers.Authorization).toBe("Bearer mongo-session");
+  });
   it("sends password recovery without credentials or session refresh", async () => {
     sessionStorage.setItem("pulse.access", "old-token");
     sessionStorage.setItem("pulse.refresh", "old-refresh");
@@ -27,14 +63,20 @@ describe("API client contract and authentication", () => {
     vi.stubGlobal("fetch", fetch);
     const { authService, hasSession } = await import("../src/shared/api");
     await authService.forgotPassword("user@example.com");
-    await authService.resetPassword({ email: "user@example.com", otp: "012345", newPassword: "secret123" });
+    await authService.resetPassword({
+      email: "user@example.com",
+      otp: "012345",
+      newPassword: "secret123",
+    });
     for (const [, options] of fetch.mock.calls) {
       expect(options.headers.Authorization).toBeUndefined();
       expect(options.method).toBe("POST");
     }
     expect(JSON.parse(fetch.mock.calls[1][1].body).otp).toBe("012345");
     fetch.mockResolvedValue(envelope(null, 401));
-    await expect(authService.forgotPassword("user@example.com")).rejects.toThrow();
+    await expect(
+      authService.forgotPassword("user@example.com"),
+    ).rejects.toThrow();
     expect(fetch).toHaveBeenCalledTimes(3);
     expect(hasSession()).toBe(true);
   });
@@ -329,18 +371,16 @@ describe("audit integration", () => {
   it("asks the mounted lists to reload after a stale schedule conflict", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(
-            JSON.stringify({
-              success: false,
-              message: "Lịch học đã thay đổi trạng thái, vui lòng tải lại.",
-              errors: { code: "SCHEDULE_STATE_CHANGED" },
-            }),
-            { status: 409 },
-          ),
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            success: false,
+            message: "Lịch học đã thay đổi trạng thái, vui lòng tải lại.",
+            errors: { code: "SCHEDULE_STATE_CHANGED" },
+          }),
+          { status: 409 },
         ),
+      ),
     );
     const { api } = await import("../src/shared/api");
     await expect(

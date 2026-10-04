@@ -14,8 +14,11 @@ async function setupCoach(
   } = {},
 ) {
   await page.clock.install({ time: new Date("2026-09-18T03:00:00Z") });
-  await page.addInitScript(() =>
-    sessionStorage.setItem("pulse.access", "coach-test"),
+  await page.addInitScript(
+    () => (
+      sessionStorage.setItem("pulse.identity-version", "mongo-identities-v1"),
+      sessionStorage.setItem("pulse.access", "coach-test")
+    ),
   );
   const calls: {
     path: string;

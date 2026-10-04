@@ -1,8 +1,8 @@
 # OpenAPI endpoint inventory
 
-Source: https://sports-center-management-system.onrender.com/api/v1/docs/swagger-ui-init.js
+Source: BE/src/config/swagger.ts + BE/src/modules/**/*.routes.ts (local checkout)
 
-Snapshot: 2026-10-02. Production base: https://sports-center-management-system.onrender.com/api/v1
+Snapshot: 2026-10-04. Production base: https://sports-center-management-system.onrender.com/api/v1
 
 Response examples are documentation only, never application data. The client sends the documented HTTP Bearer token.
 
@@ -772,280 +772,6 @@ Responses/status codes:
         }
       }
     }
-  }
-}
-```
-
-## GET /training-plans
-undefined
-
-Authentication: [{"BearerAuth":[]}]
-
-Parameters:
-```json
-[
-  {
-    "in": "query",
-    "name": "memberId",
-    "schema": {
-      "type": "string"
-    }
-  }
-]
-```
-Request body:
-```json
-null
-```
-Responses/status codes:
-```json
-{
-  "200": {
-    "description": "Success"
-  },
-  "403": {
-    "description": "Insufficient role permissions",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Forbidden: insufficient permissions"
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-## POST /training-plans
-undefined
-
-Authentication: [{"BearerAuth":[]}]
-
-Parameters:
-```json
-[]
-```
-Request body:
-```json
-{
-  "type": "object",
-  "properties": {
-    "memberId": {
-      "type": "string"
-    },
-    "coachId": {
-      "type": "string"
-    },
-    "name": {
-      "type": "string"
-    },
-    "startDate": {
-      "type": "string"
-    },
-    "endDate": {
-      "type": "string"
-    }
-  }
-}
-```
-Responses/status codes:
-```json
-{
-  "201": {
-    "description": "Success"
-  }
-}
-```
-
-## PATCH /training-plans/{id}
-Change the coach of a training plan (Member changes own plan, Coach current plan, Manager any plan)
-
-Authentication: [{"BearerAuth":[]}]
-
-Parameters:
-```json
-[
-  {
-    "in": "path",
-    "name": "id",
-    "required": true,
-    "schema": {
-      "type": "string",
-      "format": "uuid"
-    },
-    "description": "TrainingPlan ID"
-  }
-]
-```
-Request body:
-```json
-{
-  "type": "object",
-  "required": [
-    "coachId"
-  ],
-  "properties": {
-    "coachId": {
-      "type": "string",
-      "format": "uuid",
-      "description": "CoachProfile.id của HLV mới (khác HLV hiện tại)"
-    }
-  }
-}
-```
-Responses/status codes:
-```json
-{
-  "200": {
-    "description": "Training plan coach updated successfully",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object"
-        },
-        "example": {
-          "success": true,
-          "message": "Training plan coach updated successfully",
-          "data": {
-            "id": "b7e3d6f0-0000-4000-8000-000000000001",
-            "memberId": "member-1",
-            "coachId": "c1a2b3c4-0000-4000-8000-000000000002",
-            "name": "Giảm cân 8 tuần",
-            "coach": {
-              "user": {
-                "fullName": "Coach Two"
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "400": {
-    "description": "Bad request (validation or malformed body)",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Validation failed",
-            "errors": [
-              {
-                "field": "email",
-                "message": "Invalid email address"
-              }
-            ]
-          }
-        }
-      }
-    }
-  },
-  "401": {
-    "description": "Missing, invalid or expired token",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Unauthorized: invalid or expired token"
-          }
-        }
-      }
-    }
-  },
-  "403": {
-    "description": "Insufficient role permissions",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Forbidden: insufficient permissions"
-          }
-        }
-      }
-    }
-  },
-  "404": {
-    "description": "Resource not found",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Record not found"
-          }
-        }
-      }
-    }
-  },
-  "409": {
-    "description": "Duplicate value or business conflict",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Duplicate value for: email"
-          }
-        }
-      }
-    }
-  },
-  "500": {
-    "description": "Unexpected internal server error",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Internal server error"
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-## POST /training-plans/results
-undefined
-
-Authentication: [{"BearerAuth":[]}]
-
-Parameters:
-```json
-[]
-```
-Request body:
-```json
-{
-  "type": "object",
-  "properties": {
-    "planId": {
-      "type": "string"
-    },
-    "date": {
-      "type": "string"
-    }
-  }
-}
-```
-Responses/status codes:
-```json
-{
-  "201": {
-    "description": "Success"
   }
 }
 ```
@@ -5788,7 +5514,6 @@ Parameters:
         "SCHEDULE_UPDATED",
         "ENROLLMENT_CONFIRMED",
         "ENROLLMENT_CANCELLED",
-        "TRAINING_PLAN_ASSIGNED",
         "NEW_CLASS",
         "COACH_CHANGED",
         "PAYMENT_SUCCESS",
@@ -7824,7 +7549,6 @@ Request body:
   "properties": {
     "coachId": {
       "type": "string",
-      "format": "uuid",
       "description": "CoachProfile ID"
     },
     "classId": {
@@ -7957,8 +7681,7 @@ Parameters:
     "name": "coachId",
     "required": true,
     "schema": {
-      "type": "string",
-      "format": "uuid"
+      "type": "string"
     },
     "description": "CoachProfile ID cần xem đánh giá"
   },
@@ -8407,7 +8130,6 @@ Request body:
     },
     "memberId": {
       "type": "string",
-      "format": "uuid",
       "description": "Required when booked by Staff/Manager"
     }
   }
@@ -13714,6 +13436,176 @@ Responses/status codes:
 }
 ```
 
+## POST /auth/forgot-password
+Gửi OTP đặt lại mật khẩu qua email
+
+Authentication: []
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "required": [
+    "email"
+  ],
+  "properties": {
+    "email": {
+      "type": "string",
+      "format": "email"
+    }
+  }
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Simple confirmation (data is null)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": true,
+            "message": "Logged out successfully",
+            "data": null
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Bad request (validation or malformed body)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Validation failed",
+            "errors": [
+              {
+                "field": "email",
+                "message": "Invalid email address"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## POST /auth/reset-password
+Đặt lại mật khẩu bằng OTP nhận qua email
+
+Authentication: []
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "required": [
+    "email",
+    "otp",
+    "newPassword"
+  ],
+  "properties": {
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "otp": {
+      "type": "string",
+      "minLength": 6,
+      "maxLength": 6,
+      "description": "Mã 6 chữ số nhận qua email"
+    },
+    "newPassword": {
+      "type": "string",
+      "minLength": 6
+    }
+  }
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Simple confirmation (data is null)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": true,
+            "message": "Logged out successfully",
+            "data": null
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Bad request (validation or malformed body)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Validation failed",
+            "errors": [
+              {
+                "field": "email",
+                "message": "Invalid email address"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
 ## GET /attendance
 Get attendance roster of a schedule (MANAGER/STAFF: full roster; COACH: only own classes; MEMBER: only own records)
 
@@ -15158,176 +15050,6 @@ Responses/status codes:
 }
 ```
 
-## POST /auth/forgot-password
-Gửi OTP đặt lại mật khẩu qua email
-
-Authentication: []
-
-Parameters:
-```json
-[]
-```
-Request body:
-```json
-{
-  "type": "object",
-  "required": [
-    "email"
-  ],
-  "properties": {
-    "email": {
-      "type": "string",
-      "format": "email"
-    }
-  }
-}
-```
-Responses/status codes:
-```json
-{
-  "200": {
-    "description": "Simple confirmation (data is null)",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": true,
-            "message": "Logged out successfully",
-            "data": null
-          }
-        }
-      }
-    }
-  },
-  "400": {
-    "description": "Bad request (validation or malformed body)",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Validation failed",
-            "errors": [
-              {
-                "field": "email",
-                "message": "Invalid email address"
-              }
-            ]
-          }
-        }
-      }
-    }
-  },
-  "500": {
-    "description": "Unexpected internal server error",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Internal server error"
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-## POST /auth/reset-password
-Đặt lại mật khẩu bằng OTP nhận qua email
-
-Authentication: []
-
-Parameters:
-```json
-[]
-```
-Request body:
-```json
-{
-  "type": "object",
-  "required": [
-    "email",
-    "otp",
-    "newPassword"
-  ],
-  "properties": {
-    "email": {
-      "type": "string",
-      "format": "email"
-    },
-    "otp": {
-      "type": "string",
-      "minLength": 6,
-      "maxLength": 6,
-      "pattern": "^[0-9]{6}$"
-    },
-    "newPassword": {
-      "type": "string",
-      "minLength": 6
-    }
-  }
-}
-```
-Responses/status codes:
-```json
-{
-  "200": {
-    "description": "Simple confirmation (data is null)",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": true,
-            "message": "Logged out successfully",
-            "data": null
-          }
-        }
-      }
-    }
-  },
-  "400": {
-    "description": "Bad request (validation or malformed body)",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Validation failed",
-            "errors": [
-              {
-                "field": "email",
-                "message": "Invalid email address"
-              }
-            ]
-          }
-        }
-      }
-    }
-  },
-  "500": {
-    "description": "Unexpected internal server error",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Internal server error"
-          }
-        }
-      }
-    }
-  }
-}
-```
-
 ## POST /ai/chat
 Trò chuyện với Smart Chatbot Assistant
 
@@ -15425,44 +15147,5 @@ Responses/status codes:
 }
 ```
 
-## POST /ai/generate-training-plan
-Tạo lịch tập và dinh dưỡng cá nhân hoá bằng AI
-
-Authentication: [{"BearerAuth":[]}]
-
-Parameters:
-```json
-[]
-```
-Request body:
-```json
-null
-```
-Responses/status codes:
-```json
-{
-  "200": {
-    "description": "Thành công"
-  },
-  "400": {
-    "description": "Hội viên chưa cập nhật Mục tiêu (fitnessGoal) và Trình độ (trainingLevel) trong hồ sơ."
-  },
-  "500": {
-    "description": "Unexpected internal server error",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Internal server error"
-          }
-        }
-      }
-    }
-  }
-}
-```
-
 ## Verified workflow contracts
-Additional operations and missing bodies/parameters are preserved in workflow-contract-overrides.json, checked against backend commit 9d4af0efb8c3e910af233eb3e30b4e7b04dae238. See WORKFLOW_ALIGNMENT.md.
+Additional operations and missing bodies/parameters are preserved in workflow-contract-overrides.json, reviewed against the backend checkout. See WORKFLOW_ALIGNMENT.md and BACKEND_SYNC_2026-10-04.md.

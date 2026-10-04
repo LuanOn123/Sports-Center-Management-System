@@ -1,7 +1,6 @@
 import { StatusBadge as Badge } from "../../shared/StatusBadge";
 import { sportNames } from "../../shared/sports";
 import { Attendance } from "../../shared/Attendance";
-import { TrainingPlans } from "../../shared/TrainingPlans";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -409,11 +408,7 @@ export function CoachWorkspace({
         </>
       )}
       {session && (
-        <SessionDetails
-          session={session}
-          coachId={coachId}
-          onClose={() => setSession(null)}
-        />
+        <SessionDetails session={session} onClose={() => setSession(null)} />
       )}
       {detail && (
         <Modal
@@ -475,11 +470,9 @@ function Stat({
 
 function SessionDetails({
   session,
-  coachId,
   onClose,
 }: {
   session: Row;
-  coachId: string;
   onClose: () => void;
 }) {
   const [student, setStudent] = useState<Row | null>(null);
@@ -500,13 +493,7 @@ function SessionDetails({
       .includes(search.trim().toLowerCase());
   });
   if (student)
-    return (
-      <StudentDetails
-        member={student}
-        coachId={coachId}
-        onClose={() => setStudent(null)}
-      />
-    );
+    return <StudentDetails member={student} onClose={() => setStudent(null)} />;
   return (
     <Modal
       eyebrow="PULSE / HUẤN LUYỆN VIÊN"
@@ -593,11 +580,9 @@ function SessionDetails({
 }
 function StudentDetails({
   member,
-  coachId,
   onClose,
 }: {
   member: Row;
-  coachId: string;
   onClose: () => void;
 }) {
   const mid = idOf(member);
@@ -637,7 +622,6 @@ function StudentDetails({
               <dt>Ngày sinh</dt>
               <dd>{fmt(u.dateOfBirth)}</dd>
             </dl>
-            <TrainingPlans memberId={mid} coachId={coachId} role="COACH" />
             <section className="coach-goal">
               <h3>Mục tiêu tập luyện</h3>
               <p>{str(p?.fitnessGoal)}</p>

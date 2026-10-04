@@ -105,7 +105,6 @@ for (const width of [375, 1440]) {
         "my-classes",
         "schedule",
         "profile",
-        "training",
         "attendance",
         "notifications",
       ]) {

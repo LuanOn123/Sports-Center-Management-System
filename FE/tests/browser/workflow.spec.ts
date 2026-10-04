@@ -4,23 +4,6 @@ import { setup } from "./fixtures";
 async function workflow(page: Page, role = "MEMBER") {
   await setup(page, role);
   const calls: { path: string; method: string; body: string | null }[] = [];
-  const plan = {
-    id: "p1",
-    memberId: "member-1",
-    coachId: "coach-1",
-    name: "Cải thiện sức bền",
-    startDate: "2026-09-01T00:00:00Z",
-    endDate: "2026-09-30T00:00:00Z",
-    coach: { user: { fullName: "Huấn luyện viên An" } },
-    results: [
-      {
-        id: "result-1",
-        date: "2026-09-10T00:00:00Z",
-        coachNote: "Tiến bộ tốt",
-        metrics: { "Quãng đường": "5 km" },
-      },
-    ],
-  };
   let read = false;
   await page.route("**/api/v1/**", async (route) => {
     const req = route.request(),
@@ -74,18 +57,7 @@ async function workflow(page: Page, role = "MEMBER") {
         },
       ];
     else if (path === "/chat/messages") data = { id: "sent" };
-    else if (path === "/training-plans") {
-      expect(url.searchParams.get("memberId")).toBe("member-1");
-      data = [
-        plan,
-        {
-          ...plan,
-          id: "other",
-          memberId: "member-other",
-          name: "Không được hiển thị",
-        },
-      ];
-    } else if (path === "/enrollments/my")
+    else if (path === "/enrollments/my")
       data = [
         {
           id: "e1",
@@ -156,23 +128,6 @@ for (const width of [375, 1440])
     });
   });
 
-test("member sees assigned training results and cannot edit or see another member", async ({
-  page,
-}) => {
-  await workflow(page);
-  await page.goto("/member/training");
-  await expect(
-    page.getByText("Cải thiện sức bền", { exact: true }),
-  ).toBeVisible();
-  await expect(page.getByText("5 km", { exact: true })).toBeVisible();
-  await expect(
-    page.getByText("Không được hiển thị", { exact: true }),
-  ).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Thêm kế hoạch" })).toHaveCount(
-    0,
-  );
-});
-
 test("completed booking does not imply presence; member sees own recorded attendance", async ({
   page,
 }) => {
@@ -216,7 +171,8 @@ test("dynamic role changes expire session without refreshing obsolete permission
   page,
 }) => {
   await page.addInitScript(() => {
-    sessionStorage.setItem("pulse.access", "old");
+    (sessionStorage.setItem("pulse.identity-version", "mongo-identities-v1"),
+      sessionStorage.setItem("pulse.access", "old"));
     sessionStorage.setItem("pulse.refresh", "refresh");
   });
   const calls: string[] = [];

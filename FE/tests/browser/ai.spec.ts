@@ -1,6 +1,5 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { setup } from "./fixtures";
 
 test("public chat sends real history, renders Markdown and recovers from errors", async ({
   page,
@@ -46,72 +45,6 @@ test("public chat sends real history, renders Markdown and recovers from errors"
   await expect(
     page.getByRole("button", { name: "Mở trợ lý AI" }),
   ).toBeFocused();
-});
-
-test("member generation sends bearer without body, displays saved plan and refreshes list", async ({
-  page,
-}) => {
-  await setup(page, "MEMBER");
-  let listRequests = 0;
-  await page.route("**/api/v1/training-plans*", (route) => {
-    listRequests++;
-    return route.fulfill({ json: { success: true, data: [] } });
-  });
-  await page.route("**/api/v1/ai/generate-training-plan", async (route) => {
-    expect(route.request().method()).toBe("POST");
-    expect(route.request().headers().authorization).toBe(
-      "Bearer fixture-token",
-    );
-    expect(route.request().postData()).toBeNull();
-    await route.fulfill({
-      json: {
-        success: true,
-        data: {
-          id: "ai-plan",
-          name: "Kế hoạch 7 ngày",
-          description: "## Ngày 1\n\n- **Khởi động** 10 phút",
-        },
-      },
-    });
-  });
-  await page.goto("/member/dashboard");
-  await page
-    .getByRole("button", { name: "Tạo Lịch Tập Thông Minh Bằng AI" })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Ngày 1", exact: true }),
-  ).toBeVisible();
-  await expect(page.locator(".ai-plan").getByRole("status")).toContainText(
-    "Đã tạo và lưu",
-  );
-  await page
-    .getByRole("link", { name: "Xem tất cả kế hoạch tập luyện" })
-    .click();
-  await expect.poll(() => listRequests).toBeGreaterThan(0);
-});
-
-test("incomplete profile links to editable profile", async ({ page }) => {
-  await setup(page, "MEMBER");
-  await page.route("**/api/v1/ai/generate-training-plan", (route) =>
-    route.fulfill({
-      status: 400,
-      json: {
-        success: false,
-        message: "Vui lòng cập nhật mục tiêu và trình độ trong hồ sơ.",
-      },
-    }),
-  );
-  await page.goto("/member/dashboard");
-  await page
-    .getByRole("button", { name: "Tạo Lịch Tập Thông Minh Bằng AI" })
-    .click();
-  await expect(page.getByRole("main").getByRole("alert")).toContainText(
-    "Vui lòng cập nhật",
-  );
-  await page
-    .getByRole("link", { name: "Cập nhật mục tiêu và trình độ trong hồ sơ" })
-    .click();
-  await expect(page).toHaveURL(/member\/profile/);
 });
 
 for (const width of [320, 375, 430, 768, 1024, 1280, 1440, 1920]) {

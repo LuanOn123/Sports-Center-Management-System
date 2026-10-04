@@ -21,7 +21,6 @@ import { api, contract } from "../../shared/api";
 import { canCompleteSchedule } from "../../shared/businessRules";
 import { Attendance } from "../../shared/Attendance";
 import { allPages } from "../../shared/pagedApi";
-import { TrainingPlans } from "../../shared/TrainingPlans";
 import type { RecordData } from "../../shared/api";
 import type { Resource } from "./config";
 import {
@@ -673,12 +672,6 @@ export function ResourcePage({
               {detailTab === "related" && r.slug === "members" && (
                 <>
                   <MemberStatus id={String(modal.row?.id)} />
-                  <div className="workflow-card">
-                    <TrainingPlans
-                      memberId={String(modal.row?.id)}
-                      role={role}
-                    />
-                  </div>
                 </>
               )}
               {detailTab === "related" && r.slug === "schedules" && (
