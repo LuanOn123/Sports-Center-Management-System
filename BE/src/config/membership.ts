@@ -54,8 +54,8 @@ export const FREE_PLAN = {
   price: 0,
   /**
    * 10 năm — đủ dài để subscription FREE luôn ACTIVE theo thời hạn của hội viên.
-   * LƯU Ý: đây chỉ là thời hạn "giữ chỗ" của gói hệ thống — KHÔNG BAO GIỜ được cộng dồn
-   * vào gói trả phí khi mua/nâng cấp (xem `inspectPlanPurchase`).
+   * LƯU Ý: đây chỉ là thời hạn "giữ chỗ" của gói hệ thống.
+   * Ngày dư từ gói cũ KHÔNG được cộng dồn vào gói mới (xem `activateSubscriptionForPayment`).
    */
   durationDays: 3650,
   tier: "FREE" as MemberTier,

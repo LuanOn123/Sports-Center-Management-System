@@ -1,6 +1,8 @@
-import { prisma } from "../../config/prisma.js";
+import { User } from "../../models/User.js";
+import { CoachProfile } from "../../models/CoachProfile.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
+import { prisma } from "../../config/prisma.js";
 import type { CoachQueryInput, UpdateCoachInput } from "./coaches.schema.js";
 
 export async function listCoaches(query: CoachQueryInput) {
@@ -9,96 +11,111 @@ export async function listCoaches(query: CoachQueryInput) {
   const limit = Math.min(100, Math.max(1, parseInt(query.limit ?? "10") || 10));
   const skip = (page - 1) * limit;
 
-  const where: Record<string, unknown> = {
-    role: "COACH",
-    isActive: true,
-    ...(search && {
-      OR: [
-        { fullName: { contains: search, mode: "insensitive" } },
-        { email: { contains: search, mode: "insensitive" } },
-      ],
-    }),
-    ...(specialization && {
-      coachProfile: {
-        specialization: { contains: specialization, mode: "insensitive" },
-      },
-    }),
-  };
+  // Tìm user COACH active
+  const userFilter: any = { role: "COACH", isActive: true };
+  if (search) {
+    userFilter.$or = [
+      { fullName: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } },
+    ];
+  }
 
-  const [total, users] = await Promise.all([
-    prisma.user.count({ where }),
-    prisma.user.findMany({
-      where,
-      skip,
-      take: limit,
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        phone: true,
-        gender: true,
-        dateOfBirth: true,
-        avatarUrl: true,
-        role: true,
-        isActive: true,
-        coachProfile: true,
-      },
-      orderBy: { fullName: "asc" },
-    }),
-  ]);
+  const matchedUsers = await User.find(userFilter).lean();
+
+  // Filter by specialization if provided
+  let profileFilter: any = { userId: { $in: matchedUsers.map((u) => (u._id as any).toString()) } };
+  if (specialization) {
+    profileFilter.specialization = { $regex: specialization, $options: "i" };
+  }
+
+  const profiles = await CoachProfile.find(profileFilter).lean();
+  const profileUserIds = new Set(profiles.map((p) => p.userId));
+
+  // Chỉ lấy user có profile match
+  const filteredUsers = matchedUsers.filter((u) => profileUserIds.has((u._id as any).toString()));
+
+  const total = filteredUsers.length;
+  const paged = filteredUsers.slice(skip, skip + limit);
+
+  const coaches = paged.map((u) => {
+    const uid = (u._id as any).toString();
+    const profile = profiles.find((p) => p.userId === uid);
+    return {
+      id: uid,
+      email: u.email,
+      fullName: u.fullName,
+      phone: u.phone,
+      gender: u.gender,
+      dateOfBirth: u.dateOfBirth,
+      avatarUrl: u.avatarUrl,
+      role: u.role,
+      isActive: u.isActive,
+      coachProfile: profile
+        ? { ...profile, id: (profile._id as any).toString(), _id: undefined, __v: undefined }
+        : null,
+    };
+  });
 
   const pagination = buildPaginationMeta(total, page, limit);
-  return { coaches: users, pagination };
+  return { coaches, pagination };
 }
 
 export async function getCoachById(id: string) {
-  const user = await prisma.user.findFirst({
-    where: { id, role: "COACH" },
-    select: {
-      id: true,
-      email: true,
-      fullName: true,
-      phone: true,
-      gender: true,
-      dateOfBirth: true,
-      avatarUrl: true,
-      role: true,
-      isActive: true,
-      coachProfile: {
-        include: {
-          classes: {
-            include: {
-              class: {
-                include: {
-                  sports: true,
-                  schedules: {
-                    where: { status: "SCHEDULED" },
-                    take: 5,
-                    orderBy: { startTime: "asc" },
-                  },
-                },
-              },
+  const user = await User.findOne({ _id: id, role: "COACH" }).lean();
+  if (!user) throw new AppError("Coach not found", 404);
+
+  const uid = (user._id as any).toString();
+  const coachProfile = await CoachProfile.findOne({ userId: uid }).lean();
+
+  // Lấy classes assignment từ PostgreSQL
+  let classesData: any[] = [];
+  if (coachProfile) {
+    const cpId = (coachProfile._id as any).toString();
+    const classMembers = await prisma.classMember.findMany({
+      where: { coachId: cpId },
+      include: {
+        class: {
+          include: {
+            sports: true,
+            schedules: {
+              where: { status: "SCHEDULED" },
+              take: 5,
+              orderBy: { startTime: "asc" },
             },
           },
         },
       },
-    },
-  });
-
-  if (!user) {
-    throw new AppError("Coach not found", 404);
+    });
+    classesData = classMembers;
   }
 
-  return user;
+  return {
+    id: uid,
+    email: user.email,
+    fullName: user.fullName,
+    phone: user.phone,
+    gender: user.gender,
+    dateOfBirth: user.dateOfBirth,
+    avatarUrl: user.avatarUrl,
+    role: user.role,
+    isActive: user.isActive,
+    coachProfile: coachProfile
+      ? {
+          ...(coachProfile as any),
+          id: (coachProfile._id as any).toString(),
+          _id: undefined,
+          __v: undefined,
+          classes: classesData,
+        }
+      : null,
+  };
 }
 
 export async function updateCoach(id: string, data: UpdateCoachInput) {
-  const coachProfile = await prisma.coachProfile.findFirst({
-    where: { user: { id, role: "COACH" } },
-  });
-
+  const coachProfile = await CoachProfile.findOne({ userId: id });
   if (!coachProfile) {
-    throw new AppError("Coach not found", 404);
+    const user = await User.findOne({ _id: id, role: "COACH" });
+    if (!user) throw new AppError("Coach not found", 404);
   }
 
   const { fullName, phone, gender, dateOfBirth, ...profileData } = data;
@@ -106,42 +123,39 @@ export async function updateCoach(id: string, data: UpdateCoachInput) {
   if (fullName !== undefined) userFields.fullName = fullName;
   if (phone !== undefined) userFields.phone = phone;
   if (gender !== undefined) userFields.gender = gender;
-  if (dateOfBirth !== undefined) userFields.dateOfBirth = dateOfBirth;
+  if (dateOfBirth !== undefined) userFields.dateOfBirth = new Date(dateOfBirth);
 
-  // User + CoachProfile cập nhật ATOMIC (F02): không để hồ sơ nửa vời khi lệnh thứ 2 lỗi.
-  const updated = await prisma.$transaction(async (tx) => {
-    if (Object.keys(userFields).length > 0) {
-      await tx.user.update({
-        where: { id },
-        data: {
-          ...userFields,
-          dateOfBirth: userFields.dateOfBirth ? new Date(userFields.dateOfBirth) : undefined,
-        },
-      });
-    }
+  if (Object.keys(userFields).length > 0) {
+    await User.updateOne({ _id: id }, userFields);
+  }
 
-    return tx.coachProfile.update({
-      where: { id: coachProfile.id },
-      data: {
-        ...(profileData.specialization !== undefined && { specialization: profileData.specialization }),
-        ...(profileData.experienceYears !== undefined && { experienceYears: profileData.experienceYears }),
-        ...(profileData.bio !== undefined && { bio: profileData.bio }),
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            fullName: true,
-            phone: true,
-            gender: true,
-            role: true,
-            isActive: true,
-          },
-        },
-      },
-    });
-  });
+  const profileUpdate: any = {};
+  if (profileData.specialization !== undefined) profileUpdate.specialization = profileData.specialization;
+  if (profileData.experienceYears !== undefined) profileUpdate.experienceYears = profileData.experienceYears;
+  if (profileData.bio !== undefined) profileUpdate.bio = profileData.bio;
 
-  return updated;
+  if (Object.keys(profileUpdate).length > 0) {
+    await CoachProfile.updateOne({ userId: id }, profileUpdate);
+  }
+
+  // Return updated coach
+  const updatedProfile = await CoachProfile.findOne({ userId: id }).lean();
+  const updatedUser = await User.findById(id).lean();
+
+  return {
+    ...(updatedProfile
+      ? { ...updatedProfile, id: (updatedProfile._id as any).toString(), _id: undefined, __v: undefined }
+      : {}),
+    user: updatedUser
+      ? {
+          id: (updatedUser._id as any).toString(),
+          email: updatedUser.email,
+          fullName: updatedUser.fullName,
+          phone: updatedUser.phone,
+          gender: updatedUser.gender,
+          role: updatedUser.role,
+          isActive: updatedUser.isActive,
+        }
+      : null,
+  };
 }

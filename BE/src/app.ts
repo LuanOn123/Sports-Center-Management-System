@@ -25,9 +25,9 @@ import invoiceRoutes from "./modules/invoices/invoices.routes.js";
 import reportRoutes from "./modules/reports/reports.routes.js";
 import chatRoutes from "./modules/chat/chat.routes.js";
 import attendanceRoutes from "./modules/attendance/attendance.routes.js";
-import trainingPlanRoutes from "./modules/training-plans/training-plans.routes.js";
 import notificationRoutes from "./modules/notifications/notifications.routes.js";
 import feedbackRoutes from "./modules/feedbacks/feedbacks.routes.js";
+import aiRoutes from "./modules/ai/ai.routes.js";
 
 const app = express();
 
@@ -93,9 +93,9 @@ app.use(`${v1}/invoices`, invoiceRoutes);
 app.use(`${v1}/reports`, reportRoutes);
 app.use(`${v1}/chat`, chatRoutes);
 app.use(`${v1}/attendance`, attendanceRoutes);
-app.use(`${v1}/training-plans`, trainingPlanRoutes);
 app.use(`${v1}/notifications`, notificationRoutes);
 app.use(`${v1}/feedbacks`, feedbackRoutes);
+app.use(`${v1}/ai`, aiRoutes);
 
 // Static files for uploads
 // D03: CHỈ avatar là tài nguyên công khai (hiển thị qua <img src>). File chat riêng tư nằm ở

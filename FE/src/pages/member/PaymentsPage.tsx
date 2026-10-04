@@ -1,9 +1,10 @@
+import { Table } from "../../shared/Table";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../context/AuthContext";
 import { api, type RecordData } from "../../shared/api";
 import { allPages } from "../../shared/pagedApi";
-import { at, display, money } from "../../shared/config";
+import { at } from "../../shared/config";
 import { Details, Empty, ErrorState, Loading, Modal } from "../../shared/ui";
 import { InvoiceDialog } from "../../features/reception/payments/PaymentsPage";
 export function MemberPaymentsPage() {
@@ -42,30 +43,33 @@ export function MemberPaymentsPage() {
       ) : !list.data.data.length ? (
         <Empty text="Chưa có hóa đơn." />
       ) : (
-        list.data.data.map((r) => (
-          <article className="panel workflow-card" key={String(r.id)}>
-            <h2>{display(r.invoiceNumber)}</h2>
-            <p>
-              {display(r.issuedAt)} · {display(r.status)} · {money(r.total)}
-            </p>
-            <div className="workflow-actions">
+        <Table
+          rows={list.data.data}
+          columns={[
+            ["invoiceNumber", "Hóa đơn"],
+            ["issuedAt", "Ngày phát hành"],
+            ["status", "Trạng thái"],
+            ["total", "Số tiền"],
+          ]}
+          actions={(r) => (
+            <>
               <button
-                className="button"
+                className="button small"
                 onClick={() => setInvoiceId(String(r.id))}
               >
                 Xem / In hóa đơn
               </button>
               {Boolean(r.paymentId) && (
                 <button
-                  className="button"
+                  className="button small"
                   onClick={() => setPaymentId(String(r.paymentId))}
                 >
                   Chi tiết thanh toán
                 </button>
               )}
-            </div>
-          </article>
-        ))
+            </>
+          )}
+        />
       )}
       {invoiceId && (
         <InvoiceDialog id={invoiceId} onClose={() => setInvoiceId("")} />

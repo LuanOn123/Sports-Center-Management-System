@@ -106,7 +106,9 @@ export const labels: Record<string, string> = {
   true: "Hoạt động",
   false: "Ngừng hoạt động",
   totalRevenue: "Tổng doanh thu",
-  totalPayments: "Tổng thanh toán",
+  totalPayments: "Số đơn tạo",
+  netRevenue: "Thực nhận",
+  refundedAmount: "Đã hoàn",
   successPayments: "Thành công",
   failedPayments: "Thất bại",
   pendingPayments: "Chờ xử lý",
@@ -162,9 +164,10 @@ export const money = (v: unknown) =>
 export function at(row: unknown, path: string): unknown {
   if (path === "sportsLabel") return sportNames(row);
   if (path === "areaTypesLabel") {
-    const areaTypes = row && typeof row === "object"
-      ? (row as Record<string, unknown>).areaTypes
-      : undefined;
+    const areaTypes =
+      row && typeof row === "object"
+        ? (row as Record<string, unknown>).areaTypes
+        : undefined;
     return Array.isArray(areaTypes)
       ? areaTypes.map((value) => label(String(value))).join(", ")
       : areaTypes;

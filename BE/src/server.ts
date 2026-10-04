@@ -2,6 +2,7 @@ import "dotenv/config";
 import app from "./app.js";
 import { env } from "./config/env.js";
 import { prisma } from "./config/prisma.js";
+import { connectMongo } from "./config/mongoose.js";
 import { sepayConfig } from "./config/sepay.js";
 
 import http from "http";
@@ -26,8 +27,10 @@ async function main() {
     process.exit(1);
   }
 
+  await connectMongo();
   await prisma.$connect();
-  console.log("Database connected");
+  console.log("PostgreSQL (Prisma) connected");
+  console.log("Both databases connected");
 
   const server = http.createServer(app);
   const io = new Server(server, {

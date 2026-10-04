@@ -23,16 +23,24 @@ function CoursePatternSummary({ classId }: { classId: string }) {
     queryFn: () => classesApi.getCoursePlan(classId),
   });
   if (isLoading)
-    return <span style={{ color: "#98a2b3" }}>Đang tải lịch học...</span>;
+    return (
+      <span style={{ color: "var(--member-muted, #98a2b3)" }}>
+        Đang tải lịch học...
+      </span>
+    );
   const slots = data?.course?.slots || [];
   if (!slots.length)
-    return <span style={{ color: "#98a2b3" }}>Chưa có lịch học sắp tới</span>;
+    return (
+      <span style={{ color: "var(--member-muted, #98a2b3)" }}>
+        Chưa có lịch học sắp tới
+      </span>
+    );
   return slots.slice(0, 4).map((slot) => (
     <div
       key={`${slot.weekday}-${slot.startTime}-${slot.roomId}`}
       style={{ display: "flex", alignItems: "center", gap: 6 }}
     >
-      <Clock3 size={14} color="#58695f" />
+      <Clock3 size={14} color="var(--member-muted, #58695f)" />
       <span>
         {slot.weekdayLabel} · {slot.startTime}–{slot.endTime}
       </span>
@@ -90,11 +98,12 @@ export function BrowseClassesPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {/* HEADER BANNER */}
       <div
+        className="member-explore-hero"
         style={{
-          background: "#ffffff",
+          background: "var(--member-surface, #ffffff)",
           borderRadius: 16,
           padding: "24px 28px",
-          border: "1px solid #e7ece9",
+          border: "1px solid var(--member-border, #e7ece9)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -103,30 +112,63 @@ export function BrowseClassesPage() {
         }}
       >
         <div>
+          <span className="member-kicker">PULSE / KHÁM PHÁ</span>
           <h1
             style={{
               fontSize: 24,
               fontWeight: 800,
-              color: "#203d31",
+              color: "var(--member-text, #203d31)",
               margin: "0 0 6px",
             }}
           >
             Khám phá Lớp học Thể thao
           </h1>
-          <p style={{ margin: 0, color: "#58695f", fontSize: 13 }}>
+          <p
+            style={{
+              margin: 0,
+              color: "var(--member-muted, #58695f)",
+              fontSize: 13,
+            }}
+          >
             Lựa chọn môn thể thao yêu thích, xem lịch học và đặt chỗ trực tuyến
             nhanh chóng
           </p>
         </div>
       </div>
 
+      <div className="member-sport-tabs" aria-label="Chọn bộ môn">
+        <button
+          className={!selectedSport ? "active" : ""}
+          aria-pressed={!selectedSport}
+          onClick={() => {
+            setSelectedSport("");
+            setPage(1);
+          }}
+        >
+          Tất cả bộ môn
+        </button>
+        {sports.map((sport) => (
+          <button
+            key={sport.id}
+            className={selectedSport === sport.id ? "active" : ""}
+            aria-pressed={selectedSport === sport.id}
+            onClick={() => {
+              setSelectedSport(sport.id);
+              setPage(1);
+            }}
+          >
+            {sport.name}
+          </button>
+        ))}
+      </div>
       {/* SEARCH AND FILTER BAR */}
       <div
+        className="member-filter-bar"
         style={{
-          background: "#ffffff",
+          background: "var(--member-surface, #ffffff)",
           borderRadius: 14,
           padding: "16px 20px",
-          border: "1px solid #e7ece9",
+          border: "1px solid var(--member-border, #e7ece9)",
           display: "flex",
           flexWrap: "wrap",
           gap: 12,
@@ -137,7 +179,7 @@ export function BrowseClassesPage() {
         <div style={{ position: "relative", flex: "1 1 260px" }}>
           <Search
             size={17}
-            color="#58695f"
+            color="var(--member-muted, #58695f)"
             style={{
               position: "absolute",
               left: 12,
@@ -210,6 +252,7 @@ export function BrowseClassesPage() {
 
         {(search || selectedSport || selectedType || selectedArea) && (
           <button
+            className="member-button"
             onClick={() => {
               setSearch("");
               setSelectedSport("");
@@ -220,11 +263,11 @@ export function BrowseClassesPage() {
             style={{
               padding: "10px 14px",
               background: "none",
-              border: "1px dashed #d0d5dd",
+              border: "1px dashed var(--member-border, #d0d5dd)",
               borderRadius: 8,
               fontSize: 12,
               fontWeight: 600,
-              color: "#475467",
+              color: "var(--member-muted, #475467)",
               cursor: "pointer",
             }}
           >
@@ -251,17 +294,19 @@ export function BrowseClassesPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+            gridTemplateColumns:
+              "repeat(auto-fill, minmax(min(100%, 280px), 1fr))",
             gap: 20,
           }}
         >
           {classes.map((c) => (
             <div
+              className="member-class-card"
               key={c.id}
               style={{
-                backgroundColor: "#ffffff",
+                backgroundColor: "var(--member-surface, #ffffff)",
                 borderRadius: 16,
-                border: "1px solid #e7ece9",
+                border: "1px solid var(--member-border, #e7ece9)",
                 padding: 22,
                 display: "flex",
                 flexDirection: "column",
@@ -283,11 +328,11 @@ export function BrowseClassesPage() {
                     style={{
                       fontSize: 12,
                       fontWeight: 700,
-                      color: "#203d31",
-                      backgroundColor: "#f2f8eb",
+                      color: "var(--member-text, #203d31)",
+                      backgroundColor: "var(--member-accent-soft, #f2f8eb)",
                       padding: "3px 9px",
                       borderRadius: 6,
-                      border: "1px solid #d4ebbf",
+                      border: "1px solid var(--member-accent-border, #d4ebbf)",
                     }}
                   >
                     {sportNames(c)}
@@ -299,7 +344,7 @@ export function BrowseClassesPage() {
                   style={{
                     fontSize: 18,
                     fontWeight: 800,
-                    color: "#203d31",
+                    color: "var(--member-text, #203d31)",
                     margin: "0 0 8px",
                     lineHeight: 1.3,
                   }}
@@ -310,7 +355,7 @@ export function BrowseClassesPage() {
                 <p
                   style={{
                     fontSize: 13,
-                    color: "#667085",
+                    color: "var(--member-muted, #667085)",
                     lineHeight: 1.5,
                     margin: "0 0 16px",
                     display: "-webkit-box",
@@ -323,13 +368,28 @@ export function BrowseClassesPage() {
                     "Lớp học tiêu chuẩn rèn luyện thể chất với giáo trình bài bản và chuyên nghiệp."}
                 </p>
 
+                {Boolean(c.coaches?.length) && (
+                  <div className="member-class-coach">
+                    <span className="member-coach-avatar">HLV</span>
+                    <div>
+                      <small>Huấn luyện viên</small>
+                      <strong>
+                        {c.coaches
+                          ?.map((item) => item.coach?.user?.fullName)
+                          .filter(Boolean)
+                          .join(", ")}
+                      </strong>
+                    </div>
+                  </div>
+                )}
                 <div
+                  className="member-class-schedule"
                   style={{
                     display: "flex",
                     flexDirection: "column",
                     gap: 8,
                     fontSize: 12,
-                    color: "#475467",
+                    color: "var(--member-muted, #475467)",
                   }}
                 >
                   <div
@@ -338,10 +398,13 @@ export function BrowseClassesPage() {
                       alignItems: "center",
                       gap: 6,
                       fontWeight: 700,
-                      color: "#203d31",
+                      color: "var(--member-text, #203d31)",
                     }}
                   >
-                    <CalendarDays size={15} color="#376228" />
+                    <CalendarDays
+                      size={15}
+                      color="var(--member-accent, #376228)"
+                    />
                     <span>Lịch học trong tuần</span>
                   </div>
                   <CoursePatternSummary classId={c.id} />
@@ -352,17 +415,18 @@ export function BrowseClassesPage() {
                 style={{
                   marginTop: 20,
                   paddingTop: 16,
-                  borderTop: "1px solid #f2f5f3",
+                  borderTop: "1px solid var(--member-surface-alt, #f2f5f3)",
                 }}
               >
                 <button
+                  className="member-button member-button-primary"
                   onClick={() => navigate(`/member/classes/${c.id}`)}
                   style={{
                     width: "100%",
                     padding: "10px 16px",
-                    backgroundColor: "#f2f8eb",
-                    color: "#203d31",
-                    border: "1px solid #d4ebbf",
+                    backgroundColor: "var(--member-accent-soft, #f2f8eb)",
+                    color: "var(--member-text, #203d31)",
+                    border: "1px solid var(--member-accent-border, #d4ebbf)",
                     borderRadius: 10,
                     fontSize: 13,
                     fontWeight: 700,

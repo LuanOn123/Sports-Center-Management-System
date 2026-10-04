@@ -1,7 +1,26 @@
 import { useEffect, useId, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { Menu, X, LogOut, ChevronRight } from "lucide-react";
+import {
+  Menu,
+  X,
+  LogOut,
+  ChevronRight,
+  Bell,
+  MessageCircle,
+  ShieldCheck,
+  LayoutDashboard,
+  CalendarDays,
+  Dumbbell,
+  CreditCard,
+  UserRound,
+  ClipboardCheck,
+  Target,
+  Users,
+  Building2,
+  Volleyball,
+  LifeBuoy,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useSidebar } from "./useSidebar";
 import { Brand } from "./Brand";
@@ -14,6 +33,8 @@ import {
 } from "./Communication";
 import { Policies } from "./Policies";
 import { AttendanceShortcut } from "./AttendanceShortcut";
+import { HelpPanel } from "./HelpPanel";
+import { ConnectionStatus } from "./ConnectionStatus";
 export type NavigationItem = readonly [
   path: string,
   name: string,
@@ -22,6 +43,26 @@ export type NavigationItem = readonly [
 export type NavigationGroup = {
   title: string;
   items: readonly NavigationItem[];
+};
+const navigationIcons: Record<string, LucideIcon> = {
+  members: Users,
+  rooms: Building2,
+  sports: Volleyball,
+  support: LifeBuoy,
+  catalogue: Dumbbell,
+  schedules: CalendarDays,
+  dashboard: LayoutDashboard,
+  notifications: Bell,
+  chat: MessageCircle,
+  policies: ShieldCheck,
+  classes: Dumbbell,
+  "my-classes": Dumbbell,
+  schedule: CalendarDays,
+  membership: CreditCard,
+  payments: CreditCard,
+  attendance: ClipboardCheck,
+  training: Target,
+  profile: UserRound,
 };
 export function PortalLayout({
   user,
@@ -57,18 +98,26 @@ export function PortalLayout({
     },
   ];
   const pageTitle =
+    (location.pathname === `${base}/notifications`
+      ? "Thông báo"
+      : location.pathname === `${base}/chat`
+        ? "Tin nhắn"
+        : undefined) ||
     navigation
       .flatMap((g) => g.items)
       .find(
         ([path]) =>
           location.pathname === `${base}/${path}` ||
           location.pathname.startsWith(`${base}/${path}/`),
-      )?.[1] || "Tài khoản";
+      )?.[1] ||
+    "Tài khoản";
   useEffect(() => {
     document.title = `${pageTitle} · Pulse Sports Center`;
   }, [pageTitle]);
   return (
-    <div className="app-layout">
+    <div
+      className={`app-layout${user.role === "MEMBER" ? " member-theme" : ""}`}
+    >
       <a className="skip-link" href="#main-content">
         Đến nội dung chính
       </a>
@@ -89,7 +138,7 @@ export function PortalLayout({
         className={"sidebar " + (open ? "is-open" : "")}
       >
         <Link to={base + "/dashboard"} className="brand-link">
-          <Brand />
+          <Brand member={user.role === "MEMBER"} />
         </Link>
         <button
           className="mobile-close icon-button"
@@ -105,12 +154,18 @@ export function PortalLayout({
           {navigation.map((group) => (
             <div className="nav-group" key={group.title}>
               <span>{group.title}</span>
-              {group.items.map(([path, name, Icon = ChevronRight]) => (
-                <NavLink key={path} to={base + "/" + path}>
-                  <Icon size={18} aria-hidden="true" />
-                  <span>{name}</span>
-                </NavLink>
-              ))}
+              {group.items.map(
+                ([
+                  path,
+                  name,
+                  Icon = navigationIcons[path] || ChevronRight,
+                ]) => (
+                  <NavLink key={path} to={base + "/" + path}>
+                    <Icon size={16} aria-hidden="true" />
+                    <span>{name}</span>
+                  </NavLink>
+                ),
+              )}
             </div>
           ))}
         </nav>
@@ -127,7 +182,7 @@ export function PortalLayout({
               }
             }}
           >
-            <LogOut size={18} />
+            <LogOut size={16} />
             {busy ? "Đang đăng xuất…" : "Đăng xuất"}
           </button>
         </div>
@@ -145,10 +200,16 @@ export function PortalLayout({
             >
               <Menu />
             </button>
+            {user.role === "MEMBER" && (
+              <span className="member-breadcrumb-label">
+                Khu vực hội viên <ChevronRight size={14} />
+              </span>
+            )}
             <strong>{pageTitle}</strong>
           </div>
           <div className="topbar-actions">
-            <NotificationBell />
+            <HelpPanel role={user.role} base={base} />
+            <NotificationBell base={base} />
             <Link
               className="profile-link"
               to={base + "/profile"}
@@ -163,6 +224,7 @@ export function PortalLayout({
           </div>
         </header>
         <main id="main-content" tabIndex={-1}>
+          <ConnectionStatus />
           {location.pathname === `${base}/notifications` ? (
             <Notifications role={user.role} />
           ) : location.pathname === `${base}/chat` ? (

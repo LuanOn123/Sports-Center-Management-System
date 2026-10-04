@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canCompleteSchedule,
+  canGenerateAttendanceQr,
   effectiveSubscription,
   isEffectiveSubscription,
   paymentTransitions,
@@ -43,6 +44,11 @@ describe("workflow state boundaries", () => {
     expect(paymentTransitions("REFUNDED", "MANAGER")).toEqual([]);
     expect(paymentTransitions("FAILED", "MANAGER")).toEqual([]);
     expect(paymentTransitions("SUCCESS", "STAFF")).toEqual([]);
+    expect(paymentTransitions("PENDING", "MANAGER", "SEPAY")).toEqual([]);
+    expect(paymentTransitions("SUCCESS", "MANAGER", "SEPAY")).toEqual([]);
+    expect(paymentTransitions("SUCCESS", "MANAGER", null)).toEqual([
+      "REFUNDED",
+    ]);
   });
   it("does not resume auto-suspended subscriptions without saved entitlement", () => {
     expect(subscriptionTransitions({ status: "SUSPENDED" }, "MANAGER")).toEqual(
@@ -104,4 +110,24 @@ describe("workflow state boundaries", () => {
       "Email",
     );
   });
+});
+
+it("opens attendance QR only within inclusive server time bounds for scheduled sessions", () => {
+  const schedule = {
+    status: "SCHEDULED",
+    startTime: "2026-09-27T10:00:00Z",
+    endTime: "2026-09-27T11:00:00Z",
+  };
+  const open = Date.parse(schedule.startTime) - 30 * 60_000;
+  const close = Date.parse(schedule.endTime) + 30 * 60_000;
+  expect(canGenerateAttendanceQr(schedule, open - 1)).toBe(false);
+  expect(canGenerateAttendanceQr(schedule, open)).toBe(true);
+  expect(canGenerateAttendanceQr(schedule, close)).toBe(true);
+  expect(canGenerateAttendanceQr(schedule, close + 1)).toBe(false);
+  expect(
+    canGenerateAttendanceQr({ ...schedule, status: "COMPLETED" }, open),
+  ).toBe(false);
+  expect(
+    canGenerateAttendanceQr({ ...schedule, startTime: "invalid" }, open),
+  ).toBe(false);
 });

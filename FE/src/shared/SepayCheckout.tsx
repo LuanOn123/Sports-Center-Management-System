@@ -11,7 +11,8 @@ const clientEnv = (
     env: Record<string, string | boolean | undefined>;
   }
 ).env;
-const mockModeEnabled = clientEnv.VITE_SEPAY_MOCK_MODE === "true";
+const mockModeEnabled =
+  clientEnv.DEV === true && clientEnv.VITE_SEPAY_MOCK_MODE === "true";
 
 function useCountdown(expiresAt: string) {
   const expiry = useMemo(() => new Date(expiresAt).getTime(), [expiresAt]);
@@ -68,33 +69,46 @@ export function SepayCheckoutModal({
     refetchInterval: (query) =>
       query.state.data?.status === "PENDING" ? 4000 : false,
   });
-  const current = checkout ? { ...checkout, ...statusQuery.data } : null;
+  const current = checkout ? (statusQuery.data ?? checkout) : null;
+  const requiresReview = Boolean(
+    current?.requiresReview || current?.activationStatus === "REQUIRES_REVIEW",
+  );
   const announced = useRef("");
   useEffect(() => {
     if (!current) return;
-    const state = `${current.paymentId}:${current.status}`;
-    if (state === announced.current || current.status === "PENDING") return;
+    const state = `${current.paymentId}:${current.status}:${requiresReview}`;
+    if (
+      state === announced.current ||
+      (current.status === "PENDING" && !requiresReview)
+    )
+      return;
     announced.current = state;
     toast(
-      current.status === "SUCCESS" ? "success" : "error",
-      current.status === "SUCCESS"
-        ? "Thanh toán thành công. Gói hội viên đã được kích hoạt."
-        : "Thanh toán thất bại. Vui lòng tạo đơn mới.",
+      requiresReview
+        ? "info"
+        : current.status === "SUCCESS"
+          ? "success"
+          : "error",
+      requiresReview
+        ? "Đã nhận thanh toán — đang đối soát. Vui lòng giữ biên lai và chờ trung tâm xử lý."
+        : current.status === "SUCCESS"
+          ? "Thanh toán thành công. Gói hội viên đã được kích hoạt."
+          : "Thanh toán thất bại. Vui lòng tạo đơn mới.",
       state,
     );
-  }, [current?.paymentId, current?.status]);
+  }, [current?.paymentId, current?.status, requiresReview]);
   const mockConfirm = useMutation({
     mutationFn: () => sepayApi.mockConfirm(checkout!.paymentId),
     onSuccess: () => statusQuery.refetch(),
   });
 
   useEffect(() => {
-    if (current?.status !== "SUCCESS") return;
+    if (current?.status !== "SUCCESS" || requiresReview) return;
     onConfirmed?.();
     queryClient.invalidateQueries({ queryKey: ["current-membership"] });
     queryClient.invalidateQueries({ queryKey: ["member-invoices"] });
     queryClient.invalidateQueries({ queryKey: ["membership-plans"] });
-  }, [current?.status, current?.paymentId, queryClient]);
+  }, [current?.status, current?.paymentId, requiresReview, queryClient]);
 
   const copyTransferContent = async () => {
     if (!current?.transferContent) return;
@@ -122,38 +136,111 @@ export function SepayCheckoutModal({
       dismissible={!mockConfirm.isPending}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        {current.status === "SUCCESS" ? (
+        {requiresReview ? (
+          <div>
+            <AlertBanner
+              type="warning"
+              title="Đã nhận thanh toán — đang đối soát"
+              message={`Trung tâm đã nhận tiền cho đơn ${current.orderCode}. Gói chưa được kích hoạt; vui lòng giữ biên lai và liên hệ trung tâm.${current.reviewReason ? ` Ghi chú: ${current.reviewReason}` : ""}`}
+            />
+            <button
+              type="button"
+              className="button"
+              disabled={statusQuery.isFetching}
+              onClick={() => void statusQuery.refetch()}
+            >
+              Kiểm tra lại
+            </button>
+            <button type="button" className="button primary" onClick={onClose}>
+              Đóng
+            </button>
+          </div>
+        ) : current.status === "SUCCESS" ? (
           <div style={{ textAlign: "center", padding: "10px 0" }}>
-            <div style={{ 
-              width: 72, height: 72, background: "#10b981", borderRadius: "50%", 
-              display: "flex", alignItems: "center", justifyContent: "center", 
-              margin: "0 auto 20px", color: "white", boxShadow: "0 4px 10px rgba(16, 185, 129, 0.3)"
-            }}>
+            <div
+              style={{
+                width: 72,
+                height: 72,
+                background: "var(--member-success, #10b981)",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 20px",
+                color: "white",
+                boxShadow: "0 4px 10px rgba(16, 185, 129, 0.3)",
+              }}
+            >
               <Check size={40} strokeWidth={3} />
             </div>
-            <h3 style={{ color: "#065f46", margin: "0 0 8px 0", fontSize: 22 }}>Thanh toán thành công!</h3>
-            <div style={{ color: "#475467", fontSize: 14, marginBottom: 24 }}>
+            <h3
+              style={{
+                color: "var(--member-success, #065f46)",
+                margin: "0 0 8px 0",
+                fontSize: 22,
+              }}
+            >
+              Thanh toán thành công!
+            </h3>
+            <div
+              style={{
+                color: "var(--member-muted, #475467)",
+                fontSize: 14,
+                marginBottom: 24,
+              }}
+            >
               Giao dịch đã hoàn tất. Gói hội viên của bạn đã được kích hoạt.
             </div>
-            <div style={{ 
-              background: "#f9fafb", borderRadius: 12, padding: 16, 
-              textAlign: "left", fontSize: 14, color: "#374151",
-              border: "1px solid #e5e7eb"
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-                <span style={{ color: "#6b7280" }}>Mã đơn hàng:</span>
+            <div
+              style={{
+                background: "var(--member-surface-alt, #f9fafb)",
+                borderRadius: 12,
+                padding: 16,
+                textAlign: "left",
+                fontSize: 14,
+                color: "var(--member-text, #374151)",
+                border: "1px solid var(--member-border, #e5e7eb)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: 12,
+                }}
+              >
+                <span style={{ color: "var(--member-muted, #6b7280)" }}>
+                  Mã đơn hàng:
+                </span>
                 <strong>{current.orderCode}</strong>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-                <span style={{ color: "#6b7280" }}>Số tiền:</span>
-                <strong style={{ color: "#10b981" }}>+{current.amount.toLocaleString("vi-VN")} VND</strong>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: 12,
+                }}
+              >
+                <span style={{ color: "var(--member-muted, #6b7280)" }}>
+                  Số tiền:
+                </span>
+                <strong style={{ color: "var(--member-success, #10b981)" }}>
+                  +{current.amount.toLocaleString("vi-VN")} VND
+                </strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "#6b7280" }}>Gói đăng ký:</span>
+                <span style={{ color: "var(--member-muted, #6b7280)" }}>
+                  Gói đăng ký:
+                </span>
                 <strong>{current.plan?.name ?? selectedPlan?.name}</strong>
               </div>
             </div>
-            <button type="button" className="button primary" onClick={onClose} style={{ marginTop: 24, width: "100%", padding: 12 }}>
+            <button
+              type="button"
+              className="button primary"
+              onClick={onClose}
+              style={{ marginTop: 24, width: "100%", padding: 12 }}
+            >
               Đóng và bắt đầu tập luyện
             </button>
           </div>
@@ -166,22 +253,34 @@ export function SepayCheckoutModal({
                 gap: 16,
                 padding: 16,
                 borderRadius: 12,
-                background: "#fff5fb",
-                border: "1px solid #f6c8e3",
+                background: "var(--member-purple-soft, #fff5fb)",
+                border: "1px solid var(--member-purple-border, #f6c8e3)",
               }}
             >
               <div>
-                <strong style={{ color: "#203d31" }}>
+                <strong style={{ color: "var(--member-text, #203d31)" }}>
                   {current.plan?.name ?? selectedPlan?.name ?? "Gói hội viên"}
                 </strong>
                 {(current.plan?.durationDays ?? selectedPlan?.durationDays) && (
-                  <div style={{ color: "#667085", fontSize: 12, marginTop: 4 }}>
+                  <div
+                    style={{
+                      color: "var(--member-muted, #667085)",
+                      fontSize: 12,
+                      marginTop: 4,
+                    }}
+                  >
                     Thời hạn{" "}
-                    {current.plan?.durationDays ?? selectedPlan?.durationDays} ngày
+                    {current.plan?.durationDays ?? selectedPlan?.durationDays}{" "}
+                    ngày
                   </div>
                 )}
               </div>
-              <strong style={{ color: "#a50064", whiteSpace: "nowrap" }}>
+              <strong
+                style={{
+                  color: "var(--member-purple, #a50064)",
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {Number(current.amount).toLocaleString("vi-VN")} VND
               </strong>
             </div>
@@ -192,8 +291,8 @@ export function SepayCheckoutModal({
                   style={{
                     display: "inline-flex",
                     padding: 12,
-                    background: "#fff",
-                    border: "1px solid #e7ece9",
+                    background: "var(--member-surface, #fff)",
+                    border: "1px solid var(--member-border, #e7ece9)",
                     borderRadius: 14,
                   }}
                 >
@@ -205,13 +304,25 @@ export function SepayCheckoutModal({
                     style={{ maxWidth: "100%", height: "auto" }}
                   />
                 </div>
-                <div style={{ marginTop: 8, color: "#667085", fontSize: 13 }}>
+                <div
+                  style={{
+                    marginTop: 8,
+                    color: "var(--member-muted, #667085)",
+                    fontSize: 13,
+                  }}
+                >
                   Mã hết hạn sau <strong>{countdown.label}</strong>
                 </div>
               </div>
             )}
 
-            <div style={{ color: "#475467", fontSize: 13, lineHeight: 1.8 }}>
+            <div
+              style={{
+                color: "var(--member-muted, #475467)",
+                fontSize: 13,
+                lineHeight: 1.8,
+              }}
+            >
               {current.bank && (
                 <>
                   <div>
@@ -287,7 +398,7 @@ export function SepayCheckoutModal({
                 message={
                   mockConfirm.error instanceof Error
                     ? mockConfirm.error.message
-                    : "Vui lòng kiểm tra SEPAY_MOCK_MODE ở backend."
+                    : "Chế độ thanh toán thử nghiệm chưa được bật. Liên hệ quản trị viên để kiểm tra."
                 }
               />
             )}

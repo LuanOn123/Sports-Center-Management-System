@@ -1,9 +1,13 @@
 import { Activity } from "lucide-react";
-export function Brand() {
+export function Brand({ member = false }: { member?: boolean }) {
   return (
     <span className="brand">
       <span className="brand-mark">
-        <Activity size={25} strokeWidth={2.7} />
+        {member ? (
+          <img src="/brand/pulse-member.svg" width={40} height={40} alt="" />
+        ) : (
+          <Activity size={25} strokeWidth={2.7} />
+        )}
       </span>
       <span>
         pulse<span className="brand-dot">.</span>

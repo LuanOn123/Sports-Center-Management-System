@@ -156,6 +156,15 @@ const messages: Record<string, string> = {
   "forbidden: insufficient permissions":
     "Bạn không có quyền thực hiện thao tác này.",
   unauthorized: "Vui lòng đăng nhập để tiếp tục.",
+  "avatar must be an image (jpeg, png, webp or gif)":
+    "Chọn ảnh JPEG/PNG/WebP/GIF.",
+  "avatar image must be at most 5mb": "Ảnh đại diện tối đa 5MB.",
+  "avatar image content is invalid (jpeg, png, webp or gif)":
+    "Nội dung ảnh đại diện không hợp lệ. Vui lòng chọn ảnh JPEG/PNG/WebP/GIF thật.",
+  "attachment not found": "Tệp đính kèm không còn khả dụng.",
+  "attachment file not found on storage": "Tệp đính kèm không còn khả dụng.",
+  "forbidden: you can only view your own training plans":
+    "Bạn chỉ được xem kế hoạch tập luyện của mình.",
   forbidden: "Bạn không có quyền thực hiện thao tác này.",
   "record not found": "Không tìm thấy dữ liệu được yêu cầu.",
   "internal server error": "Máy chủ gặp lỗi. Vui lòng thử lại sau.",
@@ -234,7 +243,19 @@ export function localizeApiError(
   errors: unknown,
   status: number,
 ) {
-  const rawMessage = typeof message === "string" ? message : "";
+  let rawMessage = typeof message === "string" ? message : "";
+  const detail = errors as
+    { code?: string; conflicts?: unknown[]; uncovered?: unknown[] } | undefined;
+  if (detail?.code === "SCHEDULE_MOVE_IMPACT") {
+    const names = (items?: unknown[]) =>
+      (items || [])
+        .filter((name): name is string => typeof name === "string")
+        .join(", ");
+    if (names(detail.conflicts))
+      rawMessage += ` Trùng giờ: ${names(detail.conflicts)}.`;
+    if (names(detail.uncovered))
+      rawMessage += ` Ngoài hạn gói: ${names(detail.uncovered)}.`;
+  }
   const fields: FieldError[] = Array.isArray(errors)
     ? errors
         .filter(

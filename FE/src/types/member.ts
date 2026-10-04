@@ -299,7 +299,12 @@ export interface MembershipSubscription {
 
 export type SepayPaymentStatus = "PENDING" | "SUCCESS" | "FAILED";
 
+export type PaymentActivationStatus = "ACTIVATED" | "REQUIRES_REVIEW";
+
 export interface SepayCheckout {
+  activationStatus?: PaymentActivationStatus;
+  requiresReview?: boolean;
+  reviewReason?: string | null;
   paymentId: string;
   orderCode: string;
   amount: number;

@@ -235,9 +235,11 @@ test("dynamic role changes expire session without refreshing obsolete permission
     page.getByRole("button", { name: "Đăng nhập", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("Vai trò tài khoản đã thay đổi. Vui lòng đăng nhập lại.", {
-      exact: true,
-    }),
+    page
+      .getByRole("main")
+      .getByText("Vai trò tài khoản đã thay đổi. Vui lòng đăng nhập lại.", {
+        exact: true,
+      }),
   ).toBeVisible();
   expect(calls.some((c) => c.endsWith("/auth/refresh-token"))).toBe(false);
   expect(
@@ -361,10 +363,7 @@ test("manager edit schedule does not offer lifecycle status bypass", async ({
     room: { id: "room-1", name: "Phòng A" },
   };
   await page.route("**/api/v1/class-schedules**", (route) => {
-    const path = new URL(route.request().url()).pathname.replace(
-      "/api/v1",
-      "",
-    );
+    const path = new URL(route.request().url()).pathname.replace("/api/v1", "");
     return route.fulfill({
       json: {
         success: true,

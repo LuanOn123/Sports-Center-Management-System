@@ -174,7 +174,6 @@ model MemberProfile {
   payments           Payment[]
   invoices           Invoice[]
   attendances        Attendance[]
-  trainingPlans      TrainingPlan[]
   feedbacks          CoachFeedback[]
   penalties          AttendancePenalty[]
   manualCodeAttempts AttendanceManualCodeAttempt[]
@@ -191,7 +190,6 @@ model CoachProfile {
   updatedAt       DateTime @updatedAt
 
   classes       ClassMember[]
-  trainingPlans TrainingPlan[]
   feedbacks     CoachFeedback[]
 }
 
@@ -665,38 +663,8 @@ model AttendancePenalty {
   @@index([status, blockedUntil])
 }
 
-model TrainingPlan {
-  id          String        @id @default(uuid())
-  memberId    String
-  member      MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  coachId     String
-  coach       CoachProfile  @relation(fields: [coachId], references: [id], onDelete: Cascade)
-  name        String
-  description String?
-  startDate   DateTime
-  endDate     DateTime
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
 
-  results TrainingResult[]
 
-  @@index([memberId])
-  @@index([coachId])
-}
-
-model TrainingResult {
-  id        String       @id @default(uuid())
-  planId    String
-  plan      TrainingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  date      DateTime
-  metrics   Json? // Custom metrics like weight, body fat
-  coachNote String?
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-
-  @@index([planId])
-}
 
 // ─────────────────────────────────────────
 // COACH FEEDBACK
