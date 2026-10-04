@@ -1,5 +1,4 @@
 import { MemberPortalContext } from "../../shared/ui";
-import "./member-theme.css";
 import {
   LayoutDashboard,
   CreditCard,

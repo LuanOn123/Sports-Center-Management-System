@@ -8,3 +8,4 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 );
 import "./shared/detail.css";
 import "./shared/design-system.css";
+import "./shared/portal-theme.css";

@@ -214,6 +214,10 @@ test("calendar navigation, status filter and agenda view use correct date window
   const calls = await setupCoach(page);
   await page.goto("/coach/schedule");
   await page.locator(".coach-session").waitFor();
+  await page.screenshot({
+    path: "artifacts/portal-theme/coach-schedule-populated.png",
+    fullPage: true,
+  });
   await page.getByRole("button", { name: "Danh sách", exact: true }).click();
   await expect(page.locator(".coach-agenda")).toBeVisible();
   await page

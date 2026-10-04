@@ -1,6 +1,11 @@
 import { label } from "./config";
 import { Empty } from "./feedback";
-const colors = ["#254b3d", "#b8d992", "#dec5a4", "#8aabc1"];
+const colors = [
+  "var(--chart-1, #254b3d)",
+  "var(--chart-2, #b8d992)",
+  "var(--chart-3, #dec5a4)",
+  "var(--chart-4, #8aabc1)",
+];
 export function DistributionChart({
   values,
 }: {
