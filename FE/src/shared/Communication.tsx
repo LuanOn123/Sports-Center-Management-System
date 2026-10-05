@@ -1,7 +1,10 @@
 import { ProtectedAttachment } from "./ProtectedAttachment";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 =======
+=======
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
 import {
   useEffect,
   useId,
@@ -11,7 +14,10 @@ import {
   type FormEvent,
 } from "react";
 import { Link } from "react-router-dom";
+<<<<<<< HEAD
 >>>>>>> develop
+=======
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { io, type Socket } from "socket.io-client";
 import {
@@ -34,10 +40,14 @@ import {
   type RecordData,
 } from "./api";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Empty, ErrorState, Loading } from "./ui";
 =======
 import { Empty, ErrorState, Loading, Modal } from "./ui";
 >>>>>>> develop
+=======
+import { Empty, ErrorState, Loading, Modal } from "./ui";
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
 import { display } from "./config";
 import "./workflow.css";
 import "./communication.css";

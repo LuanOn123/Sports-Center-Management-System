@@ -17,6 +17,10 @@ for (const width of [320, 375, 430, 768, 1024, 1280, 1440, 1920]) {
       "membership",
       "payments",
       "attendance",
+<<<<<<< HEAD
+=======
+      "training",
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
       "profile",
       "notifications",
     ]) {

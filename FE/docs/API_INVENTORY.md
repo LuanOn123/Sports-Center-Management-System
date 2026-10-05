@@ -1,12 +1,16 @@
 # OpenAPI endpoint inventory
 
-Source: BE/src/config/swagger.ts + BE/src/modules/**/*.routes.ts (local checkout)
+Source: https://sports-center-management-system.onrender.com/api/v1/docs/swagger-ui-init.js
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 Snapshot: 2026-09-28. Production base: https://sports-center-management-system.onrender.com/api/v1
 =======
 Snapshot: 2026-10-04. Production base: https://sports-center-management-system.onrender.com/api/v1
 >>>>>>> develop
+=======
+Snapshot: 2026-10-02. Production base: https://sports-center-management-system.onrender.com/api/v1
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
 
 Response examples are documentation only, never application data. The client sends the documented HTTP Bearer token.
 
@@ -15564,6 +15568,142 @@ Responses/status codes:
   "503": {
     "description": "AI chưa được cấu hình"
 >>>>>>> develop
+  }
+}
+```
+
+## POST /ai/chat
+Trò chuyện với Smart Chatbot Assistant
+
+Authentication: []
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "required": [
+    "message"
+  ],
+  "properties": {
+    "message": {
+      "type": "string"
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant",
+              "system"
+            ]
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "example": {
+    "message": "Trung tâm có gói tập nào và tuần này có lớp Yoga không?"
+  }
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Thành công",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "example": true
+            },
+            "message": {
+              "type": "string",
+              "example": "AI responded successfully"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "reply": {
+                  "type": "string",
+                  "example": "Dạ chào anh/chị, hiện tại bên em có gói Premium giá..."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  },
+  "503": {
+    "description": "AI chưa được cấu hình"
+  }
+}
+```
+
+## POST /ai/generate-training-plan
+Tạo lịch tập và dinh dưỡng cá nhân hoá bằng AI
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Thành công"
+  },
+  "400": {
+    "description": "Hội viên chưa cập nhật Mục tiêu (fitnessGoal) và Trình độ (trainingLevel) trong hồ sơ."
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
   }
 }
 ```

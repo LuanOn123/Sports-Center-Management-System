@@ -9,7 +9,10 @@ for (const width of [320, 390, 1440]) {
     await page.setViewportSize({ width, height: 850 });
     await setup(page, "MEMBER");
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
     const photo = await page.evaluate(() => {
       const canvas = document.createElement("canvas");
       canvas.width = 960;
@@ -29,13 +32,17 @@ for (const width of [320, 390, 1440]) {
       ctx.fillText("PULSE / LICH TAP", 100, 140);
       return canvas.toDataURL("image/png").split(",")[1];
     });
+<<<<<<< HEAD
 >>>>>>> develop
+=======
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
     await page.route("**/api/v1/chat/attachments/photo*", (route) => {
       expect(route.request().headers().authorization).toBe(
         "Bearer fixture-token",
       );
       return route.fulfill({
         contentType: "image/png",
+<<<<<<< HEAD
 <<<<<<< HEAD
         body: Buffer.from(
           "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7X8AAAAASUVORK5CYII=",
@@ -44,6 +51,9 @@ for (const width of [320, 390, 1440]) {
 =======
         body: Buffer.from(photo, "base64"),
 >>>>>>> develop
+=======
+        body: Buffer.from(photo, "base64"),
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
       });
     });
     const messages: object[] = [];

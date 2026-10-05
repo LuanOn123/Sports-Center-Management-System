@@ -1,5 +1,5 @@
-/* Member portal palette. Shared components retain their original fallbacks elsewhere. */
-.member-theme {
+/* Shared portal design, based on the member experience. Member-specific selectors retain their layouts. */
+.portal-theme {
   color-scheme: dark;
   --member-text: #f1f4f9;
   --member-muted: #9baac0;
@@ -28,6 +28,7 @@
   --color-secondary: var(--member-accent);
   --color-background: #0b1018;
   --color-surface: var(--member-surface);
+<<<<<<< HEAD:FE/src/features/user/member-theme.css
 <<<<<<< HEAD
   --color-border: var(--member-border);
   --color-text: var(--member-text);
@@ -39,6 +40,28 @@
   --color-text-muted: var(--member-muted);
   --color-text-caption: var(--member-muted);
 >>>>>>> develop
+=======
+  --color-surface-muted: var(--member-surface-alt);
+  --color-surface-subtle: #192332;
+  --color-border-strong: #354258;
+  --color-success-bg: var(--member-success-soft);
+  --color-success-border: var(--member-success-border);
+  --color-warning-bg: var(--member-warning-soft);
+  --color-error-bg: var(--member-danger-soft);
+  --color-error-border: var(--member-danger-border);
+  --color-info-bg: var(--member-info-soft);
+  --radius-card: 10px;
+  --radius-control: 7px;
+  --shadow-card: 0 2px 12px #0001;
+  --chart-1: #d4ff00;
+  --chart-2: #65cfff;
+  --chart-3: #c8b4ff;
+  --chart-4: #64dfb4;
+  --color-border: var(--member-border);
+  --color-text: var(--member-text);
+  --color-text-muted: var(--member-muted);
+  --color-text-caption: var(--member-muted);
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f:FE/src/shared/portal-theme.css
   --color-success: var(--member-success);
   --color-warning: var(--member-warning);
   --color-error: var(--member-danger);
@@ -53,6 +76,7 @@
   font-size: 14px;
   line-height: 1.55;
 }
+<<<<<<< HEAD:FE/src/features/user/member-theme.css
 <<<<<<< HEAD
 =======
 /* Match the browser canvas too, including exposed scroll boundaries. */
@@ -63,96 +87,105 @@ body:has(.member-theme) {
 
 >>>>>>> develop
 .member-theme :is(h1, h2, h3, h4, strong, legend) {
+=======
+/* Match the browser canvas too, including exposed scroll boundaries. */
+html:has(.portal-theme),
+body:has(.portal-theme) {
+  background-color: #0b1018;
+}
+
+.portal-theme :is(h1, h2, h3, h4, strong, legend) {
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f:FE/src/shared/portal-theme.css
   color: inherit;
 }
-.member-theme :is(h1, h2, h3) {
+.portal-theme :is(h1, h2, h3) {
   letter-spacing: -0.025em;
 }
-.member-theme h1 {
+.portal-theme h1 {
   font-size: clamp(24px, 2.5vw, 34px);
   line-height: 1.2;
 }
-.member-theme :is(p, small, label) {
+.portal-theme :is(p, small, label) {
   color: var(--member-muted);
 }
-.member-theme :is(button, a, input, select, textarea):focus-visible {
+.portal-theme :is(button, a, input, select, textarea):focus-visible {
   outline: 2px solid var(--member-info);
   outline-offset: 3px;
 }
-.member-theme .sidebar {
+.portal-theme .sidebar {
   background: #0e141e;
   border-right: 1px solid #1d2635;
   padding: 24px 18px 16px;
   color: var(--member-muted);
 }
-.member-theme .brand-link {
+.portal-theme .brand-link {
   padding: 0 10px 24px;
 }
-.member-theme .brand {
+.portal-theme .brand {
   color: var(--member-text);
   text-transform: uppercase;
   font-size: 24px;
   letter-spacing: -0.8px;
 }
-.member-theme .brand-mark {
+.portal-theme .brand-mark {
   width: 42px;
   height: 42px;
   background: #1c2534;
   border: 1px solid #293445;
   border-radius: 10px;
 }
-.member-theme .brand-mark img {
+.portal-theme .brand-mark img {
   display: block;
   width: 36px;
   height: 36px;
 }
-.member-theme .brand small {
+.portal-theme .brand small {
   font-size: 9px;
   letter-spacing: 1.4px;
   font-weight: 500;
 }
-.member-theme .workspace-chip {
+.portal-theme .workspace-chip {
   background: #161e29;
   border-color: #273141;
   border-radius: 7px;
   padding: 10px;
   margin: 0 0 26px;
 }
-.member-theme .workspace-chip::before {
+.portal-theme .workspace-chip::before {
   content: "";
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--member-accent);
 }
-.member-theme .workspace-chip strong {
+.portal-theme .workspace-chip strong {
   font-size: 12px;
   color: var(--member-text);
 }
-.member-theme .nav-group > span {
+.portal-theme .nav-group > span {
   font-size: 10px;
   letter-spacing: 0.08em;
   color: #8498b2;
   padding: 0 10px;
   margin-bottom: 12px;
 }
-.member-theme .nav-group > a {
+.portal-theme .nav-group > a {
   font-size: 13px;
   min-height: 42px;
   border-radius: 7px;
   padding: 10px;
   gap: 11px;
 }
-.member-theme .nav-group > a:hover {
+.portal-theme .nav-group > a:hover {
   background: #1a2330;
   color: var(--member-text);
 }
-.member-theme .nav-group > a.active {
+.portal-theme .nav-group > a.active {
   background: var(--member-accent);
   color: #101609;
   font-weight: 650;
 }
-.member-theme .nav-group > a.active::after {
+.portal-theme .nav-group > a.active::after {
   content: "";
   width: 6px;
   height: 6px;
@@ -161,26 +194,29 @@ body:has(.member-theme) {
   margin-left: auto;
   flex-shrink: 0;
 }
-.member-theme .sidebar-bottom {
+.portal-theme .sidebar-bottom {
   border-color: #222c3b;
 }
-.member-theme .logout {
+.portal-theme .logout {
   color: var(--member-muted);
   border: 1px solid #263143;
   border-radius: 7px;
   justify-content: center;
   font-size: 12px;
 }
-.member-theme .topbar {
+.portal-theme .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
   min-height: 72px;
   background: #0c121b;
   border-color: #232c3a;
   padding: 14px 30px;
 }
-.member-theme .breadcrumb {
+.portal-theme .breadcrumb {
   font-size: 12px;
 }
-.member-theme .breadcrumb strong {
+.portal-theme .breadcrumb strong {
   color: var(--member-text);
 }
 .member-breadcrumb-label {
@@ -189,40 +225,40 @@ body:has(.member-theme) {
   gap: 12px;
   color: var(--member-muted);
 }
-.member-theme .profile-link {
+.portal-theme .profile-link {
   color: var(--member-text);
   font-size: 12px;
 }
-.member-theme .profile-link small {
+.portal-theme .profile-link small {
   color: var(--member-accent);
 }
-.member-theme .avatar {
+.portal-theme .avatar {
   background: #151f28;
   color: var(--member-accent);
   border: 1px solid #657e2c;
   border-radius: 9px;
 }
-.member-theme :is(.icon-button, .topbar-icon) {
+.portal-theme :is(.icon-button, .topbar-icon) {
   background: #151d29;
   color: var(--member-muted);
   border-color: #283345;
   border-radius: 8px;
 }
-.member-theme main {
+.portal-theme main {
   padding: 30px;
 }
-.member-theme .main-footer {
+.portal-theme .main-footer {
   border-top: 1px solid #202938;
   color: #7d91ac;
   font-size: 11px;
   margin: 12px 30px 0;
   padding: 20px 0 80px;
 }
-.member-theme .member-content {
+.portal-theme .member-content {
   max-width: 1440px;
   margin-inline: auto;
 }
-.member-theme
+.portal-theme
   :is(
     .panel,
     .workflow-card,
@@ -237,13 +273,13 @@ body:has(.member-theme) {
   border-radius: 10px;
   box-shadow: none;
 }
-.member-theme :is(.empty, .skeleton) {
+.portal-theme :is(.empty, .skeleton) {
   color: var(--member-muted);
 }
-.member-theme .skeleton-block {
+.portal-theme .skeleton-block {
   background: #253044;
 }
-.member-theme :is(input, select, textarea) {
+.portal-theme :is(input, select, textarea) {
   background: #0c121b;
   color: var(--member-text);
   border: 1px solid #2a3547;
@@ -251,67 +287,67 @@ body:has(.member-theme) {
   font-size: 13px;
   min-height: 40px;
 }
-.member-theme input::placeholder,
-.member-theme textarea::placeholder {
+.portal-theme input::placeholder,
+.portal-theme textarea::placeholder {
   color: #8593a8;
 }
-.member-theme :is(input[type="checkbox"], input[type="radio"]) {
+.portal-theme :is(input[type="checkbox"], input[type="radio"]) {
   min-height: auto;
   accent-color: var(--member-accent);
 }
-.member-theme :is(.button, .member-button) {
+.portal-theme :is(.button, .member-button) {
   border-radius: 7px !important;
   font-size: 13px;
   min-height: 38px;
   box-shadow: none;
 }
-.member-theme .button {
+.portal-theme .button {
   background: #182231;
   color: var(--member-text);
   border: 1px solid #303d51;
 }
-.member-theme :is(.button:hover, .member-button:hover) {
+.portal-theme :is(.button:hover, .member-button:hover) {
   filter: brightness(1.12);
   transform: none;
 }
-.member-theme :is(.button.primary, .button.lime, .member-button-primary) {
+.portal-theme :is(.button.primary, .button.lime, .member-button-primary) {
   background: var(--member-accent) !important;
   border-color: var(--member-accent) !important;
   color: #101609 !important;
   font-weight: 700;
 }
-.member-theme .button.danger {
+.portal-theme .button.danger {
   background: #502330;
   border-color: #8d3e51;
   color: #ffb5be;
 }
-.member-theme .button.danger-text {
+.portal-theme .button.danger-text {
   color: var(--member-danger);
 }
-.member-theme .tabs {
+.portal-theme .tabs {
   border-color: var(--member-border);
 }
-.member-theme .tabs button {
+.portal-theme .tabs button {
   color: var(--member-muted);
   background: transparent;
 }
-.member-theme .tabs button.active {
+.portal-theme .tabs button.active {
   color: var(--member-accent);
   border-color: var(--member-accent);
 }
-.member-theme .pagination {
+.portal-theme .pagination {
   border-top: 1px solid var(--member-border);
   padding-top: 18px;
   color: var(--member-muted);
   font-size: 12px;
 }
-.member-theme table {
+.portal-theme table {
   background: var(--member-surface);
   color: var(--member-text);
   font-size: 13px;
   border-collapse: collapse;
 }
-.member-theme th {
+.portal-theme th {
   background: #101722;
   color: var(--member-muted);
   font-size: 11px;
@@ -320,74 +356,74 @@ body:has(.member-theme) {
   border-bottom: 1px solid #303d51;
   padding: 15px 18px;
 }
-.member-theme td {
+.portal-theme td {
   border-bottom: 1px solid #253043;
   padding: 16px 18px;
 }
-.member-theme tbody tr:hover {
+.portal-theme tbody tr:hover {
   background: #1a2433;
 }
-.member-theme .table-scroll {
+.portal-theme .table-scroll {
   border: 1px solid var(--member-border);
   border-radius: 10px;
 }
-.member-theme dialog {
+.portal-theme dialog {
   color: var(--member-text);
   background: #131a26;
   border: 1px solid #354258;
   border-radius: 14px;
   box-shadow: 0 28px 100px #0009;
 }
-.member-theme dialog::backdrop {
+.portal-theme dialog::backdrop {
   background: #02060cb8;
   backdrop-filter: blur(4px);
 }
-.member-theme :is(.modal-head, .modal-footer) {
+.portal-theme :is(.modal-head, .modal-footer) {
   background: #101722;
   border-color: var(--member-border);
   padding: 20px 24px;
 }
-.member-theme .modal-head h2 {
+.portal-theme .modal-head h2 {
   color: var(--member-text);
   font-size: 21px;
   font-weight: 650;
 }
-.member-theme .modal-head small {
+.portal-theme .modal-head small {
   color: var(--member-accent);
   font-size: 9px;
   letter-spacing: 0.14em;
 }
-.member-theme .detail-content .details dd {
+.portal-theme .detail-content .details dd {
   color: var(--member-text);
 }
-.member-theme
+.portal-theme
   :is(.detail-content .details dt, .detail-disclosure > summary span) {
   color: var(--member-muted);
 }
-.member-theme
+.portal-theme
   :is(.details > div, .detail-disclosure[open] > summary, .detail-tabs) {
   border-color: var(--member-border);
 }
-.member-theme .detail-disclosure > summary {
+.portal-theme .detail-disclosure > summary {
   color: var(--member-text);
 }
-.member-theme .detail-tabs button[aria-pressed="true"] {
+.portal-theme .detail-tabs button[aria-pressed="true"] {
   background: var(--member-accent);
   color: #101609;
 }
-.member-theme .error-state {
+.portal-theme .error-state {
   background: var(--member-danger-soft);
   border-color: var(--member-danger-border);
   color: var(--member-danger);
 }
-.member-theme .success {
+.portal-theme .success {
   background: var(--member-success-soft);
   color: var(--member-success);
 }
-.member-theme :is(.field-note, .confirm-copy, .attendance-quick-intro) {
+.portal-theme :is(.field-note, .confirm-copy, .attendance-quick-intro) {
   color: var(--member-muted);
 }
-.member-theme .attendance-shortcut {
+.portal-theme .attendance-shortcut {
   background: var(--member-accent);
   color: #101609;
   border: 1px solid #d4ff00;
@@ -395,13 +431,13 @@ body:has(.member-theme) {
   box-shadow: 0 4px 20px #0005;
   font-size: 12px;
 }
-.member-theme .floating-chat-button {
+.portal-theme .floating-chat-button {
   background: #182130;
   color: var(--member-accent);
   border: 1px solid #344252;
   box-shadow: none;
 }
-.member-theme
+.portal-theme
   :is(
     .floating-chat-panel,
     .chat-sidebar,
@@ -415,26 +451,26 @@ body:has(.member-theme) {
   color: var(--member-text);
   border-color: var(--member-border);
 }
-.member-theme :is(.floating-chat-header, .chat-log) {
+.portal-theme :is(.floating-chat-header, .chat-log) {
   background: #0d141f;
   color: var(--member-text);
 }
-.member-theme :is(.chat-input textarea, .chat-document, .workflow-message) {
+.portal-theme :is(.chat-input textarea, .chat-document, .workflow-message) {
   background: #1c293a;
   color: var(--member-text);
   border-color: var(--member-border);
 }
-.member-theme .workflow-message.own {
+.portal-theme .workflow-message.own {
   background: #26351b;
   color: #e8f4cf;
 }
-.member-theme :is(.chat-contact.active, .notification-item:hover) {
+.portal-theme :is(.chat-contact.active, .notification-item:hover) {
   background: #1d2939;
 }
-.member-theme .chat-contact {
+.portal-theme .chat-contact {
   color: var(--member-muted);
 }
-.member-theme :is(.member-explore-hero, .member-welcome, .membership-hero) {
+.portal-theme :is(.member-explore-hero, .member-welcome, .membership-hero) {
   background: linear-gradient(110deg, #131d2c 45%, #1d2b20) !important;
   color: var(--member-text);
   border: 1px solid #2a3543;
@@ -442,7 +478,7 @@ body:has(.member-theme) {
   box-shadow: none !important;
   padding: 32px !important;
 }
-.member-theme .member-explore-hero h1 {
+.portal-theme .member-explore-hero h1 {
   font-size: clamp(26px, 3vw, 38px) !important;
   margin-top: 12px !important;
   letter-spacing: -0.04em;
@@ -472,18 +508,18 @@ body:has(.member-theme) {
   color: #111925;
   border-color: #edf2f8;
 }
-.member-theme .member-filter-bar {
+.portal-theme .member-filter-bar {
   border-radius: 10px !important;
   padding: 16px !important;
   gap: 10px !important;
 }
-.member-theme .member-class-card {
+.portal-theme .member-class-card {
   padding: 22px !important;
   border-radius: 12px !important;
   background: #141b27 !important;
   box-shadow: none !important;
 }
-.member-theme .member-class-card h3 {
+.portal-theme .member-class-card h3 {
   font-size: 18px !important;
   font-weight: 650 !important;
   line-height: 1.4 !important;
@@ -496,59 +532,59 @@ body:has(.member-theme) {
   padding: 14px;
   margin-top: 16px;
 }
-.member-theme .member-class-card:hover {
+.portal-theme .member-class-card:hover {
   border-color: #435269 !important;
 }
-.member-theme .membership-hero-mark {
+.portal-theme .membership-hero-mark {
   transform: none;
   color: var(--member-accent);
 }
-.member-theme .membership-hero h2 {
+.portal-theme .membership-hero h2 {
   color: var(--member-text);
 }
-.member-theme .membership-hero p {
+.portal-theme .membership-hero p {
   color: var(--member-muted);
 }
-.member-theme :is(.membership-eyebrow, .membership-trust svg) {
+.portal-theme :is(.membership-eyebrow, .membership-trust svg) {
   color: var(--member-accent);
 }
-.member-theme .membership-plan-card,
-.member-theme .membership-plan-card.premium {
+.portal-theme .membership-plan-card,
+.portal-theme .membership-plan-card.premium {
   background: var(--member-surface);
   box-shadow: none !important;
 }
-.member-theme .membership-plan-card:hover {
+.portal-theme .membership-plan-card:hover {
   transform: none;
   border-color: var(--member-accent) !important;
 }
-.member-theme .membership-daily {
+.portal-theme .membership-daily {
   background: var(--member-accent-soft);
   color: var(--member-accent);
 }
-.member-theme .member-week-grid {
+.portal-theme .member-week-grid {
   grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
   gap: 10px !important;
 }
-.member-theme .member-day {
+.portal-theme .member-day {
   background: #0e141f !important;
   border-radius: 8px !important;
   min-height: 400px !important;
 }
-.member-theme .member-day.is-today {
+.portal-theme .member-day.is-today {
   border: 1px solid var(--member-accent) !important;
 }
-.member-theme .member-day > div:first-child {
+.portal-theme .member-day > div:first-child {
   text-align: left !important;
   padding: 14px 10px !important;
 }
-.member-theme .member-calendar-event {
+.portal-theme .member-calendar-event {
   background: #1a2637 !important;
   border: 1px solid #31425a !important;
   border-radius: 7px !important;
   padding: 12px 9px !important;
   gap: 10px !important;
 }
-.member-theme .member-calendar-event:hover {
+.portal-theme .member-calendar-event:hover {
   border-color: var(--member-info) !important;
 }
 .member-rest {
@@ -565,41 +601,41 @@ body:has(.member-theme) {
   margin-bottom: 8px;
 }
 @media (max-width: 1100px) {
-  .member-theme .member-week-grid {
+  .portal-theme .member-week-grid {
     grid-template-columns: repeat(7, minmax(145px, 1fr)) !important;
     overflow-x: auto;
     padding-bottom: 12px;
   }
-  .member-theme .member-week-grid {
+  .portal-theme .member-week-grid {
     scrollbar-width: thin;
   }
 }
 @media (max-width: 800px) {
-  .member-theme main {
+  .portal-theme main {
     padding: 20px 16px;
   }
-  .member-theme .topbar {
+  .portal-theme .topbar {
     padding: 12px 16px;
     min-height: 66px;
   }
   .member-breadcrumb-label {
     display: none;
   }
-  .member-theme .main-footer {
+  .portal-theme .main-footer {
     margin-inline: 16px;
   }
-  .member-theme :is(.member-explore-hero, .member-welcome, .membership-hero) {
+  .portal-theme :is(.member-explore-hero, .member-welcome, .membership-hero) {
     padding: 24px !important;
   }
 }
 @media (max-width: 640px) {
-  .member-theme .member-content .member-week-grid {
+  .portal-theme .member-content .member-week-grid {
     grid-template-columns: repeat(7, minmax(155px, 1fr)) !important;
   }
-  .member-theme .member-filter-bar > div {
+  .portal-theme .member-filter-bar > div {
     flex-basis: 100% !important;
   }
-  .member-theme .member-sport-tabs {
+  .portal-theme .member-sport-tabs {
     flex-wrap: nowrap;
     overflow-x: auto;
     padding-bottom: 6px;
@@ -607,23 +643,23 @@ body:has(.member-theme) {
   .member-sport-tabs button {
     white-space: nowrap;
   }
-  .member-theme dialog {
+  .portal-theme dialog {
     width: calc(100% - 24px);
     max-height: calc(100dvh - 32px);
     border-radius: 12px;
   }
-  .member-theme .modal-head {
+  .portal-theme .modal-head {
     padding: 18px;
   }
-  .member-theme .modal-head h2 {
+  .portal-theme .modal-head h2 {
     font-size: 19px;
   }
-  .member-theme .topbar .profile-link > div {
+  .portal-theme .topbar .profile-link > div {
     display: none;
   }
 }
 @media print {
-  .member-theme dialog {
+  .portal-theme dialog {
     color-scheme: light;
     --member-text: #111;
     --member-muted: #444;
@@ -634,7 +670,7 @@ body:has(.member-theme) {
     color: black;
     box-shadow: none;
   }
-  .member-theme dialog :is(.modal-head, .modal-footer) {
+  .portal-theme dialog :is(.modal-head, .modal-footer) {
     background: white;
     color: black;
   }
@@ -668,93 +704,288 @@ body:has(.member-theme) {
   flex-shrink: 0;
 }
 
-.member-theme {
+.portal-theme {
   --member-ink: #101609;
 }
-.member-theme .brand-mark {
+.portal-theme .brand-mark {
   transform: none;
 }
-.member-theme .attendance-quick-intro {
+.portal-theme .attendance-quick-intro {
   background: #192332;
   border: 1px solid #303d51;
   border-radius: 8px;
   margin: 20px 24px;
   padding: 18px;
 }
-.member-theme dialog > .qr-panel {
+.portal-theme dialog > .qr-panel {
   margin: 20px 24px;
 }
-.member-theme .attendance-shortcut {
+.portal-theme .attendance-shortcut {
   bottom: 24px;
   right: 94px;
   min-height: 46px;
 }
-.member-theme .floating-chat-button {
+.portal-theme .floating-chat-button {
   width: 46px;
   height: 46px;
 }
-.member-theme .floating-chat {
+.portal-theme .floating-chat {
   bottom: 24px;
   right: 24px;
 }
-.member-theme .floating-chat-panel {
+.portal-theme .floating-chat-panel {
   margin-bottom: 12px;
 }
-body:has(.member-theme) .toast-notice {
+body:has(.portal-theme) .toast-notice {
   background: #182130;
   color: #edf2f8;
   border-color: #354358;
   box-shadow: 0 12px 36px #0005;
 }
-body:has(.member-theme) .toast-notice :is(strong, p, button) {
+body:has(.portal-theme) .toast-notice :is(strong, p, button) {
   color: #edf2f8;
 }
-body:has(.member-theme) .toast-error > svg {
+body:has(.portal-theme) .toast-error > svg {
   color: #ff8d9a;
 }
-body:has(.member-theme) .toast-success > svg {
+body:has(.portal-theme) .toast-success > svg {
   color: #64dfb4;
 }
-body:has(.member-theme) .toast-info > svg {
+body:has(.portal-theme) .toast-info > svg {
   color: #65cfff;
 }
 @media (max-width: 640px) {
-  .member-theme .attendance-shortcut {
+  .portal-theme .attendance-shortcut {
     right: 78px;
     bottom: 16px;
   }
-  .member-theme .floating-chat {
+  .portal-theme .floating-chat {
     right: 16px;
     bottom: 16px;
   }
-  .member-theme .attendance-quick-intro,
-  .member-theme dialog > .qr-panel {
+  .portal-theme .attendance-quick-intro,
+  .portal-theme dialog > .qr-panel {
     margin: 16px;
     padding: 16px;
   }
 }
 
-.member-theme .member-active-plan {
+.portal-theme .member-active-plan {
   border: 1px solid #35452a;
   border-radius: 12px !important;
   box-shadow: none !important;
 }
-.member-theme .badge {
+.portal-theme .badge {
   background: var(--member-success-soft);
   color: var(--member-success);
   border: 1px solid var(--member-success-border);
   border-radius: 5px;
 }
-.member-theme .badge.muted {
+.portal-theme .badge.muted {
   background: var(--member-surface-alt);
   color: var(--member-muted);
   border-color: var(--member-border);
 }
-.member-theme .nav-group a svg {
+.portal-theme .nav-group a svg {
   flex-shrink: 0;
   width: 16px;
   height: 16px;
 }
-.member-theme .nav-group a {
+.portal-theme .nav-group a {
   font-size: 12px;
+}
+
+/* Operations use the same surfaces with task-specific cards and schedules. */
+.portal-theme
+  :is(.page-heading, .operations-welcome, .coach-welcome, .dashboard-callout) {
+  background: linear-gradient(115deg, #182131, #1d281c);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 24px;
+  color: var(--color-text);
+}
+.portal-theme
+  :is(.page-heading, .operations-welcome, .coach-welcome, .dashboard-callout)
+  :is(h1, h2, h3) {
+  color: var(--color-text);
+}
+.portal-theme :is(.operations-welcome, .coach-welcome, .dashboard-callout) p {
+  color: var(--color-text-muted);
+}
+.portal-theme :is(.eyebrow, .text-link, .shortcut-icon, .coach-stat svg) {
+  color: var(--member-accent);
+}
+.portal-theme
+  :is(
+    .resource-card,
+    .shortcut-card,
+    .browse-class-card,
+    .quick-panel,
+    .agenda-item,
+    .calendar-scroll,
+    .calendar-day,
+    .distribution-ring > div
+  ) {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+.portal-theme
+  :is(
+    .resource-card-footer,
+    .resource-card-meta,
+    .calendar-weekdays > div,
+    .calendar-day.outside,
+    .schedule-icon,
+    .bar-track,
+    .collection-toolbar
+  ) {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+.portal-theme :is(.resource-card, .shortcut-card, .browse-class-card):hover {
+  background: #192332;
+  border-color: #526222;
+}
+.portal-theme
+  :is(
+    .name-cell strong,
+    .resource-card h3,
+    .agenda-item h3,
+    .coach-workspace h2,
+    .coach-workspace h3,
+    .coach-detail h3,
+    .calendar-day header strong
+  ) {
+  color: var(--color-text);
+}
+.portal-theme :is(.member-picker.has-selection, .calendar-day.today) {
+  background: #18251e;
+  border-color: #354c34;
+}
+.portal-theme .calendar-event {
+  background: #202b15;
+  color: #e2edc8;
+  border-color: #526222;
+}
+.portal-theme .calendar-event span {
+  color: #bbcba1;
+}
+.portal-theme .calendar-event.completed {
+  background: var(--member-success-soft);
+  border-color: var(--member-success-border);
+}
+.portal-theme .calendar-event.cancelled {
+  background: var(--member-danger-soft);
+  color: var(--member-danger);
+  border-color: var(--member-danger-border);
+}
+.portal-theme :is(.calendar-empty-day, .coach-day-empty) {
+  color: var(--color-text-muted);
+}
+.portal-theme .coach-day.is-today > header,
+.portal-theme .tabs > button.active,
+.portal-theme .calendar-view-switch .button[aria-pressed="true"] {
+  background: var(--member-accent-soft);
+  color: var(--member-accent);
+  border-color: var(--member-accent-border);
+}
+.portal-theme .badge:is(.danger, .badge-danger) {
+  color: var(--member-danger);
+  background: var(--member-danger-soft);
+  border-color: var(--member-danger-border);
+}
+.portal-theme .badge:is(.warning, .badge-warning) {
+  color: var(--member-warning);
+  background: var(--member-warning-soft);
+  border-color: var(--member-warning-border);
+}
+.portal-theme .badge:is(.info, .badge-info) {
+  color: var(--member-info);
+  background: var(--member-info-soft);
+  border-color: var(--member-info-border);
+}
+.portal-theme .badge.badge-neutral {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+.portal-theme
+  :is(
+    .resource-initials,
+    .view-switch button[aria-pressed="true"],
+    .agenda-item.is-selected
+  ) {
+  background: var(--member-accent-soft);
+  color: var(--member-accent);
+  border-color: var(--member-accent-border);
+}
+.portal-theme .booking-steps :is(.current, .done) > span {
+  background: var(--member-accent);
+  color: var(--member-ink);
+}
+.portal-theme .agenda-item.is-selected h3 {
+  color: var(--color-text);
+}
+.portal-theme :is(.planner-section > div > p, .planner-submit small) {
+  color: var(--color-text-muted);
+}
+.portal-theme
+  :is(
+    .weekday-picker label,
+    .slot-list > div,
+    .planner-preview,
+    .planner-submit
+  ) {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+.portal-theme .weekday-picker label:has(input:checked) {
+  background: var(--member-accent-soft);
+  color: var(--member-accent);
+  border-color: var(--member-accent-border);
+}
+.portal-theme .planner-error-summary {
+  background: var(--member-danger-soft);
+  color: var(--member-danger);
+  border-color: var(--member-danger-border);
+}
+.portal-theme
+  :is(
+    .planner-error-summary p,
+    .planner-error-dialog .modal-head h2,
+    .planner-progress .error
+  ) {
+  color: var(--member-danger);
+}
+.portal-theme .planner-progress .done {
+  color: var(--member-success);
+}
+.portal-theme
+  :is(
+    .schedule-item,
+    .quick-panel > a,
+    .membership-split,
+    .planner-progress > div
+  ) {
+  border-color: var(--color-border);
+}
+.portal-theme main:has(.operations-welcome) > .page-heading,
+.portal-theme .coach-workspace:has(.coach-welcome) > .page-heading {
+  background: none;
+  border: 0;
+  padding: 0;
+}
+@media (max-width: 640px) {
+  .portal-theme
+    :is(
+      .page-heading,
+      .operations-welcome,
+      .coach-welcome,
+      .dashboard-callout
+    ) {
+    padding: 20px 16px;
+  }
 }

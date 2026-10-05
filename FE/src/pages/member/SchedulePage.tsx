@@ -258,11 +258,17 @@ export function SchedulePage() {
         <div
           className="member-week-grid"
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
           tabIndex={0}
           role="region"
           aria-label="Lịch tập trong tuần"
 >>>>>>> develop
+=======
+          tabIndex={0}
+          role="region"
+          aria-label="Lịch tập trong tuần"
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
@@ -368,6 +374,7 @@ export function SchedulePage() {
 
                       return (
 <<<<<<< HEAD
+<<<<<<< HEAD
                         <div
                           className="member-calendar-event"
                           role="button"
@@ -383,6 +390,11 @@ export function SchedulePage() {
                           type="button"
                           className="member-calendar-event"
 >>>>>>> develop
+=======
+                        <button
+                          type="button"
+                          className="member-calendar-event"
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
                           key={item.id}
                           onClick={() =>
                             navigate(`/member/classes/${item.classId}`)

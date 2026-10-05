@@ -1,3 +1,4 @@
+import { AITrainingPlanGenerator } from "../../features/ai/AITrainingPlanGenerator";
 import { effectiveSubscription } from "../../shared/businessRules";
 import { formatMemberDate } from "../../shared/memberFormat";
 import { ErrorState } from "../../shared/feedback";
@@ -73,6 +74,7 @@ export function DashboardPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <AITrainingPlanGenerator />
       {/* WELCOME BANNER */}
       <div
         className="member-welcome"

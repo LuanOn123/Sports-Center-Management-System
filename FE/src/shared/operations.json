@@ -4889,5 +4889,67 @@
       "503"
 >>>>>>> develop
     ]
+  },
+  "POST /ai/chat": {
+    "path": "/ai/chat",
+    "method": "POST",
+    "summary": "Trò chuyện với Smart Chatbot Assistant",
+    "security": [],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "required": [
+        "message"
+      ],
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "assistant",
+                  "system"
+                ]
+              },
+              "content": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "example": {
+        "message": "Trung tâm có gói tập nào và tuần này có lớp Yoga không?"
+      }
+    },
+    "statusCodes": [
+      "200",
+      "500",
+      "503"
+    ]
+  },
+  "POST /ai/generate-training-plan": {
+    "path": "/ai/generate-training-plan",
+    "method": "POST",
+    "summary": "Tạo lịch tập và dinh dưỡng cá nhân hoá bằng AI",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "500"
+    ]
   }
 }

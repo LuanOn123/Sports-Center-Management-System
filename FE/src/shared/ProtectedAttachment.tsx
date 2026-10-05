@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Paperclip } from "lucide-react";
+=======
+import { Paperclip, Download, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
 import { attachmentLocation, fetchAttachment } from "./api";
+import { Modal } from "./ui";
 
 export function ProtectedAttachment({ url }: { url: string }) {
+<<<<<<< HEAD
 =======
 import { Paperclip, Download, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { attachmentLocation, fetchAttachment } from "./api";
@@ -14,6 +20,11 @@ export function ProtectedAttachment({ url }: { url: string }) {
   const [zoom, setZoom] = useState(100);
   const [attempt, setAttempt] = useState(0);
 >>>>>>> develop
+=======
+  const [open, setOpen] = useState(false);
+  const [zoom, setZoom] = useState(100);
+  const [attempt, setAttempt] = useState(0);
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
   const [result, setResult] = useState<{
     url: string;
     blobUrl?: string;
@@ -41,12 +52,17 @@ export function ProtectedAttachment({ url }: { url: string }) {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
 <<<<<<< HEAD
+<<<<<<< HEAD
   }, [url]);
+=======
+  }, [url, attempt]);
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
   const current = result?.url === url ? result : undefined;
   if (current?.failed)
     return (
-      <span className="chat-document" role="alert">
+      <span className="chat-document attachment-error" role="alert">
         Tệp đính kèm không còn khả dụng hoặc bạn không có quyền tải.
+<<<<<<< HEAD
 =======
   }, [url, attempt]);
   const current = result?.url === url ? result : undefined;
@@ -54,6 +70,8 @@ export function ProtectedAttachment({ url }: { url: string }) {
     return (
       <span className="chat-document attachment-error" role="alert">
         Tệp đính kèm không còn khả dụng hoặc bạn không có quyền tải.
+=======
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
         <button
           type="button"
           className="button small"
@@ -64,7 +82,10 @@ export function ProtectedAttachment({ url }: { url: string }) {
         >
           Tải lại tệp
         </button>
+<<<<<<< HEAD
 >>>>>>> develop
+=======
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
       </span>
     );
   if (!current?.blobUrl)
@@ -72,6 +93,7 @@ export function ProtectedAttachment({ url }: { url: string }) {
   const name =
     attachmentLocation(url)?.searchParams.get("name") || "tep-dinh-kem";
   return current.image ? (
+<<<<<<< HEAD
 <<<<<<< HEAD
     <img
       className="chat-image"
@@ -81,6 +103,8 @@ export function ProtectedAttachment({ url }: { url: string }) {
       onError={() => setResult({ url, failed: true })}
     />
 =======
+=======
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
     <>
       <button
         type="button"
@@ -176,7 +200,10 @@ export function ProtectedAttachment({ url }: { url: string }) {
         </Modal>
       )}
     </>
+<<<<<<< HEAD
 >>>>>>> develop
+=======
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
   ) : (
     <a className="chat-document" href={current.blobUrl} download={name}>
       <Paperclip size={18} /> {name}

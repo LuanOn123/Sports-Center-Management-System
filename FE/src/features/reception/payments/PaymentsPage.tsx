@@ -98,6 +98,7 @@ export function PaymentsPage({ role = "STAFF" }: { role?: string }) {
             <ListState result={payments}>
               {(rows) => (
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <Table
                   rows={rows}
                   columns={[
@@ -155,6 +156,25 @@ export function PaymentsPage({ role = "STAFF" }: { role?: string }) {
                               0,
                             ),
                         )}
+=======
+                <>
+                  <dl className="payment-summary">
+                    <div>
+                      <dt>Giao dịch đang hiển thị</dt>
+                      <dd>{rows.length}</dd>
+                    </div>
+                    <div>
+                      <dt>Đã thu trong danh sách</dt>
+                      <dd>
+                        {money(
+                          rows
+                            .filter((r) => r.status === "SUCCESS")
+                            .reduce(
+                              (total, r) => total + (Number(r.amount) || 0),
+                              0,
+                            ),
+                        )}
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
                       </dd>
                     </div>
                     <div>
@@ -205,7 +225,10 @@ export function PaymentsPage({ role = "STAFF" }: { role?: string }) {
                     )}
                   />
                 </>
+<<<<<<< HEAD
 >>>>>>> develop
+=======
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
               )}
             </ListState>
           </section>

@@ -11,6 +11,7 @@ export interface BadgeProps {
 
 export function Badge({ variant = "neutral", children }: BadgeProps) {
 <<<<<<< HEAD
+<<<<<<< HEAD
   const styles: Record<string, { bg: string; color: string; border: string }> =
     {
       success: {
@@ -69,6 +70,9 @@ export function Badge({ variant = "neutral", children }: BadgeProps) {
 =======
   return <span className={`badge badge-${variant}`}>{children}</span>;
 >>>>>>> develop
+=======
+  return <span className={`badge badge-${variant}`}>{children}</span>;
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
 }
 
 export function StatusBadge({ status }: { status: string }) {
@@ -137,6 +141,7 @@ export function ConfirmModal({
       dismissible={!loading}
     >
 <<<<<<< HEAD
+<<<<<<< HEAD
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <p
           style={{
@@ -170,12 +175,19 @@ export function ConfirmModal({
               cursor: "pointer",
             }}
           >
+=======
+      <div className="confirmation-body">
+        <p>{message}</p>
+        <div className="confirmation-actions">
+          <button className="button" onClick={onClose} disabled={loading}>
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
             {cancelText}
           </button>
           <button
-            className="member-button"
+            className={"button " + (isDanger ? "danger" : "primary")}
             onClick={onConfirm}
             disabled={loading}
+<<<<<<< HEAD
             style={{
               padding: "9px 16px",
               borderRadius: 8,
@@ -205,6 +217,8 @@ export function ConfirmModal({
             onClick={onConfirm}
             disabled={loading}
 >>>>>>> develop
+=======
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
           >
             {loading ? "Đang xử lý..." : confirmText}
           </button>
@@ -226,6 +240,7 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
+<<<<<<< HEAD
 <<<<<<< HEAD
     <div
       style={{
@@ -269,13 +284,18 @@ export function EmptyState({
       {action && <div style={{ marginTop: 12 }}>{action}</div>}
     </div>
 =======
+=======
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
     <Empty
       text={title}
       detail={description || ""}
       icon={icon}
       action={action}
     />
+<<<<<<< HEAD
 >>>>>>> develop
+=======
+>>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
   );
 }
 
