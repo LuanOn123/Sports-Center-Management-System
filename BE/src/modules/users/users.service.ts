@@ -128,13 +128,49 @@ export async function createUser(data: CreateUserInput) {
 
     await session.commitTransaction();
 
-    // MEMBER: tạo FREE subscription trong PostgreSQL (cross-database)
+    // DUAL-WRITE: Tạo bản sao trong PostgreSQL
+    await prisma.user.create({
+      data: {
+        id: userId,
+        email: user.email,
+        password: user.password,
+        fullName: user.fullName,
+        phone: user.phone,
+        gender: user.gender as any,
+        dateOfBirth: user.dateOfBirth,
+        role: user.role as any,
+      }
+    });
+
     if (data.role === "MEMBER") {
       const mp = await MemberProfile.findOne({ userId });
       if (mp) {
+        await prisma.memberProfile.create({
+          data: {
+            id: mp._id.toString(),
+            userId: userId,
+            fitnessGoal: data.fitnessGoal || null,
+            trainingLevel: data.trainingLevel as any || null,
+            trainingPreference: data.trainingPreference || null,
+          }
+        });
         await prisma.$transaction((tx) =>
           ensureActiveFreeSubscription(tx, mp._id.toString())
         );
+      }
+    } else if (data.role === "COACH") {
+      const cp = await CoachProfile.findOne({ userId });
+      if (cp) {
+        await prisma.coachProfile.create({
+          data: { id: cp._id.toString(), userId: userId }
+        });
+      }
+    } else if (data.role === "MANAGER") {
+      const mgr = await ManagerProfile.findOne({ userId });
+      if (mgr) {
+        await prisma.managerProfile.create({
+          data: { id: mgr._id.toString(), userId: userId }
+        });
       }
     }
 
