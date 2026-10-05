@@ -9,7 +9,7 @@ export interface IUser extends Document {
   gender?: "MALE" | "FEMALE" | "OTHER" | null;
   dateOfBirth?: Date | null;
   avatarUrl?: string | null;
-  role: "MEMBER" | "COACH" | "STAFF" | "MANAGER";
+  role: "ADMIN" | "MANAGER" | "COACH" | "RECEPTIONIST" | "MEMBER";
   isActive: boolean;
   resetPasswordOtp?: string | null;
   resetPasswordOtpExpiresAt?: Date | null;
@@ -27,7 +27,7 @@ const userSchema = new Schema(
     gender: { type: String, enum: ["MALE", "FEMALE", "OTHER"], default: null },
     dateOfBirth: { type: Date, default: null },
     avatarUrl: { type: String, default: null },
-    role: { type: String, enum: ["MEMBER", "COACH", "STAFF", "MANAGER"], default: "MEMBER" },
+    role: { type: String, enum: ["ADMIN", "MANAGER", "COACH", "RECEPTIONIST", "MEMBER"], default: "MEMBER" },
     isActive: { type: Boolean, default: true },
     resetPasswordOtp: { type: String, default: null },
     resetPasswordOtpExpiresAt: { type: Date, default: null },

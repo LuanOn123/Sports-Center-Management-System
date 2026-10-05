@@ -7,10 +7,11 @@ import fs from "fs";
 import { CHAT_UPLOAD_DIR } from "../../middlewares/upload.js";
 
 const allowedContacts: Record<string, UserRole[]> = {
-  MEMBER: ["COACH"],
-  COACH: ["MEMBER", "STAFF", "MANAGER"],
-  STAFF: ["MANAGER", "COACH"],
-  MANAGER: ["STAFF", "COACH"],
+  MEMBER: ["COACH", "RECEPTIONIST"],
+  COACH: ["MEMBER", "RECEPTIONIST", "MANAGER"],
+  RECEPTIONIST: ["MEMBER", "MANAGER", "COACH"],
+  MANAGER: ["RECEPTIONIST", "COACH"],
+  ADMIN: ["MANAGER", "RECEPTIONIST", "COACH", "MEMBER"],
 };
 
 async function assertCanContact(senderId: string, receiverId?: string) {

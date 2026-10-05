@@ -12,10 +12,11 @@ datasource db {
 // ─────────────────────────────────────────
 
 enum UserRole {
-  MEMBER
-  COACH
-  STAFF
+  ADMIN
   MANAGER
+  COACH
+  RECEPTIONIST
+  MEMBER
 }
 
 enum Gender {
@@ -141,6 +142,7 @@ model User {
   notifications              Notification[]
   decidedAttendancePenalties AttendancePenalty[]    @relation("AttendancePenaltyDecidedBy")
   createdManualCodes         AttendanceManualCode[] @relation("AttendanceManualCodeCreatedBy")
+  facilityStaffs             FacilityStaff[]
 }
 
 model RefreshToken {
@@ -153,6 +155,40 @@ model RefreshToken {
   createdAt DateTime  @default(now())
 
   @@index([userId])
+}
+
+// ─────────────────────────────────────────
+// FACILITY (Cơ sở)
+// ─────────────────────────────────────────
+
+model Facility {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  address     String
+  contactInfo String?
+  timezone    String   @default("Asia/Ho_Chi_Minh")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  staffs      FacilityStaff[]
+}
+
+model FacilityStaff {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  role       UserRole
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, facilityId, role])
+  @@index([userId])
+  @@index([facilityId])
 }
 
 // ─────────────────────────────────────────

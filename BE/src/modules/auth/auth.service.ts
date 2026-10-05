@@ -49,8 +49,30 @@ export async function register(data: RegisterInput) {
 
     await session.commitTransaction();
 
-    // Tạo FREE subscription trong PostgreSQL (cross-database, ngoài mongo transaction)
     const memberProfileId = memberProfile._id.toString();
+
+    // DUAL-WRITE: Tạo bản sao trong PostgreSQL để giữ Foreign Key constraint (subscriptions, payments, etc.)
+    await prisma.user.create({
+      data: {
+        id: userId,
+        email: created.email,
+        password: created.password,
+        fullName: created.fullName,
+        phone: created.phone,
+        gender: created.gender as any,
+        dateOfBirth: created.dateOfBirth,
+        role: "MEMBER",
+      }
+    });
+
+    await prisma.memberProfile.create({
+      data: {
+        id: memberProfileId,
+        userId: userId,
+      }
+    });
+
+    // Tạo FREE subscription trong PostgreSQL (cross-database, ngoài mongo transaction)
     await prisma.$transaction((tx) =>
       ensureActiveFreeSubscription(tx, memberProfileId)
     );
