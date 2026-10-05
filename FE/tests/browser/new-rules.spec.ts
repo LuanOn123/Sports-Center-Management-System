@@ -30,6 +30,7 @@ async function fixture(page: Page, role = "MEMBER") {
     const request = route.request(),
       url = new URL(request.url()),
       path = url.pathname.replace("/api/v1", "");
+    if (path === "/facilities") return route.fulfill({ json: { success: true, data: [{ id: "facility-a", code: "A", name: "Cơ sở A", isActive: true }] } });
     const body = request.postData() ? request.postDataJSON() : null;
     calls.push({ path, method: request.method(), body });
     let data: any = [];

@@ -23,7 +23,9 @@ const userSchema = new Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true, select: false },
     fullName: { type: String, required: true, trim: true },
-    phone: { type: String, default: null, unique: true, sparse: true },
+    // Sparse unique indexes still index explicit null. Omit an absent phone so
+    // multiple accounts without a phone number can register successfully.
+    phone: { type: String, default: undefined, unique: true, sparse: true, set: (value: unknown) => typeof value === "string" && value.trim() ? value.trim() : undefined },
     gender: { type: String, enum: ["MALE", "FEMALE", "OTHER"], default: null },
     dateOfBirth: { type: Date, default: null },
     avatarUrl: { type: String, default: null },

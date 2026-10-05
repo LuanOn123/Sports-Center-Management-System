@@ -38,13 +38,14 @@ export function Attendance({
       }),
   });
   const canWrite =
-    ["MANAGER", "COACH"].includes(role) &&
+    ["ADMIN", "MANAGER", "COACH"].includes(role) &&
     schedule.status !== "CANCELLED" &&
-    Date.parse(String(schedule.startTime)) <= Date.now();
+    Date.parse(String(schedule.startTime)) - 30 * 60000 <= Date.now() &&
+    Date.now() <= Date.parse(String(schedule.endTime));
   return (
     <section className="workflow-page">
       <h3>Điểm danh buổi học</h3>
-      {["MANAGER", "COACH"].includes(role) &&
+      {["ADMIN", "MANAGER", "COACH"].includes(role) &&
         schedule.status === "SCHEDULED" && (
           <AttendanceQr scheduleId={id} schedule={schedule} />
         )}
@@ -79,7 +80,7 @@ export function Attendance({
                 memberId={mid}
                 scheduleId={id}
                 record={record}
-                writable={canWrite}
+                writable={record ? ["ADMIN", "MANAGER"].includes(role) : canWrite}
                 onSave={() => {
                   void cache.invalidateQueries({
                     queryKey: ["attendance", id],
@@ -156,6 +157,9 @@ function AttendanceRow({
               Ghi chú
               <input
                 maxLength={1000}
+                required={!!record}
+                minLength={record ? 3 : undefined}
+                placeholder={record ? "Lý do sửa điểm danh" : "Ghi chú"}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
               />

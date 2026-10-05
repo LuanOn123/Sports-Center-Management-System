@@ -35,7 +35,7 @@ const router = Router();
  */
 router.get(
   "/",
-  authenticate, authorize("MANAGER", "STAFF"),
+  authenticate, authorize("MANAGER", "RECEPTIONIST"),
   validate(MemberQuerySchema, "query"),
   membersController.listMembers
 );
@@ -60,7 +60,7 @@ router.get(
  */
 router.get(
   "/:id",
-  authenticate, authorize("MANAGER", "STAFF", "COACH"),
+  authenticate, authorize("MANAGER", "RECEPTIONIST", "COACH"),
   membersController.getMemberById
 );
 
@@ -99,7 +99,7 @@ router.get(
  */
 router.patch(
   "/:id",
-  authenticate, authorize("MANAGER", "STAFF"),
+  authenticate, authorize("MANAGER", "RECEPTIONIST"),
   validate(UpdateMemberSchema),
   membersController.updateMember
 );
@@ -113,7 +113,7 @@ router.patch(
  *       `effectiveTier` = tier của MembershipSubscription ACTIVE (FREE | MEMBERSHIP | PREMIUM).
  *       Khi member KHÔNG có subscription ACTIVE → `effectiveTier = null`, `activeSubscription = null`,
  *       `daysRemaining = null` (KHÔNG dùng "FREE" để đại diện cho "không có gói") — nhất quán với
- *       `GET /enrollments/my/quota`. Authorization không đổi: MANAGER / STAFF.
+ *       `GET /enrollments/my/quota`. Authorization không đổi: MANAGER / RECEPTIONIST.
  *     tags: [Members]
  *     parameters:
  *       - in: path
@@ -130,7 +130,7 @@ router.patch(
  */
 router.get(
   "/:id/membership-status",
-  authenticate, authorize("MANAGER", "STAFF"),
+  authenticate, authorize("MANAGER", "RECEPTIONIST"),
   membersController.getMembershipStatus
 );
 

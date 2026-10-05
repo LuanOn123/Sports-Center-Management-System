@@ -5,6 +5,7 @@ import { authService, clearSession, hasSession } from "../../shared/api";
 import { ErrorState, Loading } from "../../shared/ui";
 import { Brand } from "../../shared/Brand";
 import { Login } from "./Login";
+import { FacilityBoundary } from "../../shared/FacilityBoundary";
 import { RoleRouter } from "../../app/RoleRouter";
 import { roleHome } from "../../app/roles";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -121,5 +122,5 @@ export function Session() {
         </button>
       </div>
     );
-  return <RoleRouter user={q.data.data} onLogout={logout} />;
+  return <FacilityBoundary admin={q.data.data.role === "ADMIN"} onLogout={logout}><RoleRouter user={q.data.data} onLogout={logout} /></FacilityBoundary>;
 }

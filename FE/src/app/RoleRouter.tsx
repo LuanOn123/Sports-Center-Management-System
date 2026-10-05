@@ -3,6 +3,7 @@ import { Loading } from "../shared/ui";
 import { Navigate, useLocation, Link } from "react-router-dom";
 import type { ProfileOk } from "../shared/generated";
 import { roleHome } from "./roles";
+const AdminLayout = lazy(() => import("../features/manage/AdminLayout").then(module => ({ default: module.AdminLayout })));
 const ManagerLayout = lazy(() =>
   import("../features/manage/ManagerLayout").then((module) => ({
     default: module.ManagerLayout,
@@ -69,6 +70,7 @@ export function RoleRouter(props: PortalProps) {
 }
 function Portal(props: PortalProps) {
   switch (props.user.role) {
+    case "ADMIN": return <AdminLayout {...props} />;
     case "MANAGER":
       return <ManagerLayout {...props} />;
     case "STAFF":

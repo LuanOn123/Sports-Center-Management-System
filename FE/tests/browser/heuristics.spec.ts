@@ -4,7 +4,7 @@ import { setup } from "./fixtures";
 
 for (const [role, base] of [
   ["MANAGER", "manager"],
-  ["STAFF", "receptionist"],
+  ["RECEPTIONIST", "receptionist"],
   ["MEMBER", "member"],
   ["COACH", "coach"],
 ]) {
@@ -118,7 +118,7 @@ for (const [role, base] of [
 test("staff confirms bulk reminders and can cancel without sending", async ({
   page,
 }) => {
-  await setup(page, "STAFF");
+  await setup(page, "RECEPTIONIST");
   let writes = 0;
   await page.route(
     "**/api/v1/notifications/trigger-upcoming-reminders",

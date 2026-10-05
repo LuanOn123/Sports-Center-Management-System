@@ -91,7 +91,7 @@ router.get("/:id", plansController.getPlanById);
  */
 router.post(
   "/",
-  authenticate, authorize("MANAGER"),
+  authenticate, authorize("ADMIN"),
   validate(CreatePlanSchema),
   plansController.createPlan
 );
@@ -144,7 +144,7 @@ router.post(
  */
 router.patch(
   "/:id",
-  authenticate, authorize("MANAGER"),
+  authenticate, authorize("ADMIN"),
   validate(UpdatePlanSchema),
   plansController.updatePlan
 );
@@ -170,7 +170,7 @@ router.patch(
  */
 router.delete(
   "/:id",
-  authenticate, authorize("MANAGER"),
+  authenticate, authorize("ADMIN"),
   plansController.deletePlan
 );
 

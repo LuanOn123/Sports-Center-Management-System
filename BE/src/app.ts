@@ -1,3 +1,6 @@
+import { authenticate } from "./middlewares/authenticate.js";
+import { checkFacilityScope } from "./middlewares/facilityScope.js";
+import operationsRoutes from "./modules/operations/operations.routes.js";
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -46,7 +49,7 @@ app.use(
       (req as import("express").Request & { rawBody?: Buffer }).rawBody =
         Buffer.from(buf);
     },
-  })
+  }),
 );
 app.use(express.urlencoded({ extended: true }));
 
@@ -68,7 +71,7 @@ app.use(
       ".swagger-ui .opblock .opblock-summary .view-line-link.copy-to-clipboard { opacity: 0; pointer-events: none; transition: opacity 0.15s ease; }\n" +
       ".swagger-ui .opblock .opblock-summary:hover .view-line-link.copy-to-clipboard { opacity: 1; pointer-events: auto; }\n" +
       ".swagger-ui .opblock .opblock-summary .view-line-link.copy-to-clipboard:has(button:focus-visible) { opacity: 1; }",
-  })
+  }),
 );
 
 // Health check
@@ -78,6 +81,45 @@ app.get("/api/v1/health", (_req, res) => {
 
 // API routes
 const v1 = "/api/v1";
+app.use(v1, (req, res, next) => {
+  const root = req.path.split("/")[1];
+  if (
+    req.method === "GET" &&
+    ["membership-plans", "sports", "subjects"].includes(root)
+  )
+    return next();
+  if (
+    ![
+      "rooms",
+      "classes",
+      "class-schedules",
+      "enrollments",
+      "subscriptions",
+      "payments",
+      "invoices",
+      "reports",
+      "attendance",
+      "feedbacks",
+      "operations",
+      "members",
+      "coaches",
+      "issues",
+      "leave-requests",
+      "audit-logs",
+      "slots",
+      "schedule-patterns",
+      "counter-orders",
+      "membership-plans",
+      "sports",
+      "subjects",
+    ].includes(root) ||
+    req.path === "/payments/sepay/webhook"
+  )
+    return next();
+  authenticate(req, res, (error) =>
+    error ? next(error) : checkFacilityScope(req, res, next),
+  );
+});
 app.use(`${v1}/auth`, authRoutes);
 app.use(`${v1}/users`, userRoutes);
 app.use(`${v1}/members`, memberRoutes);
@@ -85,6 +127,7 @@ app.use(`${v1}/coaches`, coachRoutes);
 app.use(`${v1}/membership-plans`, membershipPlanRoutes);
 app.use(`${v1}/subscriptions`, subscriptionRoutes);
 app.use(`${v1}/sports`, sportRoutes);
+app.use(`${v1}/subjects`, sportRoutes);
 app.use(`${v1}/rooms`, roomRoutes);
 app.use(`${v1}/classes`, classRoutes);
 app.use(`${v1}/class-schedules`, classScheduleRoutes);
@@ -98,6 +141,8 @@ app.use(`${v1}/notifications`, notificationRoutes);
 app.use(`${v1}/feedbacks`, feedbackRoutes);
 app.use(`${v1}/ai`, aiRoutes);
 app.use(`${v1}/facilities`, facilityRoutes);
+
+app.use(v1, operationsRoutes);
 
 // Static files for uploads
 // D03: CHỈ avatar là tài nguyên công khai (hiển thị qua <img src>). File chat riêng tư nằm ở

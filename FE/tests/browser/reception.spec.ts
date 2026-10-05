@@ -5,7 +5,7 @@ async function chooseMember(page: Page) {
   await page.getByRole("button", { name: "Chọn", exact: true }).first().click();
 }
 for (const [role, home, title] of [
-  ["STAFF", "/receptionist", "Tổng quan lễ tân"],
+  ["RECEPTIONIST", "/receptionist", "Tổng quan lễ tân"],
   ["COACH", "/coach", "Tổng quan huấn luyện viên"],
   ["MEMBER", "/member", "Tổng quan hội viên"],
 ]) {

@@ -47,8 +47,7 @@
           "enum": [
             "MEMBER",
             "COACH",
-            "STAFF",
-            "MANAGER"
+            "RECEPTIONIST", "MANAGER", "ADMIN"
           ]
         }
       },

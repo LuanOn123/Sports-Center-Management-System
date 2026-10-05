@@ -118,7 +118,7 @@ router.get("/:id", sportsController.getSportById);
 router.post(
   "/",
   authenticate,
-  authorize("MANAGER"),
+  authorize("ADMIN"),
   validate(CreateSportSchema),
   sportsController.createSport
 );
@@ -166,7 +166,7 @@ router.post(
 router.patch(
   "/:id",
   authenticate,
-  authorize("MANAGER"),
+  authorize("ADMIN"),
   validate(UpdateSportSchema),
   sportsController.updateSport
 );
@@ -194,7 +194,7 @@ router.patch(
 router.delete(
   "/:id",
   authenticate,
-  authorize("MANAGER"),
+  authorize("ADMIN"),
   sportsController.deleteSport
 );
 

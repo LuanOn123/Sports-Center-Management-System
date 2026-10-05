@@ -12,13 +12,13 @@ import { expireStalePenalties } from "./attendance-penalties.service.js";
 
 /** §5: MEMBER không có quyền ghi attendance; COACH không được tự set EXCUSED — chỉ MANAGER. */
 function assertCanSetExcused(status: unknown, user: any) {
-  if (status === "EXCUSED" && user?.role !== "MANAGER") {
+  if (status === "EXCUSED" && !["MANAGER", "ADMIN"].includes(user?.role)) {
     throw new AppError("Forbidden: chỉ MANAGER được xác nhận vắng có phép (EXCUSED)", 403);
   }
 }
 
 async function verifyCoachAccess(scheduleId: string, user: any) {
-  if (user.role === "MANAGER" || user.role === "STAFF") return true;
+  if (["ADMIN", "MANAGER", "RECEPTIONIST"].includes(user.role)) return true;
 
   const schedule = await prisma.classSchedule.findUnique({
     where: { id: scheduleId },
@@ -30,7 +30,7 @@ async function verifyCoachAccess(scheduleId: string, user: any) {
     const coachProfile = await prisma.coachProfile.findUnique({ where: { userId: user.id } });
     if (!coachProfile) throw new AppError("Coach profile not found", 404);
     
-    const isAssigned = schedule.class.coaches.some(c => c.coachId === coachProfile.id);
+    const isAssigned = schedule.coachId ? schedule.coachId === coachProfile.id : schedule.class.coaches.some(c => c.coachId === coachProfile.id);
     if (!isAssigned) throw new AppError("Forbidden: You are not assigned to this class", 403);
   }
 }
@@ -38,6 +38,10 @@ async function verifyCoachAccess(scheduleId: string, user: any) {
 export const createAttendance = async (data: Prisma.AttendanceUncheckedCreateInput, user: any) => {
   await verifyCoachAccess(data.scheduleId, user);
   assertCanSetExcused(data.status, user);
+
+  const schedule = await prisma.classSchedule.findUnique({ where: { id: data.scheduleId } });
+  if (!schedule) throw new AppError("Schedule not found", 404);
+  assertAttendanceWindow(schedule, new Date());
 
   // Verify member is enrolled
   const enrollment = await prisma.enrollment.findUnique({
@@ -52,7 +56,7 @@ export const createAttendance = async (data: Prisma.AttendanceUncheckedCreateInp
 
 /**
  * §16: roster attendance.
- * - MANAGER / STAFF: xem toàn bộ roster (STAFF read-only — khớp UI tiếp nhận hiện có, mutations vẫn COACH/MANAGER).
+ * - MANAGER / RECEPTIONIST: xem toàn bộ roster (RECEPTIONIST read-only — khớp UI tiếp nhận hiện có, mutations vẫn COACH/MANAGER).
  * - COACH: chỉ lớp mình phụ trách (403 nếu không).
  * - MEMBER: chỉ trả về bản ghi điểm danh của CHÍNH MÌNH (tương thích FE member hiện tại + không lộ roster).
  */
@@ -69,7 +73,7 @@ export const getAttendancesBySchedule = async (
   if (actor.role === "COACH") {
     const coachProfile = await prisma.coachProfile.findUnique({ where: { userId: actor.id } });
     const isAssigned =
-      Boolean(coachProfile) && schedule.class.coaches.some((c) => c.coachId === coachProfile!.id);
+      Boolean(coachProfile) && (schedule.coachId ? schedule.coachId === coachProfile!.id : schedule.class.coaches.some((c) => c.coachId === coachProfile!.id));
     if (!isAssigned) throw new AppError("Forbidden: You are not assigned to this class", 403);
   } else if (actor.role === "MEMBER") {
     const memberProfile = await prisma.memberProfile.findUnique({ where: { userId: actor.id } });
@@ -78,7 +82,7 @@ export const getAttendancesBySchedule = async (
       where: { scheduleId, memberId: memberProfile.id },
       include: { member: { include: { user: { select: { id: true, fullName: true } } } } },
     });
-  } else if (actor.role !== "MANAGER" && actor.role !== "STAFF") {
+  } else if (!["MANAGER", "RECEPTIONIST", "ADMIN"].includes(actor.role)) {
     throw new AppError("Forbidden: bạn không có quyền xem điểm danh của buổi này", 403);
   }
 
@@ -93,6 +97,8 @@ export const updateAttendance = async (id: string, data: Prisma.AttendanceUpdate
   const attendance = await prisma.attendance.findUnique({ where: { id } });
   if (!attendance) throw new AppError("Attendance not found", 404);
 
+  if (!["ADMIN", "MANAGER"].includes(user.role)) throw new AppError("Only managers can correct attendance", 403);
+  if (typeof data.note !== "string" || data.note.trim().length < 3) throw new AppError("Attendance correction requires a reason in note", 400);
   await verifyCoachAccess(attendance.scheduleId, user);
   assertCanSetExcused((data as { status?: unknown }).status, user);
   return prisma.attendance.update({ where: { id }, data });

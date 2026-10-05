@@ -5,6 +5,26 @@ import { Modal } from "./ui";
 
 type Guide = { title: string; path: string; steps: string[] };
 const guides: Record<string, Guide[]> = {
+  ADMIN: [
+    {
+      title: "Quản lý cơ sở và nhân sự",
+      path: "facilities",
+      steps: [
+        "Tạo hoặc chỉnh sửa thông tin cơ sở.",
+        "Chọn cơ sở đang làm việc trước khi thao tác.",
+        "Phân công nhân sự theo đúng vai trò tài khoản.",
+      ],
+    },
+    {
+      title: "Thiết lập điều kiện giảng dạy",
+      path: "requirements",
+      steps: [
+        "Khai báo thiết bị phòng và yêu cầu bộ môn.",
+        "Gán chuyên môn cho huấn luyện viên trước khi phân công lớp.",
+        "Kiểm tra nhật ký sau khi chỉnh sửa cấu hình.",
+      ],
+    },
+  ],
   MEMBER: [
     {
       title: "Tìm và đăng ký lớp học",
@@ -34,7 +54,7 @@ const guides: Record<string, Guide[]> = {
       ],
     },
   ],
-  STAFF: [
+  RECEPTIONIST: [
     {
       title: "Tìm đúng hội viên",
       path: "members",
@@ -117,10 +137,11 @@ const guides: Record<string, Guide[]> = {
 export function HelpPanel({ role, base }: { role: string; base: string }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const rows = (guides[role === "RECEPTIONIST" ? "STAFF" : role] || []).filter((guide) =>
-    `${guide.title} ${guide.steps.join(" ")}`
-      .toLocaleLowerCase("vi")
-      .includes(search.trim().toLocaleLowerCase("vi")),
+  const rows = (guides[role === "STAFF" ? "RECEPTIONIST" : role] || []).filter(
+    (guide) =>
+      `${guide.title} ${guide.steps.join(" ")}`
+        .toLocaleLowerCase("vi")
+        .includes(search.trim().toLocaleLowerCase("vi")),
   );
   return (
     <>

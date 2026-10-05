@@ -29,10 +29,10 @@ router.use(authenticate);
  * @swagger
  * /attendance:
  *   get:
- *     summary: "Get attendance roster of a schedule (MANAGER/STAFF: full roster; COACH: only own classes; MEMBER: only own records)"
+ *     summary: "Get attendance roster of a schedule (MANAGER/RECEPTIONIST: full roster; COACH: only own classes; MEMBER: only own records)"
  *     description: |
  *       **Authorization:**
- *       - MANAGER / STAFF: xem toàn bộ roster (STAFF read-only, mutations vẫn chỉ COACH/MANAGER).
+ *       - MANAGER / RECEPTIONIST: xem toàn bộ roster (RECEPTIONIST read-only, mutations vẫn chỉ COACH/MANAGER).
  *       - COACH: chỉ lớp mình phụ trách (403 nếu không).
  *       - MEMBER: chỉ nhận bản ghi điểm danh của CHÍNH MÌNH (không lộ roster của người khác).
  *     tags: [Attendance]
@@ -53,7 +53,7 @@ router.use(authenticate);
  */
 router.get(
   "/",
-  authorize("MEMBER", "COACH", "MANAGER", "STAFF"),
+  authorize("MEMBER", "COACH", "MANAGER", "RECEPTIONIST"),
   validate(AttendanceRosterQuerySchema, "query"),
   controller.getAttendances
 );
@@ -66,7 +66,7 @@ router.get(
  *     description: |
  *       **Authorization:** COACH (chỉ lớp mình phụ trách) và MANAGER ghi được `PRESENT`/`ABSENT`/`LATE`.
  *       `EXCUSED` CHỈ MANAGER xác nhận — COACH gửi EXCUSED bị 403 (enforce ở service, không chỉ controller).
- *       MEMBER/STAFF không có quyền ghi attendance.
+ *       MEMBER/RECEPTIONIST không có quyền ghi attendance.
  *     tags: [Attendance]
  *     security:
  *       - BearerAuth: []
@@ -112,7 +112,7 @@ router.post("/", authorize("COACH", "MANAGER"), validate(CreateAttendanceSchema)
  *     responses:
  *       200: { description: "Success" }
  */
-router.patch("/:id", authorize("COACH", "MANAGER"), validate(UpdateAttendanceSchema), controller.updateAttendance);
+router.patch("/:id", authorize("ADMIN", "MANAGER"), validate(UpdateAttendanceSchema), controller.updateAttendance);
 
 /**
  * @swagger

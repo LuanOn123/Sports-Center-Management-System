@@ -1,12 +1,24 @@
-import { MembershipPlan, MembershipSubscription, MemberTier, Prisma } from "@prisma/client";
+import {
+  MembershipPlan,
+  MembershipSubscription,
+  MemberTier,
+  Prisma,
+  Payment,
+  Invoice,
+} from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
+import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { enqueueNotification } from "../notifications/outbox.service.js";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
 /** Thứ tự hạng gói — dùng để chặn hạ hạng khi mua gói mới. */
-export const TIER_VALUE: Record<string, number> = { FREE: 0, MEMBERSHIP: 1, PREMIUM: 2 };
+export const TIER_VALUE: Record<string, number> = {
+  FREE: 0,
+  MEMBERSHIP: 1,
+  PREMIUM: 2,
+};
 
 /** Số tiền phải thu của một gói (VND, số nguyên) — nguồn duy nhất cho mọi kênh thanh toán. */
 export function planAmount(plan: MembershipPlan): number {
@@ -40,16 +52,29 @@ export async function inspectPlanPurchase(
   db: DbClient,
   memberProfileId: string,
   plan: MembershipPlan,
-  now: Date = new Date()
+  now: Date = new Date(),
 ): Promise<PlanPurchaseContext> {
   const currentActive = await db.membershipSubscription.findFirst({
     where: { memberId: memberProfileId, status: "ACTIVE" },
-    include: { plan: true },
+    include: {
+      plan: true,
+      payments: {
+        where: { paidAt: { not: null } },
+        orderBy: { paidAt: "asc" },
+        take: 1,
+        select: { durationDaysSnapshot: true },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
 
   if (!currentActive) {
-    return { currentActive: null, isUpgrade: false, oldPlanName: "", remainingDays: 0 };
+    return {
+      currentActive: null,
+      isUpgrade: false,
+      oldPlanName: "",
+      remainingDays: 0,
+    };
   }
 
   const currentTierVal = TIER_VALUE[currentActive.tier] ?? 0;
@@ -58,13 +83,22 @@ export async function inspectPlanPurchase(
   if (newTierVal < currentTierVal) {
     throw new AppError(
       "Không thể mua gói thấp hơn hạng hiện tại. Bạn chỉ có thể nâng cấp.",
-      400
+      400,
     );
   }
-  if (newTierVal === currentTierVal && plan.durationDays < currentActive.plan.durationDays) {
+  const soldDuration =
+    currentActive.payments?.[0]?.durationDaysSnapshot ??
+    Math.max(
+      1,
+      Math.round(
+        (currentActive.endDate.getTime() - currentActive.startDate.getTime()) /
+          86400000,
+      ),
+    );
+  if (newTierVal === currentTierVal && plan.durationDays < soldDuration) {
     throw new AppError(
-      `Bạn đang dùng gói ${currentActive.plan.durationDays} ngày. Không thể mua gói ${plan.durationDays} ngày cùng hạng.`,
-      400
+      `Bạn đang dùng gói ${soldDuration} ngày. Không thể mua gói ${plan.durationDays} ngày cùng hạng.`,
+      400,
     );
   }
 
@@ -73,7 +107,10 @@ export async function inspectPlanPurchase(
   // Chỉ cộng dồn ngày dư thật của gói trả phí (MEMBERSHIP/PREMIUM) đang ACTIVE.
   const remainingDays =
     currentActive.tier !== "FREE" && currentActive.endDate > now
-      ? Math.ceil((currentActive.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      ? Math.ceil(
+          (currentActive.endDate.getTime() - now.getTime()) /
+            (1000 * 60 * 60 * 24),
+        )
       : 0;
 
   return {
@@ -92,7 +129,7 @@ export async function applyPlanSwitchRules(
   tx: Prisma.TransactionClient,
   memberProfileId: string,
   plan: MembershipPlan,
-  now: Date = new Date()
+  now: Date = new Date(),
 ): Promise<PlanPurchaseContext> {
   const context = await inspectPlanPurchase(tx, memberProfileId, plan, now);
 
@@ -144,8 +181,27 @@ export interface ActivateSubscriptionParams {
  */
 export async function activateSubscriptionForPayment(
   tx: Prisma.TransactionClient,
-  params: ActivateSubscriptionParams
-) {
+  params: ActivateSubscriptionParams,
+): Promise<{
+  subscription: MembershipSubscription & { plan: MembershipPlan };
+  payment: Payment;
+  invoice: Invoice;
+  context: PlanPurchaseContext;
+}> {
+  const soldPayment = await tx.payment.findUniqueOrThrow({
+    where: { id: params.paymentId },
+  });
+  // Gateway callbacks use the persisted order's facility, without a caller header.
+  if (!requestContext.getStore()?.facilityId)
+    return requestContext.run(
+      {
+        ...requestContext.getStore(),
+        facilityId: soldPayment.facilityId,
+        actorId: "system:payment-activation",
+        reason: "Activate paid order",
+      },
+      () => activateSubscriptionForPayment(tx, params),
+    );
   const now = params.now ?? new Date();
   const { plan } = params;
   const snapshot = params.optionSnapshot ?? null;
@@ -157,9 +213,15 @@ export async function activateSubscriptionForPayment(
     tier: snapshot?.tier ?? plan.tier,
     durationDays: snapshot?.durationDays ?? plan.durationDays,
   };
-  const purchasedQuota = snapshot?.maxConcurrentClasses ?? plan.maxConcurrentClasses;
+  const purchasedQuota =
+    snapshot?.maxConcurrentClasses ?? plan.maxConcurrentClasses;
 
-  const context = await applyPlanSwitchRules(tx, params.memberProfileId, purchasedPlan, now);
+  const context = await applyPlanSwitchRules(
+    tx,
+    params.memberProfileId,
+    purchasedPlan,
+    now,
+  );
 
   const startDate = params.startDate ?? now;
   const endDate = new Date(startDate);
@@ -171,6 +233,8 @@ export async function activateSubscriptionForPayment(
     data: {
       memberId: params.memberProfileId,
       planId: purchasedPlan.id,
+      facilityId: soldPayment.facilityId,
+      priceSnapshot: soldPayment.amount,
       tier: purchasedPlan.tier,
       startDate,
       endDate,
@@ -239,4 +303,3 @@ export async function activateSubscriptionForPayment(
 
   return { subscription, payment, invoice, context };
 }
-

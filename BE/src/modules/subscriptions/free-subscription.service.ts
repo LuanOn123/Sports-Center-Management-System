@@ -54,7 +54,7 @@ async function findOrCreateFreePlan(db: DbClient) {
  * KHÔNG cộng dồn ngày dư của gói FREE (`inspectPlanPurchase` trả `remainingDays = 0`).
  *
  * Dùng cho MỌI flow provision Member (register, Manager tạo user MEMBER, seed).
- * KHÔNG gọi cho COACH/STAFF/MANAGER — họ không có memberProfile.
+ * KHÔNG gọi cho COACH/RECEPTIONIST/MANAGER — họ không có memberProfile.
  *
  * BẮT BUỘC gọi trong transaction: advisory lock `pg_advisory_xact_lock` chỉ có tác dụng
  * trong transaction (register/createUser/seed đều đã bọc sẵn).
@@ -82,6 +82,7 @@ export async function ensureActiveFreeSubscription(db: DbClient, memberProfileId
     data: {
       memberId: memberProfileId,
       planId: plan.id,
+      priceSnapshot: plan.price,
       tier: plan.tier,
       startDate,
       endDate,

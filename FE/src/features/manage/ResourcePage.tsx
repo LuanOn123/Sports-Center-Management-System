@@ -99,7 +99,7 @@ export function ResourcePage({
   const requestQuery = {
     ...query,
     ...(query.search !== undefined ? { search } : {}),
-    ...(r.slug === "staff" ? { role: "STAFF" } : {}),
+    ...(r.slug === "staff" ? { role: "RECEPTIONIST" } : {}),
     ...(r.slug === "schedules"
       ? {
           from: visibleCalendarRange.start.toISOString(),
@@ -116,9 +116,10 @@ export function ResourcePage({
         ? allPages<RecordData>(listKey, { query: requestQuery, signal })
         : api<RecordData[]>(listKey, { query: requestQuery, signal }),
   });
-  const create = "POST " + (r.create || r.path);
-  const update = "PATCH " + r.path + "/{id}";
-  const remove = "DELETE " + r.path + "/{id}";
+  const readOnly = role !== "ADMIN" && (["users", "staff", "membership-plans", "sports", "coaches"].includes(r.slug)) || role === "RECEPTIONIST" && ["rooms", "classes", "schedules"].includes(r.slug);
+  const create = readOnly || role !== "ADMIN" && !!r.create ? "" : "POST " + (r.create || r.path);
+  const update = readOnly ? "" : "PATCH " + r.path + "/{id}";
+  const remove = readOnly ? "" : "DELETE " + r.path + "/{id}";
   const detailKey = "GET " + r.path + "/{id}";
   const detail = useQuery({
     queryKey: ["detail", r.path, modal?.row?.id],

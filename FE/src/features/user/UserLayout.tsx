@@ -1,3 +1,4 @@
+import { OperationsPage } from "../operations/OperationsPage";
 import { MemberPortalContext } from "../../shared/ui";
 import {
   LayoutDashboard,
@@ -73,6 +74,7 @@ const items = [
   ["schedule", "Lịch tập", CalendarDays],
   ["attendance", "Điểm danh", CircleCheck],
   ["notifications", "Thông báo", Bell],
+  ["support", "Yêu cầu hỗ trợ", Bell],
   ["profile", "Tài khoản", UserRound],
 ] as const;
 export function UserLayout(props: PortalProps) {
@@ -86,6 +88,7 @@ export function UserLayout(props: PortalProps) {
           <div className="member-content">
             <Suspense fallback={<Loading variant="page" />}>
               <Routes>
+                <Route path="/member/support" element={<OperationsPage kind="issues" role="MEMBER" />} />
                 <Route
                   path="/member/dashboard"
                   element={

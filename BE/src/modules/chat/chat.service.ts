@@ -259,10 +259,10 @@ export const chatService = {
 
   async getContacts(role: string) {
     // Logic: 
-    // STAFF -> MANAGER, COACH
+    // RECEPTIONIST -> MANAGER, COACH
     // MEMBER -> COACH
-    // COACH -> MEMBER, STAFF, MANAGER
-    // MANAGER -> STAFF, COACH
+    // COACH -> MEMBER, RECEPTIONIST, MANAGER
+    // MANAGER -> RECEPTIONIST, COACH
     const allowedRoles = allowedContacts[role] ?? [];
 
     return prisma.user.findMany({

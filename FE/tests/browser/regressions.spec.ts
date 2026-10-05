@@ -4,7 +4,7 @@ for (const width of [320, 375, 430, 768, 1024, 1280, 1440, 1920])
   test(`long text, selected member and modal at ${width}px`, async ({
     page,
   }) => {
-    await setup(page, "STAFF", true);
+    await setup(page, "RECEPTIONIST", true);
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/receptionist/membership");
     await page

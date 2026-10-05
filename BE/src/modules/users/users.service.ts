@@ -1,3 +1,4 @@
+import { synchronizeUserProjection } from "./user-projection.service.js";
 import { User } from "../../models/User.js";
 import { MemberProfile } from "../../models/MemberProfile.js";
 import { CoachProfile } from "../../models/CoachProfile.js";
@@ -176,7 +177,7 @@ export async function createUser(data: CreateUserInput) {
 
     return buildUserResponse(userId);
   } catch (err) {
-    await session.abortTransaction();
+    if (session.inTransaction()) await session.abortTransaction();
     throw err;
   } finally {
     session.endSession();
@@ -198,8 +199,8 @@ export async function updateUser(id: string, data: UpdateUserInput, requesterId:
     if (data.role && data.role !== user.role) throw new AppError("Cannot change your own role", 400);
   }
 
-  if (user.role === "MANAGER" && (data.isActive === false || (data.role && data.role !== "MANAGER"))) {
-    const activeManagers = await User.countDocuments({ role: "MANAGER", isActive: true });
+  if (["MANAGER", "ADMIN"].includes(user.role) && (data.isActive === false || (data.role && data.role !== user.role))) {
+    const activeManagers = await User.countDocuments({ role: user.role, isActive: true });
     if (activeManagers <= 1) {
       throw new AppError("Cannot deactivate or demote the last active MANAGER", 400);
     }
@@ -263,6 +264,7 @@ export async function updateUser(id: string, data: UpdateUserInput, requesterId:
     disconnectUserSockets(id);
   }
 
+  await synchronizeUserProjection(id);
   return buildUserResponse(id);
 }
 
@@ -272,7 +274,7 @@ export async function deactivateUser(id: string, requesterId: string) {
   const user = await User.findById(id);
   if (!user) throw new AppError("User not found", 404);
 
-  if (user.role === "MANAGER") {
+  if (["MANAGER", "ADMIN"].includes(user.role)) {
     const activeManagers = await User.countDocuments({ role: "MANAGER", isActive: true });
     if (activeManagers <= 1) {
       throw new AppError("Cannot deactivate the last active MANAGER", 400);
@@ -281,6 +283,7 @@ export async function deactivateUser(id: string, requesterId: string) {
 
   await User.updateOne({ _id: id }, { isActive: false });
   disconnectUserSockets(id);
+  await synchronizeUserProjection(id);
 
   return {
     id: user._id.toString(),

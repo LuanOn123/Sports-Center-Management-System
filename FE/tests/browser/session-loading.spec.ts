@@ -45,7 +45,7 @@ test("legacy member URLs reach the integrated portal and data loads", async ({
 test("table skeleton stays visible until data arrives and respects reduced motion", async ({
   page,
 }) => {
-  await setup(page, "MANAGER");
+  await setup(page, "ADMIN");
   await page.emulateMedia({ reducedMotion: "reduce" });
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
@@ -55,7 +55,7 @@ test("table skeleton stays visible until data arrives and respects reduced motio
     await gate;
     await route.fallback();
   });
-  await page.goto("/manager/users");
+  await page.goto("/admin/users");
   await expect(page.locator(".skeleton-table")).toBeVisible();
   expect(
     await page
@@ -73,9 +73,9 @@ test("table skeleton stays visible until data arrives and respects reduced motio
 
 for (const width of [375, 1440]) {
   test(`nested details remain readable at ${width}px`, async ({ page }) => {
-    await setup(page, "MANAGER", true);
+    await setup(page, "ADMIN", true);
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/manager/users");
+    await page.goto("/admin/users");
     await page
       .getByRole("button", { name: "Xem chi tiết", exact: true })
       .first()

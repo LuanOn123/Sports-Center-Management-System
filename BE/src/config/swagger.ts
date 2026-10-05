@@ -1,3 +1,4 @@
+import { addOperations } from "./operations-openapi.js";
 import swaggerJSDoc from "swagger-jsdoc";
 
 const options: swaggerJSDoc.Options = {
@@ -233,7 +234,7 @@ const options: swaggerJSDoc.Options = {
                       gender: "FEMALE",
                       dateOfBirth: null,
                       avatarUrl: null,
-                      role: "STAFF",
+                      role: "RECEPTIONIST",
                       isActive: true,
                       createdAt: "2026-09-11T14:20:14.910Z",
                       memberProfile: null,
@@ -1316,3 +1317,4 @@ const options: swaggerJSDoc.Options = {
 };
 
 export const swaggerSpec = swaggerJSDoc(options);
+addOperations(swaggerSpec);

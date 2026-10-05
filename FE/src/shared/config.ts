@@ -1,5 +1,6 @@
 import { sportNames } from "./sports";
 export const labels: Record<string, string> = {
+  facilityId: "Cơ sở", userId: "Nhân sự", startMinute: "Phút bắt đầu trong ngày", endMinute: "Phút kết thúc trong ngày", response: "Nội dung phản hồi", title: "Tiêu đề", code: "Mã cơ sở", address: "Địa chỉ", contactInfo: "Thông tin liên hệ", timezone: "Múi giờ", IN_PROGRESS: "Đang xử lý", RESOLVED: "Đã xử lý", CLOSED: "Đã đóng", APPROVED: "Đã duyệt", REJECTED: "Từ chối",
   PRESENT: "Có mặt",
   ABSENT: "Vắng mặt",
   LATE: "Đi muộn",
@@ -82,6 +83,7 @@ export const labels: Record<string, string> = {
   STAFF: "Lễ tân",
   RECEPTIONIST: "Lễ tân",
   MANAGER: "Quản lý",
+  ADMIN: "Quản trị hệ thống",
   MEMBERSHIP: "Tiêu chuẩn",
   PREMIUM: "Cao cấp",
   FREE: "Miễn phí",

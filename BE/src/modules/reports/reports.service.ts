@@ -17,14 +17,14 @@ export async function getRevenueReport(startDate: string, endDate: string) {
   const [collectedAgg, refundedAgg, pendingCount, failedCount, ordersCreated, byMethod, recentPayments] =
     await Promise.all([
       prisma.payment.aggregate({
-        where: { ...cashFilter, status: "SUCCESS" },
+        where: { ...cashFilter, status: { in: ["SUCCESS", "REFUNDED"] } },
         _sum: { amount: true },
         _count: true,
       }),
       // Tiền đã hoàn trong kỳ — payment REFUNDED giữ `paidAt` của lần thu gốc.
       prisma.payment.aggregate({
-        where: { ...cashFilter, status: "REFUNDED" },
-        _sum: { amount: true },
+        where: { refundedAt: { gte: start, lte: end }, status: "REFUNDED" },
+        _sum: { refundedAmount: true },
         _count: true,
       }),
       prisma.payment.count({ where: { ...orderFilter, status: "PENDING" } }),
@@ -52,7 +52,8 @@ export async function getRevenueReport(startDate: string, endDate: string) {
   for (const m of byMethod) methodMap[m.method] = Number(m._sum.amount ?? 0);
 
   const totalRevenue = Number(collectedAgg._sum.amount ?? 0);
-  const refundedAmount = Number(refundedAgg._sum.amount ?? 0);
+  const refundedAmount = Number(refundedAgg._sum.refundedAmount ?? 0);
+  const unreconciledRefunds = await prisma.payment.count({ where: { status: "REFUNDED", refundedAt: null } });
 
   return {
     /** Tiền THỰC THU trong kỳ (tổng payment SUCCESS theo `paidAt`). */
@@ -60,7 +61,9 @@ export async function getRevenueReport(startDate: string, endDate: string) {
     /** Tiền ĐÃ HOÀN trong kỳ (tổng payment REFUNDED theo `paidAt`). */
     refundedAmount,
     /** Thực nhận = totalRevenue − refundedAmount (không âm). */
-    netRevenue: Math.max(0, totalRevenue - refundedAmount),
+    netRevenue: totalRevenue - refundedAmount,
+    unreconciledRefunds,
+    netRevenueVerified: unreconciledRefunds === 0,
     /** Tổng số ĐƠN được tạo trong kỳ (mọi trạng thái, theo `createdAt`). */
     totalPayments: ordersCreated,
     /** Số giao dịch THU ĐƯỢC trong kỳ (cùng cohort paidAt với totalRevenue). */
@@ -77,11 +80,7 @@ export async function getRevenueReport(startDate: string, endDate: string) {
       SEPAY: methodMap["SEPAY"] ?? 0,
     },
     recentPayments,
-    note:
-      "totalRevenue = tiền THỰC THU trong kỳ (SUCCESS theo paidAt); refundedAmount = tiền ĐÃ HOÀN " +
-      "(REFUNDED theo paidAt); netRevenue = thực nhận (gross − refunded). pendingPayments/failedPayments/" +
-      "totalPayments đếm theo ĐƠN tạo trong kỳ (createdAt). Lưu ý: chưa có refund ledger chi tiết — " +
-      "payment bị đánh REFUNDED được tính hoàn TOÀN BỘ số tiền gốc (kể cả chính sách hoàn một phần).",
+    note: "Thực thu theo paidAt; hoàn tiền thực tế theo refundedAt.",
   };
 }
 

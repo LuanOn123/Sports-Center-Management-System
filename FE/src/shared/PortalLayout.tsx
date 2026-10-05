@@ -34,6 +34,7 @@ import { Policies } from "./Policies";
 import { AttendanceShortcut } from "./AttendanceShortcut";
 import { HelpPanel } from "./HelpPanel";
 import { ConnectionStatus } from "./ConnectionStatus";
+import { FacilityPicker } from "./FacilityBoundary";
 export type NavigationItem = readonly [
   path: string,
   name: string,
@@ -206,6 +207,7 @@ export function PortalLayout({
             <strong>{pageTitle}</strong>
           </div>
           <div className="topbar-actions">
+            <FacilityPicker />
             <HelpPanel role={user.role} base={base} />
             <NotificationBell base={base} />
             <Link

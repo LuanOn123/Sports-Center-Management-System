@@ -33,6 +33,7 @@ router.put(
   "/:facilityId",
   authenticate,
   authorize("ADMIN"),
+  checkFacilityScope,
   validate(UpdateFacilitySchema),
   Controller.updateFacility
 );

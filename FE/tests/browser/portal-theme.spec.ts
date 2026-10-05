@@ -8,7 +8,7 @@ for (const [role, base, routes] of [
     "manager",
     ["dashboard", "rooms", "schedules", "activity-planner"],
   ],
-  ["STAFF", "receptionist", ["dashboard", "classes", "payments", "membership"]],
+  ["RECEPTIONIST", "receptionist", ["dashboard", "classes", "payments", "membership"]],
   ["COACH", "coach", ["dashboard", "schedule", "classes", "profile"]],
 ] as const) {
   for (const width of [375, 1440]) {

@@ -53,7 +53,7 @@ export const resources: Resource[] = [
     title: "Đội ngũ lễ tân",
     subtitle: "Chăm sóc từng trải nghiệm tại trung tâm.",
     path: "/users",
-    role: "STAFF",
+    role: "RECEPTIONIST",
     columns: [
       ["fullName", "Họ và tên"],
       ["email", "Email"],

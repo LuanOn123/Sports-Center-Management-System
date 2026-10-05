@@ -1,66 +1,53 @@
-import { Request, Response, NextFunction } from "express";
-import { sendError } from "../utils/response.js";
+import type { Request, Response, NextFunction } from "express";
 import { prisma } from "../config/prisma.js";
-
-/**
- * Middleware kiểm tra quyền truy cập Cơ sở (Facility Scope)
- * Theo đặc tả BR-AUTH-02:
- * - Admin thấy toàn hệ thống (bỏ qua check scope).
- * - Manager và Receptionist chỉ thao tác dữ liệu của cơ sở được phân công.
- */
+import { requestContext } from "../config/request-context.js";
+import { AppError } from "./errorHandler.js";
 export async function checkFacilityScope(
   req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> {
+  _res: Response,
+  next: NextFunction,
+) {
   try {
-    if (!req.user) {
-      sendError(res, "Unauthorized", 401);
-      return;
-    }
-
-    // Admin có quyền toàn cục
-    if (req.user.role === "ADMIN") {
-      next();
-      return;
-    }
-
-    // Lấy facilityId từ param, query, hoặc body
-    const facilityId =
-      req.params.facilityId ||
-      req.query.facilityId ||
-      req.body.facilityId;
-
-    if (!facilityId) {
-      // Nếu API không yêu cầu facility cụ thể (vd: GET /facilities chung), 
-      // tùy router mà chặn hoặc lấy danh sách theo quyền. 
-      // Tạm thời cho pass để Controller xử lý tiếp.
-      next();
-      return;
-    }
-
-    // Nếu có truyền facilityId -> Kiểm tra user có được phân công ở cơ sở này không
-    if (["MANAGER", "RECEPTIONIST", "COACH"].includes(req.user.role)) {
-      const staffRecord = await prisma.facilityStaff.findUnique({
+    if (!req.user) throw new AppError("Unauthorized", 401);
+    const candidates = [
+      req.params.facilityId,
+      req.query.facilityId,
+      req.body?.facilityId,
+      req.get("X-Facility-Id"),
+    ].filter((v) => v !== undefined);
+    if (
+      !candidates.length ||
+      candidates.some((v) => typeof v !== "string" || !v.trim())
+    )
+      throw new AppError("FACILITY_CONTEXT_REQUIRED", 400);
+    if (new Set(candidates).size !== 1)
+      throw new AppError("CONFLICTING_FACILITY_CONTEXT", 400);
+    const facilityId = candidates[0] as string;
+    const facility = await prisma.facility.findUnique({
+      where: { id: facilityId },
+    });
+    if (!facility?.isActive) throw new AppError("FORBIDDEN_SCOPE", 403);
+    if (req.user.role !== "ADMIN" && req.user.role !== "MEMBER") {
+      const assigned = await prisma.facilityStaff.findFirst({
         where: {
-          userId_facilityId_role: {
-            userId: req.user.id,
-            facilityId: String(facilityId),
-            role: req.user.role as any,
-          },
+          facilityId,
+          userId: req.user.id,
+          role: req.user.role as any,
+          isActive: true,
         },
       });
-
-      if (!staffRecord || !staffRecord.isActive) {
-        sendError(res, "FORBIDDEN_SCOPE", 403);
-        return;
-      }
+      if (!assigned) throw new AppError("FORBIDDEN_SCOPE", 403);
     }
-
-    // Tới bước này nghĩa là hợp lệ
-    next();
+    requestContext.run(
+      {
+        facilityId,
+        actorId: req.user.id,
+        role: req.user.role,
+        reason: req.body?.reason || req.body?.note,
+      },
+      next,
+    );
   } catch (error) {
-    console.error("Facility scope check error:", error);
-    sendError(res, "Internal server error during scope check", 500);
+    next(error);
   }
 }

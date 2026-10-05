@@ -42,7 +42,7 @@ const router = Router();
  */
 router.post(
   "/",
-  authenticate, authorize("MANAGER", "STAFF"),
+  authenticate, authorize("MANAGER", "RECEPTIONIST"),
   validate(CreateSubscriptionSchema),
   subsController.createSubscription
 );
@@ -79,7 +79,7 @@ router.post(
  */
 router.post(
   "/:id/renew",
-  authenticate, authorize("MANAGER", "STAFF"),
+  authenticate, authorize("MANAGER", "RECEPTIONIST"),
   validate(RenewSubscriptionSchema),
   subsController.renewSubscription
 );
@@ -133,7 +133,7 @@ router.get(
  */
 router.get(
   "/:id",
-  authenticate, authorize("MANAGER", "STAFF"),
+  authenticate, authorize("MANAGER", "RECEPTIONIST"),
   subsController.getSubscriptionById
 );
 

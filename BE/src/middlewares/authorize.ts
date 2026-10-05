@@ -7,7 +7,7 @@ export function authorize(...roles: string[]) {
       sendError(res, "Unauthorized", 401);
       return;
     }
-    if (!roles.includes(req.user.role)) {
+    if (!roles.includes(req.user.role) && !(req.user.role === "ADMIN" && roles.some(role => ["MANAGER", "RECEPTIONIST"].includes(role)))) {
       sendError(res, "Forbidden: insufficient permissions", 403);
       return;
     }

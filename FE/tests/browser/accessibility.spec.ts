@@ -16,15 +16,15 @@ const screens = [
     "audit-logs",
   ].map((path) => ["MANAGER", "/manager/" + path] as const),
   ...["dashboard", "members", "checkin", "support", "profile"].map(
-    (path) => ["STAFF", "/receptionist/" + path] as const,
+    (path) => ["RECEPTIONIST", "/receptionist/" + path] as const,
   ),
   ["MANAGER", "/manager/dashboard"],
-  ["MANAGER", "/manager/users"],
+  ["ADMIN", "/admin/users"],
   ["MANAGER", "/manager/profile"],
-  ["STAFF", "/receptionist/members/create"],
-  ["STAFF", "/receptionist/membership"],
-  ["STAFF", "/receptionist/classes"],
-  ["STAFF", "/receptionist/payments"],
+  ["RECEPTIONIST", "/receptionist/members/create"],
+  ["RECEPTIONIST", "/receptionist/membership"],
+  ["RECEPTIONIST", "/receptionist/classes"],
+  ["RECEPTIONIST", "/receptionist/payments"],
   ["COACH", "/coach/dashboard"],
   ["MEMBER", "/user/dashboard"],
 ] as const;
@@ -42,7 +42,7 @@ for (const width of [375, 1440])
       await expect(page.locator("main h1")).toBeVisible();
       await expect(page.locator(".loading, .skeleton")).toHaveCount(0);
       if (
-        role === "STAFF" &&
+        role === "RECEPTIONIST" &&
         [
           "/receptionist/membership",
           "/receptionist/classes",

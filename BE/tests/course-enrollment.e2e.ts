@@ -89,7 +89,7 @@ const created = {
 type FixtureUser = { id: string; email: string; token: string; memberProfileId: string };
 
 async function createUser(
-  role: "MEMBER" | "COACH" | "STAFF" | "MANAGER",
+  role: "MEMBER" | "COACH" | "RECEPTIONIST" | "MANAGER",
   tag: string,
   hashedPassword: string
 ): Promise<FixtureUser> {
@@ -403,25 +403,25 @@ async function scenarioPremiumRequired(ctx: Ctx, member: FixtureUser): Promise<v
   check("ROLLBACK: không tạo enrollment", (await bookedCountOfClass(member.memberProfileId, cls.classId)) === 0);
 }
 
-/** 9) Authorization + STAFF đặt hộ + lớp không còn buổi sắp tới. */
+/** 9) Authorization + RECEPTIONIST đặt hộ + lớp không còn buổi sắp tới. */
 async function scenarioAuthorizationAndEmptyCourse(
   ctx: Ctx,
   member: FixtureUser,
   coach: FixtureUser,
   staff: FixtureUser
 ): Promise<void> {
-  section("9) Authorization + STAFF đặt hộ + lớp không còn buổi sắp tới");
+  section("9) Authorization + RECEPTIONIST đặt hộ + lớp không còn buổi sắp tới");
   const cls = await createClass("S9", [futureSlot(6, 11)]);
 
   const coachRes = await enrollWholeCourse(coach.token, cls.classId);
   check("COACH gọi bulk → 403", coachRes.status === 403, coachRes.body);
 
   const staffNoMember = await enrollWholeCourse(staff.token, cls.classId);
-  check("STAFF thiếu memberId → 400", staffNoMember.status === 400, staffNoMember.body);
+  check("RECEPTIONIST thiếu memberId → 400", staffNoMember.status === 400, staffNoMember.body);
 
   await subscribe(ctx.manager.token, member.memberProfileId, ctx.plans.membership3.id);
   const staffRes = await enrollWholeCourse(staff.token, cls.classId, member.id);
-  check("STAFF đặt hộ (memberId = userId) → 201", staffRes.status === 201, staffRes.body);
+  check("RECEPTIONIST đặt hộ (memberId = userId) → 201", staffRes.status === 201, staffRes.body);
   check("DB: buổi của hội viên được tạo", (await bookedCountOfClass(member.memberProfileId, cls.classId)) === 1);
 
   const empty = await createClass("S9-empty", []);
@@ -538,7 +538,7 @@ async function main(): Promise<void> {
     await setupRoom();
     const manager = await createUser("MANAGER", "manager", hashed);
     const coach = await createUser("COACH", "coach", hashed);
-    const staff = await createUser("STAFF", "staff", hashed);
+    const staff = await createUser("RECEPTIONIST", "staff", hashed);
     const members: FixtureUser[] = [];
     for (let i = 1; i <= 9; i++) members.push(await createUser("MEMBER", `member${i}`, hashed));
     const filler = await createUser("MEMBER", "filler", hashed);

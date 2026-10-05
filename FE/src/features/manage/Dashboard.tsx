@@ -37,7 +37,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
   const revenue = useQuery({
     queryKey: ["report", "revenue", query],
     queryFn: ({ signal }) =>
-      api<RevenueReportOk["data"] & { note?: string }>("GET /reports/revenue", {
+      api<RevenueReportOk["data"] & { note?: string; unreconciledRefunds?: number }>("GET /reports/revenue", {
         query,
         signal,
       }),
@@ -148,6 +148,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
   }
   return (
     <>
+      {!!revenue.data?.data.unreconciledRefunds && <div className="panel" role="status">Doanh thu đang tạm tính: {revenue.data.data.unreconciledRefunds} giao dịch hoàn tiền cũ chưa có số tiền và thời điểm hoàn được đối soát.</div>}
       <div className="page-heading">
         <div>
           <div className="eyebrow">

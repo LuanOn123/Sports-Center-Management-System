@@ -153,7 +153,7 @@ const created = {
 type FixtureUser = { id: string; email: string; token: string; memberProfileId: string };
 
 async function createUser(
-  role: "MEMBER" | "COACH" | "STAFF" | "MANAGER",
+  role: "MEMBER" | "COACH" | "RECEPTIONIST" | "MANAGER",
   tag: string,
   hashedPassword: string
 ): Promise<FixtureUser> {
@@ -965,7 +965,7 @@ async function scenarioAuthorization(ctx: Ctx, staff: FixtureUser, coach: Fixtur
   const asManager = await checkout(ctx.manager.token, planId);
   check("MANAGER checkout → 403 (chỉ MEMBER tự mua)", asManager.status === 403, asManager.body);
   const asStaff = await checkout(staff.token, planId);
-  check("STAFF checkout → 403", asStaff.status === 403, asStaff.body);
+  check("RECEPTIONIST checkout → 403", asStaff.status === 403, asStaff.body);
   const asCoach = await checkout(coach.token, planId);
   check("COACH checkout → 403", asCoach.status === 403, asCoach.body);
   const anonymous = await http("POST", "/payments/sepay/checkout", { body: { planId } });
@@ -1655,7 +1655,7 @@ async function main(): Promise<void> {
   try {
     const manager = await createUser("MANAGER", "manager", hashed);
     const coach = await createUser("COACH", "coach", hashed);
-    const staff = await createUser("STAFF", "staff", hashed);
+    const staff = await createUser("RECEPTIONIST", "staff", hashed);
     const members: FixtureUser[] = [];
     for (let i = 1; i <= 12; i++) members.push(await createUser("MEMBER", `member${i}`, hashed));
 

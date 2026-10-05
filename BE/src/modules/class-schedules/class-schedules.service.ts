@@ -1,3 +1,5 @@
+import { requestContext } from "../../config/request-context.js";
+import { validateResources } from "../operations/scheduling.js";
 import { prisma } from "../../config/prisma.js";
 import { Prisma, EnrollmentStatus } from "@prisma/client";
 import { AppError } from "../../middlewares/errorHandler.js";
@@ -40,8 +42,10 @@ async function checkConflicts(
   classId: string,
   startTime: Date,
   endTime: Date,
-  excludeScheduleId?: string
+  excludeScheduleId?: string,
+  effectiveCoach?: string
 ) {
+  await validateResources(db, roomId, classId, startTime, endTime, effectiveCoach);
   // Room conflict
   const roomConflict = await db.classSchedule.findFirst({
     where: {
@@ -62,15 +66,15 @@ async function checkConflicts(
   }
 
   // Coach conflict – get coaches of this class
-  const classCoaches = await db.classMember.findMany({ where: { classId } });
+  const classCoaches = effectiveCoach ? [{ coachId: effectiveCoach }] : await db.classMember.findMany({ where: { classId } });
   for (const cm of classCoaches) {
-    const coachConflict = await db.classSchedule.findFirst({
+    const coachConflict = await requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, () => db.classSchedule.findFirst({
       where: {
         status: "SCHEDULED",
         id: excludeScheduleId ? { not: excludeScheduleId } : undefined,
         startTime: { lt: endTime },
         endTime: { gt: startTime },
-        class: { coaches: { some: { coachId: cm.coachId } } },
+        OR: [{ coachId: cm.coachId }, { coachId: null, class: { coaches: { some: { coachId: cm.coachId } } } }],
       },
       include: {
         class: {
@@ -82,7 +86,7 @@ async function checkConflicts(
           },
         },
       },
-    });
+    }));
 
     if (coachConflict) {
       const coachName =
@@ -101,9 +105,9 @@ export async function checkScheduleConflicts(
   classId: string,
   startTime: Date,
   endTime: Date,
-  excludeScheduleId?: string
+  excludeScheduleId?: string, effectiveCoach?: string
 ) {
-  return checkConflicts(db, roomId, classId, startTime, endTime, excludeScheduleId);
+  return checkConflicts(db, roomId, classId, startTime, endTime, excludeScheduleId, effectiveCoach);
 }
 
 export async function listSchedules(query: any) {
@@ -207,6 +211,8 @@ export async function listSchedules(query: any) {
 // Chỉ hỗ trợ đúng các key mà listSchedules đang dùng: classId/roomId/status + startTime/endTime.
 function buildWhereSql(where: any): { fragment: Prisma.Sql } {
   const conds: Prisma.Sql[] = [Prisma.sql`TRUE`];
+  const scopedFacility = requestContext.getStore()?.facilityId;
+  if (scopedFacility) conds.push(Prisma.sql`s."classId" IN (SELECT id FROM "Class" WHERE "facilityId" = ${scopedFacility})`);
   if (where.classId) conds.push(Prisma.sql`s."classId" = ${where.classId}`);
   if (where.roomId) conds.push(Prisma.sql`s."roomId" = ${where.roomId}`);
   if (where.status) conds.push(Prisma.sql`s."status"::text = ${where.status}`);
@@ -506,7 +512,7 @@ export async function updateSchedule(id: string, data: any) {
     throw new AppError("endTime must be strictly greater than startTime", 400);
   }
 
-  const timeOrRoomChanged = Boolean(data.startTime || data.endTime || data.roomId);
+  const timeOrRoomChanged = Boolean(data.startTime || data.endTime || data.roomId || data.coachId);
 
   // Cancel qua PATCH: reuse unified cancel flow, không cho đổi room/time cùng lúc.
   if (data.status === "CANCELLED") {
@@ -555,8 +561,8 @@ export async function updateSchedule(id: string, data: any) {
       assertClassRoomAreaMatch(existing.class.areaType, room.areaType);
 
       const coachIds = await getCoachIdsOfClass(tx, existing.classId);
-      await lockScheduleResources(tx, [fresh.roomId, roomId], coachIds);
-      await checkConflicts(tx, roomId, existing.classId, startTime, endTime, id);
+      await lockScheduleResources(tx, [fresh.roomId, roomId], [...coachIds, ...(data.coachId ? [data.coachId] : [])]);
+      await checkConflicts(tx, roomId, existing.classId, startTime, endTime, id, data.coachId);
 
       // A11: không dời lịch nếu phá chỗ đã hợp lệ (trùng giờ / ngoài hạn gói của member đang giữ chỗ).
       await assertScheduleMoveKeepsBookingsValid(tx, { scheduleId: id, startTime, endTime });
@@ -564,7 +570,7 @@ export async function updateSchedule(id: string, data: any) {
       // A12: CAS trạng thái — lịch vừa bị hủy/hoàn tất trong lúc chờ lock thì không ghi.
       const moved = await tx.classSchedule.updateMany({
         where: { id, status: "SCHEDULED" },
-        data: { startTime, endTime, roomId },
+        data: { startTime, endTime, roomId, ...(data.coachId ? { coachId: data.coachId } : {}) },
       });
       if (moved.count === 0) {
         throw new AppError("Lịch học đã thay đổi trạng thái, vui lòng tải lại.", 409, {

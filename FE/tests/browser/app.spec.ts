@@ -8,6 +8,7 @@ async function fixtureApi(page: any, role = "MANAGER") {
     async (route: any) => {
       const url = new URL(route.request().url());
       const path = url.pathname.replace("/api/v1", "");
+    if (path === "/facilities") return route.fulfill({ json: { success: true, data: [{ id: "facility-a", code: "A", name: "Cơ sở A", isActive: true }] } });
       const method = route.request().method().toLowerCase();
       const operation = doc.paths[path]?.[method];
       if (!operation) {
@@ -40,6 +41,7 @@ async function fixtureApi(page: any, role = "MANAGER") {
       const response: any = Object.entries(operation.responses).find(([code]) =>
         code.startsWith("2"),
       )?.[1];
+      if (!response?.$ref) return route.fulfill({ json: { success: true, data: [] } });
       const schema = doc.components.responses[response.$ref.split("/").pop()];
       const payload = structuredClone(
         schema.content["application/json"].schema.example,
@@ -105,7 +107,6 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
     fullPage: true,
   });
   for (const slug of [
-    "users",
     "members",
     "coaches",
     "staff",

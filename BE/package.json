@@ -25,7 +25,13 @@
     "test:cloudinary:check": "tsx tests/cloudinary-check.ts",
     "test:e2e:all": "npm run test:e2e && npm run test:e2e:attendance && npm run test:e2e:course && npm run test:e2e:sepay && npm run test:e2e:chat && npm run test:e2e:lifecycle",
     "predev": "npm run db:generate",
-    "prebuild": "npm run db:generate"
+    "prebuild": "npm run db:generate",
+    "test:operations": "tsx tests/facility-operations.integration.ts",
+    "db:migrate:roles": "tsx src/scripts/migrate-staff-role.ts",
+    "db:deploy": "prisma migrate deploy",
+    "db:migrate:identities": "tsx src/scripts/migrate-identity-projections.ts",
+    "test:operations:http": "tsx tests/facility-http.integration.ts",
+    "test:operations:migration": "tsx tests/facility-migration.integration.ts"
   },
   "dependencies": {
     "@getbrevo/brevo": "^6.0.3",

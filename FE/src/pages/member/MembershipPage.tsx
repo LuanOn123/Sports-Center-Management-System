@@ -1,3 +1,4 @@
+import { getFacilityId } from "../../shared/facility";
 import { CancelSubscription } from "../../shared/CancelSubscription";
 import "./membership.css";
 import {
@@ -24,7 +25,7 @@ export function MembershipPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<"current" | "plans">("current");
   const [paymentPlan, setPaymentPlan] = useState<MembershipPlan | null>(null);
-  const storageKey = `pulse.pending-checkout.${user?.id}`;
+  const storageKey = `pulse.pending-checkout.${user?.id}.${getFacilityId()}`;
   const [checkout, setCheckout] = useState<SepayCheckout | null>(() => {
     try {
       return JSON.parse(sessionStorage.getItem(storageKey) || "null");

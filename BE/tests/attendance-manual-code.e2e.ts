@@ -14,7 +14,7 @@
  * 2) Mã dự phòng: chữ thường/khoảng trắng, rotate mã cũ, sai/hết hạn/thu hồi, message không lộ thông tin.
  * 3) Bảo mật: member KHÔNG gửi scheduleId; mã của buổi không đặt chỗ bị từ chối + bị thu hồi khi lạm dụng.
  * 4) Chống brute-force theo member: 10 lần sai/15 phút → 429 (kể cả khi sau đó nhập mã đúng).
- * 5) Chốt chặn gói tập (gói hết hạn → 403) và phân quyền COACH/MANAGER/STAFF/MEMBER.
+ * 5) Chốt chặn gói tập (gói hết hạn → 403) và phân quyền COACH/MANAGER/RECEPTIONIST/MEMBER.
  */
 import "dotenv/config";
 import jwt from "jsonwebtoken";
@@ -120,7 +120,7 @@ type FixtureUser = {
 };
 
 async function createUser(
-  role: "MEMBER" | "COACH" | "STAFF" | "MANAGER",
+  role: "MEMBER" | "COACH" | "RECEPTIONIST" | "MANAGER",
   tag: string,
   hashedPassword: string
 ): Promise<FixtureUser> {
@@ -550,7 +550,7 @@ async function scenarioSubscriptionGate(ctx: Ctx, member: FixtureUser): Promise<
   check("không tạo attendance cho member hết hạn gói", (await attendanceCount(member.memberProfileId, sA4)) === 0);
 }
 
-/** 6) Phân quyền: không mở quyền ghi attendance cho STAFF; member không tự sinh mã. */
+/** 6) Phân quyền: không mở quyền ghi attendance cho RECEPTIONIST; member không tự sinh mã. */
 async function scenarioAuthorization(ctx: Ctx, member: FixtureUser): Promise<void> {
   section("6) Phân quyền generate-qr / scan-qr / POST attendance");
   const sA1 = ctx.classA.scheduleIds[0];
@@ -570,13 +570,13 @@ async function scenarioAuthorization(ctx: Ctx, member: FixtureUser): Promise<voi
   check("MEMBER gọi generate-qr → 403", memberGenerates.status === 403, memberGenerates.body);
 
   const staffGenerates = await generateQr(ctx.staff.token, sA1);
-  check("STAFF gọi generate-qr → 403 (không mở quyền sinh mã)", staffGenerates.status === 403, staffGenerates.body);
+  check("RECEPTIONIST gọi generate-qr → 403 (không mở quyền sinh mã)", staffGenerates.status === 403, staffGenerates.body);
 
   const coachScans = await scanQr(ctx.coach.token, { code: WRONG_CODE });
   check("COACH gọi scan-qr → 403 (chỉ MEMBER)", coachScans.status === 403, coachScans.body);
 
   const staffScans = await scanQr(ctx.staff.token, { code: WRONG_CODE });
-  check("STAFF gọi scan-qr → 403", staffScans.status === 403, staffScans.body);
+  check("RECEPTIONIST gọi scan-qr → 403", staffScans.status === 403, staffScans.body);
 
   const anonymous = await scanQr(undefined, { code: WRONG_CODE });
   check("không token gọi scan-qr → 401", anonymous.status === 401, anonymous.body);
@@ -585,7 +585,7 @@ async function scenarioAuthorization(ctx: Ctx, member: FixtureUser): Promise<voi
     token: ctx.staff.token,
     body: { scheduleId: sA1, memberId: member.memberProfileId, status: "PRESENT" },
   });
-  check("STAFF ghi attendance qua POST /attendance → 403 (giữ nguyên read-only)", staffWrites.status === 403, staffWrites.body);
+  check("RECEPTIONIST ghi attendance qua POST /attendance → 403 (giữ nguyên read-only)", staffWrites.status === 403, staffWrites.body);
 
   const memberWrites = await http("POST", "/attendance", {
     token: member.token,
@@ -612,7 +612,7 @@ function containsKeyDeep(value: unknown, keys: string[]): boolean {
  * - GET /attendance không được trả password/hash của user trong bất kỳ nested object nào.
  * - MEMBER chỉ đọc được training plan của chính mình (đổi memberId → 403).
  * - COACH chỉ thấy plan do mình phụ trách + chỉ xem enrollment của lớp mình dạy.
- * - MANAGER/STAFF giữ nguyên quyền xem.
+ * - MANAGER/RECEPTIONIST giữ nguyên quyền xem.
  */
 async function scenarioPrivacyAndScope(
   ctx: Ctx,
@@ -726,7 +726,7 @@ async function scenarioPrivacyAndScope(
   const staffEnrollments = await http("GET", `/enrollments/schedule/${sA1}`, {
     token: ctx.staff.token,
   });
-  check("STAFF GET /enrollments/schedule → 200 (giữ nguyên quyền)", staffEnrollments.status === 200, staffEnrollments.body);
+  check("RECEPTIONIST GET /enrollments/schedule → 200 (giữ nguyên quyền)", staffEnrollments.status === 200, staffEnrollments.body);
 }
 
 /**
@@ -1028,7 +1028,7 @@ async function main(): Promise<void> {
     await setupRoom();
     const manager = await createUser("MANAGER", "manager", hashed);
     const coach = await createUser("COACH", "coach", hashed);
-    const staff = await createUser("STAFF", "staff", hashed);
+    const staff = await createUser("RECEPTIONIST", "staff", hashed);
     const members: FixtureUser[] = [];
     for (let i = 1; i <= 6; i++) members.push(await createUser("MEMBER", `member${i}`, hashed));
 

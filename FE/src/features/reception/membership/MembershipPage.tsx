@@ -15,7 +15,7 @@ import {
   MemberPicker,
   Table,
 } from "../components";
-export function MembershipPage({ role = "STAFF" }: { role?: string }) {
+export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
   const [search, setSearch] = useSearchParams();
   const linkedId = search.get("memberId") || "";
   const linked = useReceptionDetail(

@@ -12,7 +12,7 @@ import {
   MemberPicker,
   Table,
 } from "../components";
-export function PaymentsPage({ role = "STAFF" }: { role?: string }) {
+export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
   const [member, setMember] = useState<RecordData | null>(null);
   const [record, setRecord] = useState(false);
   const [invoiceId, setInvoiceId] = useState("");

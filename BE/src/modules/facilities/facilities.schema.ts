@@ -13,6 +13,6 @@ export const UpdateFacilitySchema = CreateFacilitySchema.partial().extend({
 });
 
 export const AssignStaffSchema = z.object({
-  userId: z.string().uuid("Invalid user ID"),
+  userId: z.string().regex(/^[a-fA-F0-9]{24}$/, "Invalid Mongo user ID"),
   role: z.enum(["MANAGER", "COACH", "RECEPTIONIST"]),
 });

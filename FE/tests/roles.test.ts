@@ -6,7 +6,9 @@ it("routes legacy and Mongo receptionist roles to the same portal", () => {
   expect(roleHome("RECEPTIONIST")).toBe("/receptionist");
 });
 
+it("routes the system administrator", () => { expect(roleHome("ADMIN")).toBe("/admin"); });
+
 it("does not give unsupported or inherited roles a portal", () => {
-  for (const role of ["UNKNOWN", "ADMIN", "toString", "__proto__"])
+  for (const role of ["UNKNOWN", "toString", "__proto__"])
     expect(roleHome(role)).toBeUndefined();
 });

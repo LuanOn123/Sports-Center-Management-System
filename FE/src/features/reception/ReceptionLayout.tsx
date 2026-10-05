@@ -1,3 +1,4 @@
+import { OperationsPage } from "../operations/OperationsPage";
 import { Routes, Route } from "react-router-dom";
 import type { PortalProps } from "../../app/RoleRouter";
 import { PortalLayout } from "../../shared/PortalLayout";
@@ -15,6 +16,7 @@ const items = [
   ["dashboard", "Tổng quan"],
   ["members", "Hội viên"],
   ["membership", "Gói thành viên"],
+  ["orders", "Bán gói tại quầy"],
   ["classes", "Đăng ký lớp"],
   ["catalogue", "Quản lý lớp học"],
   ["schedules", "Lịch & điểm danh"],
@@ -28,6 +30,7 @@ export function ReceptionLayout(props: PortalProps) {
   return (
     <PortalLayout {...props} title="Lễ tân" base="/receptionist" items={items}>
       <Routes>
+        <Route path="/receptionist/orders" element={<OperationsPage kind="orders" role="RECEPTIONIST" />} />
         <Route path="/receptionist/dashboard" element={<DashboardPage />} />
         <Route path="/receptionist/members" element={<MembersPage />} />
         <Route
@@ -38,7 +41,7 @@ export function ReceptionLayout(props: PortalProps) {
         <Route path="/receptionist/classes" element={<ClassesPage />} />
         <Route
           path="/receptionist/activity-planner"
-          element={<ActivityPlanner role="STAFF" />}
+          element={<ActivityPlanner role="RECEPTIONIST" />}
         />
         <Route path="/receptionist/payments" element={<PaymentsPage />} />
         {resources
@@ -53,7 +56,7 @@ export function ReceptionLayout(props: PortalProps) {
                 <ResourcePage
                   key={r.slug}
                   resource={r}
-                  role="STAFF"
+                  role="RECEPTIONIST"
                   userId={props.user.id}
                 />
               }
@@ -71,10 +74,7 @@ export function ReceptionLayout(props: PortalProps) {
         <Route
           path="/receptionist/support"
           element={
-            <Placeholder
-              title="Yêu cầu hỗ trợ"
-              description="Chức năng ghi nhận và theo dõi yêu cầu hỗ trợ đang chờ kết nối hệ thống."
-            />
+            <OperationsPage kind="issues" role="RECEPTIONIST" />
           }
         />
         <Route

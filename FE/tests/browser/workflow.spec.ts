@@ -9,6 +9,7 @@ async function workflow(page: Page, role = "MEMBER") {
     const req = route.request(),
       url = new URL(req.url()),
       path = url.pathname.replace("/api/v1", "");
+    if (path === "/facilities") return route.fulfill({ json: { success: true, data: [{ id: "facility-a", code: "A", name: "Cơ sở A", isActive: true }] } });
     calls.push({ path, method: req.method(), body: req.postData() });
     let data: unknown, pagination: unknown;
     if (path === "/auth/me")
@@ -215,7 +216,7 @@ test("manager gains finance screens while staff has no refund action", async ({
   await expect(
     page.getByRole("button", { name: "Hoàn tiền", exact: true }),
   ).toBeVisible();
-  await setup(page, "STAFF");
+  await setup(page, "RECEPTIONIST");
   await page.goto("/receptionist/payments");
   await page.getByRole("button", { name: "Chọn", exact: true }).first().click();
   await expect(
@@ -226,7 +227,7 @@ test("manager gains finance screens while staff has no refund action", async ({
 test("staff completes only ended sessions through dedicated API and cannot mark attendance", async ({
   page,
 }) => {
-  await setup(page, "STAFF");
+  await setup(page, "RECEPTIONIST");
   const now = Date.now();
   const past = {
     id: "ended",
@@ -241,6 +242,7 @@ test("staff completes only ended sessions through dedicated API and cannot mark 
   await page.route("**/api/v1/**", async (route) => {
     const req = route.request(),
       path = new URL(req.url()).pathname.replace("/api/v1", "");
+    if (path === "/facilities") return route.fulfill({ json: { success: true, data: [{ id: "facility-a", code: "A", name: "Cơ sở A", isActive: true }] } });
     if (req.method() !== "GET") mutations.push(req.method() + " " + path);
     let data: unknown;
     if (path === "/class-schedules")
@@ -320,6 +322,7 @@ test("manager edit schedule does not offer lifecycle status bypass", async ({
   };
   await page.route("**/api/v1/class-schedules**", (route) => {
     const path = new URL(route.request().url()).pathname.replace("/api/v1", "");
+    if (path === "/facilities") return route.fulfill({ json: { success: true, data: [{ id: "facility-a", code: "A", name: "Cơ sở A", isActive: true }] } });
     return route.fulfill({
       json: {
         success: true,

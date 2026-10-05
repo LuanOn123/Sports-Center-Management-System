@@ -1,0 +1,75 @@
+.facility-switch {
+  display: grid;
+  gap: 0.2rem;
+  max-width: 220px;
+  font-size: 0.7rem;
+  color: inherit;
+}
+.facility-switch select {
+  width: 100%;
+  padding: 0.4rem;
+  border: 1px solid #8885;
+  border-radius: 6px;
+  background: var(--panel, #17191f);
+  color: inherit;
+}
+.operations-list {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+}
+.operations-list > .panel {
+  padding: 1.25rem;
+}
+.operations-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: end;
+  margin: 0.75rem 0;
+}
+.operations-form {
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.operations-form fieldset {
+  display: grid;
+  gap: 1rem;
+  border: 0;
+  min-width: 0;
+  padding: 0;
+}
+.operations-form label {
+  display: grid;
+  gap: 0.4rem;
+}
+.operations-form label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+}
+.operations-form input,
+.operations-form select {
+  padding: 0.7rem;
+  background: var(--panel, #17191f);
+  color: inherit;
+  border: 1px solid #ffffff30;
+  border-radius: 8px;
+  max-width: 100%;
+}
+.operations-list pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+@media (max-width: 700px) {
+  .facility-switch {
+    max-width: 130px;
+  }
+  .operations-actions {
+    align-items: stretch;
+  }
+  .operations-actions > label {
+    flex: 1;
+    min-width: 140px;
+  }
+}

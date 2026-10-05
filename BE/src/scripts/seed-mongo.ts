@@ -73,7 +73,7 @@ async function main() {
     password: staffPwd,
     fullName: "Lê Thị Lễ Tân",
     phone: "0900000002",
-    role: "STAFF",
+    role: "RECEPTIONIST",
   });
 
   await upsertUser(

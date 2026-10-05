@@ -45,6 +45,7 @@ async function setupCoach(
     const request = route.request(),
       url = new URL(request.url()),
       path = url.pathname.replace("/api/v1", "");
+    if (path === "/facilities") return route.fulfill({ json: { success: true, data: [{ id: "facility-a", code: "A", name: "Cơ sở A", isActive: true }] } });
     calls.push({
       path,
       method: request.method(),

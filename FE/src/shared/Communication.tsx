@@ -352,7 +352,7 @@ export function Notifications({ role }: { role: string }) {
           Sau
         </button>
       </div>
-      {["MANAGER", "STAFF"].includes(role) && (
+      {["MANAGER", "RECEPTIONIST"].includes(role) && (
         <section className="panel workflow-card">
           <h2>Nhắc lịch tập sắp tới</h2>
           <p>

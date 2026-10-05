@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./fixtures";
 
-for (const [role, base] of [["MANAGER", "manager"], ["STAFF", "receptionist"], ["COACH", "coach"], ["MEMBER", "member"]]) {
+for (const [role, base] of [["MANAGER", "manager"], ["RECEPTIONIST", "receptionist"], ["COACH", "coach"], ["MEMBER", "member"]]) {
   for (const width of [375, 1440]) {
     test(`${role} navbar stays at the top after scrolling at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 500 });

@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import fs from "node:fs";
 const doc = JSON.parse(fs.readFileSync("docs/openapi.json", "utf8"));
-export async function setup(page: Page, role = "STAFF", longText = false) {
+export async function setup(page: Page, role = "RECEPTIONIST", longText = false) {
   await page.addInitScript(
     () => (
       sessionStorage.setItem("pulse.identity-version", "mongo-identities-v1"),
@@ -11,6 +11,8 @@ export async function setup(page: Page, role = "STAFF", longText = false) {
   await page.route("**/api/v1/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace("/api/v1", "");
+    if (path === "/facilities") return route.fulfill({ json: { success: true, data: [{ id: "facility-a", code: "A", name: "Cơ sở A", isActive: true }, { id: "facility-b", code: "B", name: "Cơ sở B", isActive: true }] } });
+    if (/^\/facilities\/[^/]+$/.test(path)) return route.fulfill({ json: { success: true, data: { id: "facility-a", staffs: [] } } });
     const coursePlanMatch = path.match(/^\/classes\/([^/]+)\/course-plan$/);
     if (coursePlanMatch && route.request().method() === "GET") {
       const classId = coursePlanMatch[1];
@@ -166,6 +168,7 @@ export async function setup(page: Page, role = "STAFF", longText = false) {
     // Current Swagger also uses inline responses and omits examples for these
     // collections. Keep explicit empty fixtures instead of dereferencing $ref.
     const emptyLists = [
+      "/audit-logs", "/issues", "/leave-requests", "/counter-orders", "/slots", "/schedule-patterns", "/staff-candidates",
       "/notifications",
       "/attendance",
       "/chat/contacts",
