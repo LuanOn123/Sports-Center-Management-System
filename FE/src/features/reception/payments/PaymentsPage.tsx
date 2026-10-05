@@ -97,48 +97,6 @@ export function PaymentsPage({ role = "STAFF" }: { role?: string }) {
             </label>
             <ListState result={payments}>
               {(rows) => (
-<<<<<<< HEAD
-<<<<<<< HEAD
-                <Table
-                  rows={rows}
-                  columns={[
-                    ["amount", "Số tiền"],
-                    ["method", "Phương thức"],
-                    ["status", "Trạng thái"],
-                    ["createdAt", "Ngày tạo"],
-                  ]}
-                  actions={(row) => (
-                    <>
-                      <button
-                        className="button small"
-                        onClick={() => setPaymentId(String(row.id))}
-                      >
-                        Chi tiết
-                      </button>
-                      {Boolean(row.gateway) && (
-                        <small>
-                          Giao dịch online được chốt qua webhook/đối soát.
-                        </small>
-                      )}
-                      {row.activationStatus === "REQUIRES_REVIEW" && (
-                        <span role="status">
-                          Cần đối soát — chưa kích hoạt gói
-                        </span>
-                      )}
-                      <StatusAction
-                        operation="PATCH /payments/{id}/status"
-                        id={String(row.id)}
-                        statuses={paymentTransitions(
-                          String(row.status),
-                          role,
-                          row.gateway,
-                        )}
-                        explanation="Cập nhật thanh toán sẽ cập nhật hóa đơn tương ứng. Hoàn tiền ở đây chỉ ghi nhận trạng thái, không chuyển tiền qua ngân hàng và không tự hủy quyền lợi gói. Đối chiếu giao dịch thực tế trước khi xác nhận."
-                      />
-                    </>
-                  )}
-                />
-=======
                 <>
                   <dl className="payment-summary">
                     <div>
@@ -156,25 +114,6 @@ export function PaymentsPage({ role = "STAFF" }: { role?: string }) {
                               0,
                             ),
                         )}
-=======
-                <>
-                  <dl className="payment-summary">
-                    <div>
-                      <dt>Giao dịch đang hiển thị</dt>
-                      <dd>{rows.length}</dd>
-                    </div>
-                    <div>
-                      <dt>Đã thu trong danh sách</dt>
-                      <dd>
-                        {money(
-                          rows
-                            .filter((r) => r.status === "SUCCESS")
-                            .reduce(
-                              (total, r) => total + (Number(r.amount) || 0),
-                              0,
-                            ),
-                        )}
->>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
                       </dd>
                     </div>
                     <div>
@@ -225,10 +164,6 @@ export function PaymentsPage({ role = "STAFF" }: { role?: string }) {
                     )}
                   />
                 </>
-<<<<<<< HEAD
->>>>>>> develop
-=======
->>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
               )}
             </ListState>
           </section>

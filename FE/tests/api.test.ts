@@ -22,8 +22,6 @@ beforeEach(() => {
   vi.stubGlobal("window", { dispatchEvent: vi.fn() });
 });
 describe("API client contract and authentication", () => {
-<<<<<<< HEAD
-=======
   it("rejects deleted training operations before network access", async () => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
@@ -58,7 +56,6 @@ describe("API client contract and authentication", () => {
     for (const [, options] of fetch.mock.calls)
       expect(options.headers.Authorization).toBe("Bearer mongo-session");
   });
->>>>>>> develop
   it("sends password recovery without credentials or session refresh", async () => {
     sessionStorage.setItem("pulse.access", "old-token");
     sessionStorage.setItem("pulse.refresh", "old-refresh");
@@ -66,28 +63,20 @@ describe("API client contract and authentication", () => {
     vi.stubGlobal("fetch", fetch);
     const { authService, hasSession } = await import("../src/shared/api");
     await authService.forgotPassword("user@example.com");
-<<<<<<< HEAD
-    await authService.resetPassword({ email: "user@example.com", otp: "012345", newPassword: "secret123" });
-=======
     await authService.resetPassword({
       email: "user@example.com",
       otp: "012345",
       newPassword: "secret123",
     });
->>>>>>> develop
     for (const [, options] of fetch.mock.calls) {
       expect(options.headers.Authorization).toBeUndefined();
       expect(options.method).toBe("POST");
     }
     expect(JSON.parse(fetch.mock.calls[1][1].body).otp).toBe("012345");
     fetch.mockResolvedValue(envelope(null, 401));
-<<<<<<< HEAD
-    await expect(authService.forgotPassword("user@example.com")).rejects.toThrow();
-=======
     await expect(
       authService.forgotPassword("user@example.com"),
     ).rejects.toThrow();
->>>>>>> develop
     expect(fetch).toHaveBeenCalledTimes(3);
     expect(hasSession()).toBe(true);
   });
@@ -382,20 +371,6 @@ describe("audit integration", () => {
   it("asks the mounted lists to reload after a stale schedule conflict", async () => {
     vi.stubGlobal(
       "fetch",
-<<<<<<< HEAD
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(
-            JSON.stringify({
-              success: false,
-              message: "Lịch học đã thay đổi trạng thái, vui lòng tải lại.",
-              errors: { code: "SCHEDULE_STATE_CHANGED" },
-            }),
-            { status: 409 },
-          ),
-        ),
-=======
       vi.fn().mockResolvedValue(
         new Response(
           JSON.stringify({
@@ -406,7 +381,6 @@ describe("audit integration", () => {
           { status: 409 },
         ),
       ),
->>>>>>> develop
     );
     const { api } = await import("../src/shared/api");
     await expect(

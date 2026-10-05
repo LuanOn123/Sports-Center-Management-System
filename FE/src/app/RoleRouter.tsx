@@ -72,6 +72,7 @@ function Portal(props: PortalProps) {
     case "MANAGER":
       return <ManagerLayout {...props} />;
     case "STAFF":
+    case "RECEPTIONIST":
       return <ReceptionLayout {...props} />;
     case "COACH":
       return <CoachLayout {...props} />;

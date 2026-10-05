@@ -4787,109 +4787,6 @@
       "500"
     ]
   },
-<<<<<<< HEAD
-  "POST /auth/forgot-password": {
-    "path": "/auth/forgot-password",
-    "method": "POST",
-    "summary": "Gửi OTP đặt lại mật khẩu qua email",
-=======
-  "POST /ai/chat": {
-    "path": "/ai/chat",
-    "method": "POST",
-    "summary": "Trò chuyện với Smart Chatbot Assistant",
->>>>>>> develop
-    "security": [],
-    "parameters": [],
-    "body": {
-      "type": "object",
-      "required": [
-<<<<<<< HEAD
-        "email"
-      ],
-      "properties": {
-        "email": {
-          "type": "string",
-          "format": "email"
-        }
-=======
-        "message"
-      ],
-      "properties": {
-        "message": {
-          "type": "string"
-        },
-        "history": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "role": {
-                "type": "string",
-                "enum": [
-                  "user",
-                  "assistant",
-                  "system"
-                ]
-              },
-              "content": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
-      "example": {
-        "message": "Trung tâm có gói tập nào và tuần này có lớp Yoga không?"
->>>>>>> develop
-      }
-    },
-    "statusCodes": [
-      "200",
-<<<<<<< HEAD
-      "400",
-      "500"
-    ]
-  },
-  "POST /auth/reset-password": {
-    "path": "/auth/reset-password",
-    "method": "POST",
-    "summary": "Đặt lại mật khẩu bằng OTP nhận qua email",
-    "security": [],
-    "parameters": [],
-    "body": {
-      "type": "object",
-      "required": [
-        "email",
-        "otp",
-        "newPassword"
-      ],
-      "properties": {
-        "email": {
-          "type": "string",
-          "format": "email"
-        },
-        "otp": {
-          "type": "string",
-          "minLength": 6,
-          "maxLength": 6,
-          "pattern": "^[0-9]{6}$"
-        },
-        "newPassword": {
-          "type": "string",
-          "minLength": 6
-        }
-      }
-    },
-    "statusCodes": [
-      "200",
-      "400",
-      "500"
-=======
-      "500",
-      "503"
->>>>>>> develop
-    ]
-  },
   "POST /ai/chat": {
     "path": "/ai/chat",
     "method": "POST",
@@ -4933,23 +4830,6 @@
       "200",
       "500",
       "503"
-    ]
-  },
-  "POST /ai/generate-training-plan": {
-    "path": "/ai/generate-training-plan",
-    "method": "POST",
-    "summary": "Tạo lịch tập và dinh dưỡng cá nhân hoá bằng AI",
-    "security": [
-      {
-        "BearerAuth": []
-      }
-    ],
-    "parameters": [],
-    "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "500"
     ]
   }
 }

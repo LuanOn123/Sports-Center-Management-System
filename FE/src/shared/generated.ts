@@ -48,16 +48,7 @@ export type PostAttendanceWarningsScanRequest = { "classId"?: string };
 export type PostAttendancePenaltiesApplyRequest = { "memberId": string; "classId": string; "reason"?: string };
 export type PostAttendancePenaltiesIdAppealRequest = { "reason": string };
 export type PostAttendancePenaltiesIdRevokeRequest = { "reason"?: string; "restoreSlots"?: boolean };
-<<<<<<< HEAD
-export type PostAuthForgotPasswordRequest = { "email": string };
-export type PostAuthResetPasswordRequest = { "email": string; "otp": string; "newPassword": string };
-<<<<<<< HEAD
-=======
 export type PostAiChatRequest = { "message": string; "history"?: Array<{ "role"?: "user" | "assistant" | "system"; "content"?: string }> };
->>>>>>> develop
-=======
-export type PostAiChatRequest = { "message": string; "history"?: Array<{ "role"?: "user" | "assistant" | "system"; "content"?: string }> };
->>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
 export type BadRequest = { "success": boolean; "message": string; "errors": Array<{ "field": string; "message": string }> };
 export type Unauthorized = { "success": boolean; "message": string };
 export type Forbidden = { "success": boolean; "message": string };

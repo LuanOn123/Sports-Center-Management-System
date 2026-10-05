@@ -96,19 +96,9 @@ async function transport(
         ...(body !== undefined && !(body instanceof FormData)
           ? { "Content-Type": "application/json" }
           : {}),
-<<<<<<< HEAD
-<<<<<<< HEAD
-        ...(authenticated && accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-=======
         ...(authenticated && accessToken
           ? { Authorization: `Bearer ${accessToken}` }
           : {}),
->>>>>>> develop
-=======
-        ...(authenticated && accessToken
-          ? { Authorization: `Bearer ${accessToken}` }
-          : {}),
->>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
       },
       ...(body !== undefined
         ? { body: body instanceof FormData ? body : JSON.stringify(body) }
@@ -343,14 +333,7 @@ export async function api<T = RecordData>(
     ) {
       window.dispatchEvent(new Event("schedule-state-changed"));
     }
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
     if (inlineFeedback) throw error;
->>>>>>> develop
-=======
-    if (inlineFeedback) throw error;
->>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
     if (
       error instanceof ApiError &&
       error.status === 409 &&

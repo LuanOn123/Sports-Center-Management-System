@@ -11,7 +11,10 @@
     "test": "vitest run",
     "test:ui": "playwright test",
     "typecheck": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
-    "test:a11y": "playwright test accessibility.spec.ts"
+    "test:a11y": "playwright test accessibility.spec.ts",
+    "check:conflicts": "node scripts/check-conflicts.mjs",
+    "prebuild": "npm run check:conflicts",
+    "verify": "npm run check:conflicts && npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.0",

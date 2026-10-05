@@ -156,11 +156,6 @@ const messages: Record<string, string> = {
     "Nội dung ảnh đại diện không hợp lệ. Vui lòng chọn ảnh JPEG/PNG/WebP/GIF thật.",
   "attachment not found": "Tệp đính kèm không còn khả dụng.",
   "attachment file not found on storage": "Tệp đính kèm không còn khả dụng.",
-<<<<<<< HEAD
-  "forbidden: you can only view your own training plans":
-    "Bạn chỉ được xem kế hoạch tập luyện của mình.",
-=======
->>>>>>> develop
   forbidden: "Bạn không có quyền thực hiện thao tác này.",
   "record not found": "Không tìm thấy dữ liệu được yêu cầu.",
   "internal server error": "Máy chủ gặp lỗi. Vui lòng thử lại sau.",

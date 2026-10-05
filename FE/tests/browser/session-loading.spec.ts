@@ -7,6 +7,7 @@ for (const [role, home] of [
   ["MEMBER", "member"],
   ["MANAGER", "manager"],
   ["STAFF", "receptionist"],
+  ["RECEPTIONIST", "receptionist"],
   ["COACH", "coach"],
 ]) {
   test(`shared login sends ${role} away from a stale portal URL`, async ({

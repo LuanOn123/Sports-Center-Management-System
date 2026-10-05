@@ -25,12 +25,12 @@ const guides: Record<string, Guide[]> = {
       ],
     },
     {
-      title: "Cập nhật hồ sơ để tạo lịch tập AI",
+      title: "Cập nhật hồ sơ và mục tiêu tập luyện",
       path: "profile",
       steps: [
         "Điền mục tiêu và trình độ tập luyện rồi lưu hồ sơ.",
-        "Về Tổng quan hội viên, chọn tạo lịch tập bằng AI.",
-        "Kế hoạch đã tạo nằm trong Mục tiêu tập luyện.",
+        "Cập nhật sở thích tập luyện để huấn luyện viên hiểu nhu cầu của bạn.",
+        "Xem các buổi đã đăng ký tại Lịch tập.",
       ],
     },
   ],
@@ -117,7 +117,7 @@ const guides: Record<string, Guide[]> = {
 export function HelpPanel({ role, base }: { role: string; base: string }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const rows = (guides[role] || []).filter((guide) =>
+  const rows = (guides[role === "RECEPTIONIST" ? "STAFF" : role] || []).filter((guide) =>
     `${guide.title} ${guide.steps.join(" ")}`
       .toLocaleLowerCase("vi")
       .includes(search.trim().toLocaleLowerCase("vi")),

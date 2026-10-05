@@ -80,6 +80,7 @@ export const labels: Record<string, string> = {
   MEMBER: "Hội viên",
   COACH: "Huấn luyện viên",
   STAFF: "Lễ tân",
+  RECEPTIONIST: "Lễ tân",
   MANAGER: "Quản lý",
   MEMBERSHIP: "Tiêu chuẩn",
   PREMIUM: "Cao cấp",

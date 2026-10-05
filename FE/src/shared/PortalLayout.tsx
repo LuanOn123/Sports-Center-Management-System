@@ -15,10 +15,6 @@ import {
   CreditCard,
   UserRound,
   ClipboardCheck,
-<<<<<<< HEAD
-=======
-  Target,
->>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
   Users,
   Building2,
   Volleyball,
@@ -64,10 +60,6 @@ const navigationIcons: Record<string, LucideIcon> = {
   membership: CreditCard,
   payments: CreditCard,
   attendance: ClipboardCheck,
-<<<<<<< HEAD
-=======
-  training: Target,
->>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
   profile: UserRound,
 };
 export function PortalLayout({

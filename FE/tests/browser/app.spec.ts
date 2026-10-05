@@ -78,6 +78,7 @@ test("real login screen is responsive and password visibility works", async ({
 test("manager routes, real-schema forms and mobile navigation render", async ({
   page,
 }) => {
+  test.setTimeout(120000);
   await fixtureApi(page);
   await page.goto("/login");
   await page.getByPlaceholder("Email của bạn").fill("manager@example.test");

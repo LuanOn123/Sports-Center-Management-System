@@ -84,12 +84,9 @@
 
 /* TOPBAR */
 .app-layout .topbar {
-<<<<<<< HEAD
-=======
   position: sticky;
   top: 0;
   z-index: 25;
->>>>>>> 1fd8181a2578ea17c9c909effe2fa0871829bd5f
   min-height: 68px;
   border-bottom-color: var(--color-border);
   background: var(--color-surface);
