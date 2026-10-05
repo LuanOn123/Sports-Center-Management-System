@@ -33,6 +33,20 @@ export function errorHandler(
     return;
   }
 
+  // MongoDB unique index violation (vd. trùng email/phone khi register/update profile)
+  if ((err as any).code === 11000) {
+    const fields = Object.keys((err as any).keyValue ?? {}).join(", ") || "field";
+    sendError(res, `Duplicate value for: ${fields}`, 409);
+    return;
+  }
+
+  // Mongoose CastError (vd. /users/:id với id không phải ObjectId 24-hex)
+  if (err.name === "CastError") {
+    const path = (err as any).path ?? "field";
+    sendError(res, `Invalid ${path === "_id" ? "id" : path} format`, 400);
+    return;
+  }
+
   // Prisma record not found
   if ((err as any).code === "P2025") {
     sendError(res, "Record not found", 404);

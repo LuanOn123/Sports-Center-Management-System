@@ -97,7 +97,8 @@ export async function register(data: RegisterInput) {
       memberProfile: memberProfile.toJSON(),
     };
   } catch (err) {
-    await session.abortTransaction();
+    // Lỗi PostgreSQL phía sau commit: không abort được nữa, phải ném lỗi gốc thay vì MongoTransactionError.
+    if (session.inTransaction()) await session.abortTransaction();
     throw err;
   } finally {
     session.endSession();

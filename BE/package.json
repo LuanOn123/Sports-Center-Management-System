@@ -11,6 +11,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:mongo": "tsx src/scripts/seed-mongo.ts",
+    "db:seed:full": "tsx src/scripts/seed-full.ts",
     "db:backfill:free-subscription": "tsx prisma/backfill-free-subscription.ts",
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",

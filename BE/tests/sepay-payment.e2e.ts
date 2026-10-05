@@ -17,6 +17,7 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import app from "../src/app.js";
 import { prisma } from "../src/config/prisma.js";
+import { connectTestMongo, createIdentity, deleteIdentities, disconnectTestMongo } from "./helpers/identity.js";
 import { hashPassword } from "../src/utils/bcrypt.js";
 import { ensureActiveFreeSubscription } from "../src/modules/subscriptions/free-subscription.service.js";
 import {
@@ -158,18 +159,7 @@ async function createUser(
   hashedPassword: string
 ): Promise<FixtureUser> {
   const email = `e2e-sepay-${RUN}-${tag.toLowerCase()}@example.com`;
-  const user = await prisma.user.create({
-    data: {
-      email,
-      password: hashedPassword,
-      fullName: `E2E SePay ${tag} ${RUN}`,
-      role,
-      ...(role === "MEMBER" ? { memberProfile: { create: {} } } : {}),
-      ...(role === "COACH" ? { coachProfile: { create: {} } } : {}),
-      ...(role === "MANAGER" ? { managerProfile: { create: {} } } : {}),
-    },
-    include: { memberProfile: true },
-  });
+  const user = await createIdentity({ email, password: hashedPassword, fullName: `E2E SePay ${tag} ${RUN}`, role });
   created.userIds.push(user.id);
   const memberProfileId = user.memberProfile?.id ?? "";
   if (memberProfileId) created.memberProfileIds.push(memberProfileId);
@@ -1641,9 +1631,11 @@ async function cleanup(): Promise<void> {
     await prisma.membershipPlan.deleteMany({ where: { id: { in: created.planIds } } });
   }
   if (created.userIds.length > 0) await prisma.user.deleteMany({ where: { id: { in: created.userIds } } });
-}
+  await deleteIdentities(created.userIds);
+  }
 
 async function main(): Promise<void> {
+  await connectTestMongo();
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));
   const port = (server.address() as AddressInfo).port;
@@ -1714,6 +1706,7 @@ async function main(): Promise<void> {
     }
     server.close();
     await prisma.$disconnect();
+    await disconnectTestMongo();
   }
 
   console.log("\n=== KẾT QUẢ ===");
