@@ -2,7 +2,7 @@
 
 Source: BE/src/config/swagger.ts + BE/src/modules/**/*.routes.ts (local checkout)
 
-Snapshot: 2026-09-28. Production base: https://sports-center-management-system.onrender.com/api/v1
+Snapshot: 2026-10-06. Production base: https://sports-center-management-system.onrender.com/api/v1
 
 Response examples are documentation only, never application data. The client sends the documented HTTP Bearer token.
 
@@ -22,8 +22,9 @@ Parameters:
       "enum": [
         "MEMBER",
         "COACH",
-        "STAFF",
-        "MANAGER"
+        "RECEPTIONIST",
+        "MANAGER",
+        "ADMIN"
       ]
     }
   },
@@ -86,7 +87,7 @@ Responses/status codes:
                 "gender": "FEMALE",
                 "dateOfBirth": null,
                 "avatarUrl": null,
-                "role": "STAFF",
+                "role": "RECEPTIONIST",
                 "isActive": true,
                 "createdAt": "2026-09-11T14:20:14.910Z",
                 "memberProfile": null,
@@ -204,8 +205,9 @@ Request body:
       "enum": [
         "MEMBER",
         "COACH",
-        "STAFF",
-        "MANAGER"
+        "RECEPTIONIST",
+        "MANAGER",
+        "ADMIN"
       ]
     },
     "fitnessGoal": {
@@ -523,8 +525,9 @@ Request body:
       "enum": [
         "MEMBER",
         "COACH",
-        "STAFF",
-        "MANAGER"
+        "RECEPTIONIST",
+        "MANAGER",
+        "ADMIN"
       ]
     }
   }
@@ -772,280 +775,6 @@ Responses/status codes:
         }
       }
     }
-  }
-}
-```
-
-## GET /training-plans
-undefined
-
-Authentication: [{"BearerAuth":[]}]
-
-Parameters:
-```json
-[
-  {
-    "in": "query",
-    "name": "memberId",
-    "schema": {
-      "type": "string"
-    }
-  }
-]
-```
-Request body:
-```json
-null
-```
-Responses/status codes:
-```json
-{
-  "200": {
-    "description": "Success"
-  },
-  "403": {
-    "description": "Insufficient role permissions",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Forbidden: insufficient permissions"
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-## POST /training-plans
-undefined
-
-Authentication: [{"BearerAuth":[]}]
-
-Parameters:
-```json
-[]
-```
-Request body:
-```json
-{
-  "type": "object",
-  "properties": {
-    "memberId": {
-      "type": "string"
-    },
-    "coachId": {
-      "type": "string"
-    },
-    "name": {
-      "type": "string"
-    },
-    "startDate": {
-      "type": "string"
-    },
-    "endDate": {
-      "type": "string"
-    }
-  }
-}
-```
-Responses/status codes:
-```json
-{
-  "201": {
-    "description": "Success"
-  }
-}
-```
-
-## PATCH /training-plans/{id}
-Change the coach of a training plan (Member changes own plan, Coach current plan, Manager any plan)
-
-Authentication: [{"BearerAuth":[]}]
-
-Parameters:
-```json
-[
-  {
-    "in": "path",
-    "name": "id",
-    "required": true,
-    "schema": {
-      "type": "string",
-      "format": "uuid"
-    },
-    "description": "TrainingPlan ID"
-  }
-]
-```
-Request body:
-```json
-{
-  "type": "object",
-  "required": [
-    "coachId"
-  ],
-  "properties": {
-    "coachId": {
-      "type": "string",
-      "format": "uuid",
-      "description": "CoachProfile.id của HLV mới (khác HLV hiện tại)"
-    }
-  }
-}
-```
-Responses/status codes:
-```json
-{
-  "200": {
-    "description": "Training plan coach updated successfully",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object"
-        },
-        "example": {
-          "success": true,
-          "message": "Training plan coach updated successfully",
-          "data": {
-            "id": "b7e3d6f0-0000-4000-8000-000000000001",
-            "memberId": "member-1",
-            "coachId": "c1a2b3c4-0000-4000-8000-000000000002",
-            "name": "Giảm cân 8 tuần",
-            "coach": {
-              "user": {
-                "fullName": "Coach Two"
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "400": {
-    "description": "Bad request (validation or malformed body)",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Validation failed",
-            "errors": [
-              {
-                "field": "email",
-                "message": "Invalid email address"
-              }
-            ]
-          }
-        }
-      }
-    }
-  },
-  "401": {
-    "description": "Missing, invalid or expired token",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Unauthorized: invalid or expired token"
-          }
-        }
-      }
-    }
-  },
-  "403": {
-    "description": "Insufficient role permissions",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Forbidden: insufficient permissions"
-          }
-        }
-      }
-    }
-  },
-  "404": {
-    "description": "Resource not found",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Record not found"
-          }
-        }
-      }
-    }
-  },
-  "409": {
-    "description": "Duplicate value or business conflict",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Duplicate value for: email"
-          }
-        }
-      }
-    }
-  },
-  "500": {
-    "description": "Unexpected internal server error",
-    "content": {
-      "application/json": {
-        "schema": {
-          "type": "object",
-          "example": {
-            "success": false,
-            "message": "Internal server error"
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-## POST /training-plans/results
-undefined
-
-Authentication: [{"BearerAuth":[]}]
-
-Parameters:
-```json
-[]
-```
-Request body:
-```json
-{
-  "type": "object",
-  "properties": {
-    "planId": {
-      "type": "string"
-    },
-    "date": {
-      "type": "string"
-    }
-  }
-}
-```
-Responses/status codes:
-```json
-{
-  "201": {
-    "description": "Success"
   }
 }
 ```
@@ -7824,12 +7553,10 @@ Request body:
   "properties": {
     "coachId": {
       "type": "string",
-      "format": "uuid",
-      "description": "CoachProfile ID"
+      "description": "CoachProfile ID (Mongo ObjectId 24-hex; UUID legacy vẫn được chấp nhận)"
     },
     "classId": {
       "type": "string",
-      "format": "uuid",
       "description": "Lớp học liên quan (tuỳ chọn)"
     },
     "rating": {
@@ -7868,7 +7595,7 @@ Responses/status codes:
           "message": "Cảm ơn bạn đã gửi đánh giá!",
           "data": {
             "id": "fb-uuid",
-            "coachId": "coach-uuid",
+            "coachId": "665f1c2e9b1e8a3d4c5b6a71",
             "rating": 5,
             "comment": "HLV rất nhiệt tình!",
             "isAnonymous": false,
@@ -7957,8 +7684,7 @@ Parameters:
     "name": "coachId",
     "required": true,
     "schema": {
-      "type": "string",
-      "format": "uuid"
+      "type": "string"
     },
     "description": "CoachProfile ID cần xem đánh giá"
   },
@@ -7966,8 +7692,7 @@ Parameters:
     "in": "query",
     "name": "classId",
     "schema": {
-      "type": "string",
-      "format": "uuid"
+      "type": "string"
     },
     "description": "Lọc theo lớp học cụ thể (tuỳ chọn)"
   },
@@ -8193,8 +7918,7 @@ Parameters:
     "name": "id",
     "required": true,
     "schema": {
-      "type": "string",
-      "format": "uuid"
+      "type": "string"
     },
     "description": "Feedback ID"
   }
@@ -8295,8 +8019,7 @@ Parameters:
     "name": "id",
     "required": true,
     "schema": {
-      "type": "string",
-      "format": "uuid"
+      "type": "string"
     },
     "description": "Feedback ID"
   }
@@ -13714,8 +13437,178 @@ Responses/status codes:
 }
 ```
 
+## POST /auth/forgot-password
+Gửi OTP đặt lại mật khẩu qua email
+
+Authentication: []
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "required": [
+    "email"
+  ],
+  "properties": {
+    "email": {
+      "type": "string",
+      "format": "email"
+    }
+  }
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Simple confirmation (data is null)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": true,
+            "message": "Logged out successfully",
+            "data": null
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Bad request (validation or malformed body)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Validation failed",
+            "errors": [
+              {
+                "field": "email",
+                "message": "Invalid email address"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## POST /auth/reset-password
+Đặt lại mật khẩu bằng OTP nhận qua email
+
+Authentication: []
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "required": [
+    "email",
+    "otp",
+    "newPassword"
+  ],
+  "properties": {
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "otp": {
+      "type": "string",
+      "minLength": 6,
+      "maxLength": 6,
+      "description": "Mã 6 chữ số nhận qua email"
+    },
+    "newPassword": {
+      "type": "string",
+      "minLength": 6
+    }
+  }
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Simple confirmation (data is null)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": true,
+            "message": "Logged out successfully",
+            "data": null
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Bad request (validation or malformed body)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Validation failed",
+            "errors": [
+              {
+                "field": "email",
+                "message": "Invalid email address"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
 ## GET /attendance
-Get attendance roster of a schedule (MANAGER/STAFF: full roster; COACH: only own classes; MEMBER: only own records)
+Get attendance roster of a schedule (MANAGER/RECEPTIONIST: full roster; COACH: only own classes; MEMBER: only own records)
 
 Authentication: [{"BearerAuth":[]}]
 
@@ -15158,10 +15051,10 @@ Responses/status codes:
 }
 ```
 
-## POST /auth/forgot-password
-Gửi OTP đặt lại mật khẩu qua email
+## POST /ai/chat
+Trò chuyện với Smart Chatbot Assistant
 
-Authentication: []
+Authentication: [{"BearerAuth":[]}]
 
 Parameters:
 ```json
@@ -15172,13 +15065,34 @@ Request body:
 {
   "type": "object",
   "required": [
-    "email"
+    "message"
   ],
   "properties": {
-    "email": {
-      "type": "string",
-      "format": "email"
+    "message": {
+      "type": "string"
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant",
+              "system"
+            ]
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      }
     }
+  },
+  "example": {
+    "message": "Trung tâm có gói tập nào và tuần này có lớp Yoga không?"
   }
 }
 ```
@@ -15186,15 +15100,1769 @@ Responses/status codes:
 ```json
 {
   "200": {
-    "description": "Simple confirmation (data is null)",
+    "description": "Thành công",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "example": true
+            },
+            "message": {
+              "type": "string",
+              "example": "AI responded successfully"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "reply": {
+                  "type": "string",
+                  "example": "Dạ chào anh/chị, hiện tại bên em có gói Premium giá..."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  },
+  "503": {
+    "description": "AI chưa được cấu hình"
+  }
+}
+```
+
+## GET /staff-candidates
+Nhân sự có thể phân công
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /coaches/{id}/specializations
+Chuyên môn huấn luyện viên
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## PUT /coaches/{id}/specializations
+Chuyên môn huấn luyện viên
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "sportIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "sportIds"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /leave-requests/{id}/affected
+Buổi học cần xử lý khi nghỉ phép
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /facilities
+Danh sách cơ sở
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## POST /facilities
+Tạo cơ sở
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "contactInfo": {
+      "type": "string"
+    },
+    "timezone": {
+      "type": "string",
+      "default": "Asia/Ho_Chi_Minh"
+    }
+  },
+  "required": [
+    "code",
+    "name",
+    "address"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /facilities/{facilityId}
+Chi tiết cơ sở
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "facilityId",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## PUT /facilities/{facilityId}
+Sửa cơ sở
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "facilityId",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "contactInfo": {
+      "type": "string"
+    },
+    "timezone": {
+      "type": "string",
+      "default": "Asia/Ho_Chi_Minh"
+    },
+    "isActive": {
+      "type": "boolean"
+    }
+  },
+  "required": []
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## POST /facilities/{facilityId}/staff
+Phân công nhân sự
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "facilityId",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "userId": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "MANAGER",
+        "COACH",
+        "RECEPTIONIST"
+      ]
+    }
+  },
+  "required": [
+    "userId",
+    "role"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## DELETE /facilities/{facilityId}/staff/{userId}/{role}
+Gỡ phân công
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "facilityId",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "userId",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "role",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## PUT /rooms/{id}/capabilities
+Thiết bị và khả năng phòng
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "values": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "boolean"
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "values"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## PUT /subjects/{id}/requirements
+Yêu cầu bộ môn
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "values": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "integer",
+            "minimum": 0
+          },
+          {
+            "type": "boolean"
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "values"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /slots
+Khung giờ
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## POST /slots
+Tạo khung giờ
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "startMinute": {
+      "type": "integer"
+    },
+    "endMinute": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "name",
+    "startMinute",
+    "endMinute"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /schedule-patterns
+Lịch lặp
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## POST /schedule-patterns
+Sinh lịch lặp
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "classId": {
+      "type": "string"
+    },
+    "roomId": {
+      "type": "string"
+    },
+    "slotId": {
+      "type": "string"
+    },
+    "weekdays": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "startDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "endDate": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "classId",
+    "roomId",
+    "slotId",
+    "weekdays",
+    "startDate",
+    "endDate"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /leave-requests
+Đơn nghỉ phép
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## POST /leave-requests
+Gửi đơn nghỉ phép
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "startTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "endTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "startTime",
+    "endTime",
+    "reason"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## PATCH /leave-requests/{id}
+Duyệt đơn và xử lý lịch
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "APPROVED",
+        "REJECTED"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "resolutions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "scheduleId": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "REPLACE",
+              "MOVE",
+              "CANCEL"
+            ]
+          },
+          "coachId": {
+            "type": "string"
+          },
+          "roomId": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "scheduleId",
+          "action"
+        ]
+      }
+    }
+  },
+  "required": [
+    "status",
+    "reason",
+    "resolutions"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /issues
+Yêu cầu hỗ trợ
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## POST /issues
+Gửi yêu cầu
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "description"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /issues/{id}
+Chi tiết yêu cầu
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## PUT /issues/{id}
+Sửa yêu cầu đang mở
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "description"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## DELETE /issues/{id}
+Xóa yêu cầu đang mở
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## PATCH /issues/{id}
+Phản hồi yêu cầu
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "OPEN",
+        "IN_PROGRESS",
+        "RESOLVED",
+        "CLOSED"
+      ]
+    },
+    "response": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "status",
+    "response"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /audit-logs
+Nhật ký hoạt động
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "skip",
+    "in": "query",
+    "schema": {
+      "type": "integer"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /counter-orders
+Đơn bán tại quầy
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## POST /counter-orders
+Tạo đơn chờ thanh toán
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "memberId": {
+      "type": "string"
+    },
+    "planId": {
+      "type": "string"
+    },
+    "method": {
+      "type": "string",
+      "enum": [
+        "CASH",
+        "BANK_TRANSFER"
+      ]
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "memberId",
+    "planId",
+    "method"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## POST /counter-orders/{id}/confirm
+Xác nhận thu tiền và kích hoạt gói
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "reason"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /subjects
+Get list of sports
+
+Authentication: []
+
+Parameters:
+```json
+[
+  {
+    "in": "query",
+    "name": "search",
+    "schema": {
+      "type": "string"
+    },
+    "description": "Search by name"
+  },
+  {
+    "in": "query",
+    "name": "areaType",
+    "schema": {
+      "type": "string",
+      "enum": [
+        "POOL",
+        "INDOOR",
+        "OUTDOOR"
+      ]
+    },
+    "description": "Filter sports supporting an area type"
+  },
+  {
+    "in": "query",
+    "name": "isActive",
+    "schema": {
+      "type": "string",
+      "enum": [
+        "true",
+        "false"
+      ]
+    },
+    "description": "Filter by active status"
+  },
+  {
+    "in": "query",
+    "name": "page",
+    "schema": {
+      "type": "integer",
+      "default": 1
+    }
+  },
+  {
+    "in": "query",
+    "name": "limit",
+    "schema": {
+      "type": "integer",
+      "default": 10
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Paginated list of sports (compact example)",
     "content": {
       "application/json": {
         "schema": {
           "type": "object",
           "example": {
             "success": true,
-            "message": "Logged out successfully",
-            "data": null
+            "message": "Sports retrieved successfully",
+            "data": [
+              {
+                "id": "c3e1ef3e-0000-4000-8000-000000000001",
+                "name": "Yoga",
+                "description": "Yoga class improves flexibility",
+                "areaTypes": [
+                  "INDOOR"
+                ],
+                "isActive": true,
+                "_count": {
+                  "classes": 2
+                }
+              }
+            ],
+            "pagination": {
+              "page": 1,
+              "limit": 10,
+              "total": 3,
+              "totalPages": 1
+            }
           }
         }
       }
@@ -15237,10 +16905,10 @@ Responses/status codes:
 }
 ```
 
-## POST /auth/reset-password
-Đặt lại mật khẩu bằng OTP nhận qua email
+## POST /subjects
+Create a new sport
 
-Authentication: []
+Authentication: [{"BearerAuth":[]}]
 
 Parameters:
 ```json
@@ -15251,24 +16919,33 @@ Request body:
 {
   "type": "object",
   "required": [
-    "email",
-    "otp",
-    "newPassword"
+    "name",
+    "areaTypes"
   ],
   "properties": {
-    "email": {
+    "name": {
       "type": "string",
-      "format": "email"
+      "example": "Yoga"
     },
-    "otp": {
+    "description": {
       "type": "string",
-      "minLength": 6,
-      "maxLength": 6,
-      "pattern": "^[0-9]{6}$"
+      "example": "Yoga class improves flexibility"
     },
-    "newPassword": {
-      "type": "string",
-      "minLength": 6
+    "areaTypes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "POOL",
+          "INDOOR",
+          "OUTDOOR"
+        ]
+      },
+      "minItems": 1,
+      "example": [
+        "INDOOR"
+      ],
+      "description": "Area types this sport supports (at least one)"
     }
   }
 }
@@ -15276,16 +16953,24 @@ Request body:
 Responses/status codes:
 ```json
 {
-  "200": {
-    "description": "Simple confirmation (data is null)",
+  "201": {
+    "description": "Sport created",
     "content": {
       "application/json": {
         "schema": {
           "type": "object",
           "example": {
             "success": true,
-            "message": "Logged out successfully",
-            "data": null
+            "message": "Sport created successfully",
+            "data": {
+              "id": "c3e1ef3e-0000-4000-8000-000000000009",
+              "name": "Boxing",
+              "description": "Boxing classes",
+              "areaTypes": [
+                "INDOOR"
+              ],
+              "isActive": true
+            }
           }
         }
       }
@@ -15306,6 +16991,427 @@ Responses/status codes:
                 "message": "Invalid email address"
               }
             ]
+          }
+        }
+      }
+    }
+  },
+  "401": {
+    "description": "Missing, invalid or expired token",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Unauthorized: invalid or expired token"
+          }
+        }
+      }
+    }
+  },
+  "403": {
+    "description": "Insufficient role permissions",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Forbidden: insufficient permissions"
+          }
+        }
+      }
+    }
+  },
+  "409": {
+    "description": "Duplicate value or business conflict",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Duplicate value for: email"
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## GET /subjects/{id}
+View sport details
+
+Authentication: []
+
+Parameters:
+```json
+[
+  {
+    "in": "path",
+    "name": "id",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Single sport",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": true,
+            "message": "Sport retrieved successfully",
+            "data": {
+              "id": "c3e1ef3e-0000-4000-8000-000000000001",
+              "name": "Yoga",
+              "areaTypes": [
+                "INDOOR"
+              ],
+              "isActive": true,
+              "classes": []
+            }
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Bad request (validation or malformed body)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Validation failed",
+            "errors": [
+              {
+                "field": "email",
+                "message": "Invalid email address"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "404": {
+    "description": "Resource not found",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Record not found"
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## PATCH /subjects/{id}
+Update sport
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "in": "path",
+    "name": "id",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "areaTypes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "POOL",
+          "INDOOR",
+          "OUTDOOR"
+        ]
+      },
+      "minItems": 1,
+      "description": "Area types this sport supports. Cannot remove a type used by an active Class."
+    },
+    "isActive": {
+      "type": "boolean"
+    }
+  }
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Single sport",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": true,
+            "message": "Sport retrieved successfully",
+            "data": {
+              "id": "c3e1ef3e-0000-4000-8000-000000000001",
+              "name": "Yoga",
+              "areaTypes": [
+                "INDOOR"
+              ],
+              "isActive": true,
+              "classes": []
+            }
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Bad request (validation or malformed body)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Validation failed",
+            "errors": [
+              {
+                "field": "email",
+                "message": "Invalid email address"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "401": {
+    "description": "Missing, invalid or expired token",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Unauthorized: invalid or expired token"
+          }
+        }
+      }
+    }
+  },
+  "403": {
+    "description": "Insufficient role permissions",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Forbidden: insufficient permissions"
+          }
+        }
+      }
+    }
+  },
+  "404": {
+    "description": "Resource not found",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Record not found"
+          }
+        }
+      }
+    }
+  },
+  "500": {
+    "description": "Unexpected internal server error",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## DELETE /subjects/{id}
+Deactivate sport (soft delete)
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "in": "path",
+    "name": "id",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Single sport",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": true,
+            "message": "Sport retrieved successfully",
+            "data": {
+              "id": "c3e1ef3e-0000-4000-8000-000000000001",
+              "name": "Yoga",
+              "areaTypes": [
+                "INDOOR"
+              ],
+              "isActive": true,
+              "classes": []
+            }
+          }
+        }
+      }
+    }
+  },
+  "400": {
+    "description": "Bad request (validation or malformed body)",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Validation failed",
+            "errors": [
+              {
+                "field": "email",
+                "message": "Invalid email address"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "401": {
+    "description": "Missing, invalid or expired token",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Unauthorized: invalid or expired token"
+          }
+        }
+      }
+    }
+  },
+  "403": {
+    "description": "Insufficient role permissions",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Forbidden: insufficient permissions"
+          }
+        }
+      }
+    }
+  },
+  "404": {
+    "description": "Resource not found",
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "object",
+          "example": {
+            "success": false,
+            "message": "Record not found"
           }
         }
       }
@@ -15329,4 +17435,4 @@ Responses/status codes:
 ```
 
 ## Verified workflow contracts
-Additional operations and missing bodies/parameters are preserved in workflow-contract-overrides.json, checked against backend commit 9d4af0efb8c3e910af233eb3e30b4e7b04dae238. See WORKFLOW_ALIGNMENT.md.
+Additional operations and missing bodies/parameters are preserved in workflow-contract-overrides.json, reviewed against the backend checkout. See WORKFLOW_ALIGNMENT.md and BACKEND_SYNC_2026-10-04.md.

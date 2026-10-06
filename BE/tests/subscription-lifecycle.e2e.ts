@@ -12,6 +12,7 @@ import "dotenv/config";
 import type { AddressInfo } from "node:net";
 import app from "../src/app.js";
 import { prisma } from "../src/config/prisma.js";
+import { connectTestMongo, createIdentity, deleteIdentities, disconnectTestMongo } from "./helpers/identity.js";
 import { hashPassword } from "../src/utils/bcrypt.js";
 import {
   closeStaleSepayPendingPayments,
@@ -97,17 +98,7 @@ async function createUser(
   hashedPassword: string
 ): Promise<FixtureUser> {
   const email = `e2e-life-${RUN}-${tag.toLowerCase()}@example.com`;
-  const user = await prisma.user.create({
-    data: {
-      email,
-      password: hashedPassword,
-      fullName: `E2E Life ${tag} ${RUN}`,
-      role,
-      ...(role === "MEMBER" ? { memberProfile: { create: {} } } : {}),
-      ...(role === "MANAGER" ? { managerProfile: { create: {} } } : {}),
-    },
-    include: { memberProfile: true },
-  });
+  const user = await createIdentity({ email, password: hashedPassword, fullName: `E2E Life ${tag} ${RUN}`, role });
   created.userIds.push(user.id);
   if (user.memberProfile) created.memberProfileIds.push(user.memberProfile.id);
   const login = await http("POST", "/auth/login", { body: { email, password: PASSWORD } });
@@ -129,7 +120,8 @@ async function cleanup(): Promise<void> {
     await prisma.notification.deleteMany({ where: { userId: { in: created.userIds } } });
     await prisma.notificationOutbox.deleteMany({ where: { userId: { in: created.userIds } } });
     await prisma.user.deleteMany({ where: { id: { in: created.userIds } } });
-  }
+    await deleteIdentities(created.userIds);
+      }
   if (created.planIds.length > 0) {
     await prisma.membershipPlan.deleteMany({ where: { id: { in: created.planIds } } });
   }
@@ -359,6 +351,7 @@ async function scenarioRevenueReport(manager: FixtureUser) {
 
 // ─── Runner ───────────────────────────────────────────────────────────────
 async function main(): Promise<void> {
+  await connectTestMongo();
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));
   const port = (server.address() as AddressInfo).port;
@@ -395,6 +388,7 @@ async function main(): Promise<void> {
     }
     server.close();
     await prisma.$disconnect();
+    await disconnectTestMongo();
   }
 
   console.log("\n=== KẾT QUẢ ===");

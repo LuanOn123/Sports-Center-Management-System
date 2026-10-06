@@ -11,7 +11,11 @@
     "test": "vitest run",
     "test:ui": "playwright test",
     "typecheck": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
-    "test:a11y": "playwright test accessibility.spec.ts"
+    "test:a11y": "playwright test accessibility.spec.ts",
+    "check:conflicts": "node scripts/check-conflicts.mjs",
+    "check:api-contract": "node ../scripts/audit-api-contract.mjs",
+    "prebuild": "npm run check:conflicts",
+    "verify": "npm run check:conflicts && npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.0",
@@ -20,7 +24,9 @@
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.0.0",
+    "remark-gfm": "^4.0.1",
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {

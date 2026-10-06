@@ -148,11 +148,21 @@ export async function updatePaymentStatus(id: string, status: string) {
     throw new AppError(`Cannot update payment from ${payment.status} to ${status}`, 400);
   }
 
+  if (payment.planId && payment.status === "PENDING" && status === "SUCCESS") throw new AppError("Confirm this order through /counter-orders/:id/confirm", 409);
   const updateData: any = { status };
+  if (status === "REFUNDED") { updateData.refundedAmount = payment.amount; updateData.refundedAt = new Date(); }
   if (status === "SUCCESS") updateData.paidAt = new Date();
 
   await prisma.$transaction(async (tx) => {
-    await tx.payment.update({ where: { id }, data: updateData });
+    const changed = await tx.payment.updateMany({ where: { id, status: payment.status }, data: updateData });
+    if (changed.count !== 1) throw new AppError("Payment state changed; reload before confirming", 409);
+    if (status === "REFUNDED" && payment.subscriptionId) {
+      const subscription = await tx.membershipSubscription.findUnique({ where: { id: payment.subscriptionId } });
+      if (subscription?.status === "ACTIVE") {
+        await tx.membershipSubscription.update({ where: { id: subscription.id }, data: { status: "CANCELLED", cancelledAt: new Date() } });
+        await tx.enrollment.updateMany({ where: { memberId: subscription.memberId, status: "BOOKED", schedule: { startTime: { gt: new Date() } } }, data: { status: "CANCELLED", cancelledAt: new Date() } });
+      }
+    }
 
     // Auto create invoice if SUCCESS and no invoice
     if (status === "SUCCESS" && !payment.invoice) {

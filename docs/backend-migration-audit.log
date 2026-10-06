@@ -1,0 +1,5 @@
+
+> sports-center-be@1.0.0 test:operations:migration
+> tsx tests/facility-migration.integration.ts
+
+PASS SQL migration: pending SePay compatibility is repeatable; legacy rooms preserved, default facility created, STAFF renamed

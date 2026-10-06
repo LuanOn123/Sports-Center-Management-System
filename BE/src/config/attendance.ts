@@ -31,7 +31,7 @@ export const ATTENDANCE = {
    * và buổi học phải đang SCHEDULED. QR/mã sinh cho buổi ngoài cửa sổ cũng bị chặn.
    */
   SCAN_OPEN_MINUTES_BEFORE: 30,
-  SCAN_CLOSE_MINUTES_AFTER: 30,
+  SCAN_CLOSE_MINUTES_AFTER: 0,
   /** Độ dài mã dự phòng. */
   MANUAL_CODE_LENGTH: 6,
   /** Alphabet mã dự phòng — bỏ 0/O/1/I để gõ tay không nhầm. */

@@ -63,7 +63,7 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
           <span className="avatar">{user.fullName.slice(0, 1)}</span>
           <h2>{user.fullName}</h2>
           <p>{user.email}</p>
-          <span className="coach-badge">Huấn luyện viên</span>
+          <span className="badge badge-neutral">Huấn luyện viên</span>
           <dl>
             <dt>Chuyên môn</dt>
             <dd>{str(coach.specialization)}</dd>

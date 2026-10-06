@@ -1,6 +1,6 @@
 # Sports Center Web — Role-based features
 
-Frontend gồm manager hiện có, reception thuộc Member03, layout coach và user. Xem [kiến trúc và phạm vi Member03](docs/ARCHITECTURE.md). Sử dụng Vite, React, TypeScript, React Router và TanStack Query. CSS responsive riêng với Lucide icons, bảng màu xanh đậm/lime, họa tiết đường chạy và hỗ trợ reduced motion.
+Frontend có portal ADMIN, MANAGER, RECEPTIONIST, COACH và MEMBER. Sử dụng Vite, React, TypeScript, React Router và TanStack Query. Kết quả kiểm tra source và môi trường triển khai ngày 06/10/2026 nằm trong [báo cáo integration](../docs/INTEGRATION_AUDIT_2026-10-06.md) và [API contract map](../docs/API_CONTRACT_MAP.md).
 
 ## Chạy ứng dụng
 
@@ -12,7 +12,7 @@ npm ci
 npm run dev
 ```
 
-Mở http://127.0.0.1:5173 để xem landing page. `/register` tạo tài khoản hội viên; `/login` đăng nhập và chuyển vào portal theo MANAGER, STAFF, COACH hoặc MEMBER. Người đã đăng nhập được đưa về portal khi mở `/`. Không có tài khoản/mật khẩu mặc định trong FE.
+Mở http://127.0.0.1:5173 để xem landing page. `/register` tạo tài khoản hội viên; `/login` đăng nhập và chuyển vào portal theo ADMIN, MANAGER, RECEPTIONIST, COACH hoặc MEMBER. STAFF chỉ là alias tương thích dữ liệu cũ trên FE. Người đã đăng nhập được đưa về portal khi mở `/`. Không có tài khoản/mật khẩu mặc định trong FE.
 
 ## Landing page và đăng ký
 
@@ -30,27 +30,27 @@ Base URL mặc định: `https://sports-center-management-system.onrender.com/ap
 | Route | Chức năng đã nối API |
 | --- | --- |
 | `/manager/dashboard` | 4 báo cáo thật, lọc ngày, biểu đồ phương thức thanh toán/hạng hội viên, lịch hôm nay |
-| `/manager/users` | Tìm kiếm, vai trò, trạng thái, phân trang, chi tiết, tạo tài khoản, ngừng hoạt động |
+| `/admin/users` | ADMIN quản lý tài khoản, vai trò cố định, trạng thái; MANAGER không có quyền `/users` |
 | `/manager/members` | Tìm kiếm, trình độ, phân trang, tạo MEMBER, chi tiết và tình trạng gói |
-| `/manager/coaches` | Tìm kiếm/chuyên môn, phân trang, tạo COACH, chi tiết, sửa hồ sơ chuyên môn |
-| `/manager/staff` | GET /users với role=STAFF; tạo lễ tân, chi tiết, ngừng hoạt động |
-| `/manager/membership-plans` | Danh sách, lọc hạng/trạng thái, chi tiết, tạo, ngừng hoạt động |
-| `/manager/sports` | Tìm kiếm/lọc, phân trang, chi tiết, tạo, sửa, ngừng hoạt động |
+| `/manager/coaches` | Tìm kiếm/chuyên môn, phân trang, chi tiết, sửa hồ sơ; ADMIN tạo tài khoản |
+| `/manager/staff` | Cổng quản lý phân công cơ sở; quản trị tài khoản `/users` thuộc ADMIN |
+| `/manager/membership-plans` | Danh sách, lọc hạng/trạng thái, chi tiết; ADMIN sửa catalog/giá |
+| `/manager/sports` | Tìm kiếm/lọc, phân trang, chi tiết; ADMIN sửa catalog |
 | `/manager/rooms` | Tìm kiếm/lọc, phân trang, chi tiết, tạo, sửa, ngừng hoạt động |
 | `/manager/classes` | Tìm kiếm/lọc, phân trang, chi tiết, tạo, sửa, ngừng hoạt động, phân công/gỡ coach |
 | `/manager/schedules` | Lọc ngày/phòng/lớp/trạng thái/thời gian, phân trang, tạo/sửa/hủy lịch, xem người đăng ký |
 | `/manager/reports` | Doanh thu, hội viên, đăng ký lớp, gói thành viên; xuất CSV từ số liệu đã tải |
 | `/manager/profile` | Xem/sửa hồ sơ hiện tại, đổi mật khẩu |
-| `/manager/roles` | Hiển thị 4 vai trò backend; giải thích chưa có quyền tùy chỉnh |
-| `/manager/audit-logs` | Trạng thái chưa khả dụng do thiếu API |
+| `/manager/roles` | Hiển thị các vai trò cố định; backend không có API tạo quyền tùy chỉnh |
+| `/manager/audit-logs` | GET /audit-logs, yêu cầu cơ sở đang làm việc |
 
 Mỗi truy vấn có loading, empty, error/retry. Mutation có trạng thái chờ, thông báo thành công và lỗi backend, tự làm mới dữ liệu. Xác nhận trước khi ngừng hoạt động/hủy lịch. Khi hủy lịch, UI giải thích tác động hủy các enrollment BOOKED.
 
 ## Hợp đồng API và giới hạn
 
-- Nguồn: OpenAPI 3.0 nhúng trong `https://sports-center-management-system.onrender.com/api/v1/docs/swagger-ui-init.js`.
-- Snapshot đầy đủ: `docs/openapi.json`, 66 operations.
-- `docs/API_INVENTORY.md`: method/path, auth, path/query parameters, required fields, request schema, status codes, response examples, enum, pagination và lỗi của **toàn bộ 66 operations**.
+- Nguồn hiện tại: Swagger từ source BE trong checkout, kết hợp `docs/workflow-contract-overrides.json` cho các schema mà Swagger chưa mô tả đầy đủ. Render đang lệch phiên bản; không dùng Swagger Render để ghi đè contract của source mới.
+- Snapshot: `docs/openapi.json`, 151 operations.
+- `docs/API_INVENTORY.md`: method/path, auth, path/query parameters, required fields, request schema, status codes, response examples, enum, pagination và lỗi của 151 operations. `npm run check:api-contract` đối chiếu method/path với route AST của BE.
 - `src/shared/operations.json`: metadata cho service, bộ lọc, form và enum; không chứa response mẫu.
 - `src/shared/generated.ts`: request types được tạo từ schema; response types được suy ra từ example vì backend không có `components.schemas`. Đây không phải lời khẳng định schema response đầy đủ.
 - `src/shared/api.ts`: chỉ cho gọi operation và query parameter đã có trong snapshot; mã hóa path ID; Bearer token, refresh đồng thời chỉ một lần, timeout, lỗi field, logout.
@@ -82,7 +82,7 @@ npm run test:ui
 
 ## Cập nhật snapshot
 
-Lấy lại `swaggerDoc` từ Swagger của backend, thay `docs/openapi.json`, rồi chạy `npm run generate:api`. Generator chỉ dùng JSON, không chạy mã từ server. Review diff của schema trước khi mở tính năng mới. Nếu Swagger thêm JSON URL trực tiếp, ưu tiên tải URL JSON đó. Không thêm endpoint theo tài liệu phân công nếu Swagger chưa có.
+Chạy `npm run generate:api -- --local` để xuất Swagger trực tiếp từ source BE hiện tại (cần cài dependencies ở BE), rồi `npm run check:api-contract` và `npm run verify`. Generator giữ các workflow overrides. Review diff schema và implementation trong BE; Swagger có thể thiếu validation/ownership/business rules. Khi chạy FE với BE local, đặt `VITE_API_BASE_URL=http://127.0.0.1:8080/api/v1`; kiểm tra `.env.local` vì Vite ưu tiên nó hơn `.env`.
 
 ## Deploy
 

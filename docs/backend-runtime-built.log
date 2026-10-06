@@ -1,0 +1,7 @@
+[avatarStorage] driver = local (uploads/avatars)
+MongoDB connected successfully
+PostgreSQL (Prisma) connected
+Both databases connected
+Server health running at http://localhost:8093/api/v1/health
+Swagger docs at http://localhost:8093/api/v1/docs
+GET /api/v1/health 200 2.037 ms - 57

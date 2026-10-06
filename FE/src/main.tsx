@@ -7,3 +7,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   </React.StrictMode>,
 );
 import "./shared/detail.css";
+import "./shared/design-system.css";
+import "./shared/portal-theme.css";

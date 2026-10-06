@@ -1,0 +1,47 @@
+[avatarStorage] driver = local (uploads/avatars)
+MongoDB connected successfully
+PostgreSQL (Prisma) connected
+Both databases connected
+Server health running at http://localhost:8093/api/v1/health
+Swagger docs at http://localhost:8093/api/v1/docs
+GET /api/v1/health 200 6.253 ms - 57
+POST /api/v1/auth/login 200 1311.599 ms - 475
+GET /api/v1/auth/me 200 575.551 ms - 525
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities - - ms - -
+GET /api/v1/auth/me 200 414.151 ms - 525
+GET /api/v1/facilities 200 2942.283 ms - 347
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/rooms?page=1&limit=10 - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/notifications/unread-count 200 2569.507 ms - 76
+GET /api/v1/chat/messages/unread-count 200 3143.624 ms - 41
+GET /api/v1/rooms?page=1&limit=10 200 3754.536 ms - 127
+POST /api/v1/rooms 201 4508.552 ms - 362
+GET /api/v1/auth/me 200 482.312 ms - 525
+GET /api/v1/chat/messages/unread-count 200 664.269 ms - 41
+GET /api/v1/notifications/unread-count 200 679.750 ms - 76
+GET /api/v1/facilities 200 688.152 ms - 347
+GET /api/v1/rooms?page=1&limit=10 200 1344.530 ms - 427
+GET /api/v1/rooms/9d447ea0-9fed-402b-848f-a1d1ddee563b 200 3207.103 ms - 382
+PATCH /api/v1/rooms/9d447ea0-9fed-402b-848f-a1d1ddee563b 200 4898.481 ms - 362
+GET /api/v1/chat/messages/unread-count 200 419.682 ms - 41
+GET /api/v1/auth/me 200 457.369 ms - 525
+GET /api/v1/notifications/unread-count 200 680.965 ms - 76
+GET /api/v1/facilities - - ms - -
+GET /api/v1/rooms?page=1&limit=10 - - ms - -
+GET /api/v1/auth/me 200 510.312 ms - 525
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities 200 360.593 ms - 347
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/rooms?page=1&limit=10 - - ms - -
+GET /api/v1/notifications/unread-count 200 845.598 ms - 76
+GET /api/v1/rooms?page=1&limit=10 200 1670.855 ms - 427
+GET /api/v1/chat/messages/unread-count 200 3176.073 ms - 41
+DELETE /api/v1/rooms/9d447ea0-9fed-402b-848f-a1d1ddee563b 200 6657.147 ms - 367
+GET /api/v1/notifications/unread-count 200 381.401 ms - 76
+GET /api/v1/auth/me 200 459.618 ms - 525
+GET /api/v1/chat/messages/unread-count 200 688.839 ms - 41
+GET /api/v1/facilities 200 714.256 ms - 347
+GET /api/v1/rooms?page=1&limit=10 200 1681.073 ms - 428

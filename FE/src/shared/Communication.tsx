@@ -1,5 +1,13 @@
 import { ProtectedAttachment } from "./ProtectedAttachment";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { io, type Socket } from "socket.io-client";
 import {
@@ -21,7 +29,7 @@ import {
   endSession,
   type RecordData,
 } from "./api";
-import { Empty, ErrorState, Loading } from "./ui";
+import { Empty, ErrorState, Loading, Modal } from "./ui";
 import { display } from "./config";
 import "./workflow.css";
 import "./communication.css";
@@ -35,8 +43,12 @@ type Notification = {
   createdAt: string;
 };
 
-export function NotificationBell() {
+export function NotificationBell({ base }: { base: string }) {
   const [open, setOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLElement>(null);
+  const panelId = useId();
   const root = useRef<HTMLDivElement>(null);
   const cache = useQueryClient();
   const count = useQuery({
@@ -68,11 +80,15 @@ export function NotificationBell() {
   });
   useEffect(() => {
     if (!open) return;
+    panel.current?.focus();
     const close = (event: MouseEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
     };
     const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        trigger.current?.focus();
+      }
     };
     document.addEventListener("mousedown", close);
     document.addEventListener("keydown", escape);
@@ -83,14 +99,26 @@ export function NotificationBell() {
   }, [open]);
   const unreadCount = count.data?.data.unreadCount || 0;
   return (
-    <div className="notification-bell" ref={root}>
+    <div
+      className="notification-bell"
+      ref={root}
+      onBlur={(event) => {
+        if (
+          event.relatedTarget instanceof Node &&
+          !event.currentTarget.contains(event.relatedTarget)
+        )
+          setOpen(false);
+      }}
+    >
       <button
+        ref={trigger}
         type="button"
         className={`topbar-icon ${unreadCount ? "has-unread attention" : ""}`}
         aria-label={
           unreadCount ? `${unreadCount} thông báo chưa đọc` : "Thông báo"
         }
         aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
         onClick={() => setOpen((value) => !value)}
       >
         <Bell size={20} />
@@ -102,13 +130,20 @@ export function NotificationBell() {
       </button>
       {open && (
         <section
+          ref={panel}
+          id={panelId}
+          tabIndex={-1}
           className="notification-popover"
           aria-label="Thông báo gần đây"
         >
           <header>
             <div>
               <strong>Thông báo</strong>
-              <small>{unreadCount} chưa đọc</small>
+              <small>
+                {count.data
+                  ? `${unreadCount} chưa đọc`
+                  : "Chưa cập nhật số chưa đọc"}
+              </small>
             </div>
             <button
               type="button"
@@ -120,27 +155,60 @@ export function NotificationBell() {
             >
               <CheckCheck size={18} />
             </button>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Đóng thông báo"
+              onClick={() => {
+                setOpen(false);
+                trigger.current?.focus();
+              }}
+            >
+              <X size={18} />
+            </button>
           </header>
+          {markRead.error && <ErrorState error={markRead.error} />}
+          {count.error && !list.error && (
+            <ErrorState error={count.error} retry={() => count.refetch()} />
+          )}
+          {markRead.isPending && (
+            <p className="notification-feedback" role="status">
+              Đang cập nhật trạng thái đọc…
+            </p>
+          )}
           <div className="notification-popover-list">
             {list.isPending ? (
               <Loading variant="cards" />
             ) : list.error ? (
               <ErrorState error={list.error} retry={() => list.refetch()} />
             ) : !list.data.data.length ? (
-              <Empty text="Không có thông báo." />
+              <Empty
+                text="Không có thông báo."
+                detail="Lịch tập, thanh toán và cập nhật từ trung tâm sẽ xuất hiện tại đây."
+              />
             ) : (
               list.data.data.map((item) => (
                 <button
                   type="button"
                   key={item.id}
-                  className={`notification-popover-item ${item.isRead ? "" : "unread"}`}
+                  className={`notification-popover-item ${item.isRead ? "" : "unread"} ${expandedId === item.id ? "expanded" : ""}`}
+                  aria-expanded={expandedId === item.id}
+                  disabled={markRead.isPending}
                   onClick={() => {
+                    setExpandedId((value) =>
+                      value === item.id ? null : item.id,
+                    );
                     if (!item.isRead) markRead.mutate(item.id);
                   }}
                 >
                   <span className="notification-dot" />
                   <span>
                     <strong>{item.title}</strong>
+                    {!item.isRead && (
+                      <small className="notification-unread-label">
+                        Chưa đọc
+                      </small>
+                    )}
                     <p>{item.body}</p>
                     <small>{display(item.createdAt)}</small>
                   </span>
@@ -148,6 +216,12 @@ export function NotificationBell() {
               ))
             )}
           </div>
+          <footer>
+            <Link to={`${base}/notifications`} onClick={() => setOpen(false)}>
+              Xem tất cả thông báo
+            </Link>
+            <small>Chọn thông báo để đọc đầy đủ.</small>
+          </footer>
         </section>
       )}
     </div>
@@ -155,6 +229,7 @@ export function NotificationBell() {
 }
 
 export function Notifications({ role }: { role: string }) {
+  const [confirmReminders, setConfirmReminders] = useState(false);
   const [page, setPage] = useState(1),
     [unread, setUnread] = useState(false);
   const cache = useQueryClient();
@@ -190,7 +265,10 @@ export function Notifications({ role }: { role: string }) {
   const reminders = useMutation({
     mutationFn: () =>
       api<{ sent: number }>("POST /notifications/trigger-upcoming-reminders"),
-    onSuccess: () => cache.invalidateQueries({ queryKey: ["notifications"] }),
+    onSuccess: () => {
+      setConfirmReminders(false);
+      return cache.invalidateQueries({ queryKey: ["notifications"] });
+    },
   });
   return (
     <div className="workflow-page">
@@ -274,7 +352,7 @@ export function Notifications({ role }: { role: string }) {
           Sau
         </button>
       </div>
-      {["MANAGER", "STAFF"].includes(role) && (
+      {["MANAGER", "RECEPTIONIST"].includes(role) && (
         <section className="panel workflow-card">
           <h2>Nhắc lịch tập sắp tới</h2>
           <p>
@@ -284,13 +362,47 @@ export function Notifications({ role }: { role: string }) {
           <button
             className="button"
             disabled={reminders.isPending}
-            onClick={() => reminders.mutate()}
+            onClick={() => {
+              reminders.reset();
+              setConfirmReminders(true);
+            }}
           >
             {reminders.isPending ? "Đang gửi…" : "Gửi nhắc lịch"}
           </button>
           {reminders.error && <ErrorState error={reminders.error} />}
           {reminders.isSuccess && (
             <p role="status">Đã gửi {reminders.data.data.sent} thông báo.</p>
+          )}
+          {confirmReminders && (
+            <Modal
+              title="Xác nhận gửi nhắc lịch"
+              onClose={() => setConfirmReminders(false)}
+              dismissible={!reminders.isPending}
+            >
+              <div className="help-panel">
+                <p>
+                  Thông báo sẽ được gửi trong hệ thống cho các hội viên đã đặt
+                  lớp trong 24 giờ tới. Bạn muốn gửi ngay?
+                </p>
+                {reminders.error && <ErrorState error={reminders.error} />}
+                <div className="modal-footer">
+                  <button
+                    className="button"
+                    disabled={reminders.isPending}
+                    onClick={() => setConfirmReminders(false)}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    className="button primary"
+                    disabled={reminders.isPending}
+                    onClick={() => reminders.mutate()}
+                  >
+                    {reminders.isPending ? "Đang gửi…" : "Xác nhận gửi"}
+                  </button>
+                </div>
+              </div>
+            </Modal>
           )}
         </section>
       )}

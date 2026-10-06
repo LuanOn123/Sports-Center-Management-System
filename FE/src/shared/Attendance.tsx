@@ -38,13 +38,14 @@ export function Attendance({
       }),
   });
   const canWrite =
-    ["MANAGER", "COACH"].includes(role) &&
+    ["ADMIN", "MANAGER", "COACH"].includes(role) &&
     schedule.status !== "CANCELLED" &&
-    Date.parse(String(schedule.startTime)) <= Date.now();
+    Date.parse(String(schedule.startTime)) - 30 * 60000 <= Date.now() &&
+    Date.now() <= Date.parse(String(schedule.endTime));
   return (
     <section className="workflow-page">
       <h3>Điểm danh buổi học</h3>
-      {["MANAGER", "COACH"].includes(role) &&
+      {["ADMIN", "MANAGER", "COACH"].includes(role) &&
         schedule.status === "SCHEDULED" && (
           <AttendanceQr scheduleId={id} schedule={schedule} />
         )}
@@ -79,7 +80,8 @@ export function Attendance({
                 memberId={mid}
                 scheduleId={id}
                 record={record}
-                writable={canWrite}
+                writable={record ? ["ADMIN", "MANAGER"].includes(role) : canWrite}
+                canExcuse={["ADMIN", "MANAGER"].includes(role)}
                 onSave={() => {
                   void cache.invalidateQueries({
                     queryKey: ["attendance", id],
@@ -98,6 +100,7 @@ function AttendanceRow({
   scheduleId,
   record,
   writable,
+  canExcuse,
   onSave,
 }: {
   name: string;
@@ -105,6 +108,7 @@ function AttendanceRow({
   scheduleId: string;
   record?: AttendanceRecord;
   writable: boolean;
+  canExcuse: boolean;
   onSave: () => void;
 }) {
   const [status, setStatus] = useState(record?.status || ""),
@@ -145,7 +149,7 @@ function AttendanceRow({
                 onChange={(e) => setStatus(e.target.value)}
               >
                 <option value="">Chưa điểm danh</option>
-                {Object.entries(statuses).map(([v, l]) => (
+                {Object.entries(statuses).filter(([v]) => v !== "EXCUSED" || canExcuse).map(([v, l]) => (
                   <option key={v} value={v}>
                     {l}
                   </option>
@@ -156,6 +160,9 @@ function AttendanceRow({
               Ghi chú
               <input
                 maxLength={1000}
+                required={!!record}
+                minLength={record ? 3 : undefined}
+                placeholder={record ? "Lý do sửa điểm danh" : "Ghi chú"}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
               />

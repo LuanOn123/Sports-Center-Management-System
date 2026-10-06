@@ -1,3 +1,4 @@
+﻿import { DistributionChart } from "../../shared/DistributionChart";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -27,7 +28,7 @@ function dateString(d: Date) {
     .toISOString()
     .slice(0, 10);
 }
-export function Dashboard({ reports = false }: { reports?: boolean }) {
+export function Dashboard({ reports = false, base = "/manager" }: { reports?: boolean; base?: "/manager" | "/admin" }) {
   const today = dateString(new Date());
   const [startDate, setStart] = useState(today.slice(0, 7) + "-01");
   const [endDate, setEnd] = useState(today);
@@ -36,7 +37,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
   const revenue = useQuery({
     queryKey: ["report", "revenue", query],
     queryFn: ({ signal }) =>
-      api<RevenueReportOk["data"] & { note?: string }>("GET /reports/revenue", {
+      api<RevenueReportOk["data"] & { note?: string; unreconciledRefunds?: number }>("GET /reports/revenue", {
         query,
         signal,
       }),
@@ -83,6 +84,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
       value: revenue.data?.data.netRevenue,
       money: true,
       sub: "Trong khoảng thời gian đã chọn",
+      accent: "stat-revenue",
     },
     {
       title: "Tổng hội viên",
@@ -90,6 +92,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
       q: members,
       value: members.data?.data.totalMembers,
       sub: "Cộng đồng của trung tâm",
+      accent: "stat-members",
     },
     {
       title: "Lượt đăng ký lớp",
@@ -97,6 +100,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
       q: enrollments,
       value: enrollments.data?.data.totalEnrollments,
       sub: "Trong khoảng thời gian đã chọn",
+      accent: "stat-enrollments",
     },
     {
       title: "Gói đang hiệu lực",
@@ -104,6 +108,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
       q: memberships,
       value: memberships.data?.data.activeSubscriptions,
       sub: "Sẵn sàng cho buổi tập tiếp theo",
+      accent: "stat-memberships",
     },
   ];
   function exportCsv() {
@@ -143,6 +148,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
   }
   return (
     <>
+      {!!revenue.data?.data.unreconciledRefunds && <div className="panel" role="status">Doanh thu đang tạm tính: {revenue.data.data.unreconciledRefunds} giao dịch hoàn tiền cũ chưa có số tiền và thời điểm hoàn được đối soát.</div>}
       <div className="page-heading">
         <div>
           <div className="eyebrow">
@@ -170,43 +176,6 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
           })}
         </div>
       </div>
-      {!reports && (
-        <section className="hero">
-          <div className="hero-copy">
-            <span className="hero-kicker">
-              <span /> YOUR CENTER. YOUR PACE.
-            </span>
-            <h2>
-              Vận hành nhịp nhàng.
-              <br />
-              <em>Bứt phá mỗi ngày.</em>
-            </h2>
-            <p>
-              Tập trung vào điều quan trọng — con người,
-              <br className="desktop-break" /> chuyển động và những trải nghiệm
-              tốt hơn.
-            </p>
-            <Link className="button lime" to="/manager/schedules">
-              Khám phá lịch hoạt động <ArrowUpRight size={19} />
-            </Link>
-          </div>
-          <div className="track-art" aria-hidden="true">
-            <div className="track t1" />
-            <div className="track t2" />
-            <div className="track t3" />
-            <div className="track t4" />
-            <div className="sport-symbol">
-              <Dumbbell strokeWidth={1.3} />
-            </div>
-            <span className="track-text">
-              KEEP
-              <br />
-              MOVING<span>↗</span>
-            </span>
-            <span className="track-number">01 / PULSE</span>
-          </div>
-        </section>
-      )}
       <div className="section-heading">
         <h2>{reports ? "Hiệu quả hoạt động" : "Trung tâm trong tầm tay"}</h2>
         <div className="date-range">
@@ -255,12 +224,23 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
         <>
           <div className="stats-grid">
             {cards.map(
-              ({ title, icon: Icon, q, value, money: isMoney, sub }) => (
-                <section className="stat-card" key={title}>
+              ({
+                title,
+                icon: Icon,
+                q,
+                value,
+                money: isMoney,
+                sub,
+                accent,
+              }) => (
+                <section
+                  className={`stat-card${accent ? " " + accent : ""}`}
+                  key={title}
+                >
                   <div className="stat-top">
                     <span>{title}</span>
                     <span className="stat-icon">
-                      <Icon size={19} />
+                      <Icon size={17} />
                     </span>
                   </div>
                   {q.isPending ? (
@@ -286,6 +266,18 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
               ),
             )}
           </div>
+          {!reports && (
+            <section className="dashboard-callout">
+              <CalendarDays size={28} />
+              <div>
+                <h2>Sẵn sàng cho lịch tập hôm nay</h2>
+                <p>Điều phối phòng tập, lớp học và đội ngũ huấn luyện viên.</p>
+              </div>
+              <Link className="button lime" to={`${base}/schedules`}>
+                Xem lịch hoạt động <ArrowUpRight size={18} />
+              </Link>
+            </section>
+          )}
           <div className="dashboard-grid">
             <section className="panel">
               <div className="panel-heading">
@@ -338,7 +330,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                 />
               ) : (
                 <div className="chart-body">
-                  <Bars values={members.data.data.membersByTier} />
+                  <DistributionChart values={members.data.data.membersByTier} />
                   <div className="member-mini">
                     <div>
                       <strong>{members.data.data.newMembers}</strong>
@@ -372,7 +364,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                 </div>
                 <Link
                   className="text-link"
-                  to={reports ? "/manager/classes" : "/manager/schedules"}
+                  to={reports ? `${base}/classes` : `${base}/schedules`}
                 >
                   Xem tất cả <MoveUpRight size={15} />
                 </Link>
@@ -417,7 +409,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                           {display((s.class as RecordData)?.name)}
                         </strong>
                         <p>
-                          {display((s.room as RecordData)?.name)} ·{" "}
+                          {display((s.room as RecordData)?.name)} Â·{" "}
                           {display(s.startTime)}
                         </p>
                       </div>
@@ -445,9 +437,9 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                 chỉ cách bạn một chạm.
               </p>
               {[
-                ["/manager/members", "Quản lý hội viên", Users],
-                ["/manager/classes", "Tổ chức lớp học", Dumbbell],
-                ["/manager/membership-plans", "Thiết lập gói tập", CreditCard],
+                [`${base}/members`, "Quản lý hội viên", Users],
+                [`${base}/classes`, "Tổ chức lớp học", Dumbbell],
+                [`${base}/membership-plans`, "Thiết lập gói tập", CreditCard],
               ].map(([to, title, Icon]) => {
                 const I = Icon as typeof Users;
                 return (

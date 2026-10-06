@@ -4,7 +4,7 @@ for (const width of [320, 375, 430, 768, 1024, 1280, 1440, 1920])
   test(`long text, selected member and modal at ${width}px`, async ({
     page,
   }) => {
-    await setup(page, "STAFF", true);
+    await setup(page, "RECEPTIONIST", true);
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/receptionist/membership");
     await page
@@ -51,7 +51,7 @@ for (const width of [320, 375, 430, 768, 1024, 1280, 1440, 1920])
         .evaluate((e) => e.scrollWidth <= e.clientWidth + 1),
     ).toBe(true);
   });
-test("boolean unchanged omits field and whitespace required input never submits", async ({
+test("boolean toggle preserves its original value and whitespace required input never submits", async ({
   page,
 }) => {
   await setup(page, "MANAGER");
@@ -61,13 +61,15 @@ test("boolean unchanged omits field and whitespace required input never submits"
     .first()
     .click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Đang hoạt động").selectOption("false");
-  await dialog.getByLabel("Đang hoạt động").selectOption("");
+  const active = dialog.getByRole("checkbox", { name: "Đang hoạt động" });
+  await expect(active).toBeChecked();
+  await active.uncheck();
+  await active.check();
   const sent = page.waitForRequest(
     (r) => r.method() === "PATCH" && r.url().includes("/rooms/"),
   );
   await dialog.getByRole("button", { name: "Lưu thay đổi" }).click();
-  expect((await sent).postDataJSON()).not.toHaveProperty("isActive");
+  expect((await sent).postDataJSON()).toMatchObject({ isActive: true });
   await expect(dialog).not.toBeVisible();
   await page
     .getByRole("button", { name: "Thêm phòng tập", exact: true })
@@ -82,7 +84,9 @@ test("boolean unchanged omits field and whitespace required input never submits"
     if (r.method() === "POST") calls++;
   });
   await page.getByRole("button", { name: "Lưu thay đổi" }).click();
-  await expect(page.getByRole("alert")).toContainText("Không được để trống");
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
+    "Không được để trống",
+  );
   expect(calls).toBe(0);
 });
 test("member search debounces requests and shows empty and network error states", async ({
@@ -117,6 +121,8 @@ test("member search debounces requests and shows empty and network error states"
   ).toBeVisible();
   await page.route("**/members?**", (route) => route.abort("failed"));
   await page.getByPlaceholder("Tên, email hoặc số điện thoại").fill("Offline");
-  await expect(page.getByRole("alert")).toContainText("Không thể kết nối");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "Không thể kết nối",
+  );
   await expect(page.getByRole("button", { name: "Thử lại" })).toBeVisible();
 });

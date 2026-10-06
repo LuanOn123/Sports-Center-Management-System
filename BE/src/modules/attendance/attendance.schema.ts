@@ -2,7 +2,8 @@ import { z } from "zod";
 
 export const CreateAttendanceSchema = z.object({
   scheduleId: z.string().uuid(),
-  memberId: z.string().uuid(),
+  // Identity projections use Mongo ObjectIds; retain valid legacy UUID profiles.
+  memberId: z.union([z.string().regex(/^[a-fA-F0-9]{24}$/), z.string().uuid()]),
   status: z.enum(["PRESENT", "ABSENT", "LATE", "EXCUSED"]),
   note: z.string().optional()
 });

@@ -1,5 +1,5 @@
 import { classSports } from "../sports";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Check, LoaderCircle } from "lucide-react";
@@ -73,8 +73,8 @@ function Lookup({
       {q.isError && <ErrorState error={q.error} retry={() => q.refetch()} />}
       {name === "coachId" && q.data?.some((r) => !at(r, "coachProfile.id")) && (
         <p className="field-note">
-          Một số hồ sơ chưa được API cung cấp mã huấn luyện viên nên chưa thể
-          chọn.
+          Một số hồ sơ huấn luyện viên chưa đầy đủ nên chưa thể chọn. Vui lòng
+          kiểm tra hồ sơ trước khi phân công.
         </p>
       )}
     </>
@@ -120,9 +120,23 @@ export function SchemaForm({
     ...fixed,
   }));
   const [error, setError] = useState<unknown>();
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (error)
+      formRef.current
+        ?.querySelector<HTMLElement>(
+          '[aria-invalid="true"], .form-error-summary',
+        )
+        ?.focus();
+  }, [error]);
   const [busy, setBusy] = useState(false);
   if (!schema)
-    return <p>Swagger chưa cung cấp hợp đồng cập nhật cho chức năng này.</p>;
+    return (
+      <p>
+        Chức năng này hiện chưa hỗ trợ cập nhật. Bạn vẫn có thể xem thông tin đã
+        lưu.
+      </p>
+    );
   const change = (k: string, v: unknown) =>
     setValues((prev) => ({ ...prev, [k]: v }));
   async function submit(e: FormEvent) {
@@ -223,13 +237,6 @@ export function SchemaForm({
         return;
       }
     }
-    if (
-      operation === "POST /training-plans" &&
-      Date.parse(String(body.endDate)) <= Date.parse(String(body.startDate))
-    ) {
-      setError(new Error("Ngày kết thúc phải sau ngày bắt đầu kế hoạch."));
-      return;
-    }
     if (operation === "PATCH /class-schedules/{id}") {
       // Lifecycle actions must use their dedicated endpoints and confirmations.
       delete body.status;
@@ -259,7 +266,7 @@ export function SchemaForm({
     }
   }
   return (
-    <form onSubmit={submit} aria-busy={busy}>
+    <form ref={formRef} onSubmit={submit} aria-busy={busy}>
       {/POST \/subscriptions/.test(operation) && (
         <p className="confirm-copy">
           Chỉ lưu sau khi đã nhận đủ tiền. Hệ thống sẽ ghi nhận thanh toán thành
@@ -342,25 +349,21 @@ export function SchemaForm({
                     onChange={(v) => change(k, v)}
                   />
                 ) : s.type === "boolean" ? (
-                  <select
-                    aria-invalid={
-                      (error instanceof ApiError &&
-                        error.errors?.some((e) => e.field === k)) ||
-                      undefined
-                    }
-                    aria-describedby={error ? errorId : undefined}
-                    value={String(value)}
-                    onChange={(e) =>
-                      change(
-                        k,
-                        e.target.value === "" ? "" : e.target.value === "true",
-                      )
-                    }
-                  >
-                    <option value="">Không thay đổi</option>
-                    <option value="true">Có</option>
-                    <option value="false">Không</option>
-                  </select>
+                  <span className="toggle-wrap">
+                    <label className="toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={value === true || value === "true"}
+                        onChange={(e) => change(k, e.target.checked)}
+                      />
+                      <span className="toggle-track">
+                        <span className="toggle-thumb" />
+                      </span>
+                    </label>
+                    <span className="toggle-label">
+                      {value === true || value === "true" ? "Có" : "Không"}
+                    </span>
+                  </span>
                 ) : s.enum ? (
                   <select
                     aria-invalid={
@@ -449,7 +452,7 @@ export function SchemaForm({
           })}
       </fieldset>
       {error != null && (
-        <div id={errorId}>
+        <div id={errorId} className="form-error-summary" tabIndex={-1}>
           <ErrorState error={error} />
         </div>
       )}

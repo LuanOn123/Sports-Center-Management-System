@@ -177,6 +177,7 @@ export const CreateActivityPlanSchema = z.object({
 });
 
 export const UpdateScheduleSchema = z.object({
+  coachId: z.string().min(1).optional(),
   roomId: z.string().min(1).optional(),
   startTime: z.string().optional(),
   endTime: z.string().optional(),

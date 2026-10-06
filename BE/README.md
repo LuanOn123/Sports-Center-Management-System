@@ -8,7 +8,7 @@ This project is built using modern Node.js tools and practices:
 - **Runtime:** Node.js
 - **Framework:** Express.js (v5)
 - **Language:** TypeScript
-- **Database:** PostgreSQL
+- **Databases:** MongoDB for authentication and profiles; PostgreSQL for business data
 - **ORM:** Prisma
 - **Validation:** Zod
 - **Authentication:** JWT (JSON Web Tokens) with Access & Refresh tokens
@@ -44,6 +44,7 @@ This project is built using modern Node.js tools and practices:
 ### Prerequisites
 - Node.js (v18+)
 - PostgreSQL Database
+- MongoDB replica set (including a single-node local replica set) or MongoDB Atlas; registration uses MongoDB transactions.
 
 ### Installation
 
@@ -55,8 +56,9 @@ This project is built using modern Node.js tools and practices:
 2. **Environment Variables:**
    Create a `.env` file in the root directory and add the following variables (adjust according to your setup):
    ```env
-   PORT=3000
+   PORT=8080
    DATABASE_URL="postgresql://user:password@localhost:5432/sport_center?schema=public"
+   MONGO_URI="mongodb://localhost:27017/sports_center?replicaSet=rs0"
    JWT_ACCESS_SECRET="your_access_secret"
    JWT_REFRESH_SECRET="your_refresh_secret"
    JWT_ACCESS_EXPIRES_IN="15m"

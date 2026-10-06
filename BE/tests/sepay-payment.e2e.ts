@@ -17,6 +17,7 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import app from "../src/app.js";
 import { prisma } from "../src/config/prisma.js";
+import { connectTestMongo, createIdentity, deleteIdentities, disconnectTestMongo } from "./helpers/identity.js";
 import { hashPassword } from "../src/utils/bcrypt.js";
 import { ensureActiveFreeSubscription } from "../src/modules/subscriptions/free-subscription.service.js";
 import {
@@ -153,23 +154,12 @@ const created = {
 type FixtureUser = { id: string; email: string; token: string; memberProfileId: string };
 
 async function createUser(
-  role: "MEMBER" | "COACH" | "STAFF" | "MANAGER",
+  role: "MEMBER" | "COACH" | "RECEPTIONIST" | "MANAGER",
   tag: string,
   hashedPassword: string
 ): Promise<FixtureUser> {
   const email = `e2e-sepay-${RUN}-${tag.toLowerCase()}@example.com`;
-  const user = await prisma.user.create({
-    data: {
-      email,
-      password: hashedPassword,
-      fullName: `E2E SePay ${tag} ${RUN}`,
-      role,
-      ...(role === "MEMBER" ? { memberProfile: { create: {} } } : {}),
-      ...(role === "COACH" ? { coachProfile: { create: {} } } : {}),
-      ...(role === "MANAGER" ? { managerProfile: { create: {} } } : {}),
-    },
-    include: { memberProfile: true },
-  });
+  const user = await createIdentity({ email, password: hashedPassword, fullName: `E2E SePay ${tag} ${RUN}`, role });
   created.userIds.push(user.id);
   const memberProfileId = user.memberProfile?.id ?? "";
   if (memberProfileId) created.memberProfileIds.push(memberProfileId);
@@ -965,7 +955,7 @@ async function scenarioAuthorization(ctx: Ctx, staff: FixtureUser, coach: Fixtur
   const asManager = await checkout(ctx.manager.token, planId);
   check("MANAGER checkout → 403 (chỉ MEMBER tự mua)", asManager.status === 403, asManager.body);
   const asStaff = await checkout(staff.token, planId);
-  check("STAFF checkout → 403", asStaff.status === 403, asStaff.body);
+  check("RECEPTIONIST checkout → 403", asStaff.status === 403, asStaff.body);
   const asCoach = await checkout(coach.token, planId);
   check("COACH checkout → 403", asCoach.status === 403, asCoach.body);
   const anonymous = await http("POST", "/payments/sepay/checkout", { body: { planId } });
@@ -1641,9 +1631,11 @@ async function cleanup(): Promise<void> {
     await prisma.membershipPlan.deleteMany({ where: { id: { in: created.planIds } } });
   }
   if (created.userIds.length > 0) await prisma.user.deleteMany({ where: { id: { in: created.userIds } } });
-}
+  await deleteIdentities(created.userIds);
+  }
 
 async function main(): Promise<void> {
+  await connectTestMongo();
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));
   const port = (server.address() as AddressInfo).port;
@@ -1655,7 +1647,7 @@ async function main(): Promise<void> {
   try {
     const manager = await createUser("MANAGER", "manager", hashed);
     const coach = await createUser("COACH", "coach", hashed);
-    const staff = await createUser("STAFF", "staff", hashed);
+    const staff = await createUser("RECEPTIONIST", "staff", hashed);
     const members: FixtureUser[] = [];
     for (let i = 1; i <= 12; i++) members.push(await createUser("MEMBER", `member${i}`, hashed));
 
@@ -1714,6 +1706,7 @@ async function main(): Promise<void> {
     }
     server.close();
     await prisma.$disconnect();
+    await disconnectTestMongo();
   }
 
   console.log("\n=== KẾT QUẢ ===");

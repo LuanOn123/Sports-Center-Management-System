@@ -71,6 +71,10 @@
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+/* Messages and status rows keep their natural height inside the scrolling log. */
+.chat-log > * {
+  flex-shrink: 0;
+}
 .chat-conversation .chat-composer {
   flex: none;
   padding: 10px;
@@ -123,6 +127,197 @@
   max-height: 260px;
   border-radius: 12px;
   object-fit: contain;
+}
+.chat-image-button {
+  display: block;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  max-width: 100%;
+  overflow: hidden;
+  cursor: zoom-in;
+  text-align: left;
+}
+.chat-image-button > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.image-viewer {
+  padding: 16px;
+  min-width: 0;
+}
+.image-viewer-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.image-viewer-toolbar output {
+  min-width: 48px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.image-viewer-stage {
+  max-height: 65dvh;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+.image-viewer-stage img {
+  display: block;
+  max-width: 100%;
+  max-height: 65dvh;
+  margin: auto;
+  object-fit: contain;
+}
+.image-viewer-stage.is-zoomed img {
+  margin: 0;
+}
+.image-viewer-caption {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+  margin-bottom: 0;
+}
+.attachment-error {
+  flex-wrap: wrap;
+}
+.help-panel {
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+  overflow-wrap: anywhere;
+  color: var(--color-text);
+}
+.help-panel > p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+.help-panel label {
+  display: grid;
+  gap: 8px;
+}
+.help-panel details {
+  border-bottom: 1px solid var(--color-border);
+  padding: 12px 0;
+}
+.help-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 8px 0;
+}
+.help-panel li {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+.help-panel a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-muted, var(--color-background));
+  color: var(--color-text);
+}
+.connection-status svg {
+  flex-shrink: 0;
+}
+.notification-popover {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+.notification-popover > header {
+  background: var(--color-surface-muted, var(--color-background));
+  border-color: var(--color-border);
+}
+.notification-popover > header > div {
+  flex: 1;
+}
+.notification-popover .icon-button {
+  color: var(--color-text);
+}
+.notification-popover-item {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+.notification-popover-item:hover,
+.notification-popover-item.unread {
+  background: var(--color-surface-muted, var(--color-background));
+}
+.notification-popover-item strong {
+  font-size: 14px;
+}
+.notification-popover-item p,
+.notification-popover-item small,
+.notification-popover header small {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+.notification-popover-item.expanded p {
+  display: block;
+  overflow: visible;
+}
+.notification-popover-item .notification-unread-label {
+  color: var(--color-primary);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.notification-popover footer {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.notification-popover footer a {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: underline;
+}
+.notification-popover footer small {
+  color: var(--color-text-muted);
+}
+.notification-feedback {
+  padding: 8px 16px;
+}
+.notification-popover .empty {
+  padding: 24px 16px;
+}
+@media (max-width: 600px) {
+  .notification-popover {
+    position: fixed;
+    top: 76px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: calc(100dvh - 88px);
+    overflow: auto;
+  }
+  .notification-popover-list {
+    max-height: min(420px, calc(100dvh - 260px));
+  }
+  .image-viewer {
+    padding: 12px;
+  }
 }
 .chat-document {
   display: flex;

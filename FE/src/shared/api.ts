@@ -1,3 +1,5 @@
+import { getFacilityId, facilitySignal, selectFacility, trackMutation } from "./facility";
+import { migrateIdentityStorage } from "./identityStorage";
 import operations from "./operations.json";
 import { toast } from "./toast";
 import { localizeApiError } from "./apiErrors";
@@ -46,11 +48,13 @@ export const BASE_URL = (
     .VITE_API_BASE_URL ||
   "https://sports-center-management-system.onrender.com/api/v1"
 ).replace(/\/$/, "");
+migrateIdentityStorage();
 let accessToken = sessionStorage.getItem("pulse.access") || "";
 let refreshToken = sessionStorage.getItem("pulse.refresh") || "";
 export const getAccessToken = () => accessToken;
 export const hasSession = () => Boolean(accessToken || refreshToken);
 export function clearSession() {
+  selectFacility("");
   accessToken = "";
   refreshToken = "";
   sessionStorage.removeItem("pulse.access");
@@ -85,23 +89,27 @@ async function transport(
   authenticated = true,
 ) {
   let res: Response;
+  const contextSignal = path.startsWith("/auth/") || path.startsWith("/facilities") ? new AbortController().signal : facilitySignal();
   try {
     res = await fetch(BASE_URL + path, {
       method,
       cache: "no-store",
       headers: {
         Accept: "application/json",
+        ...(authenticated && getFacilityId() && !path.startsWith("/facilities/") ? { "X-Facility-Id": getFacilityId() } : {}),
         ...(body !== undefined && !(body instanceof FormData)
           ? { "Content-Type": "application/json" }
           : {}),
-        ...(authenticated && accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(authenticated && accessToken
+          ? { Authorization: `Bearer ${accessToken}` }
+          : {}),
       },
       ...(body !== undefined
         ? { body: body instanceof FormData ? body : JSON.stringify(body) }
         : {}),
       signal: signal
-        ? AbortSignal.any([signal, AbortSignal.timeout(60000)])
-        : AbortSignal.timeout(60000),
+        ? AbortSignal.any([signal, contextSignal, AbortSignal.timeout(60000)])
+        : AbortSignal.any([contextSignal, AbortSignal.timeout(60000)]),
     });
   } catch (e) {
     if (e instanceof DOMException && e.name === "AbortError") throw e;
@@ -291,6 +299,10 @@ export async function api<T = RecordData>(
   key: string,
   options: Parameters<typeof apiRequest>[1] = {},
 ): Promise<Envelope<T>> {
+  // Queries and AI chat show contextual feedback; avoid repeated background toasts.
+  const inlineFeedback = key.startsWith("GET ") || key === "POST /ai/chat";
+  const mutation = !key.startsWith("GET ");
+  if (mutation) trackMutation(1);
   try {
     const result = await apiRequest<T>(key, options);
     if (key === "PATCH /auth/me/change-password") {
@@ -300,7 +312,7 @@ export async function api<T = RecordData>(
       return result;
     }
     if (
-      !key.startsWith("GET ") &&
+      !inlineFeedback &&
       !/\/auth\/refresh-token|\/notifications\/.*read|\/chat\//.test(key)
     ) {
       const message =
@@ -327,6 +339,7 @@ export async function api<T = RecordData>(
     ) {
       window.dispatchEvent(new Event("schedule-state-changed"));
     }
+    if (inlineFeedback) throw error;
     if (
       error instanceof ApiError &&
       error.status === 409 &&
@@ -347,6 +360,8 @@ export async function api<T = RecordData>(
       );
     }
     throw error;
+  } finally {
+    if (mutation) trackMutation(-1);
   }
 }
 export const authService = {

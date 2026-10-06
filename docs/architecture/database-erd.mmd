@@ -1,0 +1,131 @@
+%% Database ERD - Sports Center Management System
+%% Nguon: BE/prisma/schema.prisma (PostgreSQL + Prisma ORM)
+%% 28 model + 1 bang noi nhieu-nhieu ngam (_ClassToSport) = 29 bang, 18 enum
+erDiagram
+    User {
+        string id PK
+        string email UK
+        string password
+        string fullName
+        string phone UK
+        Gender gender
+        datetime dateOfBirth
+        string avatarUrl
+        UserRole role
+        boolean isActive
+        string resetPasswordOtp
+        datetime resetPasswordOtpExpiresAt
+        datetime createdAt
+        datetime updatedAt
+    }
+    RefreshToken {
+        string id PK
+        string token UK
+        string userId FK
+        datetime expiresAt
+        datetime revokedAt
+        datetime createdAt
+    }
+    MemberProfile {
+        string id PK
+        string userId FK,UK
+        string fitnessGoal
+        TrainingLevel trainingLevel
+        string trainingPreference
+        datetime createdAt
+        datetime updatedAt
+    }
+    CoachProfile {
+        string id PK
+        string userId FK,UK
+        string specialization
+        int experienceYears
+        string bio
+        datetime createdAt
+        datetime updatedAt
+    }
+    ManagerProfile {
+        string id PK
+        string userId FK,UK
+        datetime createdAt
+        datetime updatedAt
+    }
+MembershipPlan {
+        string id PK
+        string name
+        string description
+        decimal price
+        int durationDays
+        MemberTier tier
+        int maxConcurrentClasses
+        boolean isActive
+        datetime createdAt
+        datetime updatedAt
+    }
+    MembershipSubscription {
+        string id PK
+        string memberId FK
+        string planId FK
+        MemberTier tier
+        datetime startDate
+        datetime endDate
+        MembershipStatus status
+        datetime suspendedAt
+        int remainingDays
+        datetime cancelledAt
+        int maxConcurrentClassesSnapshot
+        datetime createdAt
+        datetime updatedAt
+    }
+    Sport {
+        string id PK
+        string name UK
+        string description
+        AreaType areaTypes
+        boolean isActive
+        datetime createdAt
+        datetime updatedAt
+    }
+    Room {
+        string id PK
+        string name UK
+        int capacity
+        string location
+        AreaType areaType
+        boolean isActive
+        datetime createdAt
+        datetime updatedAt
+    }
+    Class {
+        string id PK
+        string name
+        string description
+        int capacity
+        ClassType classType
+        AreaType areaType
+        boolean isActive
+        datetime createdAt
+        datetime updatedAt
+    }
+    _ClassToSport {
+        string A FK
+        string B FK
+    }
+    ClassMember {
+        string id PK
+        string classId FK
+        string coachId FK
+        boolean isPrimary
+        datetime createdAt
+    }
+    ClassSchedule {
+        string id PK
+        string classId FK
+        string roomId FK
+        datetime startTime
+        datetime endTime
+        ScheduleStatus status
+        datetime createdAt
+        datetime updatedAt
+    }
+%% @@END@@

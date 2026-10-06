@@ -1,3 +1,4 @@
+import { OperationsPage } from "../operations/OperationsPage";
 import { Link, Navigate, Route, Routes } from "react-router-dom";
 import {
   ArrowRight,
@@ -6,6 +7,8 @@ import {
   CreditCard,
   Dumbbell,
   LayoutDashboard,
+  Layers,
+  Receipt,
   ShieldCheck,
   Trophy,
   UserRound,
@@ -14,6 +17,7 @@ import {
   Warehouse,
   ClipboardList,
   ContactRound,
+  BookOpen,
   Activity,
   WandSparkles,
 } from "lucide-react";
@@ -49,9 +53,9 @@ const navGroups: NavigationGroup[] = [
       ["classes", "Lớp học", Trophy],
       ["schedules", "Lịch hoạt động", CalendarDays],
       ["activity-planner", "Tạo lịch nhanh", WandSparkles],
-      ["membership", "Đăng ký & gia hạn gói", CreditCard],
-      ["payments", "Thanh toán & hóa đơn", CreditCard],
-      ["bookings", "Đăng ký lớp", CalendarDays],
+      ["membership", "Đăng ký & gia hạn gói", Layers],
+      ["payments", "Thanh toán & hóa đơn", Receipt],
+      ["bookings", "Đăng ký lớp", BookOpen],
       ["attendance-rules", "Chuyên cần", Activity],
     ],
   },
@@ -79,9 +83,11 @@ export function ManagerLayout({
       title="Quản lý trung tâm"
       base="/manager"
       items={[]}
-      groups={navGroups}
+      groups={navGroups.map(g => ({ ...g, items: g.items.filter(([slug]) => !["users", "roles"].includes(slug)) })).concat([{ title: "ĐIỀU PHỐI", items: [["requirements", "Điều kiện giảng dạy", Warehouse], ["slots", "Khung giờ", CalendarDays], ["patterns", "Sinh lịch định kỳ", CalendarDays], ["leave", "Nghỉ phép", CalendarDays], ["issues", "Yêu cầu hỗ trợ", ClipboardList], ["orders", "Bán gói tại quầy", CreditCard]] }])}
     >
       <Routes>
+        {(["requirements", "slots", "patterns", "leave", "issues", "orders"] as const).map(kind => <Route key={kind} path={"/manager/" + kind} element={<OperationsPage kind={kind} role="MANAGER" />} />)}
+        <Route path="/manager/staff" element={<OperationsPage kind="staff" role="MANAGER" />} />
         <Route path="/manager/dashboard" element={<Dashboard />} />
         <Route path="/manager/reports" element={<Dashboard reports />} />
         <Route
@@ -101,7 +107,7 @@ export function ManagerLayout({
           path="/manager/attendance-rules"
           element={<AttendancePenalties />}
         />
-        {resources.map((r) => (
+        {resources.filter(r => !["users", "staff"].includes(r.slug)).map((r) => (
           <Route
             key={r.slug}
             path={"/manager/" + r.slug}
@@ -114,7 +120,7 @@ export function ManagerLayout({
         <Route path="/manager/roles" element={<Unavailable type="roles" />} />
         <Route
           path="/manager/audit-logs"
-          element={<Unavailable type="audit" />}
+          element={<OperationsPage kind="audit" role="MANAGER" />}
         />
         <Route
           path="/"
@@ -158,10 +164,11 @@ function Unavailable({ type }: { type: "roles" | "audit" }) {
       {type === "roles" && (
         <div className="role-grid">
           {[
+            ["ADMIN", "Quản trị hệ thống"],
             ["MANAGER", "Quản lý trung tâm"],
             ["COACH", "Huấn luyện viên"],
             ["MEMBER", "Hội viên"],
-            ["STAFF", "Lễ tân"],
+            ["RECEPTIONIST", "Lễ tân"],
           ].map(([key, name]) => (
             <section className="panel role-card" key={key}>
               <ShieldCheck />
@@ -182,14 +189,14 @@ function Unavailable({ type }: { type: "roles" | "audit" }) {
         </h2>
         <p>
           {type === "roles"
-            ? "Backend hiện cung cấp bốn vai trò cố định. Chưa có API đọc hoặc thay đổi quyền chi tiết cho từng vai trò."
-            : "Backend hiện chưa cung cấp API nhật ký hoạt động để hiển thị dữ liệu tại đây."}
+            ? "Hệ thống có năm vai trò cố định. Hiện chưa hỗ trợ thay đổi quyền chi tiết cho từng vai trò."
+            : "Nhật ký hoạt động hiện chưa khả dụng. Bạn có thể quay lại Tổng quan để tiếp tục công việc."}
         </p>
         <Link
           className="button"
-          to={type === "roles" ? "/manager/users" : "/manager/dashboard"}
+          to="/manager/dashboard"
         >
-          {type === "roles" ? "Quản lý tài khoản" : "Về tổng quan"}
+          Về tổng quan
           <ArrowRight size={17} />
         </Link>
       </section>

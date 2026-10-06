@@ -1,3 +1,4 @@
+import { requestContext } from "../../config/request-context.js";
 import { Prisma, EnrollmentStatus, MemberTier } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../middlewares/errorHandler.js";
@@ -134,7 +135,7 @@ export async function evaluateCourseEligibility(
       where: { memberId: memberProfileId, scheduleId: { in: sessionIds } },
       select: { id: true, scheduleId: true, status: true },
     }),
-    db.enrollment.findMany({
+    requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, () => db.enrollment.findMany({
       where: {
         memberId: memberProfileId,
         // Cùng Class không tính là trùng giờ: đó chính là các buổi đang đăng ký.
@@ -157,7 +158,7 @@ export async function evaluateCourseEligibility(
           },
         },
       },
-    }),
+    })),
   ]);
 
   const blockers: CourseEnrollmentBlocker[] = [];
@@ -169,8 +170,8 @@ export async function evaluateCourseEligibility(
       message:
         "Bạn không có gói tập đang hoạt động. Vui lòng mua gói để đăng ký trọn khóa học.",
     });
-  } else if (activeSub.endDate < lastSession.startTime) {
-    const coveredSessions = sessions.filter((s) => s.startTime <= activeSub.endDate).length;
+  } else if (activeSub.endDate < lastSession.endTime) {
+    const coveredSessions = sessions.filter((s) => s.endTime <= activeSub.endDate).length;
     blockers.push({
       code: "SUBSCRIPTION_ENDS_BEFORE_COURSE_END",
       message:

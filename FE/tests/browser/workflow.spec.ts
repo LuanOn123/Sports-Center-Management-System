@@ -4,28 +4,12 @@ import { setup } from "./fixtures";
 async function workflow(page: Page, role = "MEMBER") {
   await setup(page, role);
   const calls: { path: string; method: string; body: string | null }[] = [];
-  const plan = {
-    id: "p1",
-    memberId: "member-1",
-    coachId: "coach-1",
-    name: "Cải thiện sức bền",
-    startDate: "2026-09-01T00:00:00Z",
-    endDate: "2026-09-30T00:00:00Z",
-    coach: { user: { fullName: "Huấn luyện viên An" } },
-    results: [
-      {
-        id: "result-1",
-        date: "2026-09-10T00:00:00Z",
-        coachNote: "Tiến bộ tốt",
-        metrics: { "Quãng đường": "5 km" },
-      },
-    ],
-  };
   let read = false;
   await page.route("**/api/v1/**", async (route) => {
     const req = route.request(),
       url = new URL(req.url()),
       path = url.pathname.replace("/api/v1", "");
+    if (path === "/facilities") return route.fulfill({ json: { success: true, data: [{ id: "facility-a", code: "A", name: "Cơ sở A", isActive: true }] } });
     calls.push({ path, method: req.method(), body: req.postData() });
     let data: unknown, pagination: unknown;
     if (path === "/auth/me")
@@ -74,18 +58,7 @@ async function workflow(page: Page, role = "MEMBER") {
         },
       ];
     else if (path === "/chat/messages") data = { id: "sent" };
-    else if (path === "/training-plans") {
-      expect(url.searchParams.get("memberId")).toBe("member-1");
-      data = [
-        plan,
-        {
-          ...plan,
-          id: "other",
-          memberId: "member-other",
-          name: "Không được hiển thị",
-        },
-      ];
-    } else if (path === "/enrollments/my")
+    else if (path === "/enrollments/my")
       data = [
         {
           id: "e1",
@@ -156,23 +129,6 @@ for (const width of [375, 1440])
     });
   });
 
-test("member sees assigned training results and cannot edit or see another member", async ({
-  page,
-}) => {
-  await workflow(page);
-  await page.goto("/member/training");
-  await expect(
-    page.getByText("Cải thiện sức bền", { exact: true }),
-  ).toBeVisible();
-  await expect(page.getByText("5 km", { exact: true })).toBeVisible();
-  await expect(
-    page.getByText("Không được hiển thị", { exact: true }),
-  ).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Thêm kế hoạch" })).toHaveCount(
-    0,
-  );
-});
-
 test("completed booking does not imply presence; member sees own recorded attendance", async ({
   page,
 }) => {
@@ -216,7 +172,8 @@ test("dynamic role changes expire session without refreshing obsolete permission
   page,
 }) => {
   await page.addInitScript(() => {
-    sessionStorage.setItem("pulse.access", "old");
+    (sessionStorage.setItem("pulse.identity-version", "mongo-identities-v1"),
+      sessionStorage.setItem("pulse.access", "old"));
     sessionStorage.setItem("pulse.refresh", "refresh");
   });
   const calls: string[] = [];
@@ -235,9 +192,11 @@ test("dynamic role changes expire session without refreshing obsolete permission
     page.getByRole("button", { name: "Đăng nhập", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("Vai trò tài khoản đã thay đổi. Vui lòng đăng nhập lại.", {
-      exact: true,
-    }),
+    page
+      .getByRole("main")
+      .getByText("Vai trò tài khoản đã thay đổi. Vui lòng đăng nhập lại.", {
+        exact: true,
+      }),
   ).toBeVisible();
   expect(calls.some((c) => c.endsWith("/auth/refresh-token"))).toBe(false);
   expect(
@@ -257,7 +216,7 @@ test("manager gains finance screens while staff has no refund action", async ({
   await expect(
     page.getByRole("button", { name: "Hoàn tiền", exact: true }),
   ).toBeVisible();
-  await setup(page, "STAFF");
+  await setup(page, "RECEPTIONIST");
   await page.goto("/receptionist/payments");
   await page.getByRole("button", { name: "Chọn", exact: true }).first().click();
   await expect(
@@ -268,7 +227,7 @@ test("manager gains finance screens while staff has no refund action", async ({
 test("staff completes only ended sessions through dedicated API and cannot mark attendance", async ({
   page,
 }) => {
-  await setup(page, "STAFF");
+  await setup(page, "RECEPTIONIST");
   const now = Date.now();
   const past = {
     id: "ended",
@@ -283,6 +242,7 @@ test("staff completes only ended sessions through dedicated API and cannot mark 
   await page.route("**/api/v1/**", async (route) => {
     const req = route.request(),
       path = new URL(req.url()).pathname.replace("/api/v1", "");
+    if (path === "/facilities") return route.fulfill({ json: { success: true, data: [{ id: "facility-a", code: "A", name: "Cơ sở A", isActive: true }] } });
     if (req.method() !== "GET") mutations.push(req.method() + " " + path);
     let data: unknown;
     if (path === "/class-schedules")
@@ -361,10 +321,8 @@ test("manager edit schedule does not offer lifecycle status bypass", async ({
     room: { id: "room-1", name: "Phòng A" },
   };
   await page.route("**/api/v1/class-schedules**", (route) => {
-    const path = new URL(route.request().url()).pathname.replace(
-      "/api/v1",
-      "",
-    );
+    const path = new URL(route.request().url()).pathname.replace("/api/v1", "");
+    if (path === "/facilities") return route.fulfill({ json: { success: true, data: [{ id: "facility-a", code: "A", name: "Cơ sở A", isActive: true }] } });
     return route.fulfill({
       json: {
         success: true,

@@ -1,5 +1,5 @@
+import { OperationsPage } from "../operations/OperationsPage";
 import { MemberPortalContext } from "../../shared/ui";
-import "./member-theme.css";
 import {
   LayoutDashboard,
   CreditCard,
@@ -7,7 +7,6 @@ import {
   Search,
   BookOpen,
   CalendarDays,
-  Dumbbell,
   CircleCheck,
   Bell,
   UserRound,
@@ -56,11 +55,6 @@ const Profile = lazy(() =>
     default: m.ProfilePage,
   })),
 );
-const Training = lazy(() =>
-  import("../../pages/member/TrainingPage").then((m) => ({
-    default: m.TrainingPage,
-  })),
-);
 const Attendance = lazy(() =>
   import("../../pages/member/AttendancePage").then((m) => ({
     default: m.AttendancePage,
@@ -78,9 +72,9 @@ const items = [
   ["classes", "Khám phá lớp học", Search],
   ["my-classes", "Lớp của tôi", BookOpen],
   ["schedule", "Lịch tập", CalendarDays],
-  ["training", "Mục tiêu tập luyện", Dumbbell],
   ["attendance", "Điểm danh", CircleCheck],
   ["notifications", "Thông báo", Bell],
+  ["support", "Yêu cầu hỗ trợ", Bell],
   ["profile", "Tài khoản", UserRound],
 ] as const;
 export function UserLayout(props: PortalProps) {
@@ -94,6 +88,7 @@ export function UserLayout(props: PortalProps) {
           <div className="member-content">
             <Suspense fallback={<Loading variant="page" />}>
               <Routes>
+                <Route path="/member/support" element={<OperationsPage kind="issues" role="MEMBER" />} />
                 <Route
                   path="/member/dashboard"
                   element={
@@ -112,7 +107,6 @@ export function UserLayout(props: PortalProps) {
                 <Route path="/member/classes/:id" element={<ClassDetail />} />
                 <Route path="/member/my-classes" element={<MyClasses />} />
                 <Route path="/member/schedule" element={<Schedule />} />
-                <Route path="/member/training" element={<Training />} />
                 <Route path="/member/attendance" element={<Attendance />} />
                 <Route
                   path="/member/notifications"

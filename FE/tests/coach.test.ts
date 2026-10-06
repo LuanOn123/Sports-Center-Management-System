@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, vi } from "vitest";
 beforeEach(() => {
-  vi.stubGlobal("sessionStorage", { getItem: () => null });
+  vi.stubGlobal("sessionStorage", { getItem: () => "mongo-identities-v1" });
 });
 it("uses the Vietnam calendar day at the UTC midnight boundary", async () => {
   const { dateKey, fmt } = await import("../src/features/coach/data");

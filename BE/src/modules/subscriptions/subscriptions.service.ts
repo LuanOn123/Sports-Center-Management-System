@@ -4,12 +4,15 @@ import { buildPaginationMeta } from "../../utils/pagination.js";
 import { createNotification } from "../notifications/notifications.service.js";
 import { flushNotificationOutbox } from "../notifications/outbox.service.js";
 import { activateSubscriptionForPayment } from "./subscription-purchase.service.js";
-import type { CreateSubscriptionInput, RenewSubscriptionInput } from "./subscriptions.schema.js";
+import type {
+  CreateSubscriptionInput,
+  RenewSubscriptionInput,
+} from "./subscriptions.schema.js";
 
 async function autoCreateInvoice(
   memberId: string,
   paymentId: string,
-  amount: number
+  amount: number,
 ) {
   await prisma.invoice.create({
     data: {
@@ -27,7 +30,7 @@ async function autoCreateInvoice(
 
 export async function createSubscription(
   data: CreateSubscriptionInput,
-  createdById: string
+  createdById: string,
 ) {
   // Resolve member (accept userId or profileId)
   const memberProfile = await prisma.memberProfile.findFirst({
@@ -38,11 +41,17 @@ export async function createSubscription(
 
   // BR-16 Check: User must currently be a MEMBER and active
   if (!memberProfile.user.isActive || memberProfile.user.role !== "MEMBER") {
-    throw new AppError("Cannot create subscription: user is not an active MEMBER", 400);
+    throw new AppError(
+      "Cannot create subscription: user is not an active MEMBER",
+      400,
+    );
   }
 
-  const plan = await prisma.membershipPlan.findUnique({ where: { id: data.planId } });
-  if (!plan || !plan.isActive) throw new AppError("Membership plan not found or inactive", 404);
+  const plan = await prisma.membershipPlan.findUnique({
+    where: { id: data.planId },
+  });
+  if (!plan || !plan.isActive)
+    throw new AppError("Membership plan not found or inactive", 404);
 
   const now = new Date();
   const startDate = data.startDate ? new Date(data.startDate) : now;
@@ -70,22 +79,23 @@ export async function createSubscription(
       },
     });
 
-    const { subscription, payment, invoice } = await activateSubscriptionForPayment(tx, {
-      memberProfileId: memberProfile.id,
-      memberUserId: memberProfile.userId,
-      memberName: memberUser?.fullName ?? null,
-      plan,
-      paymentId: pendingPayment.id,
-      startDate,
-      now,
-      // A07: mua tại quầy — snapshot chính là điều khoản đang bán tại thời điểm thu tiền.
-      optionSnapshot: {
-        planName: plan.name,
-        tier: plan.tier,
-        durationDays: plan.durationDays,
-        maxConcurrentClasses: plan.maxConcurrentClasses,
-      },
-    });
+    const { subscription, payment, invoice } =
+      await activateSubscriptionForPayment(tx, {
+        memberProfileId: memberProfile.id,
+        memberUserId: memberProfile.userId,
+        memberName: memberUser?.fullName ?? null,
+        plan,
+        paymentId: pendingPayment.id,
+        startDate,
+        now,
+        // A07: mua tại quầy — snapshot chính là điều khoản đang bán tại thời điểm thu tiền.
+        optionSnapshot: {
+          planName: plan.name,
+          tier: plan.tier,
+          durationDays: plan.durationDays,
+          maxConcurrentClasses: plan.maxConcurrentClasses,
+        },
+      });
 
     return { subscription, payment, invoice };
   });
@@ -98,7 +108,7 @@ export async function createSubscription(
 export async function renewSubscription(
   subscriptionId: string,
   data: RenewSubscriptionInput,
-  createdById: string
+  createdById: string,
 ) {
   const existing = await prisma.membershipSubscription.findUnique({
     where: { id: subscriptionId },
@@ -115,19 +125,30 @@ export async function renewSubscription(
   if (!existing) throw new AppError("Subscription not found", 404);
 
   // BR-16 Check: User must currently be a MEMBER and active
-  if (!existing.member.user.isActive || existing.member.user.role !== "MEMBER") {
-    throw new AppError("Cannot renew subscription: user is no longer an active MEMBER", 400);
+  if (
+    !existing.member.user.isActive ||
+    existing.member.user.role !== "MEMBER"
+  ) {
+    throw new AppError(
+      "Cannot renew subscription: user is no longer an active MEMBER",
+      400,
+    );
   }
 
-  const plan = await prisma.membershipPlan.findUnique({ where: { id: data.planId } });
-  if (!plan || !plan.isActive) throw new AppError("Membership plan not found or inactive", 404);
+  const plan = await prisma.membershipPlan.findUnique({
+    where: { id: data.planId },
+  });
+  if (!plan || !plan.isActive)
+    throw new AppError("Membership plan not found or inactive", 404);
 
   // Kỳ mới bắt đầu sau endDate hiện tại nếu gói còn ACTIVE — TRỪ gói FREE hệ thống:
   // FREE có durationDays = 3650 (chỉ để luôn ACTIVE khi provisioning); chờ hết nghĩa là
   // gói trả phí mới bắt đầu gần 10 năm sau ⇒ kỳ mới của FREE phải bắt đầu NGAY.
   const now = new Date();
   const startsAfterCurrent =
-    existing.tier !== "FREE" && existing.status === "ACTIVE" && existing.endDate > now;
+    existing.tier !== "FREE" &&
+    existing.status === "ACTIVE" &&
+    existing.endDate > now;
   const startDate = startsAfterCurrent ? existing.endDate : now;
   const endDate = new Date(startDate);
   endDate.setDate(endDate.getDate() + plan.durationDays);
@@ -150,6 +171,7 @@ export async function renewSubscription(
       data: {
         memberId: existing.memberId,
         planId: plan.id,
+        priceSnapshot: plan.price,
         tier: plan.tier,
         startDate,
         endDate,
@@ -199,20 +221,33 @@ export async function renewSubscription(
   });
 }
 
-export async function getMemberSubscriptions(memberId: string, query: any, currentUser: any) {
+export async function getMemberSubscriptions(
+  memberId: string,
+  query: any,
+  currentUser: any,
+) {
   const memberProfile = await prisma.memberProfile.findFirst({
     where: { OR: [{ id: memberId }, { userId: memberId }] },
   });
   if (!memberProfile) throw new AppError("Member not found", 404);
 
   // BR-01 Fix: IDOR protection
-  if (currentUser.role === "MEMBER" && memberProfile.userId !== currentUser.id) {
-    throw new AppError("Forbidden: You can only view your own subscriptions", 403);
+  if (
+    currentUser.role === "MEMBER" &&
+    memberProfile.userId !== currentUser.id
+  ) {
+    throw new AppError(
+      "Forbidden: You can only view your own subscriptions",
+      403,
+    );
   }
   if (currentUser.role === "COACH") {
     // For now, coaches are not allowed to view financial subscriptions of members.
     // If business logic requires it later, we can check if the member is in their classes.
-    throw new AppError("Forbidden: Coaches cannot view member financial subscriptions", 403);
+    throw new AppError(
+      "Forbidden: Coaches cannot view member financial subscriptions",
+      403,
+    );
   }
 
   const page = Math.max(1, parseInt(query.page ?? "1") || 1);
@@ -240,7 +275,9 @@ export async function getSubscriptionById(id: string) {
     where: { id },
     include: {
       plan: true,
-      member: { include: { user: { select: { fullName: true, email: true } } } },
+      member: {
+        include: { user: { select: { fullName: true, email: true } } },
+      },
       payments: { include: { invoice: true } },
     },
   });
@@ -262,7 +299,11 @@ export async function updateSubscriptionStatus(id: string, status: string) {
           user: { select: { id: true, fullName: true } },
         },
       },
-      payments: { where: { status: "SUCCESS" }, orderBy: { paidAt: "desc" }, take: 1 },
+      payments: {
+        where: { status: "SUCCESS" },
+        orderBy: { paidAt: "desc" },
+        take: 1,
+      },
     },
   });
   if (!sub) throw new AppError("Subscription not found", 404);
@@ -298,12 +339,20 @@ export async function updateSubscriptionStatus(id: string, status: string) {
 
     const originalPayment = sub.payments[0];
     if (originalPayment && daysLeft > 0) {
-      const dailyRate = Number(originalPayment.amount) / sub.plan.durationDays;
+      const soldDuration =
+        originalPayment.durationDaysSnapshot ??
+        Math.max(
+          1,
+          Math.round(
+            (sub.endDate.getTime() - sub.startDate.getTime()) / 86400000,
+          ),
+        );
+      const dailyRate = Number(originalPayment.amount) / soldDuration;
       // Số ngày còn lại có thể gồm ngày carry-over/nâng hạng ⇒ công thức theo ngày có thể lớn
       // hơn tiền THỰC THU. Hoàn tiền KHÔNG bao giờ vượt số tiền đã thu của payment gốc.
       refundAmount = Math.min(
         Math.round(dailyRate * daysLeft),
-        Math.round(Number(originalPayment.amount))
+        Math.round(Number(originalPayment.amount)),
       );
       willRefund = refundAmount > 0;
     }
@@ -331,7 +380,9 @@ export async function updateSubscriptionStatus(id: string, status: string) {
           where: { id: originalPayment.id },
           data: {
             status: "REFUNDED",
-            note: `Hoàn tiền theo tỷ lệ ngày còn lại: ${daysLeft} ngày / ${sub.plan.durationDays} ngày. Số tiền hoàn: ${refundAmount.toLocaleString("vi-VN")}đ`,
+            refundedAmount: refundAmount,
+            refundedAt: now,
+            note: `Hoàn tiền theo tỷ lệ ngày còn lại: ${daysLeft} ngày / ${originalPayment?.durationDaysSnapshot ?? Math.max(1, Math.round((sub.endDate.getTime() - sub.startDate.getTime()) / 86400000))} ngày. Số tiền hoàn: ${refundAmount.toLocaleString("vi-VN")}đ`,
           },
         });
       }
@@ -343,7 +394,7 @@ export async function updateSubscriptionStatus(id: string, status: string) {
         sub.member.userId,
         "PAYMENT_REFUNDED",
         "Hoàn tiền gói tập",
-        `Gói "${sub.plan.name}" đã bị hủy bởi quản lý. Số tiền hoàn: ${refundAmount.toLocaleString("vi-VN")}đ (${daysLeft} ngày còn lại / ${sub.plan.durationDays} ngày). Vui lòng ra quầy lễ tân để nhận hoàn tiền.`,
+        `Gói "${sub.plan.name}" đã bị hủy bởi quản lý. Số tiền hoàn: ${refundAmount.toLocaleString("vi-VN")}đ (${daysLeft} ngày còn lại / ${originalPayment?.durationDaysSnapshot ?? Math.max(1, Math.round((sub.endDate.getTime() - sub.startDate.getTime()) / 86400000))} ngày). Vui lòng ra quầy lễ tân để nhận hoàn tiền.`,
       ).catch(() => {});
     } else {
       createNotification(
@@ -368,7 +419,12 @@ export async function updateSubscriptionStatus(id: string, status: string) {
         },
       },
     });
-    return { ...result, refundAmount, willRefund, daysLeft: msLeft > 0 ? Math.ceil(msLeft / (1000 * 60 * 60 * 24)) : 0 };
+    return {
+      ...result,
+      refundAmount,
+      willRefund,
+      daysLeft: msLeft > 0 ? Math.ceil(msLeft / (1000 * 60 * 60 * 24)) : 0,
+    };
   }
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -403,7 +459,7 @@ export async function updateSubscriptionStatus(id: string, status: string) {
 export async function cancelSubscriptionBySelf(
   subscriptionId: string,
   userId: string,
-  reason?: string
+  reason?: string,
 ) {
   const now = new Date();
 
@@ -413,13 +469,22 @@ export async function cancelSubscriptionBySelf(
     include: {
       plan: true,
       member: { select: { id: true, userId: true } },
-      payments: { where: { status: "SUCCESS" }, orderBy: { paidAt: "desc" }, take: 1 },
+      payments: {
+        where: { status: "SUCCESS" },
+        orderBy: { paidAt: "desc" },
+        take: 1,
+      },
     },
   });
 
   if (!sub) throw new AppError("Subscription not found", 404);
-  if (sub.member.userId !== userId) throw new AppError("Forbidden: not your subscription", 403);
-  if (sub.status !== "ACTIVE") throw new AppError(`Không thể hủy gói đang ở trạng thái ${sub.status}`, 400);
+  if (sub.member.userId !== userId)
+    throw new AppError("Forbidden: not your subscription", 403);
+  if (sub.status !== "ACTIVE")
+    throw new AppError(
+      `Không thể hủy gói đang ở trạng thái ${sub.status}`,
+      400,
+    );
 
   // Tính số ngày còn lại
   const msLeft = sub.endDate.getTime() - now.getTime();
@@ -430,7 +495,10 @@ export async function cancelSubscriptionBySelf(
   const REFUND_RATE = 0.3;
   const originalPayment = sub.payments[0];
   const originalAmount = originalPayment ? Number(originalPayment.amount) : 0;
-  const refundAmount = daysLeft > REFUND_THRESHOLD_DAYS ? Math.round(originalAmount * REFUND_RATE) : 0;
+  const refundAmount =
+    daysLeft > REFUND_THRESHOLD_DAYS
+      ? Math.round(originalAmount * REFUND_RATE)
+      : 0;
   const willRefund = refundAmount > 0;
 
   await prisma.$transaction(async (tx) => {
@@ -454,7 +522,12 @@ export async function cancelSubscriptionBySelf(
     if (willRefund && originalPayment) {
       await tx.payment.update({
         where: { id: originalPayment.id },
-        data: { status: "REFUNDED", note: `Hoàn 30% do hủy gói (còn ${daysLeft} ngày). Lý do: ${reason ?? "Không có"}` },
+        data: {
+          status: "REFUNDED",
+          refundedAmount: refundAmount,
+          refundedAt: now,
+          note: `Hoàn 30% do hủy gói (còn ${daysLeft} ngày). Lý do: ${reason ?? "Không có"}`,
+        },
       });
     }
   });

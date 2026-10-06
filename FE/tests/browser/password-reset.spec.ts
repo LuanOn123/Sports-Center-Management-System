@@ -42,6 +42,10 @@ test("reset flow handles invalid OTP, resend and success on mobile", async ({
   });
   await page.goto("/login");
   await page.getByRole("link", { name: "Quên mật khẩu?" }).click();
+  await expect(page).toHaveURL(/\/forgot-password$/);
+  await expect(
+    page.getByRole("heading", { name: "Quên mật khẩu?" }),
+  ).toBeVisible();
   await page.getByLabel("Email", { exact: true }).fill("Member@example.com");
   await page.getByRole("button", { name: "Gửi mã OTP", exact: true }).click();
   await expect(page.getByRole("timer")).toContainText(/(?:5:00|4:\d{2})/);

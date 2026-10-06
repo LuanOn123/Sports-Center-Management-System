@@ -4,8 +4,11 @@ import AxeBuilder from "@axe-core/playwright";
 async function fixture(page: Page, role = "MEMBER") {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.clock.install({ time: new Date("2026-09-20T03:00:00Z") });
-  await page.addInitScript(() =>
-    sessionStorage.setItem("pulse.access", "local-fixture"),
+  await page.addInitScript(
+    () => (
+      sessionStorage.setItem("pulse.identity-version", "mongo-identities-v1"),
+      sessionStorage.setItem("pulse.access", "local-fixture")
+    ),
   );
   const calls: { path: string; method: string; body: any }[] = [];
   const cls = {
@@ -27,6 +30,7 @@ async function fixture(page: Page, role = "MEMBER") {
     const request = route.request(),
       url = new URL(request.url()),
       path = url.pathname.replace("/api/v1", "");
+    if (path === "/facilities") return route.fulfill({ json: { success: true, data: [{ id: "facility-a", code: "A", name: "Cơ sở A", isActive: true }] } });
     const body = request.postData() ? request.postDataJSON() : null;
     calls.push({ path, method: request.method(), body });
     let data: any = [];

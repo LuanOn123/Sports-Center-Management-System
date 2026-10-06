@@ -170,7 +170,7 @@
   background: var(--color-surface);
 }
 .coach-day > header span {
-  font-size: 11px;
+  font-size: var(--font-caption);
   color: var(--muted);
 }
 .coach-day.is-today > header {
@@ -187,7 +187,7 @@
   align-content: start;
 }
 .coach-day-empty {
-  font-size: 11px;
+  font-size: var(--font-caption);
   text-align: center;
   padding: 24px 0;
 }
@@ -223,14 +223,14 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.coach-session > span:not(.coach-time):not(.coach-badge) {
+.coach-session > span:not(.coach-time):not(.badge) {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 .coach-session > span {
-  font-size: 11px;
+  font-size: var(--font-caption);
 }
 .coach-session svg {
   flex-shrink: 0;
@@ -245,36 +245,12 @@
   color: var(--forest);
 }
 .coach-session small {
-  font-size: 10px;
+  font-size: var(--font-caption);
   color: var(--muted);
 }
 .coach-session.is-cancelled {
   border-left-color: var(--color-error);
   background: #fff9f8;
-}
-.coach-badge {
-  display: inline-block;
-  width: fit-content;
-  max-width: 100%;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.5;
-  color: var(--forest);
-  background: #edf4e9;
-}
-.coach-state-cancelled {
-  color: var(--color-error);
-  background: #fff0ed;
-}
-.coach-state-completed {
-  color: var(--color-info);
-  background: #edf3f9;
-}
-.coach-state-premium {
-  color: var(--color-warning);
-  background: #faf1df;
 }
 .coach-agenda {
   display: grid;

@@ -11,11 +11,17 @@ export async function listRooms(query: any) {
   const where: any = {};
   if (query.isActive !== undefined) where.isActive = query.isActive === "true";
   if (query.areaType) where.areaType = query.areaType;
-  if (query.search) where.name = { contains: query.search, mode: "insensitive" };
+  if (query.search)
+    where.name = { contains: query.search, mode: "insensitive" };
 
   const [total, rooms] = await Promise.all([
     prisma.room.count({ where }),
-    prisma.room.findMany({ where, skip, take: limit, orderBy: { name: "asc" } }),
+    prisma.room.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { name: "asc" },
+    }),
   ]);
   return { rooms, pagination: buildPaginationMeta(total, page, limit) };
 }
@@ -27,7 +33,10 @@ export async function createRoom(data: any) {
 }
 
 export async function getRoomById(id: string) {
-  const room = await prisma.room.findUnique({ where: { id } });
+  const room = await prisma.room.findUnique({
+    where: { id },
+    include: { capabilities: true },
+  });
   if (!room) throw new AppError("Room not found", 404);
   return room;
 }
@@ -37,30 +46,51 @@ export async function updateRoom(id: string, data: any) {
   if (!room) throw new AppError("Room not found", 404);
   if (data.isActive === false && room.isActive === true) {
     const scheduled = await prisma.classSchedule.count({
-      where: { roomId: id, status: "SCHEDULED", startTime: { gte: new Date() } },
+      where: {
+        roomId: id,
+        status: "SCHEDULED",
+        startTime: { gte: new Date() },
+      },
     });
-    if (scheduled > 0) throw new AppError("Cannot deactivate room with upcoming schedules", 400);
+    if (scheduled > 0)
+      throw new AppError("Cannot deactivate room with upcoming schedules", 400);
   }
 
   // A11: KHÔNG cho giảm sức chứa phòng xuống dưới chỗ đã giữ hoặc sức chứa lớp đang xếp lịch ở phòng này.
   if (data.capacity !== undefined && data.capacity < room.capacity) {
     const upcoming = await prisma.classSchedule.findMany({
-      where: { roomId: id, status: "SCHEDULED", startTime: { gte: new Date() } },
+      where: {
+        roomId: id,
+        status: "SCHEDULED",
+        startTime: { gte: new Date() },
+      },
       select: {
         class: { select: { capacity: true } },
         _count: {
-          select: { enrollments: { where: { status: { in: ["BOOKED", "COMPLETED"] } } } },
+          select: {
+            enrollments: { where: { status: { in: ["BOOKED", "COMPLETED"] } } },
+          },
         },
       },
     });
-    const maxBooked = upcoming.reduce((m, s) => Math.max(m, s._count.enrollments), 0);
-    const maxClassCapacity = upcoming.reduce((m, s) => Math.max(m, s.class.capacity), 0);
+    const maxBooked = upcoming.reduce(
+      (m, s) => Math.max(m, s._count.enrollments),
+      0,
+    );
+    const maxClassCapacity = upcoming.reduce(
+      (m, s) => Math.max(m, s.class.capacity),
+      0,
+    );
     const minCapacity = Math.max(maxBooked, maxClassCapacity);
     if (data.capacity < minCapacity) {
       throw new AppError(
         `Không thể giảm sức chứa phòng xuống ${data.capacity}: cần tối thiểu ${minCapacity} (chỗ đã giữ / sức chứa lớp đang xếp lịch).`,
         400,
-        { code: "ROOM_CAPACITY_TOO_SMALL", capacity: data.capacity, minCapacity }
+        {
+          code: "ROOM_CAPACITY_TOO_SMALL",
+          capacity: data.capacity,
+          minCapacity,
+        },
       );
     }
   }
@@ -78,7 +108,7 @@ export async function updateRoom(id: string, data: any) {
     if (mismatched > 0) {
       throw new AppError(
         `Cannot change Room area type to "${data.areaType}" because ${mismatched} upcoming schedule(s) use a Class with a different area type`,
-        400
+        400,
       );
     }
   }
@@ -92,7 +122,8 @@ export async function deleteRoom(id: string) {
   const scheduled = await prisma.classSchedule.count({
     where: { roomId: id, status: "SCHEDULED", startTime: { gte: new Date() } },
   });
-  if (scheduled > 0) throw new AppError("Cannot deactivate room with upcoming schedules", 400);
+  if (scheduled > 0)
+    throw new AppError("Cannot deactivate room with upcoming schedules", 400);
   return prisma.room.update({ where: { id }, data: { isActive: false } });
 }
 
@@ -107,18 +138,29 @@ interface TransferTarget {
 
 // Chỉ lấy SCHEDULED tương lai. Idempotent: schedule đã ở targetRoom sẽ không còn
 // thuộc sourceRoom nên lần gọi lại tự bỏ qua, không lỗi.
-async function loadTransferSchedules(sourceRoomId: string, input: TransferSchedulesInput) {
-  const sourceRoom = await prisma.room.findUnique({ where: { id: sourceRoomId } });
+async function loadTransferSchedules(
+  sourceRoomId: string,
+  input: TransferSchedulesInput,
+) {
+  const sourceRoom = await prisma.room.findUnique({
+    where: { id: sourceRoomId },
+  });
   if (!sourceRoom) throw new AppError("Room not found", 404);
 
-  const targetRoom = await prisma.room.findUnique({ where: { id: input.targetRoomId } });
-  if (!targetRoom || !targetRoom.isActive) throw new AppError("Room not found or inactive", 404);
-  if (targetRoom.id === sourceRoom.id) throw new AppError("Target room must be different from source room", 400);
+  const targetRoom = await prisma.room.findUnique({
+    where: { id: input.targetRoomId },
+  });
+  if (!targetRoom || !targetRoom.isActive)
+    throw new AppError("Room not found or inactive", 404);
+  if (targetRoom.id === sourceRoom.id)
+    throw new AppError("Target room must be different from source room", 400);
 
   const from = input.from ? new Date(input.from) : new Date();
   const to = input.to ? new Date(input.to) : undefined;
-  if (input.from && Number.isNaN(from.getTime())) throw new AppError("Invalid from datetime", 400);
-  if (input.to && (to === undefined || Number.isNaN(to.getTime()))) throw new AppError("Invalid to datetime", 400);
+  if (input.from && Number.isNaN(from.getTime()))
+    throw new AppError("Invalid from datetime", 400);
+  if (input.to && (to === undefined || Number.isNaN(to.getTime())))
+    throw new AppError("Invalid to datetime", 400);
 
   // Time-range overlap: lấy schedule giao với [from, to).
   // schedule.startTime < to AND schedule.endTime > from.
@@ -127,7 +169,9 @@ async function loadTransferSchedules(sourceRoomId: string, input: TransferSchedu
     where: {
       roomId: sourceRoomId,
       status: "SCHEDULED",
-      ...(to ? { startTime: { lt: to }, endTime: { gt: from } } : { endTime: { gt: from } }),
+      ...(to
+        ? { startTime: { lt: to }, endTime: { gt: from } }
+        : { endTime: { gt: from } }),
     },
     include: { class: true },
     orderBy: { startTime: "asc" },
@@ -139,27 +183,46 @@ async function loadTransferSchedules(sourceRoomId: string, input: TransferSchedu
 // Validate 1 schedule đúng rule PATCH /class-schedules/:id (area + capacity).
 // Room/coach conflict reuse checkScheduleConflicts(tx,...) trong cùng transaction.
 async function checkOneTransferSchedule(
-  db: { classMember: { findMany: (args: any) => Promise<{ coachId: string }[]> }; classSchedule: { findFirst: (args: any) => Promise<any> } },
-  schedule: { id: string; classId: string; startTime: Date; endTime: Date; class: { capacity: number; areaType: string } },
-  targetRoom: { id: string; capacity: number; areaType: string }
+  db: {
+    classMember: { findMany: (args: any) => Promise<{ coachId: string }[]> };
+    classSchedule: { findFirst: (args: any) => Promise<any> };
+  },
+  schedule: {
+    id: string;
+    coachId?: string | null;
+    classId: string;
+    startTime: Date;
+    endTime: Date;
+    class: { capacity: number; areaType: string };
+  },
+  targetRoom: { id: string; capacity: number; areaType: string },
 ) {
   if (schedule.class.areaType !== targetRoom.areaType) {
     throw new AppError(
       `Class area type "${schedule.class.areaType}" does not match Room area type "${targetRoom.areaType}"`,
-      400
+      400,
     );
   }
   if (targetRoom.capacity < schedule.class.capacity) {
     throw new AppError("Room capacity is too small for this class", 400);
   }
-  const { checkScheduleConflicts } = await import("../class-schedules/class-schedules.service.js");
-  await checkScheduleConflicts(db as any, targetRoom.id, schedule.classId, schedule.startTime, schedule.endTime, schedule.id);
+  const { checkScheduleConflicts } =
+    await import("../class-schedules/class-schedules.service.js");
+  await checkScheduleConflicts(
+    db as any,
+    targetRoom.id,
+    schedule.classId,
+    schedule.startTime,
+    schedule.endTime,
+    schedule.id,
+    schedule.coachId || undefined,
+  );
 }
 
 async function lockTransferResources(
   tx: { $executeRaw: any },
   targetRoomId: string,
-  coachIds: string[]
+  coachIds: string[],
 ) {
   const rooms = [targetRoomId].sort();
   for (const roomId of rooms) {
@@ -170,13 +233,29 @@ async function lockTransferResources(
   }
 }
 
-export async function previewTransferSchedules(sourceRoomId: string, input: TransferSchedulesInput) {
-  const { sourceRoom, targetRoom, schedules } = await loadTransferSchedules(sourceRoomId, input);
+export async function previewTransferSchedules(
+  sourceRoomId: string,
+  input: TransferSchedulesInput,
+) {
+  const { sourceRoom, targetRoom, schedules } = await loadTransferSchedules(
+    sourceRoomId,
+    input,
+  );
 
-  const conflicts: { scheduleId: string; startTime: Date; endTime: Date; reason: string; statusCode: number }[] = [];
+  const conflicts: {
+    scheduleId: string;
+    startTime: Date;
+    endTime: Date;
+    reason: string;
+    statusCode: number;
+  }[] = [];
   for (const s of schedules) {
     try {
-      await checkOneTransferSchedule(prisma as any, s as any, targetRoom as any);
+      await checkOneTransferSchedule(
+        prisma as any,
+        s as any,
+        targetRoom as any,
+      );
     } catch (e: any) {
       conflicts.push({
         scheduleId: s.id,
@@ -202,9 +281,12 @@ export async function previewTransferSchedules(sourceRoomId: string, input: Tran
 export async function transferSchedules(
   sourceRoomId: string,
   input: TransferSchedulesInput,
-  actor: { id: string; role: string }
+  actor: { id: string; role: string },
 ) {
-  const { sourceRoom, targetRoom } = await loadTransferSchedules(sourceRoomId, input);
+  const { sourceRoom, targetRoom } = await loadTransferSchedules(
+    sourceRoomId,
+    input,
+  );
   const reason = input.reason ?? "Room damaged";
 
   // ALL OR NOTHING: lock target room + toàn bộ coach liên quan, re-check trong tx rồi update.
@@ -216,7 +298,9 @@ export async function transferSchedules(
       where: {
         roomId: sourceRoomId,
         status: "SCHEDULED",
-        ...(to ? { startTime: { lt: to }, endTime: { gt: from } } : { endTime: { gt: from } }),
+        ...(to
+          ? { startTime: { lt: to }, endTime: { gt: from } }
+          : { endTime: { gt: from } }),
       },
       include: { class: true },
       orderBy: { startTime: "asc" },
@@ -227,7 +311,11 @@ export async function transferSchedules(
       where: { classId: { in: classIds } },
       select: { coachId: true },
     });
-    await lockTransferResources(tx as any, targetRoom.id, members.map((m) => m.coachId));
+    await lockTransferResources(
+      tx as any,
+      targetRoom.id,
+      members.map((m) => m.coachId),
+    );
 
     for (const s of schedules) {
       await checkOneTransferSchedule(tx as any, s as any, targetRoom as any);
@@ -261,8 +349,12 @@ export async function transferSchedules(
   for (const s of detailSchedules) {
     const userIds = [...new Set(s.enrollments.map((e) => e.member.userId))];
     if (userIds.length === 0) continue;
-    const startStr = s.startTime.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
-    const endStr = s.endTime.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+    const startStr = s.startTime.toLocaleString("vi-VN", {
+      timeZone: "Asia/Ho_Chi_Minh",
+    });
+    const endStr = s.endTime.toLocaleString("vi-VN", {
+      timeZone: "Asia/Ho_Chi_Minh",
+    });
     await broadcastNotification(
       userIds,
       "SCHEDULE_ROOM_CHANGED",
@@ -282,7 +374,7 @@ export async function transferSchedules(
           actorRole: actor.role,
           transferredAt: new Date().toISOString(),
         },
-      }
+      },
     ).catch(() => {});
   }
 

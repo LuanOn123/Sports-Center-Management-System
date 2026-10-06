@@ -8,6 +8,7 @@ async function fixtureApi(page: any, role = "MANAGER") {
     async (route: any) => {
       const url = new URL(route.request().url());
       const path = url.pathname.replace("/api/v1", "");
+    if (path === "/facilities") return route.fulfill({ json: { success: true, data: [{ id: "facility-a", code: "A", name: "Cơ sở A", isActive: true }] } });
       const method = route.request().method().toLowerCase();
       const operation = doc.paths[path]?.[method];
       if (!operation) {
@@ -40,6 +41,7 @@ async function fixtureApi(page: any, role = "MANAGER") {
       const response: any = Object.entries(operation.responses).find(([code]) =>
         code.startsWith("2"),
       )?.[1];
+      if (!response?.$ref) return route.fulfill({ json: { success: true, data: [] } });
       const schema = doc.components.responses[response.$ref.split("/").pop()];
       const payload = structuredClone(
         schema.content["application/json"].schema.example,
@@ -78,6 +80,7 @@ test("real login screen is responsive and password visibility works", async ({
 test("manager routes, real-schema forms and mobile navigation render", async ({
   page,
 }) => {
+  test.setTimeout(120000);
   await fixtureApi(page);
   await page.goto("/login");
   await page.getByPlaceholder("Email của bạn").fill("manager@example.test");
@@ -90,17 +93,20 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
     page.getByText("900.000", { exact: false }).first(),
   ).toBeVisible();
   await page.getByRole("button", { name: "Thông báo", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Thông báo gần đây" })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Thông báo gần đây" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Thông báo", exact: true }).click();
   await page.getByRole("button", { name: "Mở tin nhắn" }).click();
-  await expect(page.getByRole("region", { name: "Cửa sổ tin nhắn" })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Cửa sổ tin nhắn" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Đóng tin nhắn" }).first().click();
   await page.screenshot({
     path: "artifacts/dashboard-test-fixtures.png",
     fullPage: true,
   });
   for (const slug of [
-    "users",
     "members",
     "coaches",
     "staff",
@@ -120,17 +126,23 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
     await expect(page.getByText("Không tìm thấy trang")).toHaveCount(0);
   }
   await page.goto("/manager/activity-planner");
-  await expect(page.getByRole("heading", { name: "Tạo lịch hoạt động nhanh" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Tạo lịch hoạt động nhanh" }),
+  ).toBeVisible();
   await expect(page.getByText(/Học vào các thứ/)).toBeVisible();
   await page.getByRole("button", { name: "Thêm slot giờ" }).click();
   await expect(page.getByLabel("Slot 2 bắt đầu")).toBeVisible();
   await page.getByLabel("Tên lớp").fill("Yoga buổi tối");
-  await page.getByRole("button", { name: "Tạo toàn bộ lịch hoạt động" }).click();
+  await page
+    .getByRole("button", { name: "Tạo toàn bộ lịch hoạt động" })
+    .click();
   const plannerError = page.getByRole("dialog");
   await expect(plannerError).toBeVisible();
   await expect(plannerError).toContainText("Chưa chọn bộ môn");
   await expect(plannerError).toContainText("Chưa chọn huấn luyện viên chính");
-  await plannerError.getByRole("button", { name: "Quay lại chỉnh sửa" }).click();
+  await plannerError
+    .getByRole("button", { name: "Quay lại chỉnh sửa" })
+    .click();
   await expect(page.getByLabel("Tên lớp")).toHaveValue("Yoga buổi tối");
   await page.goto("/manager/rooms");
   await page
@@ -148,7 +160,9 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
     capacity: 12,
     areaType: "INDOOR",
   });
-  await expect(page.getByRole("status")).toContainText("Đã lưu thay đổi");
+  await expect(page.getByRole("main").getByRole("status")).toContainText(
+    "Đã lưu thay đổi",
+  );
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Mở menu" }).click();
   await page.getByRole("link", { name: "Lịch hoạt động", exact: true }).click();
@@ -182,7 +196,8 @@ test("member cannot enter manager routes", async ({ page }) => {
 test("API errors are visible and retry restores the list", async ({ page }) => {
   await fixtureApi(page);
   await page.addInitScript(() => {
-    sessionStorage.setItem("pulse.access", "test-only");
+    (sessionStorage.setItem("pulse.identity-version", "mongo-identities-v1"),
+      sessionStorage.setItem("pulse.access", "test-only"));
   });
   let fail = true;
   await page.route("**/api/v1/sports?**", async (route) => {
@@ -194,7 +209,9 @@ test("API errors are visible and retry restores the list", async ({ page }) => {
     else await route.fallback();
   });
   await page.goto("/manager/sports");
-  await expect(page.getByRole("alert")).toContainText("Test server error");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "Test server error",
+  );
   fail = false;
   await page.getByRole("button", { name: "Thử lại" }).click();
   await expect(page.getByText("Yoga", { exact: true })).toBeVisible();

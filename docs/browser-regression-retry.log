@@ -1,0 +1,30 @@
+[WebServer] (node:38844) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 19 tests using 2 workers
+
+(node:27336) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9808) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 tests\browser\ai.spec.ts:4:1 › public chat sends real history, renders Markdown and recovers from errors (4.2s)
+  ok  3 tests\browser\app.spec.ts:80:1 › manager routes, real-schema forms and mobile navigation render (27.7s)
+  ok  4 tests\browser\app.spec.ts:178:1 › member cannot enter manager routes (2.3s)
+  ok  5 tests\browser\audit.spec.ts:44:3 › all portals responsive at 320px (22.4s)
+  ok  6 tests\browser\chat-shortcuts.spec.ts:6:3 › chat composer and attachment remain accessible at 320px (2.6s)
+  ok  7 tests\browser\coach.spec.ts:334:1 › loading has accessible skeleton and page has no serious axe findings (2.9s)
+  ok  2 tests\browser\accessibility.spec.ts:32:3 › accessibility at 375px (1.0m)
+  ok  9 tests\browser\heuristics.spec.ts:12:5 › notification popover follows MANAGER theme at 1440 (2.1s)
+  ok 10 tests\browser\heuristics.spec.ts:12:5 › notification popover follows MEMBER theme at 1440 (2.1s)
+  ok 11 tests\browser\heuristics.spec.ts:153:1 › manager clears filters and sees browser offline state (889ms)
+  ok  8 tests\browser\design.spec.ts:6:3 › member product screens fit 375px (7.3s)
+  ok 13 tests\browser\password-reset.spec.ts:3:1 › reset flow handles invalid OTP, resend and success on mobile (2.2s)
+  ok 14 tests\browser\portal-theme.spec.ts:15:5 › MANAGER shares the member design language at 375px (6.5s)
+  ok 15 tests\browser\portal-theme.spec.ts:15:5 › MANAGER shares the member design language at 1440px (7.2s)
+  ok 12 tests\browser\member-style-preview.spec.ts:5:1 › member visual review (20.9s)
+  ok 17 tests\browser\reception.spec.ts:28:1 › staff registers member through public registration without changing session (924ms)
+  ok 18 tests\browser\session-loading.spec.ts:75:3 › nested details remain readable at 375px (1.5s)
+  ok 16 tests\browser\public.spec.ts:5:3 › public pages are responsive and accessible at 375px (5.5s)
+  ok 19 tests\browser\workflow.spec.ts:207:1 › manager gains finance screens while staff has no refund action (3.4s)
+
+  19 passed (1.7m)

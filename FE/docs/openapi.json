@@ -257,7 +257,7 @@
                     "gender": "FEMALE",
                     "dateOfBirth": null,
                     "avatarUrl": null,
-                    "role": "STAFF",
+                    "role": "RECEPTIONIST",
                     "isActive": true,
                     "createdAt": "2026-09-11T14:20:14.910Z",
                     "memberProfile": null,
@@ -1702,8 +1702,9 @@
               "enum": [
                 "MEMBER",
                 "COACH",
-                "STAFF",
-                "MANAGER"
+                "RECEPTIONIST",
+                "MANAGER",
+                "ADMIN"
               ]
             }
           },
@@ -1760,7 +1761,7 @@
       },
       "post": {
         "summary": "Create staff, coach, manager or member account (MEMBER creates the member profile too)",
-        "description": "Với `role = MEMBER`, backend tạo MemberProfile + **auto-provision một MembershipSubscription ACTIVE\nvới gói FREE** (`maxConcurrentClasses = 0`) trong cùng transaction. COACH/STAFF/MANAGER KHÔNG được cấp\nsubscription. Idempotent theo member: nếu member đã có subscription ACTIVE thì không tạo thêm.\n",
+        "description": "Với `role = MEMBER`, backend tạo MemberProfile + **auto-provision một MembershipSubscription ACTIVE\nvới gói FREE** (`maxConcurrentClasses = 0`) trong cùng transaction. COACH/RECEPTIONIST/MANAGER KHÔNG được cấp\nsubscription. Idempotent theo member: nếu member đã có subscription ACTIVE thì không tạo thêm.\n",
         "tags": [
           "Users"
         ],
@@ -1791,8 +1792,9 @@
                     "enum": [
                       "MEMBER",
                       "COACH",
-                      "STAFF",
-                      "MANAGER"
+                      "RECEPTIONIST",
+                      "MANAGER",
+                      "ADMIN"
                     ]
                   },
                   "fitnessGoal": {
@@ -1923,8 +1925,9 @@
                     "enum": [
                       "MEMBER",
                       "COACH",
-                      "STAFF",
-                      "MANAGER"
+                      "RECEPTIONIST",
+                      "MANAGER",
+                      "ADMIN"
                     ]
                   }
                 }
@@ -1986,192 +1989,6 @@
           },
           "500": {
             "$ref": "#/components/responses/ServerError"
-          }
-        }
-      }
-    },
-    "/training-plans": {
-      "get": {
-        "tags": [
-          "Training"
-        ],
-        "description": "Phạm vi theo NGƯỜI ĐĂNG NHẬP (không tin query từ client):\n- MANAGER/STAFF: xem toàn bộ (lọc `memberId` nếu truyền).\n- COACH: chỉ plan do chính mình phụ trách.\n- MEMBER: chỉ plan của chính mình; truyền `memberId` của người khác ⇒ 403.\n",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "memberId",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Training"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "memberId": {
-                    "type": "string"
-                  },
-                  "coachId": {
-                    "type": "string"
-                  },
-                  "name": {
-                    "type": "string"
-                  },
-                  "startDate": {
-                    "type": "string"
-                  },
-                  "endDate": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Success"
-          }
-        }
-      }
-    },
-    "/training-plans/{id}": {
-      "patch": {
-        "summary": "Change the coach of a training plan (Member changes own plan, Coach current plan, Manager any plan)",
-        "description": "**Business rules:**\n- MEMBER chỉ đổi được HLV của training plan thuộc hồ sơ của chính mình (403 nếu không phải).\n- COACH chỉ đổi được HLV của plan mình đang phụ trách; MANAGER đổi được mọi plan.\n- `coachId` mới phải tồn tại, đang hoạt động và có role COACH (404 nếu không hợp lệ).\n- Không cho gán lại đúng HLV hiện tại (409).\n- Chỉ cập nhật `TrainingPlan.coachId`; KHÔNG thay đổi enrollment/class/schedule/attendance.\n- Hội viên (khi người khác đổi) và HLV mới nhận notification TRAINING_PLAN_ASSIGNED.\n",
-        "tags": [
-          "Training"
-        ],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "TrainingPlan ID"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "coachId"
-                ],
-                "properties": {
-                  "coachId": {
-                    "type": "string",
-                    "format": "uuid",
-                    "description": "CoachProfile.id của HLV mới (khác HLV hiện tại)"
-                  }
-                }
-              },
-              "example": {
-                "coachId": "c1a2b3c4-0000-4000-8000-000000000002"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Training plan coach updated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                },
-                "example": {
-                  "success": true,
-                  "message": "Training plan coach updated successfully",
-                  "data": {
-                    "id": "b7e3d6f0-0000-4000-8000-000000000001",
-                    "memberId": "member-1",
-                    "coachId": "c1a2b3c4-0000-4000-8000-000000000002",
-                    "name": "Giảm cân 8 tuần",
-                    "coach": {
-                      "user": {
-                        "fullName": "Coach Two"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          }
-        }
-      }
-    },
-    "/training-plans/results": {
-      "post": {
-        "tags": [
-          "Training"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "planId": {
-                    "type": "string"
-                  },
-                  "date": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Success"
           }
         }
       }
@@ -4261,7 +4078,7 @@
     "/payments/sepay/mock-confirm": {
       "post": {
         "summary": "DEV/DEMO — mô phỏng SePay xác nhận đã thu tiền (chỉ khi SEPAY_MOCK_MODE=true)",
-        "description": "Dùng cho môi trường dev/demo/e2e khi KHÔNG có giao dịch ngân hàng thật / SePay không gọi được\nwebhook vào localhost: tạo đơn bằng `POST /payments/sepay/checkout` rồi gọi endpoint này để chạy\nĐÚNG luồng chốt giao dịch như webhook thật (kích hoạt gói + invoice + notification).\n\nQuyền: MEMBER chỉ xác nhận giao dịch CỦA MÌNH; MANAGER/STAFF được xác nhận hộ (phục vụ demo).\n`SEPAY_MOCK_MODE != true` ⇒ 403 `SEPAY_MOCK_DISABLED`.\n",
+        "description": "Dùng cho môi trường dev/demo/e2e khi KHÔNG có giao dịch ngân hàng thật / SePay không gọi được\nwebhook vào localhost: tạo đơn bằng `POST /payments/sepay/checkout` rồi gọi endpoint này để chạy\nĐÚNG luồng chốt giao dịch như webhook thật (kích hoạt gói + invoice + notification).\n\nQuyền: MEMBER chỉ xác nhận giao dịch CỦA MÌNH; MANAGER/RECEPTIONIST được xác nhận hộ (phục vụ demo).\n`SEPAY_MOCK_MODE != true` ⇒ 403 `SEPAY_MOCK_DISABLED`.\n",
         "tags": [
           "Payments"
         ],
@@ -4337,7 +4154,7 @@
     "/payments/sepay/{id}": {
       "get": {
         "summary": "Xem trạng thái giao dịch chuyển khoản SePay (FE polling sau khi hội viên CK)",
-        "description": "Trả lại đầy đủ thông tin đơn để FE hiển thị lại QR (kể cả sau khi reload trang) và trạng thái\nmới nhất: `PENDING` (chưa nhận được tiền) → `SUCCESS` (webhook đã xác nhận, gói đã kích hoạt).\n\nKhi `status = SUCCESS` response có thêm `paidAt` + `subscriptionId` (gói đã được kích hoạt tự động).\nQuyền: chủ giao dịch (MEMBER) hoặc MANAGER/STAFF; COACH bị chặn.\n",
+        "description": "Trả lại đầy đủ thông tin đơn để FE hiển thị lại QR (kể cả sau khi reload trang) và trạng thái\nmới nhất: `PENDING` (chưa nhận được tiền) → `SUCCESS` (webhook đã xác nhận, gói đã kích hoạt).\n\nKhi `status = SUCCESS` response có thêm `paidAt` + `subscriptionId` (gói đã được kích hoạt tự động).\nQuyền: chủ giao dịch (MEMBER) hoặc MANAGER/RECEPTIONIST; COACH bị chặn.\n",
         "tags": [
           "Payments"
         ],
@@ -5066,7 +4883,7 @@
     "/members/{id}/membership-status": {
       "get": {
         "summary": "Get member effective tier and active subscription",
-        "description": "`effectiveTier` = tier của MembershipSubscription ACTIVE (FREE | MEMBERSHIP | PREMIUM).\nKhi member KHÔNG có subscription ACTIVE → `effectiveTier = null`, `activeSubscription = null`,\n`daysRemaining = null` (KHÔNG dùng \"FREE\" để đại diện cho \"không có gói\") — nhất quán với\n`GET /enrollments/my/quota`. Authorization không đổi: MANAGER / STAFF.\n",
+        "description": "`effectiveTier` = tier của MembershipSubscription ACTIVE (FREE | MEMBERSHIP | PREMIUM).\nKhi member KHÔNG có subscription ACTIVE → `effectiveTier = null`, `activeSubscription = null`,\n`daysRemaining = null` (KHÔNG dùng \"FREE\" để đại diện cho \"không có gói\") — nhất quán với\n`GET /enrollments/my/quota`. Authorization không đổi: MANAGER / RECEPTIONIST.\n",
         "tags": [
           "Members"
         ],
@@ -5260,12 +5077,10 @@
                 "properties": {
                   "coachId": {
                     "type": "string",
-                    "format": "uuid",
-                    "description": "CoachProfile ID"
+                    "description": "CoachProfile ID (Mongo ObjectId 24-hex; UUID legacy vẫn được chấp nhận)"
                   },
                   "classId": {
                     "type": "string",
-                    "format": "uuid",
                     "description": "Lớp học liên quan (tuỳ chọn)"
                   },
                   "rating": {
@@ -5304,7 +5119,7 @@
                   "message": "Cảm ơn bạn đã gửi đánh giá!",
                   "data": {
                     "id": "fb-uuid",
-                    "coachId": "coach-uuid",
+                    "coachId": "665f1c2e9b1e8a3d4c5b6a71",
                     "rating": 5,
                     "comment": "HLV rất nhiệt tình!",
                     "isAnonymous": false,
@@ -5363,8 +5178,7 @@
             "name": "coachId",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             },
             "description": "CoachProfile ID cần xem đánh giá"
           },
@@ -5372,8 +5186,7 @@
             "in": "query",
             "name": "classId",
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             },
             "description": "Lọc theo lớp học cụ thể (tuỳ chọn)"
           },
@@ -5520,8 +5333,7 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             },
             "description": "Feedback ID"
           }
@@ -5575,8 +5387,7 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             },
             "description": "Feedback ID"
           }
@@ -7806,10 +7617,102 @@
         }
       }
     },
+    "/auth/forgot-password": {
+      "post": {
+        "summary": "Gửi OTP đặt lại mật khẩu qua email",
+        "description": "Sinh mã OTP 6 chữ số, hợp lệ trong **5 phút**, gửi về địa chỉ email đã đăng ký.\nLuôn trả HTTP 200 với cùng thông điệp dù email không tồn tại (chống user enumeration).\n",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/MessageOk"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "summary": "Đặt lại mật khẩu bằng OTP nhận qua email",
+        "description": "Xác minh OTP rồi cập nhật mật khẩu mới. OTP chỉ dùng được **một lần** và hết hạn sau 5 phút.\nSau khi thành công, toàn bộ phiên đăng nhập cũ (refresh token) sẽ bị thu hồi.\n",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "otp",
+                  "newPassword"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "minLength": 6,
+                    "maxLength": 6,
+                    "description": "Mã 6 chữ số nhận qua email"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 6
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/MessageOk"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
     "/attendance": {
       "get": {
-        "summary": "Get attendance roster of a schedule (MANAGER/STAFF: full roster; COACH: only own classes; MEMBER: only own records)",
-        "description": "**Authorization:**\n- MANAGER / STAFF: xem toàn bộ roster (STAFF read-only, mutations vẫn chỉ COACH/MANAGER).\n- COACH: chỉ lớp mình phụ trách (403 nếu không).\n- MEMBER: chỉ nhận bản ghi điểm danh của CHÍNH MÌNH (không lộ roster của người khác).\n",
+        "summary": "Get attendance roster of a schedule (MANAGER/RECEPTIONIST: full roster; COACH: only own classes; MEMBER: only own records)",
+        "description": "**Authorization:**\n- MANAGER / RECEPTIONIST: xem toàn bộ roster (RECEPTIONIST read-only, mutations vẫn chỉ COACH/MANAGER).\n- COACH: chỉ lớp mình phụ trách (403 nếu không).\n- MEMBER: chỉ nhận bản ghi điểm danh của CHÍNH MÌNH (không lộ roster của người khác).\n",
         "tags": [
           "Attendance"
         ],
@@ -7851,7 +7754,7 @@
       },
       "post": {
         "summary": "Record attendance for a member in a schedule (COACH: own classes; MANAGER: any class)",
-        "description": "**Authorization:** COACH (chỉ lớp mình phụ trách) và MANAGER ghi được `PRESENT`/`ABSENT`/`LATE`.\n`EXCUSED` CHỈ MANAGER xác nhận — COACH gửi EXCUSED bị 403 (enforce ở service, không chỉ controller).\nMEMBER/STAFF không có quyền ghi attendance.\n",
+        "description": "**Authorization:** COACH (chỉ lớp mình phụ trách) và MANAGER ghi được `PRESENT`/`ABSENT`/`LATE`.\n`EXCUSED` CHỈ MANAGER xác nhận — COACH gửi EXCUSED bị 403 (enforce ở service, không chỉ controller).\nMEMBER/RECEPTIONIST không có quyền ghi attendance.\n",
         "tags": [
           "Attendance"
         ],
@@ -8709,13 +8612,13 @@
         }
       }
     },
-    "/auth/forgot-password": {
+    "/ai/chat": {
       "post": {
-        "summary": "Gửi OTP đặt lại mật khẩu qua email",
+        "summary": "Trò chuyện với Smart Chatbot Assistant",
+        "description": "Gửi tin nhắn cho AI Assistant. AI được tự động nạp ngữ cảnh (RAG) về danh sách gói tập và lịch học 3 ngày tới của trung tâm.\nAPI này là public để khách chưa đăng nhập cũng có thể hỏi thông tin.\n",
         "tags": [
-          "Auth"
+          "AI Assistant"
         ],
-        "security": [],
         "requestBody": {
           "required": true,
           "content": {
@@ -8723,13 +8626,34 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "email"
+                  "message"
                 ],
                 "properties": {
-                  "email": {
-                    "type": "string",
-                    "format": "email"
+                  "message": {
+                    "type": "string"
+                  },
+                  "history": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "user",
+                            "assistant",
+                            "system"
+                          ]
+                        },
+                        "content": {
+                          "type": "string"
+                        }
+                      }
+                    }
                   }
+                },
+                "example": {
+                  "message": "Trung tâm có gói tập nào và tuần này có lớp Yoga không?"
                 }
               }
             }
@@ -8737,7 +8661,1735 @@
         },
         "responses": {
           "200": {
-            "$ref": "#/components/responses/MessageOk"
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "AI responded successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "reply": {
+                          "type": "string",
+                          "example": "Dạ chào anh/chị, hiện tại bên em có gói Premium giá..."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "503": {
+            "description": "AI chưa được cấu hình"
+          }
+        }
+      }
+    },
+    "/staff-candidates": {
+      "get": {
+        "summary": "Nhân sự có thể phân công",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/coaches/{id}/specializations": {
+      "get": {
+        "summary": "Chuyên môn huấn luyện viên",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      },
+      "put": {
+        "summary": "Chuyên môn huấn luyện viên",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sportIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "sportIds"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/leave-requests/{id}/affected": {
+      "get": {
+        "summary": "Buổi học cần xử lý khi nghỉ phép",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/facilities": {
+      "get": {
+        "summary": "Danh sách cơ sở",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      },
+      "post": {
+        "summary": "Tạo cơ sở",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "address": {
+                    "type": "string"
+                  },
+                  "contactInfo": {
+                    "type": "string"
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "default": "Asia/Ho_Chi_Minh"
+                  }
+                },
+                "required": [
+                  "code",
+                  "name",
+                  "address"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/facilities/{facilityId}": {
+      "get": {
+        "summary": "Chi tiết cơ sở",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "facilityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      },
+      "put": {
+        "summary": "Sửa cơ sở",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "facilityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "address": {
+                    "type": "string"
+                  },
+                  "contactInfo": {
+                    "type": "string"
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "default": "Asia/Ho_Chi_Minh"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/facilities/{facilityId}/staff": {
+      "post": {
+        "summary": "Phân công nhân sự",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "facilityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userId": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "MANAGER",
+                      "COACH",
+                      "RECEPTIONIST"
+                    ]
+                  }
+                },
+                "required": [
+                  "userId",
+                  "role"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/facilities/{facilityId}/staff/{userId}/{role}": {
+      "delete": {
+        "summary": "Gỡ phân công",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "facilityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/rooms/{id}/capabilities": {
+      "put": {
+        "summary": "Thiết bị và khả năng phòng",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "values": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "oneOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        {
+                          "type": "boolean"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "values"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/subjects/{id}/requirements": {
+      "put": {
+        "summary": "Yêu cầu bộ môn",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "values": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "oneOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        {
+                          "type": "boolean"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "values"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/slots": {
+      "get": {
+        "summary": "Khung giờ",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      },
+      "post": {
+        "summary": "Tạo khung giờ",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "startMinute": {
+                    "type": "integer"
+                  },
+                  "endMinute": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "name",
+                  "startMinute",
+                  "endMinute"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/schedule-patterns": {
+      "get": {
+        "summary": "Lịch lặp",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      },
+      "post": {
+        "summary": "Sinh lịch lặp",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "classId": {
+                    "type": "string"
+                  },
+                  "roomId": {
+                    "type": "string"
+                  },
+                  "slotId": {
+                    "type": "string"
+                  },
+                  "weekdays": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                },
+                "required": [
+                  "classId",
+                  "roomId",
+                  "slotId",
+                  "weekdays",
+                  "startDate",
+                  "endDate"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/leave-requests": {
+      "get": {
+        "summary": "Đơn nghỉ phép",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      },
+      "post": {
+        "summary": "Gửi đơn nghỉ phép",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "startTime": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "endTime": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "startTime",
+                  "endTime",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/leave-requests/{id}": {
+      "patch": {
+        "summary": "Duyệt đơn và xử lý lịch",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "APPROVED",
+                      "REJECTED"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "resolutions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "scheduleId": {
+                          "type": "string"
+                        },
+                        "action": {
+                          "type": "string",
+                          "enum": [
+                            "REPLACE",
+                            "MOVE",
+                            "CANCEL"
+                          ]
+                        },
+                        "coachId": {
+                          "type": "string"
+                        },
+                        "roomId": {
+                          "type": "string"
+                        },
+                        "startTime": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "endTime": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "scheduleId",
+                        "action"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "status",
+                  "reason",
+                  "resolutions"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/issues": {
+      "get": {
+        "summary": "Yêu cầu hỗ trợ",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      },
+      "post": {
+        "summary": "Gửi yêu cầu",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "title",
+                  "description"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/issues/{id}": {
+      "get": {
+        "summary": "Chi tiết yêu cầu",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      },
+      "put": {
+        "summary": "Sửa yêu cầu đang mở",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "title",
+                  "description"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Xóa yêu cầu đang mở",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Phản hồi yêu cầu",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "OPEN",
+                      "IN_PROGRESS",
+                      "RESOLVED",
+                      "CLOSED"
+                    ]
+                  },
+                  "response": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status",
+                  "response"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/audit-logs": {
+      "get": {
+        "summary": "Nhật ký hoạt động",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/counter-orders": {
+      "get": {
+        "summary": "Đơn bán tại quầy",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      },
+      "post": {
+        "summary": "Tạo đơn chờ thanh toán",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "memberId": {
+                    "type": "string"
+                  },
+                  "planId": {
+                    "type": "string"
+                  },
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "CASH",
+                      "BANK_TRANSFER"
+                    ]
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "memberId",
+                  "planId",
+                  "method"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/counter-orders/{id}/confirm": {
+      "post": {
+        "summary": "Xác nhận thu tiền và kích hoạt gói",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/subjects": {
+      "get": {
+        "summary": "Get list of sports",
+        "tags": [
+          "Sports"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Search by name"
+          },
+          {
+            "in": "query",
+            "name": "areaType",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "POOL",
+                "INDOOR",
+                "OUTDOOR"
+              ]
+            },
+            "description": "Filter sports supporting an area type"
+          },
+          {
+            "in": "query",
+            "name": "isActive",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "description": "Filter by active status"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/SportListOk"
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
@@ -8746,15 +10398,12 @@
             "$ref": "#/components/responses/ServerError"
           }
         }
-      }
-    },
-    "/auth/reset-password": {
+      },
       "post": {
-        "summary": "Đặt lại mật khẩu bằng OTP nhận qua email",
+        "summary": "Create a new sport",
         "tags": [
-          "Auth"
+          "Sports"
         ],
-        "security": [],
         "requestBody": {
           "required": true,
           "content": {
@@ -8762,24 +10411,136 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "email",
-                  "otp",
-                  "newPassword"
+                  "name",
+                  "areaTypes"
                 ],
                 "properties": {
-                  "email": {
+                  "name": {
                     "type": "string",
-                    "format": "email"
+                    "example": "Yoga"
                   },
-                  "otp": {
+                  "description": {
                     "type": "string",
-                    "minLength": 6,
-                    "maxLength": 6,
-                    "pattern": "^[0-9]{6}$"
+                    "example": "Yoga class improves flexibility"
                   },
-                  "newPassword": {
-                    "type": "string",
-                    "minLength": 6
+                  "areaTypes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "POOL",
+                        "INDOOR",
+                        "OUTDOOR"
+                      ]
+                    },
+                    "minItems": 1,
+                    "example": [
+                      "INDOOR"
+                    ],
+                    "description": "Area types this sport supports (at least one)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/SportCreated"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/subjects/{id}": {
+      "get": {
+        "summary": "View sport details",
+        "tags": [
+          "Sports"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/SportOk"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update sport",
+        "tags": [
+          "Sports"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "areaTypes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "POOL",
+                        "INDOOR",
+                        "OUTDOOR"
+                      ]
+                    },
+                    "minItems": 1,
+                    "description": "Area types this sport supports. Cannot remove a type used by an active Class."
+                  },
+                  "isActive": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -8788,10 +10549,55 @@
         },
         "responses": {
           "200": {
-            "$ref": "#/components/responses/MessageOk"
+            "$ref": "#/components/responses/SportOk"
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Deactivate sport (soft delete)",
+        "tags": [
+          "Sports"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/SportOk"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           },
           "500": {
             "$ref": "#/components/responses/ServerError"

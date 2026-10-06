@@ -77,7 +77,7 @@ function PlannerErrorDialog({
   );
 }
 
-export function ActivityPlanner({ role }: { role: "MANAGER" | "STAFF" }) {
+export function ActivityPlanner({ role }: { role: "ADMIN" | "MANAGER" | "RECEPTIONIST" }) {
   const cache = useQueryClient();
   const [sportMode, setSportMode] = useState<"existing" | "new">("existing");
   const [sportId, setSportId] = useState("");
@@ -271,9 +271,9 @@ export function ActivityPlanner({ role }: { role: "MANAGER" | "STAFF" }) {
       <form noValidate onSubmit={submit}>
         <fieldset disabled={busy} className="planner-grid">
           <section className="panel planner-section"><span className="planner-number">1</span><div><h2>Bộ môn</h2><p>Chọn bộ môn có sẵn hoặc tạo mới.</p></div><div className="form-grid wide">
-            <label>Phương án<select value={sportMode} onChange={(event) => setSportMode(event.target.value as "existing" | "new")}><option value="existing">Dùng bộ môn có sẵn</option>{role === "MANAGER" && <option value="new">Tạo bộ môn mới</option>}</select></label>
+            <label>Phương án<select value={sportMode} onChange={(event) => setSportMode(event.target.value as "existing" | "new")}><option value="existing">Dùng bộ môn có sẵn</option>{role === "ADMIN" && <option value="new">Tạo bộ môn mới</option>}</select></label>
             {sportMode === "existing" ? <label>Bộ môn <b className="required">*</b><select value={sportId} onChange={(event) => setSportId(event.target.value)}><option value="">Chọn bộ môn</option>{sports.data.data.map((sport) => <option key={String(sport.id)} value={String(sport.id)}>{display(sport.name)}</option>)}</select></label> : <><label>Tên bộ môn <b className="required">*</b><input value={sportName} minLength={2} onChange={(event) => setSportName(event.target.value)} /></label><label>Loại khu vực <b className="required">*</b><select value={sportAreaType} onChange={(event) => setSportAreaType(event.target.value as AreaType)}><option value="INDOOR">Trong nhà</option><option value="OUTDOOR">Ngoài trời</option><option value="POOL">Hồ bơi</option></select></label><label className="wide">Mô tả bộ môn<textarea value={sportDescription} onChange={(event) => setSportDescription(event.target.value)} /></label></>}
-            {role === "STAFF" && <p className="field-note wide">Lễ tân có thể dùng bộ môn sẵn có. Chỉ quản lý được tạo bộ môn mới.</p>}
+            {role === "RECEPTIONIST" && <p className="field-note wide">Lễ tân có thể dùng bộ môn sẵn có. Chỉ quản lý được tạo bộ môn mới.</p>}
           </div></section>
           <section className="panel planner-section"><span className="planner-number">2</span><div><h2>Thông tin lớp</h2><p>Khu vực quyết định phòng nào có thể sử dụng.</p></div><div className="form-grid wide">
             <label>Tên lớp <b className="required">*</b><input value={className} minLength={2} onChange={(event) => setClassName(event.target.value)} /></label>

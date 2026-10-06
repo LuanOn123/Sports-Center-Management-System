@@ -257,6 +257,9 @@ export function SchedulePage() {
         /* WEEKLY CALENDAR VIEW */
         <div
           className="member-week-grid"
+          tabIndex={0}
+          role="region"
+          aria-label="Lịch tập trong tuần"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
@@ -361,16 +364,9 @@ export function SchedulePage() {
                       const endTime = new Date(sch.endTime);
 
                       return (
-                        <div
+                        <button
+                          type="button"
                           className="member-calendar-event"
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                              event.preventDefault();
-                              navigate(`/member/classes/${item.classId}`);
-                            }
-                          }}
                           key={item.id}
                           onClick={() =>
                             navigate(`/member/classes/${item.classId}`)
@@ -437,7 +433,7 @@ export function SchedulePage() {
                             />
                             {sch.room?.name}
                           </div>
-                        </div>
+                        </button>
                       );
                     })
                   )}

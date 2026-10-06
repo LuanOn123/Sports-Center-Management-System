@@ -5,7 +5,7 @@ async function chooseMember(page: Page) {
   await page.getByRole("button", { name: "Chọn", exact: true }).first().click();
 }
 for (const [role, home, title] of [
-  ["STAFF", "/receptionist", "Tổng quan lễ tân"],
+  ["RECEPTIONIST", "/receptionist", "Tổng quan lễ tân"],
   ["COACH", "/coach", "Tổng quan huấn luyện viên"],
   ["MEMBER", "/member", "Tổng quan hội viên"],
 ]) {
@@ -41,7 +41,9 @@ test("staff registers member through public registration without changing sessio
     email: "new@example.test",
     fullName: "Hội viên mới",
   });
-  await expect(page.getByRole("status")).toContainText("Đã tạo tài khoản");
+  await expect(page.getByRole("main").getByRole("status")).toContainText(
+    "Đã tạo tài khoản",
+  );
   expect(
     await page.evaluate(() => sessionStorage.getItem("pulse.access")),
   ).toBe("fixture-token");

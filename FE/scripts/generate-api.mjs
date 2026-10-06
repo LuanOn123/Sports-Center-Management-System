@@ -1,10 +1,21 @@
 import fs from "node:fs";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 const sourceLabel = process.argv.includes("--local")
   ? "BE/src/config/swagger.ts + BE/src/modules/**/*.routes.ts (local checkout)"
   : undefined;
 const openApiUrl =
   "https://sports-center-management-system.onrender.com/api/v1/docs/swagger-ui-init.js";
 const openApiFile = new URL("../docs/openapi.json", import.meta.url);
+
+if (process.argv.includes("--local")) {
+  const result = spawnSync(process.execPath, [
+    "--import", "tsx", "--input-type=module", "-e",
+    'import { swaggerSpec } from "./src/config/swagger.ts"; process.stdout.write(JSON.stringify(swaggerSpec));',
+  ], { cwd: fileURLToPath(new URL("../../BE/", import.meta.url)), encoding: "utf8" });
+  if (result.status !== 0) throw new Error(result.stderr || "Cannot export local backend Swagger");
+  fs.writeFileSync(openApiFile, JSON.stringify(JSON.parse(result.stdout), null, 2));
+}
 
 if (process.argv.includes("--live")) {
   const source = await fetch(openApiUrl).then((response) => {
@@ -101,7 +112,7 @@ const overrideUrl = new URL(
 if (fs.existsSync(overrideUrl)) {
   Object.assign(ops, JSON.parse(fs.readFileSync(overrideUrl, "utf8")));
   md +=
-    "\n## Verified workflow contracts\nAdditional operations and missing bodies/parameters are preserved in workflow-contract-overrides.json, checked against backend commit 9d4af0efb8c3e910af233eb3e30b4e7b04dae238. See WORKFLOW_ALIGNMENT.md.\n";
+    "\n## Verified workflow contracts\nAdditional operations and missing bodies/parameters are preserved in workflow-contract-overrides.json, reviewed against the backend checkout. See WORKFLOW_ALIGNMENT.md and BACKEND_SYNC_2026-10-04.md.\n";
 }
 fs.writeFileSync(new URL("../src/shared/generated.ts", import.meta.url), ts);
 fs.writeFileSync(

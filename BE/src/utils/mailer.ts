@@ -68,6 +68,18 @@ async function sendViaSMTP(to: string, otp: string): Promise<void> {
 
 // ── Public API ────────────────────────────────────────────────────────────
 export async function sendOtpEmail(to: string, otp: string): Promise<void> {
+  // 0. MAIL_DRIVER chỉ định tường minh driver (brevo | resend | smtp | console), bỏ qua thứ tự ưu tiên.
+  //    Dùng khi một nhà cung cấp còn key nhưng không gửi được (vd. Brevo khoá "sending platform").
+  const driver = (process.env.MAIL_DRIVER ?? '').trim().toLowerCase();
+  if (driver === 'brevo') return sendViaBrevo(to, otp);
+  if (driver === 'resend') return sendViaResend(to, otp);
+  if (driver === 'smtp') return sendViaSMTP(to, otp);
+  if (driver === 'console') {
+    console.log(`[MAILER] TO: ${to} | OTP: ${otp}`);
+    return;
+  }
+  if (driver) throw new Error(`MAIL_DRIVER không hợp lệ: "${driver}" (brevo | resend | smtp | console)`);
+
   // 1. Brevo — ưu tiên cao nhất (HTTP API, không bị Render block, gửi mọi email)
   if (process.env.BREVO_API_KEY) {
     return sendViaBrevo(to, otp);

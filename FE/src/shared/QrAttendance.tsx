@@ -55,8 +55,8 @@ export function AttendanceQr({
       </p>
       {!inWindow ? (
         <p role="status">
-          QR chỉ mở cho buổi đã lên lịch, từ 30 phút trước giờ bắt đầu đến 30
-          phút sau giờ kết thúc.
+          QR chỉ mở cho buổi đã lên lịch, từ 30 phút trước giờ bắt đầu đến giờ
+          kết thúc buổi học.
         </p>
       ) : !enabled ? (
         <button

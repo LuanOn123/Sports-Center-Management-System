@@ -311,7 +311,7 @@ export async function createSepayCheckout(userId: string, planId: string) {
 /**
  * FE polling trạng thái giao dịch (sau khi webhook về, gói được kích hoạt):
  * trả lại đúng thông tin QR để FE hiển thị lại + status/subscriptionId.
- * Quyền: chủ giao dịch (MEMBER) hoặc MANAGER/STAFF; COACH bị chặn.
+ * Quyền: chủ giao dịch (MEMBER) hoặc MANAGER/RECEPTIONIST; COACH bị chặn.
  *
  * Nếu đơn còn PENDING và đã cấu hình `SEPAY_API_TOKEN`, BE đối soát chủ động qua SePay API
  * (webhook không tới được server: localhost, server downtime, hết retry ~33 phút) để đơn
@@ -349,7 +349,7 @@ export async function getSepayCheckout(userId: string, role: string, paymentId: 
 }
 
 /**
- * Chỉ chủ giao dịch (MEMBER) hoặc MANAGER/STAFF được thao tác trên một giao dịch SePay.
+ * Chỉ chủ giao dịch (MEMBER) hoặc MANAGER/RECEPTIONIST được thao tác trên một giao dịch SePay.
  * COACH bị chặn hoàn toàn (không liên quan nghiệp vụ thanh toán).
  */
 async function assertSepayPaymentOperator(
@@ -367,9 +367,9 @@ async function assertSepayPaymentOperator(
     }
     return;
   }
-  if (role === "MANAGER" || role === "STAFF") return;
+  if (["ADMIN", "MANAGER", "RECEPTIONIST"].includes(role)) return;
   throw new AppError(
-    "Forbidden: only the owning MEMBER or MANAGER/STAFF can operate on a SePay payment",
+    "Forbidden: only the owning MEMBER or MANAGER/RECEPTIONIST can operate on a SePay payment",
     403
   );
 }
@@ -500,7 +500,7 @@ export async function handleSepayWebhook(input: {
 /**
  * DEV/DEMO/E2E: mô phỏng SePay gửi webhook "đã thu tiền" mà không cần chuyển khoản thật.
  * Chỉ hoạt động khi `SEPAY_MOCK_MODE=true`; MEMBER chỉ xác nhận được giao dịch CỦA MÌNH,
- * MANAGER/STAFF được phép xác nhận hộ (VD demo tại lớp).
+ * MANAGER/RECEPTIONIST được phép xác nhận hộ (VD demo tại lớp).
  */
 export async function mockConfirmSepayPayment(
   userId: string,

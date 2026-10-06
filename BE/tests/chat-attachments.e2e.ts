@@ -14,6 +14,7 @@ import path from "path";
 import type { AddressInfo } from "node:net";
 import app from "../src/app.js";
 import { prisma } from "../src/config/prisma.js";
+import { connectTestMongo, createIdentity, deleteIdentities, disconnectTestMongo } from "./helpers/identity.js";
 import { hashPassword } from "../src/utils/bcrypt.js";
 import { CHAT_UPLOAD_DIR } from "../src/middlewares/upload.js";
 import { avatarStorageDriver } from "../src/config/avatar-storage.js";
@@ -116,17 +117,7 @@ async function createUser(
   hashedPassword: string
 ): Promise<FixtureUser> {
   const email = `e2e-chat-${RUN}-${tag.toLowerCase()}@example.com`;
-  const user = await prisma.user.create({
-    data: {
-      email,
-      password: hashedPassword,
-      fullName: `E2E Chat ${tag} ${RUN}`,
-      role,
-      ...(role === "MEMBER" ? { memberProfile: { create: {} } } : {}),
-      ...(role === "COACH" ? { coachProfile: { create: {} } } : {}),
-      ...(role === "MANAGER" ? { managerProfile: { create: {} } } : {}),
-    },
-  });
+  const user = await createIdentity({ email, password: hashedPassword, fullName: `E2E Chat ${tag} ${RUN}`, role });
   created.userIds.push(user.id);
   const login = await http("POST", "/auth/login", { body: { email, password: PASSWORD } });
   const token = login.body?.data?.accessToken as string | undefined;
@@ -177,7 +168,8 @@ async function cleanup(): Promise<void> {
     });
     await prisma.notification.deleteMany({ where: { userId: { in: created.userIds } } });
     await prisma.user.deleteMany({ where: { id: { in: created.userIds } } });
-  }
+    await deleteIdentities(created.userIds);
+      }
 
   for (const name of [...new Set(created.storedFiles)]) {
     try {
@@ -363,6 +355,7 @@ async function scenarioAvatarSignature(coach: FixtureUser) {
 
 // ─── Runner ───────────────────────────────────────────────────────────────
 async function main(): Promise<void> {
+  await connectTestMongo();
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));
   const port = (server.address() as AddressInfo).port;
@@ -393,6 +386,7 @@ async function main(): Promise<void> {
     }
     server.close();
     await prisma.$disconnect();
+    await disconnectTestMongo();
   }
 
   console.log("\n=== KẾT QUẢ ===");

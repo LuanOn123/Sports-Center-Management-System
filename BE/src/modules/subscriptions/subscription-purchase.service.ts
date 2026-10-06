@@ -1,12 +1,24 @@
-import { MembershipPlan, MembershipSubscription, MemberTier, Prisma } from "@prisma/client";
+import {
+  MembershipPlan,
+  MembershipSubscription,
+  MemberTier,
+  Prisma,
+  Payment,
+  Invoice,
+} from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
+import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { enqueueNotification } from "../notifications/outbox.service.js";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
 /** Thứ tự hạng gói — dùng để chặn hạ hạng khi mua gói mới. */
-export const TIER_VALUE: Record<string, number> = { FREE: 0, MEMBERSHIP: 1, PREMIUM: 2 };
+export const TIER_VALUE: Record<string, number> = {
+  FREE: 0,
+  MEMBERSHIP: 1,
+  PREMIUM: 2,
+};
 
 /** Số tiền phải thu của một gói (VND, số nguyên) — nguồn duy nhất cho mọi kênh thanh toán. */
 export function planAmount(plan: MembershipPlan): number {
@@ -19,8 +31,8 @@ export interface PlanPurchaseContext {
   isUpgrade: boolean;
   oldPlanName: string;
   /**
-   * Số ngày còn dư của gói TRẢ PHÍ cũ (MEMBERSHIP/PREMIUM), được cộng dồn vào gói mới.
-   * Gói FREE hệ thống luôn trả 0 — xem `inspectPlanPurchase`.
+   * Số ngày còn dư của gói TRẢ PHÍ cũ (MEMBERSHIP/PREMIUM) — chỉ dùng cho thông tin/hoàn tiền.
+   * KHÔNG còn cộng dồn vào gói mới. Gói FREE hệ thống luôn trả 0.
    */
   remainingDays: number;
 }
@@ -30,9 +42,8 @@ export interface PlanPurchaseContext {
  *
  * - Không cho hạ hạng: tier mới thấp hơn tier ACTIVE ⇒ 400.
  * - Cùng hạng: không cho mua gói ít ngày hơn gói đang dùng ⇒ 400.
- * - `remainingDays` CHỈ tính từ gói TRẢ PHÍ (MEMBERSHIP/PREMIUM) đang ACTIVE.
- *   Gói FREE hệ thống (auto-provision, durationDays = 3650) luôn ⇒ 0; nếu cộng dồn,
- *   mua gói 30 ngày sẽ nhận gần 10 năm sử dụng.
+ * - `remainingDays` CHỈ dùng cho thông tin (notification/hoàn tiền), KHÔNG cộng dồn vào gói mới.
+ *   Gói FREE hệ thống (auto-provision, durationDays = 3650) luôn ⇒ 0.
  *
  * Dùng để "fail fast" trước khi tạo giao dịch online (không tạo Payment rác),
  * còn lúc chốt giao dịch thì `applyPlanSwitchRules` chạy lại trong transaction.
@@ -41,16 +52,29 @@ export async function inspectPlanPurchase(
   db: DbClient,
   memberProfileId: string,
   plan: MembershipPlan,
-  now: Date = new Date()
+  now: Date = new Date(),
 ): Promise<PlanPurchaseContext> {
   const currentActive = await db.membershipSubscription.findFirst({
     where: { memberId: memberProfileId, status: "ACTIVE" },
-    include: { plan: true },
+    include: {
+      plan: true,
+      payments: {
+        where: { paidAt: { not: null } },
+        orderBy: { paidAt: "asc" },
+        take: 1,
+        select: { durationDaysSnapshot: true },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
 
   if (!currentActive) {
-    return { currentActive: null, isUpgrade: false, oldPlanName: "", remainingDays: 0 };
+    return {
+      currentActive: null,
+      isUpgrade: false,
+      oldPlanName: "",
+      remainingDays: 0,
+    };
   }
 
   const currentTierVal = TIER_VALUE[currentActive.tier] ?? 0;
@@ -59,13 +83,22 @@ export async function inspectPlanPurchase(
   if (newTierVal < currentTierVal) {
     throw new AppError(
       "Không thể mua gói thấp hơn hạng hiện tại. Bạn chỉ có thể nâng cấp.",
-      400
+      400,
     );
   }
-  if (newTierVal === currentTierVal && plan.durationDays < currentActive.plan.durationDays) {
+  const soldDuration =
+    currentActive.payments?.[0]?.durationDaysSnapshot ??
+    Math.max(
+      1,
+      Math.round(
+        (currentActive.endDate.getTime() - currentActive.startDate.getTime()) /
+          86400000,
+      ),
+    );
+  if (newTierVal === currentTierVal && plan.durationDays < soldDuration) {
     throw new AppError(
-      `Bạn đang dùng gói ${currentActive.plan.durationDays} ngày. Không thể mua gói ${plan.durationDays} ngày cùng hạng.`,
-      400
+      `Bạn đang dùng gói ${soldDuration} ngày. Không thể mua gói ${plan.durationDays} ngày cùng hạng.`,
+      400,
     );
   }
 
@@ -74,7 +107,10 @@ export async function inspectPlanPurchase(
   // Chỉ cộng dồn ngày dư thật của gói trả phí (MEMBERSHIP/PREMIUM) đang ACTIVE.
   const remainingDays =
     currentActive.tier !== "FREE" && currentActive.endDate > now
-      ? Math.ceil((currentActive.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      ? Math.ceil(
+          (currentActive.endDate.getTime() - now.getTime()) /
+            (1000 * 60 * 60 * 24),
+        )
       : 0;
 
   return {
@@ -93,7 +129,7 @@ export async function applyPlanSwitchRules(
   tx: Prisma.TransactionClient,
   memberProfileId: string,
   plan: MembershipPlan,
-  now: Date = new Date()
+  now: Date = new Date(),
 ): Promise<PlanPurchaseContext> {
   const context = await inspectPlanPurchase(tx, memberProfileId, plan, now);
 
@@ -138,15 +174,34 @@ export interface ActivateSubscriptionParams {
  * Trong CÙNG transaction:
  * 1. Áp luật đổi gói (chặn hạ hạng) + suspend gói ACTIVE cũ (`applyPlanSwitchRules`).
  * 2. Tạo `MembershipSubscription` ACTIVE: startDate = now,
- *    endDate = now + durationDays + ngày dư (chỉ cộng ngày dư của gói TRẢ PHÍ; gói FREE hệ thống không cộng).
+ *    endDate = now + durationDays (KHÔNG cộng dồn ngày dư từ gói cũ).
  * 3. Cập nhật Payment → `SUCCESS`, `paidAt`, gắn `subscriptionId`.
  * 4. Tạo Invoice kèm snapshot BR-25 (memberName/planName/planTier).
  * 5. Gửi notification `PAYMENT_SUCCESS` (fire-and-forget, không làm fail transaction).
  */
 export async function activateSubscriptionForPayment(
   tx: Prisma.TransactionClient,
-  params: ActivateSubscriptionParams
-) {
+  params: ActivateSubscriptionParams,
+): Promise<{
+  subscription: MembershipSubscription & { plan: MembershipPlan };
+  payment: Payment;
+  invoice: Invoice;
+  context: PlanPurchaseContext;
+}> {
+  const soldPayment = await tx.payment.findUniqueOrThrow({
+    where: { id: params.paymentId },
+  });
+  // Gateway callbacks use the persisted order's facility, without a caller header.
+  if (!requestContext.getStore()?.facilityId)
+    return requestContext.run(
+      {
+        ...requestContext.getStore(),
+        facilityId: soldPayment.facilityId,
+        actorId: "system:payment-activation",
+        reason: "Activate paid order",
+      },
+      () => activateSubscriptionForPayment(tx, params),
+    );
   const now = params.now ?? new Date();
   const { plan } = params;
   const snapshot = params.optionSnapshot ?? null;
@@ -158,18 +213,28 @@ export async function activateSubscriptionForPayment(
     tier: snapshot?.tier ?? plan.tier,
     durationDays: snapshot?.durationDays ?? plan.durationDays,
   };
-  const purchasedQuota = snapshot?.maxConcurrentClasses ?? plan.maxConcurrentClasses;
+  const purchasedQuota =
+    snapshot?.maxConcurrentClasses ?? plan.maxConcurrentClasses;
 
-  const context = await applyPlanSwitchRules(tx, params.memberProfileId, purchasedPlan, now);
+  const context = await applyPlanSwitchRules(
+    tx,
+    params.memberProfileId,
+    purchasedPlan,
+    now,
+  );
 
   const startDate = params.startDate ?? now;
   const endDate = new Date(startDate);
-  endDate.setDate(endDate.getDate() + purchasedPlan.durationDays + context.remainingDays);
+  // Gói mới CHỈ tính theo durationDays của plan mới — KHÔNG cộng dồn ngày dư từ gói cũ.
+  // Ngày dư gói cũ (nếu có) đã được xử lý bởi chính sách hoàn tiền khi hủy.
+  endDate.setDate(endDate.getDate() + purchasedPlan.durationDays);
 
   const subscription = await tx.membershipSubscription.create({
     data: {
       memberId: params.memberProfileId,
       planId: purchasedPlan.id,
+      facilityId: soldPayment.facilityId,
+      priceSnapshot: soldPayment.amount,
       tier: purchasedPlan.tier,
       startDate,
       endDate,
@@ -221,9 +286,7 @@ export async function activateSubscriptionForPayment(
       title: "Nâng cấp gói thành công!",
       body:
         `Chúc mừng bạn đã nâng cấp thành công từ gói ${context.oldPlanName} lên ${purchasedPlan.name} (${purchasedPlan.tier}).` +
-        (context.remainingDays > 0
-          ? " Số ngày sử dụng còn dư đã được cộng dồn vào thời hạn gói mới."
-          : ""),
+        ` Gói mới có thời hạn ${purchasedPlan.durationDays} ngày kể từ ngày kích hoạt.`,
       metadata: { subscriptionId: subscription.id, paymentId: payment.id },
     });
   } else {
@@ -233,11 +296,10 @@ export async function activateSubscriptionForPayment(
       title: "Đăng ký gói thành công!",
       body:
         `Gói ${purchasedPlan.name} (${purchasedPlan.tier}) của bạn đã được kích hoạt thành công.` +
-        (context.remainingDays > 0 ? " Thời gian dư từ gói cũ đã được cộng dồn." : ""),
+        ` Thời hạn: ${purchasedPlan.durationDays} ngày kể từ ngày kích hoạt.`,
       metadata: { subscriptionId: subscription.id, paymentId: payment.id },
     });
   }
 
   return { subscription, payment, invoice, context };
 }
-

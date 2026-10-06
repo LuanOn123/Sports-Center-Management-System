@@ -1,3 +1,4 @@
+import { requestContext } from "../../config/request-context.js";
 import { prisma } from "../../config/prisma.js";
 import { Prisma } from "@prisma/client";
 import { AppError } from "../../middlewares/errorHandler.js";
@@ -42,7 +43,8 @@ async function assertCanBook(
     );
   }
 
-  if (activeSub.endDate < schedule.startTime) {
+  const lastSession = await tx.classSchedule.findFirst({ where: { classId: schedule.class.id, status: "SCHEDULED" }, orderBy: { endTime: "desc" } });
+  if (activeSub.endDate < (lastSession?.endTime || schedule.endTime)) {
     const expiredDate = activeSub.endDate.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
     const classDate = schedule.startTime.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
     throw new AppError(
@@ -85,7 +87,7 @@ async function assertCanBook(
     throw new AppError("You are already enrolled in this class", 409);
 
   // Time conflict check với các buổi khác của cùng hội viên.
-  const conflict = await tx.enrollment.findFirst({
+  const conflict = await requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, () => tx.enrollment.findFirst({
     where: {
       memberId: memberProfileId,
       status: { in: ["BOOKED", "COMPLETED"] },
@@ -97,7 +99,7 @@ async function assertCanBook(
       },
     },
     include: { schedule: { include: { class: true } } },
-  });
+  }));
   if (conflict)
     throw new AppError(
       `You have a conflicting class "${conflict.schedule.class.name}" at this time`,

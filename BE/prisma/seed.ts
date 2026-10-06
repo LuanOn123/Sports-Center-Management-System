@@ -42,7 +42,7 @@ async function main() {
       password: staffPwd,
       fullName: "Lê Thị Lễ Tân",
       phone: "0900000002",
-      role: UserRole.STAFF,
+      role: UserRole.RECEPTIONIST,
       isActive: true,
     },
   });

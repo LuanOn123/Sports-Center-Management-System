@@ -14,6 +14,7 @@ import "dotenv/config";
 import type { AddressInfo } from "node:net";
 import app from "../src/app.js";
 import { prisma } from "../src/config/prisma.js";
+import { connectTestMongo, createIdentity, deleteIdentities, disconnectTestMongo } from "./helpers/identity.js";
 import { hashPassword } from "../src/utils/bcrypt.js";
 
 const RUN = Date.now().toString(36);
@@ -89,23 +90,12 @@ const created = {
 type FixtureUser = { id: string; email: string; token: string; memberProfileId: string };
 
 async function createUser(
-  role: "MEMBER" | "COACH" | "STAFF" | "MANAGER",
+  role: "MEMBER" | "COACH" | "RECEPTIONIST" | "MANAGER",
   tag: string,
   hashedPassword: string
 ): Promise<FixtureUser> {
   const email = `e2e-course-${RUN}-${tag.toLowerCase()}@example.com`;
-  const user = await prisma.user.create({
-    data: {
-      email,
-      password: hashedPassword,
-      fullName: `E2E Course ${tag} ${RUN}`,
-      role,
-      ...(role === "MEMBER" ? { memberProfile: { create: {} } } : {}),
-      ...(role === "COACH" ? { coachProfile: { create: {} } } : {}),
-      ...(role === "MANAGER" ? { managerProfile: { create: {} } } : {}),
-    },
-    include: { memberProfile: true },
-  });
+  const user = await createIdentity({ email, password: hashedPassword, fullName: `E2E Course ${tag} ${RUN}`, role });
   created.userIds.push(user.id);
   const memberProfileId = user.memberProfile?.id ?? "";
   if (memberProfileId) created.memberProfileIds.push(memberProfileId);
@@ -403,25 +393,25 @@ async function scenarioPremiumRequired(ctx: Ctx, member: FixtureUser): Promise<v
   check("ROLLBACK: không tạo enrollment", (await bookedCountOfClass(member.memberProfileId, cls.classId)) === 0);
 }
 
-/** 9) Authorization + STAFF đặt hộ + lớp không còn buổi sắp tới. */
+/** 9) Authorization + RECEPTIONIST đặt hộ + lớp không còn buổi sắp tới. */
 async function scenarioAuthorizationAndEmptyCourse(
   ctx: Ctx,
   member: FixtureUser,
   coach: FixtureUser,
   staff: FixtureUser
 ): Promise<void> {
-  section("9) Authorization + STAFF đặt hộ + lớp không còn buổi sắp tới");
+  section("9) Authorization + RECEPTIONIST đặt hộ + lớp không còn buổi sắp tới");
   const cls = await createClass("S9", [futureSlot(6, 11)]);
 
   const coachRes = await enrollWholeCourse(coach.token, cls.classId);
   check("COACH gọi bulk → 403", coachRes.status === 403, coachRes.body);
 
   const staffNoMember = await enrollWholeCourse(staff.token, cls.classId);
-  check("STAFF thiếu memberId → 400", staffNoMember.status === 400, staffNoMember.body);
+  check("RECEPTIONIST thiếu memberId → 400", staffNoMember.status === 400, staffNoMember.body);
 
   await subscribe(ctx.manager.token, member.memberProfileId, ctx.plans.membership3.id);
   const staffRes = await enrollWholeCourse(staff.token, cls.classId, member.id);
-  check("STAFF đặt hộ (memberId = userId) → 201", staffRes.status === 201, staffRes.body);
+  check("RECEPTIONIST đặt hộ (memberId = userId) → 201", staffRes.status === 201, staffRes.body);
   check("DB: buổi của hội viên được tạo", (await bookedCountOfClass(member.memberProfileId, cls.classId)) === 1);
 
   const empty = await createClass("S9-empty", []);
@@ -524,9 +514,11 @@ async function cleanup(): Promise<void> {
   if (created.roomIds.length > 0) await prisma.room.deleteMany({ where: { id: { in: created.roomIds } } });
   if (created.planIds.length > 0) await prisma.membershipPlan.deleteMany({ where: { id: { in: created.planIds } } });
   if (created.userIds.length > 0) await prisma.user.deleteMany({ where: { id: { in: created.userIds } } });
-}
+  await deleteIdentities(created.userIds);
+  }
 
 async function main(): Promise<void> {
+  await connectTestMongo();
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));
   const port = (server.address() as AddressInfo).port;
@@ -538,7 +530,7 @@ async function main(): Promise<void> {
     await setupRoom();
     const manager = await createUser("MANAGER", "manager", hashed);
     const coach = await createUser("COACH", "coach", hashed);
-    const staff = await createUser("STAFF", "staff", hashed);
+    const staff = await createUser("RECEPTIONIST", "staff", hashed);
     const members: FixtureUser[] = [];
     for (let i = 1; i <= 9; i++) members.push(await createUser("MEMBER", `member${i}`, hashed));
     const filler = await createUser("MEMBER", "filler", hashed);
@@ -590,6 +582,7 @@ async function main(): Promise<void> {
     }
     server.close();
     await prisma.$disconnect();
+    await disconnectTestMongo();
   }
 
   console.log("\n=== KẾT QUẢ ===");
@@ -606,6 +599,7 @@ async function main(): Promise<void> {
 main().catch(async (err) => {
   console.error("Suite lỗi nghiêm trọng:", err);
   await prisma.$disconnect();
+  await disconnectTestMongo();
   process.exitCode = 1;
 });
 

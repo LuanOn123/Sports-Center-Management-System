@@ -1,0 +1,5967 @@
+[
+  {
+    "key": "GET /users",
+    "feature": "users",
+    "method": "GET",
+    "path": "/users",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/users/users.routes.ts:41",
+    "handler": "usersController.listUsers",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "role",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "MEMBER",
+            "COACH",
+            "RECEPTIONIST",
+            "MANAGER",
+            "ADMIN"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "isActive",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "search",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /users",
+    "feature": "users",
+    "method": "POST",
+    "path": "/users",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/users/users.routes.ts:76",
+    "handler": "usersController.createUser",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "email",
+        "password",
+        "fullName",
+        "role"
+      ],
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "MEMBER",
+            "COACH",
+            "RECEPTIONIST",
+            "MANAGER",
+            "ADMIN"
+          ]
+        },
+        "fitnessGoal": {
+          "type": "string",
+          "description": "Role MEMBER only"
+        },
+        "trainingLevel": {
+          "type": "string",
+          "enum": [
+            "BEGINNER",
+            "INTERMEDIATE",
+            "ADVANCED"
+          ],
+          "description": "Role MEMBER only"
+        },
+        "trainingPreference": {
+          "type": "string",
+          "description": "Role MEMBER only"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /users/{id}",
+    "feature": "users",
+    "method": "GET",
+    "path": "/users/{id}",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/users/users.routes.ts:97",
+    "handler": "usersController.getUserById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /users/{id}",
+    "feature": "users",
+    "method": "PATCH",
+    "path": "/users/{id}",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/users/users.routes.ts:131",
+    "handler": "usersController.updateUser",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "fullName": {
+          "type": "string",
+          "minLength": 2
+        },
+        "phone": {
+          "type": "string"
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "MALE",
+            "FEMALE",
+            "OTHER"
+          ]
+        },
+        "dateOfBirth": {
+          "type": "string"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "MEMBER",
+            "COACH",
+            "RECEPTIONIST",
+            "MANAGER",
+            "ADMIN"
+          ]
+        }
+      },
+      "required": []
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "DELETE /users/{id}",
+    "feature": "users",
+    "method": "DELETE",
+    "path": "/users/{id}",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/users/users.routes.ts:152",
+    "handler": "usersController.deactivateUser",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /subscriptions",
+    "feature": "subscriptions",
+    "method": "POST",
+    "path": "/subscriptions",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/membership/MembershipPage.tsx",
+      "FE/src/api/membership.api.ts"
+    ],
+    "backend": "BE/src/modules/subscriptions/subscriptions.routes.ts:43",
+    "handler": "subsController.createSubscription",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "memberId",
+        "planId",
+        "paymentMethod"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "planId": {
+          "type": "string"
+        },
+        "startDate": {
+          "type": "string"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": [
+            "CASH",
+            "BANK_TRANSFER"
+          ]
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /subscriptions/{id}/renew",
+    "feature": "subscriptions",
+    "method": "POST",
+    "path": "/subscriptions/{id}/renew",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/membership/MembershipPage.tsx",
+      "FE/src/api/membership.api.ts"
+    ],
+    "backend": "BE/src/modules/subscriptions/subscriptions.routes.ts:80",
+    "handler": "subsController.renewSubscription",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "planId",
+        "paymentMethod"
+      ],
+      "properties": {
+        "planId": {
+          "type": "string"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": [
+            "CASH",
+            "BANK_TRANSFER"
+          ]
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /subscriptions/member/{memberId}",
+    "feature": "subscriptions",
+    "method": "GET",
+    "path": "/subscriptions/member/{memberId}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/membership.api.ts",
+      "FE/src/features/reception/membership/MembershipPage.tsx",
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
+    ],
+    "backend": "BE/src/modules/subscriptions/subscriptions.routes.ts:108",
+    "handler": "subsController.getMemberSubscriptions",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "status",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "ACTIVE",
+            "EXPIRED",
+            "CANCELLED",
+            "SUSPENDED"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /subscriptions/{id}",
+    "feature": "subscriptions",
+    "method": "GET",
+    "path": "/subscriptions/{id}",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/api/membership.api.ts"
+    ],
+    "backend": "BE/src/modules/subscriptions/subscriptions.routes.ts:134",
+    "handler": "subsController.getSubscriptionById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /subscriptions/{id}/status",
+    "feature": "subscriptions",
+    "method": "PATCH",
+    "path": "/subscriptions/{id}/status",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/membership/MembershipPage.tsx",
+      "FE/src/shared/CancelSubscription.tsx",
+      "FE/src/api/membership.api.ts"
+    ],
+    "backend": "BE/src/modules/subscriptions/subscriptions.routes.ts:219",
+    "handler": "subsController.updateSubscriptionStatus",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "ACTIVE",
+            "CANCELLED",
+            "SUSPENDED"
+          ]
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /subscriptions/{id}/cancel",
+    "feature": "subscriptions",
+    "method": "PATCH",
+    "path": "/subscriptions/{id}/cancel",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/shared/CancelSubscription.tsx",
+      "FE/src/api/membership.api.ts"
+    ],
+    "backend": "BE/src/modules/subscriptions/subscriptions.routes.ts:303",
+    "handler": "subsController.cancelSubscriptionBySelf",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Lý do hủy gói (không bắt buộc)",
+          "example": "Tôi không có thời gian tập luyện nữa"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /sports",
+    "feature": "sports",
+    "method": "GET",
+    "path": "/sports",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/api/classes.api.ts",
+      "FE/src/features/manage/ActivityPlanner.tsx",
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/shared/forms/SchemaForm.tsx"
+    ],
+    "backend": "BE/src/modules/sports/sports.routes.ts:57",
+    "handler": "sportsController.listSports",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "search",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Search by name"
+      },
+      {
+        "in": "query",
+        "name": "areaType",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "POOL",
+            "INDOOR",
+            "OUTDOOR"
+          ]
+        },
+        "description": "Filter sports supporting an area type"
+      },
+      {
+        "in": "query",
+        "name": "isActive",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ]
+        },
+        "description": "Filter by active status"
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer",
+          "default": 1
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer",
+          "default": 10
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /sports",
+    "feature": "sports",
+    "method": "POST",
+    "path": "/sports",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ActivityPlanner.tsx",
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/shared/forms/SchemaForm.tsx",
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/sports/sports.routes.ts:118",
+    "handler": "sportsController.createSport",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "name",
+        "areaTypes"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "Yoga"
+        },
+        "description": {
+          "type": "string",
+          "example": "Yoga class improves flexibility"
+        },
+        "areaTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "POOL",
+              "INDOOR",
+              "OUTDOOR"
+            ]
+          },
+          "minItems": 1,
+          "example": [
+            "INDOOR"
+          ],
+          "description": "Area types this sport supports (at least one)"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /sports/{id}",
+    "feature": "sports",
+    "method": "GET",
+    "path": "/sports/{id}",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/sports/sports.routes.ts:78",
+    "handler": "sportsController.getSportById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /sports/{id}",
+    "feature": "sports",
+    "method": "PATCH",
+    "path": "/sports/{id}",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/sports/sports.routes.ts:166",
+    "handler": "sportsController.updateSport",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "areaTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "POOL",
+              "INDOOR",
+              "OUTDOOR"
+            ]
+          },
+          "minItems": 1,
+          "description": "Area types this sport supports. Cannot remove a type used by an active Class."
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "DELETE /sports/{id}",
+    "feature": "sports",
+    "method": "DELETE",
+    "path": "/sports/{id}",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/sports/sports.routes.ts:194",
+    "handler": "sportsController.deleteSport",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /rooms",
+    "feature": "rooms",
+    "method": "GET",
+    "path": "/rooms",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/manage/ActivityPlanner.tsx",
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/shared/forms/SchemaForm.tsx"
+    ],
+    "backend": "BE/src/modules/rooms/rooms.routes.ts:56",
+    "handler": "roomsController.listRooms",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "search",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Search by room name"
+      },
+      {
+        "in": "query",
+        "name": "areaType",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "POOL",
+            "INDOOR",
+            "OUTDOOR"
+          ]
+        },
+        "description": "Filter by area type (POOL | INDOOR | OUTDOOR)"
+      },
+      {
+        "in": "query",
+        "name": "isActive",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer",
+          "default": 1
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer",
+          "default": 10
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /rooms",
+    "feature": "rooms",
+    "method": "POST",
+    "path": "/rooms",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/config.ts",
+      "FE/src/shared/forms/SchemaForm.tsx",
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/rooms/rooms.routes.ts:122",
+    "handler": "roomsController.createRoom",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "name",
+        "capacity",
+        "areaType"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "Yoga Room A"
+        },
+        "capacity": {
+          "type": "integer",
+          "example": 20
+        },
+        "location": {
+          "type": "string",
+          "example": "Floor 1"
+        },
+        "areaType": {
+          "type": "string",
+          "enum": [
+            "POOL",
+            "INDOOR",
+            "OUTDOOR"
+          ],
+          "example": "INDOOR"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /rooms/{id}",
+    "feature": "rooms",
+    "method": "GET",
+    "path": "/rooms/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/rooms/rooms.routes.ts:82",
+    "handler": "roomsController.getRoomById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /rooms/{id}",
+    "feature": "rooms",
+    "method": "PATCH",
+    "path": "/rooms/{id}",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/rooms/rooms.routes.ts:169",
+    "handler": "roomsController.updateRoom",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "capacity": {
+          "type": "integer"
+        },
+        "location": {
+          "type": "string"
+        },
+        "areaType": {
+          "type": "string",
+          "enum": [
+            "POOL",
+            "INDOOR",
+            "OUTDOOR"
+          ],
+          "description": "New area type. Upcoming schedules must use a matching Class."
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "DELETE /rooms/{id}",
+    "feature": "rooms",
+    "method": "DELETE",
+    "path": "/rooms/{id}",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/rooms/rooms.routes.ts:197",
+    "handler": "roomsController.deleteRoom",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /rooms/{roomId}/transfer-schedules/preview",
+    "feature": "rooms",
+    "method": "POST",
+    "path": "/rooms/{roomId}/transfer-schedules/preview",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/rooms/rooms.routes.ts:236",
+    "handler": "roomsController.previewTransferSchedules",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "targetRoomId"
+      ],
+      "properties": {
+        "targetRoomId": {
+          "type": "string",
+          "description": "Target room ID"
+        },
+        "from": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Optional lower bound (default now)"
+        },
+        "to": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Optional upper bound"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Transfer reason, e.g. Room damaged"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /rooms/{roomId}/transfer-schedules",
+    "feature": "rooms",
+    "method": "POST",
+    "path": "/rooms/{roomId}/transfer-schedules",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/rooms/rooms.routes.ts:279",
+    "handler": "roomsController.transferSchedules",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "targetRoomId"
+      ],
+      "properties": {
+        "targetRoomId": {
+          "type": "string",
+          "description": "Target room ID"
+        },
+        "from": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Optional lower bound (default now)"
+        },
+        "to": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Optional upper bound"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Transfer reason, e.g. Room damaged"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /reports/revenue",
+    "feature": "reports",
+    "method": "GET",
+    "path": "/reports/revenue",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/Dashboard.tsx"
+    ],
+    "backend": "BE/src/modules/reports/reports.routes.ts:34",
+    "handler": "reportsController.getRevenueReport",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "startDate",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "example": "2026-01-01"
+        }
+      },
+      {
+        "in": "query",
+        "name": "endDate",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "example": "2026-12-31"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /reports/members",
+    "feature": "reports",
+    "method": "GET",
+    "path": "/reports/members",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/Dashboard.tsx"
+    ],
+    "backend": "BE/src/modules/reports/reports.routes.ts:58",
+    "handler": "reportsController.getMemberReport",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "startDate",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "endDate",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /reports/enrollments",
+    "feature": "reports",
+    "method": "GET",
+    "path": "/reports/enrollments",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/Dashboard.tsx"
+    ],
+    "backend": "BE/src/modules/reports/reports.routes.ts:82",
+    "handler": "reportsController.getEnrollmentReport",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "startDate",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "endDate",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /reports/memberships",
+    "feature": "reports",
+    "method": "GET",
+    "path": "/reports/memberships",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/Dashboard.tsx"
+    ],
+    "backend": "BE/src/modules/reports/reports.routes.ts:106",
+    "handler": "reportsController.getMembershipReport",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "startDate",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "endDate",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /reports/subscription-logs",
+    "feature": "reports",
+    "method": "GET",
+    "path": "/reports/subscription-logs",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [],
+    "backend": "BE/src/modules/reports/reports.routes.ts:197",
+    "handler": "reportsController.getSubscriptionLogs",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "startDate",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "endDate",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer",
+          "default": 1
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer",
+          "default": 20
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /reports/attendance",
+    "feature": "reports",
+    "method": "GET",
+    "path": "/reports/attendance",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [],
+    "backend": "BE/src/modules/reports/reports.routes.ts:191",
+    "handler": "reportsController.getAttendanceReport",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "status",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "OK",
+            "WARN",
+            "RELEASE"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "classId",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "memberId",
+        "schema": {
+          "type": "string",
+          "description": "MemberProfile.id"
+        }
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer",
+          "default": 1
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer",
+          "default": 20
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /payments",
+    "feature": "payments",
+    "method": "POST",
+    "path": "/payments",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx",
+      "FE/src/shared/forms/SchemaForm.tsx"
+    ],
+    "backend": "BE/src/modules/payments/payments.routes.ts:39",
+    "handler": "paymentsController.createPayment",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "memberId",
+        "amount",
+        "method"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "subscriptionId": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "CASH",
+            "BANK_TRANSFER"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "PENDING",
+            "SUCCESS",
+            "FAILED"
+          ]
+        },
+        "note": {
+          "type": "string"
+        },
+        "transactionCode": {
+          "type": "string"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /payments",
+    "feature": "payments",
+    "method": "GET",
+    "path": "/payments",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
+    ],
+    "backend": "BE/src/modules/payments/payments.routes.ts:75",
+    "handler": "paymentsController.listPayments",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "memberId",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "status",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "PENDING",
+            "SUCCESS",
+            "FAILED",
+            "REFUNDED"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "method",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "CASH",
+            "BANK_TRANSFER"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "startDate",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "endDate",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /payments/{id}",
+    "feature": "payments",
+    "method": "GET",
+    "path": "/payments/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx",
+      "FE/src/pages/member/PaymentsPage.tsx"
+    ],
+    "backend": "BE/src/modules/payments/payments.routes.ts:101",
+    "handler": "paymentsController.getPaymentById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /payments/{id}/status",
+    "feature": "payments",
+    "method": "PATCH",
+    "path": "/payments/{id}/status",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
+    ],
+    "backend": "BE/src/modules/payments/payments.routes.ts:139",
+    "handler": "paymentsController.updatePaymentStatus",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "PENDING",
+            "SUCCESS",
+            "FAILED",
+            "REFUNDED"
+          ]
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /payments/{id}/retry-activation",
+    "feature": "payments",
+    "method": "POST",
+    "path": "/payments/{id}/retry-activation",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
+    ],
+    "backend": "BE/src/modules/payments/payments.routes.ts:171",
+    "handler": "paymentsController.retryPaymentActivation",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /payments/sepay/checkout",
+    "feature": "payments",
+    "method": "POST",
+    "path": "/payments/sepay/checkout",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/api/sepay.api.ts",
+      "FE/src/shared/api.ts",
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
+    ],
+    "backend": "BE/src/modules/payments/payments.routes.ts:267",
+    "handler": "paymentsController.sepayCheckout",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "planId"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500",
+      "503"
+    ]
+  },
+  {
+    "key": "POST /payments/sepay/webhook",
+    "feature": "payments",
+    "method": "POST",
+    "path": "/payments/sepay/webhook",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
+    ],
+    "backend": "BE/src/modules/payments/payments.routes.ts:387",
+    "handler": "paymentsController.sepayWebhook",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "id",
+        "transferType",
+        "transferAmount",
+        "accountNumber"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "ID giao dịch trên SePay — khoá chống trùng"
+        },
+        "gateway": {
+          "type": "string",
+          "description": "Tên ngân hàng, VD SACOMBANK"
+        },
+        "transactionDate": {
+          "type": "string",
+          "description": "YYYY-MM-DD HH:mm:ss (giờ VN)"
+        },
+        "accountNumber": {
+          "type": "string"
+        },
+        "subAccount": {
+          "type": "string",
+          "description": "Số VA nếu có, rỗng nếu không"
+        },
+        "code": {
+          "type": "string",
+          "nullable": true,
+          "description": "Mã thanh toán SePay bóc tách được, VD SEVQR12345678"
+        },
+        "content": {
+          "type": "string",
+          "description": "Nội dung chuyển khoản gốc"
+        },
+        "transferType": {
+          "type": "string",
+          "enum": [
+            "in",
+            "out"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "transferAmount": {
+          "type": "integer"
+        },
+        "accumulated": {
+          "type": "integer"
+        },
+        "referenceCode": {
+          "type": "string"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "500",
+      "503"
+    ]
+  },
+  {
+    "key": "POST /payments/sepay/mock-confirm",
+    "feature": "payments",
+    "method": "POST",
+    "path": "/payments/sepay/mock-confirm",
+    "roles": "MEMBER, MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/api/sepay.api.ts",
+      "FE/src/shared/api.ts",
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
+    ],
+    "backend": "BE/src/modules/payments/payments.routes.ts:443",
+    "handler": "paymentsController.sepayMockConfirm",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "paymentId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "paymentId"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /payments/sepay/{id}",
+    "feature": "payments",
+    "method": "GET",
+    "path": "/payments/sepay/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
+    ],
+    "backend": "BE/src/modules/payments/payments.routes.ts:514",
+    "handler": "paymentsController.sepayGetCheckout",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /notifications",
+    "feature": "notifications",
+    "method": "GET",
+    "path": "/notifications",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
+    ],
+    "backend": "BE/src/modules/notifications/notifications.routes.ts:59",
+    "handler": "notificationsController.getMyNotifications",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "type",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "isRead",
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "GET /notifications/unread-count",
+    "feature": "notifications",
+    "method": "GET",
+    "path": "/notifications/unread-count",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
+    ],
+    "backend": "BE/src/modules/notifications/notifications.routes.ts:75",
+    "handler": "notificationsController.getUnreadCount",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "PATCH /notifications/mark-all-read",
+    "feature": "notifications",
+    "method": "PATCH",
+    "path": "/notifications/mark-all-read",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
+    ],
+    "backend": "BE/src/modules/notifications/notifications.routes.ts:91",
+    "handler": "notificationsController.markAllRead",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "PATCH /notifications/{id}/read",
+    "feature": "notifications",
+    "method": "PATCH",
+    "path": "/notifications/{id}/read",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
+    ],
+    "backend": "BE/src/modules/notifications/notifications.routes.ts:116",
+    "handler": "notificationsController.markRead",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "POST /notifications/trigger-upcoming-reminders",
+    "feature": "notifications",
+    "method": "POST",
+    "path": "/notifications/trigger-upcoming-reminders",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
+    ],
+    "backend": "BE/src/modules/notifications/notifications.routes.ts:133",
+    "handler": "notificationsController.triggerUpcomingReminders",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "GET /membership-plans",
+    "feature": "membership-plans",
+    "method": "GET",
+    "path": "/membership-plans",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/api/membership.api.ts",
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/features/reception/membership/MembershipPage.tsx"
+    ],
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:29",
+    "handler": "plansController.listPlans",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "tier",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "MEMBERSHIP",
+            "PREMIUM"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "isActive",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /membership-plans",
+    "feature": "membership-plans",
+    "method": "POST",
+    "path": "/membership-plans",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/manage/config.ts",
+      "FE/src/api/membership.api.ts"
+    ],
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:92",
+    "handler": "plansController.createPlan",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "name",
+        "price",
+        "durationDays",
+        "tier"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
+        },
+        "durationDays": {
+          "type": "integer"
+        },
+        "tier": {
+          "type": "string",
+          "enum": [
+            "MEMBERSHIP",
+            "PREMIUM"
+          ]
+        },
+        "maxConcurrentClasses": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Quota số Class KHÁC NHAU được giữ đồng thời; bỏ trống = mặc định theo tier"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /membership-plans/{id}",
+    "feature": "membership-plans",
+    "method": "GET",
+    "path": "/membership-plans/{id}",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/api/membership.api.ts"
+    ],
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:49",
+    "handler": "plansController.getPlanById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /membership-plans/{id}",
+    "feature": "membership-plans",
+    "method": "PATCH",
+    "path": "/membership-plans/{id}",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/api/membership.api.ts"
+    ],
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:145",
+    "handler": "plansController.updatePlan",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2
+        },
+        "description": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
+        },
+        "durationDays": {
+          "type": "integer"
+        },
+        "tier": {
+          "type": "string",
+          "enum": [
+            "MEMBERSHIP",
+            "PREMIUM"
+          ]
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      },
+      "required": []
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "DELETE /membership-plans/{id}",
+    "feature": "membership-plans",
+    "method": "DELETE",
+    "path": "/membership-plans/{id}",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/api/membership.api.ts"
+    ],
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:171",
+    "handler": "plansController.deletePlan",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /members",
+    "feature": "members",
+    "method": "GET",
+    "path": "/members",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/features/reception/components.tsx",
+      "FE/src/features/reception/dashboard/DashboardPage.tsx",
+      "FE/src/features/reception/members/MembersPage.tsx",
+      "FE/src/features/reception/membership/MembershipPage.tsx"
+    ],
+    "backend": "BE/src/modules/members/members.routes.ts:36",
+    "handler": "membersController.listMembers",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "search",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "trainingLevel",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "BEGINNER",
+            "INTERMEDIATE",
+            "ADVANCED"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /members/{id}",
+    "feature": "members",
+    "method": "GET",
+    "path": "/members/{id}",
+    "roles": "MANAGER, RECEPTIONIST, COACH, ADMIN",
+    "consumers": [
+      "FE/src/features/coach/CoachWorkspace.tsx",
+      "FE/src/features/reception/members/MembersPage.tsx",
+      "FE/src/features/reception/membership/MembershipPage.tsx"
+    ],
+    "backend": "BE/src/modules/members/members.routes.ts:61",
+    "handler": "membersController.getMemberById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /members/{id}",
+    "feature": "members",
+    "method": "PATCH",
+    "path": "/members/{id}",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/members/MembersPage.tsx",
+      "FE/src/features/reception/membership/MembershipPage.tsx"
+    ],
+    "backend": "BE/src/modules/members/members.routes.ts:100",
+    "handler": "membersController.updateMember",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "fullName": {
+          "type": "string",
+          "minLength": 2
+        },
+        "phone": {
+          "type": "string"
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "MALE",
+            "FEMALE",
+            "OTHER"
+          ]
+        },
+        "dateOfBirth": {
+          "type": "string"
+        },
+        "fitnessGoal": {
+          "type": "string"
+        },
+        "trainingLevel": {
+          "type": "string",
+          "enum": [
+            "BEGINNER",
+            "INTERMEDIATE",
+            "ADVANCED"
+          ]
+        },
+        "trainingPreference": {
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "GET /members/{id}/membership-status",
+    "feature": "members",
+    "method": "GET",
+    "path": "/members/{id}/membership-status",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/features/reception/membership/MembershipPage.tsx",
+      "FE/src/features/reception/members/MembersPage.tsx"
+    ],
+    "backend": "BE/src/modules/members/members.routes.ts:131",
+    "handler": "membersController.getMembershipStatus",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /invoices",
+    "feature": "invoices",
+    "method": "GET",
+    "path": "/invoices",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
+    ],
+    "backend": "BE/src/modules/invoices/invoices.routes.ts:36",
+    "handler": "invoicesController.listInvoices",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "memberId",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "status",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "ISSUED",
+            "CANCELLED"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "startDate",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "endDate",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /invoices/member/{memberId}",
+    "feature": "invoices",
+    "method": "GET",
+    "path": "/invoices/member/{memberId}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx",
+      "FE/src/pages/member/PaymentsPage.tsx"
+    ],
+    "backend": "BE/src/modules/invoices/invoices.routes.ts:62",
+    "handler": "invoicesController.getMemberInvoices",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /invoices/{id}",
+    "feature": "invoices",
+    "method": "GET",
+    "path": "/invoices/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
+    ],
+    "backend": "BE/src/modules/invoices/invoices.routes.ts:87",
+    "handler": "invoicesController.getInvoiceById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /feedbacks",
+    "feature": "feedbacks",
+    "method": "POST",
+    "path": "/feedbacks",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/shared/CoachFeedback.tsx"
+    ],
+    "backend": "BE/src/modules/feedbacks/feedbacks.routes.ts:90",
+    "handler": "controller.createFeedback",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "coachId",
+        "rating"
+      ],
+      "properties": {
+        "coachId": {
+          "type": "string",
+          "description": "CoachProfile ID (Mongo ObjectId 24-hex; UUID legacy vẫn được chấp nhận)"
+        },
+        "classId": {
+          "type": "string",
+          "description": "Lớp học liên quan (tuỳ chọn)"
+        },
+        "rating": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "Số sao đánh giá (1–5)",
+          "example": 5
+        },
+        "comment": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Nhận xét chi tiết",
+          "example": "HLV rất nhiệt tình, hướng dẫn chi tiết và dễ hiểu!"
+        },
+        "isAnonymous": {
+          "type": "boolean",
+          "default": false,
+          "description": "Ẩn tên khi hiển thị công khai"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /feedbacks",
+    "feature": "feedbacks",
+    "method": "GET",
+    "path": "/feedbacks",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/CoachFeedback.tsx"
+    ],
+    "backend": "BE/src/modules/feedbacks/feedbacks.routes.ts:150",
+    "handler": "controller.listFeedbacksForCoach",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "coachId",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "CoachProfile ID cần xem đánh giá"
+      },
+      {
+        "in": "query",
+        "name": "classId",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Lọc theo lớp học cụ thể (tuỳ chọn)"
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer",
+          "default": 1
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer",
+          "default": 10
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /feedbacks/my",
+    "feature": "feedbacks",
+    "method": "GET",
+    "path": "/feedbacks/my",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/shared/CoachFeedback.tsx"
+    ],
+    "backend": "BE/src/modules/feedbacks/feedbacks.routes.ts:178",
+    "handler": "controller.getMyFeedbacks",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "DELETE /feedbacks/{id}",
+    "feature": "feedbacks",
+    "method": "DELETE",
+    "path": "/feedbacks/{id}",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/shared/CoachFeedback.tsx"
+    ],
+    "backend": "BE/src/modules/feedbacks/feedbacks.routes.ts:209",
+    "handler": "controller.deleteFeedback",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "DELETE /feedbacks/{id}/manager",
+    "feature": "feedbacks",
+    "method": "DELETE",
+    "path": "/feedbacks/{id}/manager",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/shared/CoachFeedback.tsx"
+    ],
+    "backend": "BE/src/modules/feedbacks/feedbacks.routes.ts:240",
+    "handler": "controller.deleteFeedbackByManager",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /enrollments",
+    "feature": "enrollments",
+    "method": "POST",
+    "path": "/enrollments",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/enrollments.api.ts",
+      "FE/src/features/reception/classes/ClassesPage.tsx"
+    ],
+    "backend": "BE/src/modules/enrollments/enrollments.routes.ts:79",
+    "handler": "enrollmentsController.bookClass",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "scheduleId"
+      ],
+      "properties": {
+        "scheduleId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "memberId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Required when booked by Staff/Manager"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /enrollments/my",
+    "feature": "enrollments",
+    "method": "GET",
+    "path": "/enrollments/my",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/api/enrollments.api.ts",
+      "FE/src/pages/member/AttendancePage.tsx"
+    ],
+    "backend": "BE/src/modules/enrollments/enrollments.routes.ts:103",
+    "handler": "enrollmentsController.getMyEnrollments",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "status",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "BOOKED",
+            "CANCELLED",
+            "COMPLETED"
+          ]
+        }
+      },
+      {
+        "name": "page",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "default": 1
+        }
+      },
+      {
+        "name": "limit",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "default": 10
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /enrollments/my/quota",
+    "feature": "enrollments",
+    "method": "GET",
+    "path": "/enrollments/my/quota",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/api/enrollments.api.ts"
+    ],
+    "backend": "BE/src/modules/enrollments/enrollments.routes.ts:147",
+    "handler": "enrollmentsController.getMyQuota",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /enrollments/bulk",
+    "feature": "enrollments",
+    "method": "POST",
+    "path": "/enrollments/bulk",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/enrollments.api.ts"
+    ],
+    "backend": "BE/src/modules/enrollments/enrollments.routes.ts:236",
+    "handler": "enrollmentsController.enrollWholeCourse",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "classId": {
+          "type": "string"
+        },
+        "memberId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "classId"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /enrollments/schedule/{scheduleId}",
+    "feature": "enrollments",
+    "method": "GET",
+    "path": "/enrollments/schedule/{scheduleId}",
+    "roles": "MANAGER, COACH, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/coach/CoachWorkspace.tsx",
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/features/reception/classes/ClassesPage.tsx",
+      "FE/src/api/enrollments.api.ts"
+    ],
+    "backend": "BE/src/modules/enrollments/enrollments.routes.ts:261",
+    "handler": "enrollmentsController.getScheduleEnrollments",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "DELETE /enrollments/{id}",
+    "feature": "enrollments",
+    "method": "DELETE",
+    "path": "/enrollments/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/reception/classes/ClassesPage.tsx",
+      "FE/src/api/enrollments.api.ts"
+    ],
+    "backend": "BE/src/modules/enrollments/enrollments.routes.ts:287",
+    "handler": "enrollmentsController.cancelEnrollment",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /enrollments/{id}/transfer",
+    "feature": "enrollments",
+    "method": "POST",
+    "path": "/enrollments/{id}/transfer",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/enrollments.api.ts"
+    ],
+    "backend": "BE/src/modules/enrollments/enrollments.routes.ts:342",
+    "handler": "enrollmentsController.transferEnrollment",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "targetScheduleId"
+      ],
+      "properties": {
+        "targetScheduleId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ClassSchedule.id của buổi muốn chuyển tới"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /coaches",
+    "feature": "coaches",
+    "method": "GET",
+    "path": "/coaches",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/manage/ActivityPlanner.tsx",
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/shared/forms/SchemaForm.tsx",
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/coaches/coaches.routes.ts:53",
+    "handler": "coachController.listCoaches",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer"
+        },
+        "description": "Page number"
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer"
+        },
+        "description": "Items per page"
+      },
+      {
+        "in": "query",
+        "name": "search",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Search by name or email"
+      },
+      {
+        "in": "query",
+        "name": "specialization",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Filter by specialization (partial match)"
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /coaches/{id}",
+    "feature": "coaches",
+    "method": "GET",
+    "path": "/coaches/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/coaches/coaches.routes.ts:82",
+    "handler": "coachController.getCoachById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /coaches/{id}",
+    "feature": "coaches",
+    "method": "PATCH",
+    "path": "/coaches/{id}",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/coaches/coaches.routes.ts:129",
+    "handler": "coachController.updateCoach",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "fullName": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "MALE",
+            "FEMALE",
+            "OTHER"
+          ]
+        },
+        "dateOfBirth": {
+          "type": "string"
+        },
+        "specialization": {
+          "type": "string"
+        },
+        "experienceYears": {
+          "type": "integer"
+        },
+        "bio": {
+          "type": "string"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /classes",
+    "feature": "classes",
+    "method": "GET",
+    "path": "/classes",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/coach/data.ts",
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/shared/forms/SchemaForm.tsx",
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/classes/classes.routes.ts:78",
+    "handler": "classesController.listClasses",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "search",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Search by class name"
+      },
+      {
+        "in": "query",
+        "name": "sportId",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Filter by sport"
+      },
+      {
+        "in": "query",
+        "name": "classType",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "REGULAR",
+            "PREMIUM"
+          ]
+        },
+        "description": "Filter by class tier (REGULAR | PREMIUM)"
+      },
+      {
+        "in": "query",
+        "name": "areaType",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "POOL",
+            "INDOOR",
+            "OUTDOOR"
+          ]
+        },
+        "description": "Filter by area type (POOL | INDOOR | OUTDOOR)"
+      },
+      {
+        "in": "query",
+        "name": "coachId",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Filter by coach (CoachProfile.id)"
+      },
+      {
+        "in": "query",
+        "name": "isActive",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer",
+          "default": 1
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer",
+          "default": 10
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /classes",
+    "feature": "classes",
+    "method": "POST",
+    "path": "/classes",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ActivityPlanner.tsx",
+      "FE/src/features/manage/config.ts",
+      "FE/src/shared/forms/SchemaForm.tsx",
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/classes/classes.routes.ts:193",
+    "handler": "classesController.createClass",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "name",
+        "sportIds",
+        "capacity",
+        "areaType"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "Morning Yoga"
+        },
+        "description": {
+          "type": "string"
+        },
+        "sportIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "capacity": {
+          "type": "integer",
+          "example": 20
+        },
+        "classType": {
+          "type": "string",
+          "enum": [
+            "REGULAR",
+            "PREMIUM"
+          ],
+          "default": "REGULAR",
+          "description": "Class tier (REGULAR | PREMIUM). Different from areaType."
+        },
+        "areaType": {
+          "type": "string",
+          "enum": [
+            "POOL",
+            "INDOOR",
+            "OUTDOOR"
+          ],
+          "example": "INDOOR",
+          "description": "Area type required by this class. Every selected sport must support it."
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /classes/{id}",
+    "feature": "classes",
+    "method": "GET",
+    "path": "/classes/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/classes/classes.routes.ts:104",
+    "handler": "classesController.getClassById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /classes/{id}",
+    "feature": "classes",
+    "method": "PATCH",
+    "path": "/classes/{id}",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/classes/classes.routes.ts:248",
+    "handler": "classesController.updateClass",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "sportIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "capacity": {
+          "type": "integer"
+        },
+        "classType": {
+          "type": "string",
+          "enum": [
+            "REGULAR",
+            "PREMIUM"
+          ]
+        },
+        "areaType": {
+          "type": "string",
+          "enum": [
+            "POOL",
+            "INDOOR",
+            "OUTDOOR"
+          ],
+          "description": "New area type. All sports of this class must support it, and upcoming schedules must use a matching Room."
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "DELETE /classes/{id}",
+    "feature": "classes",
+    "method": "DELETE",
+    "path": "/classes/{id}",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/classes/classes.routes.ts:276",
+    "handler": "classesController.deleteClass",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /classes/{id}/course-plan",
+    "feature": "classes",
+    "method": "GET",
+    "path": "/classes/{id}/course-plan",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/classes/classes.routes.ts:142",
+    "handler": "classesController.getClassCoursePlan",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "401",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /classes/{id}/coaches",
+    "feature": "classes",
+    "method": "POST",
+    "path": "/classes/{id}/coaches",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ActivityPlanner.tsx",
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/classes/classes.routes.ts:320",
+    "handler": "classesController.assignCoach",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "coachId"
+      ],
+      "properties": {
+        "coachId": {
+          "type": "string",
+          "description": "CoachProfile ID"
+        },
+        "isPrimary": {
+          "type": "boolean",
+          "default": false,
+          "description": "Set as primary coach"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /classes/{id}/coaches/support",
+    "feature": "classes",
+    "method": "POST",
+    "path": "/classes/{id}/coaches/support",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ActivityPlanner.tsx",
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/classes/classes.routes.ts:367",
+    "handler": "classesController.assignSupportCoach",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "coachId"
+      ],
+      "properties": {
+        "coachId": {
+          "type": "string",
+          "description": "CoachProfile ID"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "DELETE /classes/{id}/coaches/{coachId}",
+    "feature": "classes",
+    "method": "DELETE",
+    "path": "/classes/{id}/coaches/{coachId}",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/classes/classes.routes.ts:402",
+    "handler": "classesController.removeCoach",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /class-schedules/activity-plan",
+    "feature": "class-schedules",
+    "method": "POST",
+    "path": "/class-schedules/activity-plan",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:35",
+    "handler": "schedulesController.createActivityPlan",
+    "status": "MATCH",
+    "request": {
+      "type": "object"
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /class-schedules",
+    "feature": "class-schedules",
+    "method": "GET",
+    "path": "/class-schedules",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/classes.api.ts",
+      "FE/src/features/coach/data.ts",
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/manage/Dashboard.tsx",
+      "FE/src/features/reception/classes/ClassesPage.tsx",
+      "FE/src/features/reception/dashboard/DashboardPage.tsx"
+    ],
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:135",
+    "handler": "schedulesController.listSchedules",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "classId",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Filter by class"
+      },
+      {
+        "in": "query",
+        "name": "roomId",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Filter by room"
+      },
+      {
+        "in": "query",
+        "name": "status",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "SCHEDULED",
+            "CANCELLED",
+            "COMPLETED"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "weekday",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "style": "form",
+        "explode": true,
+        "description": "Lọc 1 thứ: 2=T2..7=T7, 8=CN (alias: T2..T7, MON..SUN, Thứ 2..Chủ nhật). Lặp lại param để chọn nhiều thứ. VD: ?weekday=2&weekday=CN",
+        "example": "2"
+      },
+      {
+        "in": "query",
+        "name": "weekdays",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Lọc nhiều thứ, phân tách dấu phẩy. VD: ?weekdays=2,4,8 hoặc ?weekdays=T2,T4,CN. Hợp nhất với weekday.",
+        "example": "2,4,8"
+      },
+      {
+        "in": "query",
+        "name": "date",
+        "schema": {
+          "type": "string",
+          "example": "2026-09-15"
+        },
+        "description": "Filter by date (YYYY-MM-DD)"
+      },
+      {
+        "in": "query",
+        "name": "startAfter",
+        "schema": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": "Schedules starting after this time"
+      },
+      {
+        "in": "query",
+        "name": "startBefore",
+        "schema": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": "Schedules starting before this time (legacy start-time filtering)"
+      },
+      {
+        "in": "query",
+        "name": "from",
+        "schema": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": "Overlap-range filter start (schedule.endTime > from)"
+      },
+      {
+        "in": "query",
+        "name": "to",
+        "schema": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": "Overlap-range filter end (schedule.startTime < to)"
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer",
+          "default": 1
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer",
+          "default": 10
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /class-schedules",
+    "feature": "class-schedules",
+    "method": "POST",
+    "path": "/class-schedules",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ActivityPlanner.tsx",
+      "FE/src/features/manage/config.ts",
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:208",
+    "handler": "schedulesController.createSchedule",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "classId",
+        "roomId",
+        "startTime",
+        "endTime"
+      ],
+      "properties": {
+        "classId": {
+          "type": "string"
+        },
+        "roomId": {
+          "type": "string"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time",
+          "example": "2026-09-15T07:00:00+07:00"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time",
+          "example": "2026-09-15T08:00:00+07:00"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /class-schedules/{id}",
+    "feature": "class-schedules",
+    "method": "GET",
+    "path": "/class-schedules/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:161",
+    "handler": "schedulesController.getScheduleById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /class-schedules/{id}",
+    "feature": "class-schedules",
+    "method": "PATCH",
+    "path": "/class-schedules/{id}",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/shared/forms/SchemaForm.tsx",
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:261",
+    "handler": "schedulesController.updateSchedule",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "SCHEDULED",
+            "CANCELLED"
+          ],
+          "description": "If set to CANCELLED, all BOOKED enrollments are cancelled automatically. COMPLETED must use /complete."
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Cancellation reason (used in SCHEDULE_CANCELLED notification)"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "DELETE /class-schedules/{id}",
+    "feature": "class-schedules",
+    "method": "DELETE",
+    "path": "/class-schedules/{id}",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:291",
+    "handler": "schedulesController.deleteSchedule",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /class-schedules/{id}/complete",
+    "feature": "class-schedules",
+    "method": "PATCH",
+    "path": "/class-schedules/{id}/complete",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:318",
+    "handler": "schedulesController.completeSchedule",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "GET /chat/contacts",
+    "feature": "chat",
+    "method": "GET",
+    "path": "/chat/contacts",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
+    ],
+    "backend": "BE/src/modules/chat/chat.routes.ts:30",
+    "handler": "getContacts",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "GET /chat/conversations",
+    "feature": "chat",
+    "method": "GET",
+    "path": "/chat/conversations",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
+    ],
+    "backend": "BE/src/modules/chat/chat.routes.ts:45",
+    "handler": "getConversations",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "GET /chat/messages",
+    "feature": "chat",
+    "method": "GET",
+    "path": "/chat/messages",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
+    ],
+    "backend": "BE/src/modules/chat/chat.routes.ts:66",
+    "handler": "getMessages",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "targetId",
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "POST /chat/messages",
+    "feature": "chat",
+    "method": "POST",
+    "path": "/chat/messages",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
+    ],
+    "backend": "BE/src/modules/chat/chat.routes.ts:98",
+    "handler": "sendMessage",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "receiverId": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "file": {
+          "type": "string",
+          "format": "binary"
+        }
+      },
+      "required": []
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "GET /chat/attachments/{id}",
+    "feature": "chat",
+    "method": "GET",
+    "path": "/chat/attachments/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [],
+    "backend": "BE/src/modules/chat/chat.routes.ts:125",
+    "handler": "downloadAttachment",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "PATCH /chat/messages/read",
+    "feature": "chat",
+    "method": "PATCH",
+    "path": "/chat/messages/read",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
+    ],
+    "backend": "BE/src/modules/chat/chat.routes.ts:150",
+    "handler": "markAsRead",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "targetId": {
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "GET /chat/messages/unread-count",
+    "feature": "chat",
+    "method": "GET",
+    "path": "/chat/messages/unread-count",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
+    ],
+    "backend": "BE/src/modules/chat/chat.routes.ts:165",
+    "handler": "getUnreadCount",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "POST /auth/register",
+    "feature": "auth",
+    "method": "POST",
+    "path": "/auth/register",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/api/auth.api.ts",
+      "FE/src/features/auth/Register.tsx",
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/features/reception/members/MembersPage.tsx"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:50",
+    "handler": "authController.register",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "email",
+        "password",
+        "fullName"
+      ],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Will be converted to lowercase"
+        },
+        "password": {
+          "type": "string",
+          "minLength": 6
+        },
+        "fullName": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "phone": {
+          "type": "string",
+          "pattern": "^[0-9+]{9,15}$",
+          "description": "Optional, 9-15 digits, can start with +"
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "MALE",
+            "FEMALE",
+            "OTHER"
+          ]
+        },
+        "dateOfBirth": {
+          "type": "string",
+          "format": "date",
+          "description": "Must be in the past"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /auth/login",
+    "feature": "auth",
+    "method": "POST",
+    "path": "/auth/login",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/api/auth.api.ts",
+      "FE/src/shared/api.ts"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:75",
+    "handler": "authController.login",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "email",
+        "password"
+      ],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "password": {
+          "type": "string"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /auth/logout",
+    "feature": "auth",
+    "method": "POST",
+    "path": "/auth/logout",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/auth.api.ts",
+      "FE/src/shared/api.ts"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:99",
+    "handler": "authController.logout",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "refreshToken"
+      ],
+      "properties": {
+        "refreshToken": {
+          "type": "string"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /auth/refresh-token",
+    "feature": "auth",
+    "method": "POST",
+    "path": "/auth/refresh-token",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/shared/api.ts"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:123",
+    "handler": "authController.refreshToken",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "refreshToken"
+      ],
+      "properties": {
+        "refreshToken": {
+          "type": "string"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /auth/me",
+    "feature": "auth",
+    "method": "GET",
+    "path": "/auth/me",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/auth.api.ts",
+      "FE/src/shared/api.ts"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:137",
+    "handler": "authController.getMe",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "401",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /auth/me",
+    "feature": "auth",
+    "method": "PATCH",
+    "path": "/auth/me",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/auth.api.ts",
+      "FE/src/features/coach/CoachProfile.tsx",
+      "FE/src/shared/Profile.tsx"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:166",
+    "handler": "authController.updateMe",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "fullName": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "phone": {
+          "type": "string",
+          "pattern": "^[0-9+]{9,15}$",
+          "description": "Optional, 9-15 digits, can start with +"
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "MALE",
+            "FEMALE",
+            "OTHER"
+          ]
+        },
+        "dateOfBirth": {
+          "type": "string",
+          "format": "date",
+          "description": "Must be in the past"
+        },
+        "fitnessGoal": {
+          "type": "string"
+        },
+        "trainingLevel": {
+          "type": "string",
+          "enum": [
+            "BEGINNER",
+            "INTERMEDIATE",
+            "ADVANCED"
+          ]
+        },
+        "trainingPreference": {
+          "type": "string"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /auth/me/avatar",
+    "feature": "auth",
+    "method": "POST",
+    "path": "/auth/me/avatar",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [],
+    "backend": "BE/src/modules/auth/auth.routes.ts:201",
+    "handler": "authController.uploadAvatar",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /auth/me/change-password",
+    "feature": "auth",
+    "method": "PATCH",
+    "path": "/auth/me/change-password",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/auth.api.ts",
+      "FE/src/features/coach/CoachProfile.tsx",
+      "FE/src/shared/api.ts",
+      "FE/src/shared/Profile.tsx"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:226",
+    "handler": "authController.changePassword",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "currentPassword",
+        "newPassword"
+      ],
+      "properties": {
+        "currentPassword": {
+          "type": "string"
+        },
+        "newPassword": {
+          "type": "string",
+          "minLength": 6
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /auth/forgot-password",
+    "feature": "auth",
+    "method": "POST",
+    "path": "/auth/forgot-password",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/shared/api.ts"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:257",
+    "handler": "authController.forgotPassword",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "email"
+      ],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /auth/reset-password",
+    "feature": "auth",
+    "method": "POST",
+    "path": "/auth/reset-password",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/shared/api.ts"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:285",
+    "handler": "authController.resetPassword",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "email",
+        "otp",
+        "newPassword"
+      ],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "otp": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 6,
+          "description": "Mã 6 chữ số nhận qua email"
+        },
+        "newPassword": {
+          "type": "string",
+          "minLength": 6
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /attendance",
+    "feature": "attendance",
+    "method": "GET",
+    "path": "/attendance",
+    "roles": "MEMBER, COACH, MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/pages/member/AttendancePage.tsx",
+      "FE/src/shared/Attendance.tsx"
+    ],
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:54",
+    "handler": "controller.getAttendances",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "scheduleId",
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "POST /attendance",
+    "feature": "attendance",
+    "method": "POST",
+    "path": "/attendance",
+    "roles": "COACH, MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/shared/Attendance.tsx"
+    ],
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:86",
+    "handler": "controller.createAttendance",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "scheduleId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "memberId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "PRESENT",
+            "ABSENT",
+            "LATE",
+            "EXCUSED"
+          ]
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "scheduleId",
+        "memberId",
+        "status"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "PATCH /attendance/{id}",
+    "feature": "attendance",
+    "method": "PATCH",
+    "path": "/attendance/{id}",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/shared/Attendance.tsx"
+    ],
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:115",
+    "handler": "controller.updateAttendance",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "PRESENT",
+            "ABSENT",
+            "LATE",
+            "EXCUSED"
+          ]
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404"
+    ]
+  },
+  {
+    "key": "POST /attendance/generate-qr",
+    "feature": "attendance",
+    "method": "POST",
+    "path": "/attendance/generate-qr",
+    "roles": "COACH, MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/shared/QrAttendance.tsx"
+    ],
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:166",
+    "handler": "controller.generateQr",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "scheduleId"
+      ],
+      "properties": {
+        "scheduleId": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /attendance/scan-qr",
+    "feature": "attendance",
+    "method": "POST",
+    "path": "/attendance/scan-qr",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/shared/QrAttendance.tsx"
+    ],
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:254",
+    "handler": "controller.scanQr",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Chỉ gửi một trong hai: qrToken hoặc code",
+      "properties": {
+        "qrToken": {
+          "type": "string",
+          "description": "JWT token from QR code shown by Coach (khi quét QR)"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 6,
+          "description": "Mã dự phòng 6 ký tự (A-HJ-NP-Z2-9) khi không quét được QR"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "429",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /attendance/my",
+    "feature": "attendance",
+    "method": "GET",
+    "path": "/attendance/my",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/pages/member/AttendancePage.tsx"
+    ],
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:302",
+    "handler": "controller.getMyAttendance",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "status",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "PRESENT",
+            "ABSENT",
+            "LATE",
+            "EXCUSED"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "classId",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer",
+          "default": 1
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer",
+          "default": 20
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /attendance/my/summary",
+    "feature": "attendance",
+    "method": "GET",
+    "path": "/attendance/my/summary",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/pages/member/AttendancePage.tsx"
+    ],
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:362",
+    "handler": "controller.getMyAttendanceSummary",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /attendance/warnings/scan",
+    "feature": "attendance",
+    "method": "POST",
+    "path": "/attendance/warnings/scan",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/AttendancePenalties.tsx"
+    ],
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:390",
+    "handler": "controller.scanWarnings",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "classId": {
+          "type": "string",
+          "description": "Chỉ quét một lớp (bỏ trống = tất cả)"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /attendance/penalties",
+    "feature": "attendance",
+    "method": "GET",
+    "path": "/attendance/penalties",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/AttendancePenalties.tsx"
+    ],
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:422",
+    "handler": "controller.listPenalties",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "status",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "PENDING",
+            "APPLIED",
+            "REVOKED",
+            "EXPIRED"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "memberId",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "classId",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer",
+          "default": 1
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer",
+          "default": 20
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /attendance/penalties/preview",
+    "feature": "attendance",
+    "method": "POST",
+    "path": "/attendance/penalties/preview",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/AttendancePenalties.tsx"
+    ],
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:463",
+    "handler": "controller.previewPenalties",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /attendance/penalties/apply",
+    "feature": "attendance",
+    "method": "POST",
+    "path": "/attendance/penalties/apply",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/AttendancePenalties.tsx"
+    ],
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:501",
+    "handler": "controller.applyPenalty",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "memberId",
+        "classId"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string",
+          "description": "MemberProfile.id"
+        },
+        "classId": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Bỏ trống sẽ dùng lý do hệ thống sinh"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /attendance/penalties/{id}/appeal",
+    "feature": "attendance",
+    "method": "POST",
+    "path": "/attendance/penalties/{id}/appeal",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/pages/member/AttendancePage.tsx"
+    ],
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:540",
+    "handler": "controller.appealPenalty",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "reason"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 1000
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /attendance/penalties/{id}/revoke",
+    "feature": "attendance",
+    "method": "POST",
+    "path": "/attendance/penalties/{id}/revoke",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/AttendancePenalties.tsx"
+    ],
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:581",
+    "handler": "controller.revokePenalty",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "restoreSlots": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /ai/chat",
+    "feature": "ai",
+    "method": "POST",
+    "path": "/ai/chat",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/ai/api.ts",
+      "FE/src/shared/api.ts"
+    ],
+    "backend": "BE/src/modules/ai/ai.routes.ts:54",
+    "handler": "aiController.chat",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "message"
+      ],
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "assistant",
+                  "system"
+                ]
+              },
+              "content": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "example": {
+        "message": "Trung tâm có gói tập nào và tuần này có lớp Yoga không?"
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "500",
+      "503"
+    ]
+  },
+  {
+    "key": "GET /staff-candidates",
+    "feature": "staff-candidates",
+    "method": "GET",
+    "path": "/staff-candidates",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:45",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "GET /coaches/{id}/specializations",
+    "feature": "coaches",
+    "method": "GET",
+    "path": "/coaches/{id}/specializations",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:60",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "PUT /coaches/{id}/specializations",
+    "feature": "coaches",
+    "method": "PUT",
+    "path": "/coaches/{id}/specializations",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:152",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "sportIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "sportIds"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "GET /leave-requests/{id}/affected",
+    "feature": "leave-requests",
+    "method": "GET",
+    "path": "/leave-requests/{id}/affected",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:63",
+    "handler": "async (req) => {\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "GET /facilities",
+    "feature": "facilities",
+    "method": "GET",
+    "path": "/facilities",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/shared/api.ts",
+      "FE/src/shared/FacilityBoundary.tsx"
+    ],
+    "backend": "BE/src/modules/facilities/facilities.route.ts:12",
+    "handler": "Controller.getFacilities",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "POST /facilities",
+    "feature": "facilities",
+    "method": "POST",
+    "path": "/facilities",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/shared/api.ts",
+      "FE/src/shared/FacilityBoundary.tsx"
+    ],
+    "backend": "BE/src/modules/facilities/facilities.route.ts:23",
+    "handler": "Controller.createFacility",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "contactInfo": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string",
+          "default": "Asia/Ho_Chi_Minh"
+        }
+      },
+      "required": [
+        "code",
+        "name",
+        "address"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "GET /facilities/{facilityId}",
+    "feature": "facilities",
+    "method": "GET",
+    "path": "/facilities/{facilityId}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/facilities/facilities.route.ts:15",
+    "handler": "Controller.getFacilityById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "PUT /facilities/{facilityId}",
+    "feature": "facilities",
+    "method": "PUT",
+    "path": "/facilities/{facilityId}",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/facilities/facilities.route.ts:32",
+    "handler": "Controller.updateFacility",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "contactInfo": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string",
+          "default": "Asia/Ho_Chi_Minh"
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      },
+      "required": []
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "POST /facilities/{facilityId}/staff",
+    "feature": "facilities",
+    "method": "POST",
+    "path": "/facilities/{facilityId}/staff",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/facilities/facilities.route.ts:42",
+    "handler": "Controller.assignStaff",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "MANAGER",
+            "COACH",
+            "RECEPTIONIST"
+          ]
+        }
+      },
+      "required": [
+        "userId",
+        "role"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "DELETE /facilities/{facilityId}/staff/{userId}/{role}",
+    "feature": "facilities",
+    "method": "DELETE",
+    "path": "/facilities/{facilityId}/staff/{userId}/{role}",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/facilities/facilities.route.ts:52",
+    "handler": "Controller.removeStaff",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "PUT /rooms/{id}/capabilities",
+    "feature": "rooms",
+    "method": "PUT",
+    "path": "/rooms/{id}/capabilities",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/features/manage/ResourcePage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:92",
+    "handler": "async (req) =>\r",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "values"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "PUT /subjects/{id}/requirements",
+    "feature": "subjects",
+    "method": "PUT",
+    "path": "/subjects/{id}/requirements",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:130",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "values"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "GET /slots",
+    "feature": "slots",
+    "method": "GET",
+    "path": "/slots",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:207",
+    "handler": "() =>\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "POST /slots",
+    "feature": "slots",
+    "method": "POST",
+    "path": "/slots",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:210",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "startMinute": {
+          "type": "integer"
+        },
+        "endMinute": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "startMinute",
+        "endMinute"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "GET /schedule-patterns",
+    "feature": "schedule-patterns",
+    "method": "GET",
+    "path": "/schedule-patterns",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:213",
+    "handler": "() =>\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "POST /schedule-patterns",
+    "feature": "schedule-patterns",
+    "method": "POST",
+    "path": "/schedule-patterns",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:216",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "classId": {
+          "type": "string"
+        },
+        "roomId": {
+          "type": "string"
+        },
+        "slotId": {
+          "type": "string"
+        },
+        "weekdays": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "required": [
+        "classId",
+        "roomId",
+        "slotId",
+        "weekdays",
+        "startDate",
+        "endDate"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "GET /leave-requests",
+    "feature": "leave-requests",
+    "method": "GET",
+    "path": "/leave-requests",
+    "roles": "ADMIN, MANAGER, COACH",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:287",
+    "handler": "async (req) => {\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "POST /leave-requests",
+    "feature": "leave-requests",
+    "method": "POST",
+    "path": "/leave-requests",
+    "roles": "COACH",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:306",
+    "handler": "async (req) => {\r",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "startTime",
+        "endTime",
+        "reason"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "PATCH /leave-requests/{id}",
+    "feature": "leave-requests",
+    "method": "PATCH",
+    "path": "/leave-requests/{id}",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:342",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "APPROVED",
+            "REJECTED"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "resolutions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "scheduleId": {
+                "type": "string"
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "REPLACE",
+                  "MOVE",
+                  "CANCEL"
+                ]
+              },
+              "coachId": {
+                "type": "string"
+              },
+              "roomId": {
+                "type": "string"
+              },
+              "startTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "endTime": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "scheduleId",
+              "action"
+            ]
+          }
+        }
+      },
+      "required": [
+        "status",
+        "reason",
+        "resolutions"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "GET /issues",
+    "feature": "issues",
+    "method": "GET",
+    "path": "/issues",
+    "roles": "MEMBER, MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:466",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "POST /issues",
+    "feature": "issues",
+    "method": "POST",
+    "path": "/issues",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:477",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "description"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "GET /issues/{id}",
+    "feature": "issues",
+    "method": "GET",
+    "path": "/issues/{id}",
+    "roles": "MEMBER, MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:519",
+    "handler": "async (req) => {\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "PUT /issues/{id}",
+    "feature": "issues",
+    "method": "PUT",
+    "path": "/issues/{id}",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:534",
+    "handler": "async (req) => {\r",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "description"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "DELETE /issues/{id}",
+    "feature": "issues",
+    "method": "DELETE",
+    "path": "/issues/{id}",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:554",
+    "handler": "async (req) => {\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "PATCH /issues/{id}",
+    "feature": "issues",
+    "method": "PATCH",
+    "path": "/issues/{id}",
+    "roles": "ADMIN, MANAGER, RECEPTIONIST",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:494",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "OPEN",
+            "IN_PROGRESS",
+            "RESOLVED",
+            "CLOSED"
+          ]
+        },
+        "response": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "response"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "GET /audit-logs",
+    "feature": "audit-logs",
+    "method": "GET",
+    "path": "/audit-logs",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:512",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "name": "skip",
+        "in": "query",
+        "schema": {
+          "type": "integer"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "GET /counter-orders",
+    "feature": "counter-orders",
+    "method": "GET",
+    "path": "/counter-orders",
+    "roles": "ADMIN, MANAGER, RECEPTIONIST",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:562",
+    "handler": "() =>\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "POST /counter-orders",
+    "feature": "counter-orders",
+    "method": "POST",
+    "path": "/counter-orders",
+    "roles": "ADMIN, MANAGER, RECEPTIONIST",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:570",
+    "handler": "async (req) => {\r",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "planId": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "CASH",
+            "BANK_TRANSFER"
+          ]
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "memberId",
+        "planId",
+        "method"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "POST /counter-orders/{id}/confirm",
+    "feature": "counter-orders",
+    "method": "POST",
+    "path": "/counter-orders/{id}/confirm",
+    "roles": "ADMIN, MANAGER, RECEPTIONIST",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/operations/operations.routes.ts:616",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
+    "key": "GET /subjects",
+    "feature": "subjects",
+    "method": "GET",
+    "path": "/subjects",
+    "roles": "Public",
+    "consumers": [],
+    "backend": "BE/src/modules/sports/sports.routes.ts:57",
+    "handler": "sportsController.listSports",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "in": "query",
+        "name": "search",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Search by name"
+      },
+      {
+        "in": "query",
+        "name": "areaType",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "POOL",
+            "INDOOR",
+            "OUTDOOR"
+          ]
+        },
+        "description": "Filter sports supporting an area type"
+      },
+      {
+        "in": "query",
+        "name": "isActive",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ]
+        },
+        "description": "Filter by active status"
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer",
+          "default": 1
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer",
+          "default": 10
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "400",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /subjects",
+    "feature": "subjects",
+    "method": "POST",
+    "path": "/subjects",
+    "roles": "ADMIN",
+    "consumers": [],
+    "backend": "BE/src/modules/sports/sports.routes.ts:118",
+    "handler": "sportsController.createSport",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "name",
+        "areaTypes"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "Yoga"
+        },
+        "description": {
+          "type": "string",
+          "example": "Yoga class improves flexibility"
+        },
+        "areaTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "POOL",
+              "INDOOR",
+              "OUTDOOR"
+            ]
+          },
+          "minItems": 1,
+          "example": [
+            "INDOOR"
+          ],
+          "description": "Area types this sport supports (at least one)"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /subjects/{id}",
+    "feature": "subjects",
+    "method": "GET",
+    "path": "/subjects/{id}",
+    "roles": "Public",
+    "consumers": [],
+    "backend": "BE/src/modules/sports/sports.routes.ts:78",
+    "handler": "sportsController.getSportById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /subjects/{id}",
+    "feature": "subjects",
+    "method": "PATCH",
+    "path": "/subjects/{id}",
+    "roles": "ADMIN",
+    "consumers": [],
+    "backend": "BE/src/modules/sports/sports.routes.ts:166",
+    "handler": "sportsController.updateSport",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "areaTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "POOL",
+              "INDOOR",
+              "OUTDOOR"
+            ]
+          },
+          "minItems": 1,
+          "description": "Area types this sport supports. Cannot remove a type used by an active Class."
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "DELETE /subjects/{id}",
+    "feature": "subjects",
+    "method": "DELETE",
+    "path": "/subjects/{id}",
+    "roles": "ADMIN",
+    "consumers": [],
+    "backend": "BE/src/modules/sports/sports.routes.ts:194",
+    "handler": "sportsController.deleteSport",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  }
+]

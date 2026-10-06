@@ -15,7 +15,6 @@ import {
   Clock,
   MapPin,
   Sparkles,
-  Dumbbell,
 } from "lucide-react";
 import { StatusBadge, LoadingSpinner } from "../../components/common";
 
@@ -634,51 +633,6 @@ export function DashboardPage() {
                 style={{ fontSize: 12, color: "var(--member-muted, #58695f)" }}
               >
                 Theo dõi thời khóa biểu
-              </div>
-            </div>
-          </div>
-
-          <div
-            onClick={() => navigate("/member/training")}
-            style={{
-              backgroundColor: "var(--member-surface, #ffffff)",
-              border: "1px solid var(--member-border, #e7ece9)",
-              borderRadius: 14,
-              padding: 16,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 14,
-            }}
-          >
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                backgroundColor: "var(--member-purple-soft, #fdf2fa)",
-                color: "var(--member-purple, #c11574)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Dumbbell size={20} />
-            </div>
-            <div>
-              <div
-                style={{
-                  fontWeight: 700,
-                  fontSize: 14,
-                  color: "var(--member-text, #203d31)",
-                }}
-              >
-                Mục tiêu tập
-              </div>
-              <div
-                style={{ fontSize: 12, color: "var(--member-muted, #58695f)" }}
-              >
-                Kế hoạch & cấp độ
               </div>
             </div>
           </div>

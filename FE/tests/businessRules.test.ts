@@ -9,6 +9,7 @@ import {
   terminalSessionError,
 } from "../src/shared/businessRules";
 import { translateApiMessage } from "../src/shared/apiErrors";
+import { ATTENDANCE } from "../../BE/src/config/attendance";
 const now = Date.parse("2026-09-18T06:00:00Z");
 describe("workflow state boundaries", () => {
   it("requires ACTIVE status and both date bounds for entitlement", () => {
@@ -118,8 +119,8 @@ it("opens attendance QR only within inclusive server time bounds for scheduled s
     startTime: "2026-09-27T10:00:00Z",
     endTime: "2026-09-27T11:00:00Z",
   };
-  const open = Date.parse(schedule.startTime) - 30 * 60_000;
-  const close = Date.parse(schedule.endTime) + 30 * 60_000;
+  const open = Date.parse(schedule.startTime) - ATTENDANCE.SCAN_OPEN_MINUTES_BEFORE * 60_000;
+  const close = Date.parse(schedule.endTime) + ATTENDANCE.SCAN_CLOSE_MINUTES_AFTER * 60_000;
   expect(canGenerateAttendanceQr(schedule, open - 1)).toBe(false);
   expect(canGenerateAttendanceQr(schedule, open)).toBe(true);
   expect(canGenerateAttendanceQr(schedule, close)).toBe(true);

@@ -1,0 +1,10 @@
+/health 200 success=true 
+/sports 200 success=true records=10
+/membership-plans 200 success=true records=9
+/users 401 success=false 
+Render operations 117
+Render feedback coach format { type: 'string', format: 'uuid', description: 'CoachProfile ID' }
+Render operations routes false false
+/facilities 401 Unauthorized: missing token
+/issues 404 Route not found
+/slots 404 Route not found

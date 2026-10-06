@@ -1,0 +1,657 @@
+
+> sports-center-manager@1.0.0 test:ui
+> playwright test
+
+[WebServer] (node:28228) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 164 tests using 10 workers
+
+(node:29436) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29884) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28136) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31552) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25288) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31724) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:3500) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:7852) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:30456) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29712) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok   1 tests\browser\app.spec.ts:54:1 › real login screen is responsive and password visibility works (3.5s)
+  ok   7 tests\browser\coach.spec.ts:157:1 › coach dashboard scopes classes by profile ID and schedule by assigned class (3.1s)
+  ok   8 tests\browser\facility-operations.spec.ts:4:1 › admin has a portal and changing facilities switches API context (3.4s)
+  ok   2 tests\browser\backend-sync.spec.ts:6:1 › Mongo member IDs support login/profile and removed modules make no requests (6.1s)
+  ok  12 tests\browser\coach.spec.ts:184:1 › roster loads every page and opens student goals, Escape returns to roster (2.6s)
+  ok  13 tests\browser\facility-operations.spec.ts:26:1 › member can create a scoped support request (5.6s)
+  ok  10 tests\browser\heuristics.spec.ts:12:5 › notification popover follows MANAGER theme at 375 (9.7s)
+  ok  15 tests\browser\coach.spec.ts:215:1 › calendar navigation, status filter and agenda view use correct date window (4.0s)
+  ok  14 tests\browser\backend-sync.spec.ts:62:1 › deployment clears old identities before any authenticated request and keeps new sessions after reload (4.6s)
+  x   17 tests\browser\heuristics.spec.ts:12:5 › notification popover follows MANAGER theme at 1440 (2.4s)
+  ok  16 tests\browser\facility-operations.spec.ts:41:1 › manager cannot edit plan prices (4.8s)
+(node:35700) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  19 tests\browser\integration-audit.spec.ts:4:1 › ADMIN dashboard shortcuts stay in the admin portal (4.9s)
+  ok  18 tests\browser\coach.spec.ts:242:1 › class cards filter and carry class into teaching schedule (6.3s)
+  ok  20 tests\browser\facility-operations.spec.ts:50:1 › room configuration loads existing quantities and blocks saving after failed lookup (2.7s)
+  ok  21 tests\browser\integration-audit.spec.ts:16:1 › MANAGER edits coach profile using User.id and cannot create accounts (3.4s)
+  ok  23 tests\browser\coach.spec.ts:258:1 › profile validates names, phone and birthdate before API call (3.8s)
+  ok  22 tests\browser\heuristics.spec.ts:94:3 › help is searchable and opens permitted MANAGER tasks (3.6s)
+  ok   9 tests\browser\design.spec.ts:6:3 › member product screens fit 320px (21.8s)
+  ok  25 tests\browser\integration-audit.spec.ts:45:1 › MANAGER keeps member registration through the current public auth contract (3.5s)
+  ok  26 tests\browser\coach.spec.ts:284:1 › password confirmation is required and is not sent to BE (3.3s)
+  ok  30 tests\browser\coach.spec.ts:316:1 › empty assigned classes never query global schedules (3.4s)
+  ok  29 tests\browser\integration-audit.spec.ts:64:1 › COACH manual attendance offers allowed statuses and sends Mongo profile ID (4.8s)
+  ok  27 tests\browser\heuristics.spec.ts:12:5 › notification popover follows RECEPTIONIST theme at 375 (8.5s)
+  ok  31 tests\browser\coach.spec.ts:324:1 › API error remains visible instead of becoming empty data (5.4s)
+  x    5 tests\browser\chat-shortcuts.spec.ts:6:3 › chat composer and attachment remain accessible at 320px (30.1s)
+  x    4 tests\browser\ai.spec.ts:4:1 › public chat sends real history, renders Markdown and recovers from errors (30.1s)
+(node:17600) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32504) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  33 tests\browser\heuristics.spec.ts:12:5 › notification popover follows RECEPTIONIST theme at 1440 (14.6s)
+  ok  37 tests\browser\heuristics.spec.ts:94:3 › help is searchable and opens permitted RECEPTIONIST tasks (2.9s)
+  ok  36 tests\browser\ai.spec.ts:51:3 › AI popup fits 320px and prevents duplicate submissions (11.9s)
+  x   34 tests\browser\coach.spec.ts:334:1 › loading has accessible skeleton and page has no serious axe findings (18.1s)
+  ok  35 tests\browser\chat-shortcuts.spec.ts:6:3 › chat composer and attachment remain accessible at 390px (16.1s)
+(node:36620) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  39 tests\browser\ai.spec.ts:51:3 › AI popup fits 375px and prevents duplicate submissions (6.3s)
+  x   11 tests\browser\app.spec.ts:80:1 › manager routes, real-schema forms and mobile navigation render (52.8s)
+  ok  42 tests\browser\ai.spec.ts:51:3 › AI popup fits 430px and prevents duplicate submissions (2.2s)
+  ok  41 tests\browser\coach.spec.ts:351:3 › long content and student modal fit at 375px (2.9s)
+  ok  40 tests\browser\chat-shortcuts.spec.ts:6:3 › chat composer and attachment remain accessible at 1440px (5.0s)
+(node:29652) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  43 tests\browser\ai.spec.ts:51:3 › AI popup fits 768px and prevents duplicate submissions (2.4s)
+  ok  45 tests\browser\new-rules.spec.ts:215:1 › member confirms cancellation once and sees the authoritative refund (2.5s)
+  ok  44 tests\browser\coach.spec.ts:351:3 › long content and student modal fit at 768px (3.8s)
+  ok  49 tests\browser\coach.spec.ts:351:3 › long content and student modal fit at 1440px (5.1s)
+  ok  47 tests\browser\ai.spec.ts:51:3 › AI popup fits 1024px and prevents duplicate submissions (11.3s)
+  ok  48 tests\browser\new-rules.spec.ts:235:1 › member scans token and writes an anonymous class-specific feedback (10.8s)
+  ok  38 tests\browser\heuristics.spec.ts:12:5 › notification popover follows MEMBER theme at 375 (26.8s)
+  ok  51 tests\browser\ai.spec.ts:51:3 › AI popup fits 1280px and prevents duplicate submissions (11.1s)
+  ok  52 tests\browser\new-rules.spec.ts:272:3 › compact details and multi-sport editing at 375 (13.0s)
+  x   46 tests\browser\app.spec.ts:178:1 › member cannot enter manager routes (16.5s)
+(node:36896) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  55 tests\browser\new-rules.spec.ts:272:3 › compact details and multi-sport editing at 1440 (5.8s)
+  ok  54 tests\browser\ai.spec.ts:51:3 › AI popup fits 1440px and prevents duplicate submissions (8.8s)
+  ok  57 tests\browser\new-rules.spec.ts:310:1 › coach QR rotates after 55 seconds and stops when hidden (3.1s)
+  ok  56 tests\browser\app.spec.ts:196:1 › API errors are visible and retry restores the list (3.5s)
+  ok  58 tests\browser\ai.spec.ts:51:3 › AI popup fits 1920px and prevents duplicate submissions (3.6s)
+  ok  59 tests\browser\new-rules.spec.ts:335:1 › expired membership QR response offers renewal and never reports success (2.1s)
+  x   50 tests\browser\password-reset.spec.ts:3:1 › reset flow handles invalid OTP, resend and success on mobile (30.1s)
+  ok  62 tests\browser\new-rules.spec.ts:365:1 › whole-course conflict preserves every blocker and does not report success (2.2s)
+(node:37048) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  61 tests\browser\public-motion.spec.ts:3:1 › auth motion keeps floating fields usable and transitions between forms (5.5s)
+  ok  64 tests\browser\password-reset.spec.ts:91:1 › unknown email advances, countdown expires and resend restarts it (1.8s)
+  ok  66 tests\browser\password-reset.spec.ts:116:1 › send failure stays on email step and supports retry (1.2s)
+  ok  65 tests\browser\public-motion.spec.ts:42:1 › landing reveals content, tracks navigation and pauses decoration (2.8s)
+  x   53 tests\browser\heuristics.spec.ts:12:5 › notification popover follows MEMBER theme at 1440 (30.2s)
+(node:28160) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x   28 tests\browser\design.spec.ts:6:3 › member product screens fit 375px (1.5m)
+(node:30748) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  24 tests\browser\facility-operations.spec.ts:95:3 › new operation screens are accessible at 375px (1.7m)
+  x   32 tests\browser\member-style-preview.spec.ts:5:1 › member visual review (1.5m)
+(node:34828) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x    3 tests\browser\audit.spec.ts:44:3 › all portals responsive at 320px (2.0m)
+(node:33412) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x   60 tests\browser\portal-theme.spec.ts:15:5 › MANAGER shares the member design language at 375px (30.1s)
+(node:29712) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  67 tests\browser\reception.spec.ts:12:3 › RECEPTIONIST lands in its own portal and cannot open manager (25.3s)
+  ok  68 tests\browser\public-motion.spec.ts:68:1 › reduced motion disables background, image and page animation (24.0s)
+  ok  69 tests\browser\heuristics.spec.ts:94:3 › help is searchable and opens permitted MEMBER tasks (18.0s)
+  x   74 tests\browser\portal-theme.spec.ts:15:5 › MANAGER shares the member design language at 1440px (2.0s)
+  x   63 tests\browser\public.spec.ts:5:3 › public pages are responsive and accessible at 375px (30.4s)
+  ok  76 tests\browser\scroll-layout.spec.ts:6:5 › MANAGER navbar stays at the top after scrolling at 375px (3.7s)
+(node:24544) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21744) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  75 tests\browser\reception.spec.ts:12:3 › COACH lands in its own portal and cannot open manager (4.6s)
+  ok  72 tests\browser\regressions.spec.ts:4:3 › long text, selected member and modal at 320px (11.2s)
+  ok  78 tests\browser\scroll-layout.spec.ts:6:5 › MANAGER navbar stays at the top after scrolling at 1440px (2.6s)
+  ok  77 tests\browser\heuristics.spec.ts:12:5 › notification popover follows COACH theme at 375 (5.9s)
+  ok  79 tests\browser\reception.spec.ts:12:3 › MEMBER lands in its own portal and cannot open manager (3.5s)
+  ok  83 tests\browser\scroll-layout.spec.ts:6:5 › RECEPTIONIST navbar stays at the top after scrolling at 375px (3.4s)
+  ok  81 tests\browser\regressions.spec.ts:4:3 › long text, selected member and modal at 375px (5.0s)
+  x   85 tests\browser\reception.spec.ts:28:1 › staff registers member through public registration without changing session (2.7s)
+  ok  84 tests\browser\heuristics.spec.ts:12:5 › notification popover follows COACH theme at 1440 (5.0s)
+  ok  86 tests\browser\scroll-layout.spec.ts:6:5 › RECEPTIONIST navbar stays at the top after scrolling at 1440px (2.7s)
+(node:34036) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  87 tests\browser\regressions.spec.ts:4:3 › long text, selected member and modal at 430px (5.1s)
+  ok  88 tests\browser\heuristics.spec.ts:94:3 › help is searchable and opens permitted COACH tasks (2.9s)
+  ok  89 tests\browser\scroll-layout.spec.ts:6:5 › COACH navbar stays at the top after scrolling at 375px (3.0s)
+  ok  70 tests\browser\design.spec.ts:6:3 › member product screens fit 430px (29.1s)
+  ok  93 tests\browser\scroll-layout.spec.ts:6:5 › COACH navbar stays at the top after scrolling at 1440px (3.1s)
+  ok  92 tests\browser\heuristics.spec.ts:118:1 › staff confirms bulk reminders and can cancel without sending (4.3s)
+  ok  82 tests\browser\public.spec.ts:5:3 › public pages are responsive and accessible at 768px (14.3s)
+  ok  90 tests\browser\reception.spec.ts:51:1 › membership registration and renewal use the selected profile and subscription (5.0s)
+  ok  91 tests\browser\regressions.spec.ts:4:3 › long text, selected member and modal at 768px (6.0s)
+  ok  95 tests\browser\scroll-layout.spec.ts:6:5 › MEMBER navbar stays at the top after scrolling at 375px (4.1s)
+  ok  80 tests\browser\portal-theme.spec.ts:15:5 › RECEPTIONIST shares the member design language at 375px (17.6s)
+  ok  98 tests\browser\reception.spec.ts:102:1 › booking uses member profile and schedule; cancellation requires confirmation (4.4s)
+  ok 100 tests\browser\scroll-layout.spec.ts:6:5 › MEMBER navbar stays at the top after scrolling at 1440px (2.7s)
+  ok  99 tests\browser\regressions.spec.ts:4:3 › long text, selected member and modal at 1024px (5.4s)
+  ok 103 tests\browser\scroll-layout.spec.ts:27:3 › member scroll boundaries keep the dark canvas at 375px (2.9s)
+  x   96 tests\browser\heuristics.spec.ts:153:1 › manager clears filters and sees browser offline state (8.2s)
+  ok  71 tests\browser\facility-operations.spec.ts:95:3 › new operation screens are accessible at 1440px (39.4s)
+  ok 102 tests\browser\reception.spec.ts:138:1 › payment validation, submission and printable invoice (4.8s)
+  ok 105 tests\browser\scroll-layout.spec.ts:50:3 › long chat stays readable while scrolling at 375px (2.9s)
+(node:31184) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 104 tests\browser\regressions.spec.ts:4:3 › long text, selected member and modal at 1280px (5.5s)
+  ok  94 tests\browser\design.spec.ts:6:3 › member product screens fit 768px (16.5s)
+  ok 107 tests\browser\session-loading.spec.ts:13:3 › shared login sends MEMBER away from a stale portal URL (2.9s)
+  ok 108 tests\browser\scroll-layout.spec.ts:27:3 › member scroll boundaries keep the dark canvas at 1440px (3.0s)
+  ok 106 tests\browser\reception.spec.ts:189:1 › reception mobile navigation and unavailable features never call invented endpoints (5.0s)
+  ok  97 tests\browser\public.spec.ts:5:3 › public pages are responsive and accessible at 1440px (15.3s)
+  ok 112 tests\browser\session-loading.spec.ts:13:3 › shared login sends MANAGER away from a stale portal URL (3.1s)
+  ok 113 tests\browser\scroll-layout.spec.ts:50:3 › long chat stays readable while scrolling at 1440px (3.3s)
+  ok 114 tests\browser\workflow.spec.ts:101:3 › real notifications wrap and mark read at 375 (3.0s)
+  ok 110 tests\browser\regressions.spec.ts:4:3 › long text, selected member and modal at 1440px (6.3s)
+  ok 109 tests\browser\sepay-payment.spec.ts:27:1 › keeps tracking a checkout after closing and reloading (5.9s)
+  ok 116 tests\browser\session-loading.spec.ts:13:3 › shared login sends STAFF away from a stale portal URL (3.0s)
+  ok 101 tests\browser\portal-theme.spec.ts:15:5 › RECEPTIONIST shares the member design language at 1440px (17.5s)
+  ok 115 tests\browser\public.spec.ts:34:1 › mobile navigation, sports selector, FAQ and registration links work (5.2s)
+  ok 117 tests\browser\workflow.spec.ts:101:3 › real notifications wrap and mark read at 1440 (2.8s)
+  ok 119 tests\browser\sepay-payment.spec.ts:69:3 › member sees SePay success result from API (3.1s)
+  ok 120 tests\browser\session-loading.spec.ts:13:3 › shared login sends RECEPTIONIST away from a stale portal URL (2.8s)
+  ok 118 tests\browser\regressions.spec.ts:4:3 › long text, selected member and modal at 1920px (4.9s)
+  ok 123 tests\browser\workflow.spec.ts:132:1 › completed booking does not imply presence; member sees own recorded attendance (2.8s)
+  ok 122 tests\browser\public.spec.ts:69:1 › registration validates confirmation and submits the exact API body once (4.1s)
+  ok 125 tests\browser\session-loading.spec.ts:13:3 › shared login sends COACH away from a stale portal URL (2.8s)
+  ok 124 tests\browser\sepay-payment.spec.ts:69:3 › member sees SePay failed result from API (3.0s)
+  ok 127 tests\browser\workflow.spec.ts:146:1 › chat sends private multipart messages, validates empty input and rejects unsafe links (2.9s)
+  ok 126 tests\browser\regressions.spec.ts:54:1 › boolean toggle preserves its original value and whitespace required input never submits (3.9s)
+  ok 129 tests\browser\session-loading.spec.ts:29:1 › legacy member URLs reach the integrated portal and data loads (2.3s)
+  ok 130 tests\browser\sepay-payment.spec.ts:99:1 › member reopens an existing pending SePay checkout from 409 details (2.7s)
+  ok 131 tests\browser\workflow.spec.ts:171:1 › dynamic role changes expire session without refreshing obsolete permissions (1.6s)
+  ok 128 tests\browser\public.spec.ts:114:1 › registration shows conflict, server validation and connection errors with retry (4.4s)
+  ok 111 tests\browser\design.spec.ts:6:3 › member product screens fit 1024px (16.1s)
+  ok 133 tests\browser\session-loading.spec.ts:45:1 › table skeleton stays visible until data arrives and respects reduced motion (2.3s)
+  ok 134 tests\browser\sepay-payment.spec.ts:134:1 › member sees the counter-payment fallback when SePay is not configured (2.7s)
+  ok 136 tests\browser\public.spec.ts:155:1 › duplicate phone is translated and attached to phone, never email (2.9s)
+  ok  73 tests\browser\audit.spec.ts:44:3 › all portals responsive at 375px (57.7s)
+  ok 132 tests\browser\regressions.spec.ts:92:1 › member search debounces requests and shows empty and network error states (9.2s)
+  ok 140 tests\browser\public.spec.ts:181:1 › landing remains usable with reduced motion and unavailable remote images (10.0s)
+  x    6 tests\browser\accessibility.spec.ts:32:3 › accessibility at 375px (3.0m)
+  ok 121 tests\browser\portal-theme.spec.ts:15:5 › COACH shares the member design language at 375px (22.4s)
+  ok 139 tests\browser\sepay-payment.spec.ts:163:1 › received funds require review until activation succeeds (12.0s)
+(node:37048) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  135 tests\browser\workflow.spec.ts:207:1 › manager gains finance screens while staff has no refund action (7.9s)
+(node:37184) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 144 tests\browser\workflow.spec.ts:227:1 › staff completes only ended sessions through dedicated API and cannot mark attendance (4.0s)
+  ok 145 tests\browser\workflow.spec.ts:311:1 › manager edit schedule does not offer lifecycle status bypass (2.9s)
+  ok 137 tests\browser\design.spec.ts:6:3 › member product screens fit 1280px (24.6s)
+  ok 142 tests\browser\portal-theme.spec.ts:15:5 › COACH shares the member design language at 1440px (12.5s)
+  x  138 tests\browser\session-loading.spec.ts:75:3 › nested details remain readable at 375px (30.0s)
+(node:33904) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 147 tests\browser\session-loading.spec.ts:75:3 › nested details remain readable at 1440px (3.8s)
+  ok 146 tests\browser\design.spec.ts:6:3 › member product screens fit 1440px (16.3s)
+  ok 141 tests\browser\audit.spec.ts:44:3 › all portals responsive at 430px (45.1s)
+  ok 149 tests\browser\design.spec.ts:6:3 › member product screens fit 1920px (10.0s)
+  ok 151 tests\browser\design.spec.ts:46:1 › collection view keeps room details accessible in both modes (3.0s)
+  ok 152 tests\browser\design.spec.ts:72:1 › booking date filter uses documented query and preserves member selection (2.1s)
+  ok 148 tests\browser\session-loading.spec.ts:95:3 › member pages are accessible and responsive at 375 (20.8s)
+  ok 153 tests\browser\design.spec.ts:99:3 › member screens have accessible controls at 375px (12.0s)
+  ok 150 tests\browser\audit.spec.ts:44:3 › all portals responsive at 768px (29.6s)
+  ok 154 tests\browser\session-loading.spec.ts:95:3 › member pages are accessible and responsive at 1440 (20.3s)
+  ok 155 tests\browser\design.spec.ts:99:3 › member screens have accessible controls at 1440px (12.0s)
+  ok 157 tests\browser\session-loading.spec.ts:148:1 › whole-course enrollment dialog wraps long content and blocks dismissal during submission (2.6s)
+  ok 158 tests\browser\session-loading.spec.ts:197:3 › access guard rejects MEMBER with active=false (1.0s)
+  ok 159 tests\browser\session-loading.spec.ts:197:3 › access guard rejects UNKNOWN with active=true (2.0s)
+  ok 156 tests\browser\audit.spec.ts:44:3 › all portals responsive at 1024px (29.0s)
+  ok 143 tests\browser\accessibility.spec.ts:32:3 › accessibility at 1440px (1.7m)
+  ok 161 tests\browser\accessibility.spec.ts:129:1 › mobile keyboard navigation traps focus, closes on Escape, restores focus (1.6s)
+  ok 162 tests\browser\accessibility.spec.ts:160:1 › manager modal blocks dismissal while saving and restores focus after closing (2.0s)
+  ok 160 tests\browser\audit.spec.ts:44:3 › all portals responsive at 1280px (28.4s)
+  ok 163 tests\browser\audit.spec.ts:44:3 › all portals responsive at 1440px (29.6s)
+  ok 164 tests\browser\audit.spec.ts:44:3 › all portals responsive at 1920px (20.3s)
+
+
+  1) tests\browser\accessibility.spec.ts:32:3 › accessibility at 375px ─────────────────────────────
+
+    Test timeout of 180000ms exceeded.
+
+    Error: page.goto: Test ended.
+    Call log:
+      - navigating to "http://localhost:5173/receptionist/payments", waiting until "load"
+
+
+      39 |       const page = await context.newPage();
+      40 |       await setup(page, role);
+    > 41 |       await page.goto(path);
+         |                  ^
+      42 |       await expect(page.locator("main h1")).toBeVisible();
+      43 |       await expect(page.locator(".loading, .skeleton")).toHaveCount(0);
+      44 |       if (
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\accessibility.spec.ts:41:18
+
+    Error Context: test-results\accessibility-accessibility-at-375px\error-context.md
+
+  2) tests\browser\ai.spec.ts:4:1 › public chat sends real history, renders Markdown and recovers from errors 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'Mở trợ lý AI' })
+
+
+      21 |   });
+      22 |   await page.goto("/");
+    > 23 |   await page.getByRole("button", { name: "Mở trợ lý AI" }).click();
+         |                                                            ^
+      24 |   await page
+      25 |     .getByRole("textbox", { name: "Câu hỏi cho AI" })
+      26 |     .fill("  Có lớp Yoga không?  ");
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\ai.spec.ts:23:60
+
+    Error Context: test-results\ai-public-chat-sends-real--dc14a-wn-and-recovers-from-errors\error-context.md
+
+  3) tests\browser\app.spec.ts:80:1 › manager routes, real-schema forms and mobile navigation render 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('main').getByRole('status')
+    Expected substring: "Đã lưu thay đổi"
+    Error: strict mode violation: getByRole('main').getByRole('status') resolved to 2 elements:
+        1) <div role="status" class="connection-status">…</div> aka getByRole('status').filter({ hasText: 'Bạn đang ngoại tuyến. Kiểm' })
+        2) <div role="status" class="success">…</div> aka getByText('Đã lưu thay đổi thành công.Đó')
+
+    Call log:
+      - Expect "toContainText" getByRole('main').getByRole('status') with timeout 5000ms
+      - waiting for getByRole('main').getByRole('status')
+
+
+      161 |     areaType: "INDOOR",
+      162 |   });
+    > 163 |   await expect(page.getByRole("main").getByRole("status")).toContainText(
+          |                                                            ^
+      164 |     "Đã lưu thay đổi",
+      165 |   );
+      166 |   await page.setViewportSize({ width: 390, height: 844 });
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\app.spec.ts:163:60
+
+    Error Context: test-results\app-manager-routes-real-sc-8f372-nd-mobile-navigation-render\error-context.md
+
+  4) tests\browser\app.spec.ts:178:1 › member cannot enter manager routes ──────────────────────────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('heading', { name: 'Tổng quan hội viên', exact: true })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('heading', { name: 'Tổng quan hội viên', exact: true }) with timeout 5000ms
+      - waiting for getByRole('heading', { name: 'Tổng quan hội viên', exact: true })
+
+
+      185 |   await expect(
+      186 |     page.getByRole("heading", { name: "Tổng quan hội viên", exact: true }),
+    > 187 |   ).toBeVisible();
+          |     ^
+      188 |   await page.goto("/manager/dashboard");
+      189 |   await expect(
+      190 |     page.getByRole("heading", { name: "Không có quyền truy cập" }),
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\app.spec.ts:187:5
+
+    Error Context: test-results\app-member-cannot-enter-manager-routes\error-context.md
+
+  5) tests\browser\audit.spec.ts:44:3 › all portals responsive at 320px ────────────────────────────
+
+    Test timeout of 120000ms exceeded.
+
+    Error: page.goto: Test ended.
+    Call log:
+      - navigating to "http://localhost:5173/receptionist/profile", waiting until "load"
+
+
+      53 |       page.on("pageerror", (e) => issues.push(e.message));
+      54 |       for (const route of routes) {
+    > 55 |         await page.goto("/" + base + "/" + route);
+         |                    ^
+      56 |         await expect(page.locator("main h1")).toBeVisible();
+      57 |         await expect(page.locator(".loading, .skeleton")).toHaveCount(0);
+      58 |         const overflow = await page.evaluate(
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\audit.spec.ts:55:20
+
+    Error Context: test-results\audit-all-portals-responsive-at-320px\error-context.md
+
+  6) tests\browser\chat-shortcuts.spec.ts:6:3 › chat composer and attachment remain accessible at 320px 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'Mở điểm danh nhanh' })
+
+
+      65 |     });
+      66 |     await page.goto("/member/membership");
+    > 67 |     await page.getByRole("button", { name: "Mở điểm danh nhanh" }).click();
+         |                                                                    ^
+      68 |     await expect(page.getByText("Sẵn sàng cho buổi tập?")).toBeVisible();
+      69 |     await page.keyboard.press("Escape");
+      70 |     await page
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\chat-shortcuts.spec.ts:67:68
+
+    Error Context: test-results\chat-shortcuts-chat-compos-ad150--remain-accessible-at-320px\error-context.md
+
+  7) tests\browser\coach.spec.ts:334:1 › loading has accessible skeleton and page has no serious axe findings 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('status', { name: 'Đang tải dữ liệu…' }).first()
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('status', { name: 'Đang tải dữ liệu…' }).first() with timeout 5000ms
+      - waiting for getByRole('status', { name: 'Đang tải dữ liệu…' }).first()
+
+
+      339 |   await expect(
+      340 |     page.getByRole("status", { name: "Đang tải dữ liệu…" }).first(),
+    > 341 |   ).toBeVisible();
+          |     ^
+      342 |   await page.locator(".coach-session").waitFor();
+      343 |   const results = await new AxeBuilder({ page }).analyze();
+      344 |   expect(
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\coach.spec.ts:341:5
+
+    Error Context: test-results\coach-loading-has-accessib-2f6cb-has-no-serious-axe-findings\error-context.md
+
+  8) tests\browser\design.spec.ts:6:3 › member product screens fit 375px ───────────────────────────
+
+    Test timeout of 90000ms exceeded.
+
+    Error: page.goto: Test timeout of 90000ms exceeded.
+    Call log:
+      - navigating to "http://localhost:5173/member/profile", waiting until "load"
+
+
+      21 |       "notifications",
+      22 |     ]) {
+    > 23 |       await page.goto(`/member/${route}`);
+         |                  ^
+      24 |       await expect(page.locator("main h1").first()).toBeVisible();
+      25 |       await expect(page.locator(".skeleton")).toHaveCount(0);
+      26 |       expect(
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\design.spec.ts:23:18
+
+    Error Context: test-results\design-member-product-screens-fit-375px\error-context.md
+
+  9) tests\browser\heuristics.spec.ts:12:5 › notification popover follows MANAGER theme at 1440 ────
+
+    Error: page.goto: net::ERR_NETWORK_CHANGED at http://localhost:5173/manager/dashboard
+    Call log:
+      - navigating to "http://localhost:5173/manager/dashboard", waiting until "load"
+
+
+      41 |         });
+      42 |       });
+    > 43 |       await page.goto(`/${base}/dashboard`);
+         |                  ^
+      44 |       const trigger = page.getByRole("button", {
+      45 |         name: "1 thông báo chưa đọc",
+      46 |         exact: true,
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\heuristics.spec.ts:43:18
+
+    Error Context: test-results\heuristics-notification-po-1c4fa-llows-MANAGER-theme-at-1440\error-context.md
+
+  10) tests\browser\heuristics.spec.ts:12:5 › notification popover follows MEMBER theme at 1440 ────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.screenshot: Test timeout of 30000ms exceeded.
+    Call log:
+      - taking page screenshot
+      - waiting for fonts to load...
+      - fonts loaded
+
+
+      77 |         .analyze();
+      78 |       expect(scan.violations).toEqual([]);
+    > 79 |       await page.screenshot({
+         |                  ^
+      80 |         path: `artifacts/heuristics/notifications-${role}-${width}.png`,
+      81 |       });
+      82 |       await page.keyboard.press("Escape");
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\heuristics.spec.ts:79:18
+
+    Error Context: test-results\heuristics-notification-popover-follows-MEMBER-theme-at-1440\error-context.md
+
+  11) tests\browser\heuristics.spec.ts:153:1 › manager clears filters and sees browser offline state 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('.connection-status')
+    Expected: 0
+    Received: 1
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('.connection-status') with timeout 5000ms
+      - waiting for locator('.connection-status')
+        13 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      165 |   );
+      166 |   await context.setOffline(false);
+    > 167 |   await expect(page.locator(".connection-status")).toHaveCount(0);
+          |                                                    ^
+      168 | });
+      169 |
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\heuristics.spec.ts:167:52
+
+    Error Context: test-results\heuristics-manager-clears--d957f--sees-browser-offline-state\error-context.md
+
+  12) tests\browser\member-style-preview.spec.ts:5:1 › member visual review ────────────────────────
+
+    Test timeout of 90000ms exceeded.
+
+    Error: page.goto: Test timeout of 90000ms exceeded.
+    Call log:
+      - navigating to "http://localhost:5173/member/membership", waiting until "load"
+
+
+      63 |   await page.setViewportSize({ width: 390, height: 844 });
+      64 |   for (const route of ["classes", "schedule", "membership", "payments"]) {
+    > 65 |     await page.goto(`/member/${route}`);
+         |                ^
+      66 |     await page.waitForTimeout(400);
+      67 |     await page.screenshot({
+      68 |       path: `test-results/member-style-mobile-${route}.png`,
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\member-style-preview.spec.ts:65:16
+
+    Error Context: test-results\member-style-preview-member-visual-review\error-context.md
+
+  13) tests\browser\password-reset.spec.ts:3:1 › reset flow handles invalid OTP, resend and success on mobile 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.goto: Test timeout of 30000ms exceeded.
+    Call log:
+      - navigating to "http://localhost:5173/login", waiting until "load"
+
+
+      41 |     });
+      42 |   });
+    > 43 |   await page.goto("/login");
+         |              ^
+      44 |   await page.getByRole("link", { name: "Quên mật khẩu?" }).click();
+      45 |   await expect(page).toHaveURL(/\/forgot-password$/);
+      46 |   await expect(
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\password-reset.spec.ts:43:14
+
+    Error Context: test-results\password-reset-reset-flow--d8f3d-esend-and-success-on-mobile\error-context.md
+
+  14) tests\browser\portal-theme.spec.ts:15:5 › MANAGER shares the member design language at 375px ─
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.goto: Test timeout of 30000ms exceeded.
+    Call log:
+      - navigating to "http://localhost:5173/manager/activity-planner", waiting until "load"
+
+
+      19 |       await page.setViewportSize({ width, height: 960 });
+      20 |       for (const route of routes) {
+    > 21 |         await page.goto(`/${base}/${route}`);
+         |                    ^
+      22 |         await expect(page.locator("main h1")).toBeVisible();
+      23 |         await expect(page.locator(".skeleton, .loading")).toHaveCount(0);
+      24 |         await expect(page.locator(".app-layout")).toHaveClass(/portal-theme/);
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\portal-theme.spec.ts:21:20
+
+    Error Context: test-results\portal-theme-MANAGER-share-37238-er-design-language-at-375px\error-context.md
+
+  15) tests\browser\portal-theme.spec.ts:15:5 › MANAGER shares the member design language at 1440px 
+
+    Error: page.goto: net::ERR_NETWORK_CHANGED at http://localhost:5173/manager/dashboard
+    Call log:
+      - navigating to "http://localhost:5173/manager/dashboard", waiting until "load"
+
+
+      19 |       await page.setViewportSize({ width, height: 960 });
+      20 |       for (const route of routes) {
+    > 21 |         await page.goto(`/${base}/${route}`);
+         |                    ^
+      22 |         await expect(page.locator("main h1")).toBeVisible();
+      23 |         await expect(page.locator(".skeleton, .loading")).toHaveCount(0);
+      24 |         await expect(page.locator(".app-layout")).toHaveClass(/portal-theme/);
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\portal-theme.spec.ts:21:20
+
+    Error Context: test-results\portal-theme-MANAGER-share-43d2d-r-design-language-at-1440px\error-context.md
+
+  16) tests\browser\public.spec.ts:5:3 › public pages are responsive and accessible at 375px ───────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: frame.evaluate: Test timeout of 30000ms exceeded.
+
+      17 |         ),
+      18 |       ).toBe(true);
+    > 19 |       const violations = (await new AxeBuilder({ page }).analyze()).violations;
+         |                           ^
+      20 |       expect(
+      21 |         violations.map((v) => ({
+      22 |           id: v.id,
+        at AxeBuilder.runPartialRecursive (C:\WDP\Sports-Center-Management-System\FE\node_modules\@axe-core\playwright\dist\index.mjs:283:34)
+        at AxeBuilder.analyze (C:\WDP\Sports-Center-Management-System\FE\node_modules\@axe-core\playwright\dist\index.mjs:210:28)
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\public.spec.ts:19:27
+
+    Error Context: test-results\public-public-pages-are-responsive-and-accessible-at-375px\error-context.md
+
+  17) tests\browser\reception.spec.ts:28:1 › staff registers member through public registration without changing session 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('main').getByRole('status')
+    Expected substring: "Đã tạo tài khoản"
+    Error: strict mode violation: getByRole('main').getByRole('status') resolved to 2 elements:
+        1) <div role="status" class="connection-status">…</div> aka getByRole('status').filter({ hasText: 'Bạn đang ngoại tuyến. Kiểm' })
+        2) <p role="status" class="success">Đã tạo tài khoản hội viên. Có thể tìm hội viên và…</p> aka getByText('Đã tạo tài khoản hội viên. C')
+
+    Call log:
+      - Expect "toContainText" getByRole('main').getByRole('status') with timeout 5000ms
+      - waiting for getByRole('main').getByRole('status')
+
+
+      42 |     fullName: "Hội viên mới",
+      43 |   });
+    > 44 |   await expect(page.getByRole("main").getByRole("status")).toContainText(
+         |                                                            ^
+      45 |     "Đã tạo tài khoản",
+      46 |   );
+      47 |   expect(
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\reception.spec.ts:44:60
+
+    Error Context: test-results\reception-staff-registers--47039-on-without-changing-session\error-context.md
+
+  18) tests\browser\session-loading.spec.ts:75:3 › nested details remain readable at 375px ─────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'Xem chi tiết', exact: true }).first()
+
+
+      80 |       .getByRole("button", { name: "Xem chi tiết", exact: true })
+      81 |       .first()
+    > 82 |       .click();
+         |        ^
+      83 |     const dialog = page.getByRole("dialog");
+      84 |     await expect(dialog.locator(".details").first()).toBeVisible();
+      85 |     expect(
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\session-loading.spec.ts:82:8
+
+    Error Context: test-results\session-loading-nested-details-remain-readable-at-375px\error-context.md
+
+  19) tests\browser\workflow.spec.ts:207:1 › manager gains finance screens while staff has no refund action 
+
+    Error: page.goto: net::ERR_NETWORK_CHANGED at http://localhost:5173/receptionist/payments
+    Call log:
+      - navigating to "http://localhost:5173/receptionist/payments", waiting until "load"
+
+
+      218 |   ).toBeVisible();
+      219 |   await setup(page, "RECEPTIONIST");
+    > 220 |   await page.goto("/receptionist/payments");
+          |              ^
+      221 |   await page.getByRole("button", { name: "Chọn", exact: true }).first().click();
+      222 |   await expect(
+      223 |     page.getByRole("button", { name: "Hoàn tiền", exact: true }),
+        at C:\WDP\Sports-Center-Management-System\FE\tests\browser\workflow.spec.ts:220:14
+
+    Error Context: test-results\workflow-manager-gains-fin-caff8--staff-has-no-refund-action\error-context.md
+
+  19 failed
+    tests\browser\accessibility.spec.ts:32:3 › accessibility at 375px ──────────────────────────────
+    tests\browser\ai.spec.ts:4:1 › public chat sends real history, renders Markdown and recovers from errors 
+    tests\browser\app.spec.ts:80:1 › manager routes, real-schema forms and mobile navigation render 
+    tests\browser\app.spec.ts:178:1 › member cannot enter manager routes ───────────────────────────
+    tests\browser\audit.spec.ts:44:3 › all portals responsive at 320px ─────────────────────────────
+    tests\browser\chat-shortcuts.spec.ts:6:3 › chat composer and attachment remain accessible at 320px 
+    tests\browser\coach.spec.ts:334:1 › loading has accessible skeleton and page has no serious axe findings 
+    tests\browser\design.spec.ts:6:3 › member product screens fit 375px ────────────────────────────
+    tests\browser\heuristics.spec.ts:12:5 › notification popover follows MANAGER theme at 1440 ─────
+    tests\browser\heuristics.spec.ts:12:5 › notification popover follows MEMBER theme at 1440 ──────
+    tests\browser\heuristics.spec.ts:153:1 › manager clears filters and sees browser offline state ─
+    tests\browser\member-style-preview.spec.ts:5:1 › member visual review ──────────────────────────
+    tests\browser\password-reset.spec.ts:3:1 › reset flow handles invalid OTP, resend and success on mobile 
+    tests\browser\portal-theme.spec.ts:15:5 › MANAGER shares the member design language at 375px ───
+    tests\browser\portal-theme.spec.ts:15:5 › MANAGER shares the member design language at 1440px ──
+    tests\browser\public.spec.ts:5:3 › public pages are responsive and accessible at 375px ─────────
+    tests\browser\reception.spec.ts:28:1 › staff registers member through public registration without changing session 
+    tests\browser\session-loading.spec.ts:75:3 › nested details remain readable at 375px ───────────
+    tests\browser\workflow.spec.ts:207:1 › manager gains finance screens while staff has no refund action 
+  145 passed (6.1m)

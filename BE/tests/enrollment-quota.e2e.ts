@@ -17,6 +17,7 @@ import "dotenv/config";
 import type { AddressInfo } from "node:net";
 import app from "../src/app.js";
 import { prisma } from "../src/config/prisma.js";
+import { connectTestMongo, createIdentity, deleteIdentities, disconnectTestMongo } from "./helpers/identity.js";
 import { hashPassword } from "../src/utils/bcrypt.js";
 import { ensureActiveFreeSubscription } from "../src/modules/subscriptions/free-subscription.service.js";
 
@@ -93,23 +94,12 @@ const created = {
 type FixtureUser = { id: string; email: string; token: string; memberProfileId: string };
 
 async function createUser(
-  role: "MEMBER" | "COACH" | "STAFF" | "MANAGER",
+  role: "MEMBER" | "COACH" | "RECEPTIONIST" | "MANAGER",
   tag: string,
   hashedPassword: string
 ): Promise<FixtureUser> {
   const email = `e2e-quota-${RUN}-${tag.toLowerCase()}@example.com`;
-  const user = await prisma.user.create({
-    data: {
-      email,
-      password: hashedPassword,
-      fullName: `E2E Quota ${tag} ${RUN}`,
-      role,
-      ...(role === "MEMBER" ? { memberProfile: { create: {} } } : {}),
-      ...(role === "COACH" ? { coachProfile: { create: {} } } : {}),
-      ...(role === "MANAGER" ? { managerProfile: { create: {} } } : {}),
-    },
-    include: { memberProfile: true },
-  });
+  const user = await createIdentity({ email, password: hashedPassword, fullName: `E2E Quota ${tag} ${RUN}`, role });
   created.userIds.push(user.id);
   const memberProfileId = user.memberProfile?.id ?? "";
   if (memberProfileId) created.memberProfileIds.push(memberProfileId);
@@ -753,7 +743,7 @@ async function scenarioAuthorization(
   );
 
   check("COACH → 403", (await quota(coach.token)).status === 403);
-  check("STAFF → 403", (await quota(staff.token)).status === 403);
+  check("RECEPTIONIST → 403", (await quota(staff.token)).status === 403);
   check("MANAGER → 403 (giữ convention /enrollments/my là MEMBER-only)", (await quota(ctx.manager.token)).status === 403);
   check("Không token → 401", (await http("GET", "/enrollments/my/quota")).status === 401);
 
@@ -946,14 +936,14 @@ async function scenarioAccountProvisioning(ctx: Ctx): Promise<void> {
     sub2
   );
 
-  // --- 12d) COACH / STAFF / MANAGER KHÔNG được cấp subscription ---
+  // --- 12d) COACH / RECEPTIONIST / MANAGER KHÔNG được cấp subscription ---
   const coachCreated = await http("POST", "/users", {
     token: ctx.manager.token,
     body: { email: `e2e-quota-${RUN}-newcoach@example.com`, password: PASSWORD, fullName: `E2E NewCoach ${RUN}`, role: "COACH" },
   });
   const staffCreated = await http("POST", "/users", {
     token: ctx.manager.token,
-    body: { email: `e2e-quota-${RUN}-newstaff@example.com`, password: PASSWORD, fullName: `E2E NewStaff ${RUN}`, role: "STAFF" },
+    body: { email: `e2e-quota-${RUN}-newstaff@example.com`, password: PASSWORD, fullName: `E2E NewStaff ${RUN}`, role: "RECEPTIONIST" },
   });
   const managerCreated = await http("POST", "/users", {
     token: ctx.manager.token,
@@ -965,7 +955,7 @@ async function scenarioAccountProvisioning(ctx: Ctx): Promise<void> {
   check("POST /users COACH → 201, không có memberProfile", coachCreated.status === 201 && !coachCreated.body?.data?.memberProfile, coachCreated.body?.data);
   for (const [label, tracked] of [
     ["COACH", coachTracked],
-    ["STAFF", staffTracked],
+    ["RECEPTIONIST", staffTracked],
     ["MANAGER", managerTracked],
   ] as const) {
     const count = await prisma.membershipSubscription.count({ where: { member: { userId: tracked.userId } } });
@@ -1127,9 +1117,11 @@ async function cleanup(): Promise<void> {
   if (created.roomIds.length > 0) await prisma.room.deleteMany({ where: { id: { in: created.roomIds } } });
   if (created.planIds.length > 0) await prisma.membershipPlan.deleteMany({ where: { id: { in: created.planIds } } });
   if (created.userIds.length > 0) await prisma.user.deleteMany({ where: { id: { in: created.userIds } } });
-}
+  await deleteIdentities(created.userIds);
+  }
 
 async function main(): Promise<void> {
+  await connectTestMongo();
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));
   const port = (server.address() as AddressInfo).port;
@@ -1141,7 +1133,7 @@ async function main(): Promise<void> {
     await setupRoom();
     const manager = await createUser("MANAGER", "manager", hashed);
     const coach = await createUser("COACH", "coach", hashed);
-    const staff = await createUser("STAFF", "staff", hashed);
+    const staff = await createUser("RECEPTIONIST", "staff", hashed);
     const members: FixtureUser[] = [];
     for (let i = 1; i <= 10; i++) members.push(await createUser("MEMBER", `member${i}`, hashed));
 
@@ -1182,6 +1174,7 @@ async function main(): Promise<void> {
     }
     server.close();
     await prisma.$disconnect();
+    await disconnectTestMongo();
   }
 
   console.log("\n=== KẾT QUẢ ===");
@@ -1198,6 +1191,7 @@ async function main(): Promise<void> {
 main().catch(async (err) => {
   console.error("Suite lỗi nghiêm trọng:", err);
   await prisma.$disconnect();
+  await disconnectTestMongo();
   process.exitCode = 1;
 });
 

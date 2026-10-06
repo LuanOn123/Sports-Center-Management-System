@@ -17,8 +17,9 @@
           "enum": [
             "MEMBER",
             "COACH",
-            "STAFF",
-            "MANAGER"
+            "RECEPTIONIST",
+            "MANAGER",
+            "ADMIN"
           ]
         }
       },
@@ -97,8 +98,9 @@
           "enum": [
             "MEMBER",
             "COACH",
-            "STAFF",
-            "MANAGER"
+            "RECEPTIONIST",
+            "MANAGER",
+            "ADMIN"
           ]
         },
         "fitnessGoal": {
@@ -206,8 +208,9 @@
           "enum": [
             "MEMBER",
             "COACH",
-            "STAFF",
-            "MANAGER"
+            "RECEPTIONIST",
+            "MANAGER",
+            "ADMIN"
           ]
         }
       },
@@ -248,171 +251,6 @@
       "403",
       "404",
       "500"
-    ]
-  },
-  "GET /training-plans": {
-    "path": "/training-plans",
-    "method": "GET",
-    "summary": "GET /training-plans",
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ],
-    "parameters": [
-      {
-        "in": "query",
-        "name": "memberId",
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404"
-    ]
-  },
-  "POST /training-plans": {
-    "path": "/training-plans",
-    "method": "POST",
-    "summary": "POST /training-plans",
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ],
-    "parameters": [],
-    "body": {
-      "type": "object",
-      "properties": {
-        "memberId": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "coachId": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1
-        },
-        "description": {
-          "type": "string"
-        },
-        "startDate": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "endDate": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "memberId",
-        "coachId",
-        "name",
-        "startDate",
-        "endDate"
-      ]
-    },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404"
-    ]
-  },
-  "PATCH /training-plans/{id}": {
-    "path": "/training-plans/{id}",
-    "method": "PATCH",
-    "summary": "Change the coach of a training plan (Member changes own plan, Coach current plan, Manager any plan)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
-    ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "description": "TrainingPlan ID"
-      }
-    ],
-    "body": {
-      "type": "object",
-      "required": [
-        "coachId"
-      ],
-      "properties": {
-        "coachId": {
-          "type": "string",
-          "format": "uuid",
-          "description": "CoachProfile.id của HLV mới (khác HLV hiện tại)"
-        }
-      }
-    },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404",
-      "409",
-      "500"
-    ]
-  },
-  "POST /training-plans/results": {
-    "path": "/training-plans/results",
-    "method": "POST",
-    "summary": "POST /training-plans/results",
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ],
-    "parameters": [],
-    "body": {
-      "type": "object",
-      "properties": {
-        "planId": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "date": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "metrics": {
-          "type": "object"
-        },
-        "coachNote": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "planId",
-        "date"
-      ]
-    },
-    "statusCodes": [
-      "200",
-      "400",
-      "401",
-      "403",
-      "404"
     ]
   },
   "POST /subscriptions": {
@@ -2617,12 +2455,10 @@
       "properties": {
         "coachId": {
           "type": "string",
-          "format": "uuid",
-          "description": "CoachProfile ID"
+          "description": "CoachProfile ID (Mongo ObjectId 24-hex; UUID legacy vẫn được chấp nhận)"
         },
         "classId": {
           "type": "string",
-          "format": "uuid",
           "description": "Lớp học liên quan (tuỳ chọn)"
         },
         "rating": {
@@ -2668,8 +2504,7 @@
         "name": "coachId",
         "required": true,
         "schema": {
-          "type": "string",
-          "format": "uuid"
+          "type": "string"
         },
         "description": "CoachProfile ID cần xem đánh giá"
       },
@@ -2677,8 +2512,7 @@
         "in": "query",
         "name": "classId",
         "schema": {
-          "type": "string",
-          "format": "uuid"
+          "type": "string"
         },
         "description": "Lọc theo lớp học cụ thể (tuỳ chọn)"
       },
@@ -2740,8 +2574,7 @@
         "name": "id",
         "required": true,
         "schema": {
-          "type": "string",
-          "format": "uuid"
+          "type": "string"
         },
         "description": "Feedback ID"
       }
@@ -2770,8 +2603,7 @@
         "name": "id",
         "required": true,
         "schema": {
-          "type": "string",
-          "format": "uuid"
+          "type": "string"
         },
         "description": "Feedback ID"
       }
@@ -4042,8 +3874,7 @@
       "type": "object",
       "properties": {
         "receiverId": {
-          "type": "string",
-          "format": "uuid"
+          "type": "string"
         },
         "content": {
           "type": "string"
@@ -4105,8 +3936,7 @@
       "type": "object",
       "properties": {
         "targetId": {
-          "type": "string",
-          "format": "uuid"
+          "type": "string"
         }
       },
       "required": []
@@ -4404,6 +4234,66 @@
       "500"
     ]
   },
+  "POST /auth/forgot-password": {
+    "path": "/auth/forgot-password",
+    "method": "POST",
+    "summary": "Gửi OTP đặt lại mật khẩu qua email",
+    "security": [],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "required": [
+        "email"
+      ],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        }
+      }
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "500"
+    ]
+  },
+  "POST /auth/reset-password": {
+    "path": "/auth/reset-password",
+    "method": "POST",
+    "summary": "Đặt lại mật khẩu bằng OTP nhận qua email",
+    "security": [],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "required": [
+        "email",
+        "otp",
+        "newPassword"
+      ],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "otp": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 6,
+          "description": "Mã 6 chữ số nhận qua email"
+        },
+        "newPassword": {
+          "type": "string",
+          "minLength": 6
+        }
+      }
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "500"
+    ]
+  },
   "GET /attendance": {
     "path": "/attendance",
     "method": "GET",
@@ -4449,8 +4339,7 @@
           "format": "uuid"
         },
         "memberId": {
-          "type": "string",
-          "format": "uuid"
+          "type": "string"
         },
         "status": {
           "type": "string",
@@ -4898,63 +4787,1517 @@
       "500"
     ]
   },
-  "POST /auth/forgot-password": {
-    "path": "/auth/forgot-password",
+  "POST /ai/chat": {
+    "path": "/ai/chat",
     "method": "POST",
-    "summary": "Gửi OTP đặt lại mật khẩu qua email",
-    "security": [],
+    "summary": "Trò chuyện với Smart Chatbot Assistant",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
     "parameters": [],
     "body": {
       "type": "object",
       "required": [
-        "email"
+        "message"
       ],
       "properties": {
-        "email": {
-          "type": "string",
-          "format": "email"
+        "message": {
+          "type": "string"
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "assistant",
+                  "system"
+                ]
+              },
+              "content": {
+                "type": "string"
+              }
+            }
+          }
         }
+      },
+      "example": {
+        "message": "Trung tâm có gói tập nào và tuần này có lớp Yoga không?"
       }
     },
+    "statusCodes": [
+      "200",
+      "500",
+      "503"
+    ]
+  },
+  "GET /staff-candidates": {
+    "path": "/staff-candidates",
+    "method": "GET",
+    "summary": "Nhân sự có thể phân công",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "GET /coaches/{id}/specializations": {
+    "path": "/coaches/{id}/specializations",
+    "method": "GET",
+    "summary": "Chuyên môn huấn luyện viên",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "PUT /coaches/{id}/specializations": {
+    "path": "/coaches/{id}/specializations",
+    "method": "PUT",
+    "summary": "Chuyên môn huấn luyện viên",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "sportIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "sportIds"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "GET /leave-requests/{id}/affected": {
+    "path": "/leave-requests/{id}/affected",
+    "method": "GET",
+    "summary": "Buổi học cần xử lý khi nghỉ phép",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "GET /facilities": {
+    "path": "/facilities",
+    "method": "GET",
+    "summary": "Danh sách cơ sở",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "POST /facilities": {
+    "path": "/facilities",
+    "method": "POST",
+    "summary": "Tạo cơ sở",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "contactInfo": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string",
+          "default": "Asia/Ho_Chi_Minh"
+        }
+      },
+      "required": [
+        "code",
+        "name",
+        "address"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "GET /facilities/{facilityId}": {
+    "path": "/facilities/{facilityId}",
+    "method": "GET",
+    "summary": "Chi tiết cơ sở",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "facilityId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "PUT /facilities/{facilityId}": {
+    "path": "/facilities/{facilityId}",
+    "method": "PUT",
+    "summary": "Sửa cơ sở",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "facilityId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "contactInfo": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string",
+          "default": "Asia/Ho_Chi_Minh"
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      },
+      "required": []
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "POST /facilities/{facilityId}/staff": {
+    "path": "/facilities/{facilityId}/staff",
+    "method": "POST",
+    "summary": "Phân công nhân sự",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "facilityId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "MANAGER",
+            "COACH",
+            "RECEPTIONIST"
+          ]
+        }
+      },
+      "required": [
+        "userId",
+        "role"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "DELETE /facilities/{facilityId}/staff/{userId}/{role}": {
+    "path": "/facilities/{facilityId}/staff/{userId}/{role}",
+    "method": "DELETE",
+    "summary": "Gỡ phân công",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "facilityId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "userId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "role",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "PUT /rooms/{id}/capabilities": {
+    "path": "/rooms/{id}/capabilities",
+    "method": "PUT",
+    "summary": "Thiết bị và khả năng phòng",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "values"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "PUT /subjects/{id}/requirements": {
+    "path": "/subjects/{id}/requirements",
+    "method": "PUT",
+    "summary": "Yêu cầu bộ môn",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "values"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "GET /slots": {
+    "path": "/slots",
+    "method": "GET",
+    "summary": "Khung giờ",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "POST /slots": {
+    "path": "/slots",
+    "method": "POST",
+    "summary": "Tạo khung giờ",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "startMinute": {
+          "type": "integer"
+        },
+        "endMinute": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "startMinute",
+        "endMinute"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "GET /schedule-patterns": {
+    "path": "/schedule-patterns",
+    "method": "GET",
+    "summary": "Lịch lặp",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "POST /schedule-patterns": {
+    "path": "/schedule-patterns",
+    "method": "POST",
+    "summary": "Sinh lịch lặp",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "classId": {
+          "type": "string"
+        },
+        "roomId": {
+          "type": "string"
+        },
+        "slotId": {
+          "type": "string"
+        },
+        "weekdays": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "required": [
+        "classId",
+        "roomId",
+        "slotId",
+        "weekdays",
+        "startDate",
+        "endDate"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "GET /leave-requests": {
+    "path": "/leave-requests",
+    "method": "GET",
+    "summary": "Đơn nghỉ phép",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "POST /leave-requests": {
+    "path": "/leave-requests",
+    "method": "POST",
+    "summary": "Gửi đơn nghỉ phép",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "startTime",
+        "endTime",
+        "reason"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "PATCH /leave-requests/{id}": {
+    "path": "/leave-requests/{id}",
+    "method": "PATCH",
+    "summary": "Duyệt đơn và xử lý lịch",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "APPROVED",
+            "REJECTED"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "resolutions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "scheduleId": {
+                "type": "string"
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "REPLACE",
+                  "MOVE",
+                  "CANCEL"
+                ]
+              },
+              "coachId": {
+                "type": "string"
+              },
+              "roomId": {
+                "type": "string"
+              },
+              "startTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "endTime": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "scheduleId",
+              "action"
+            ]
+          }
+        }
+      },
+      "required": [
+        "status",
+        "reason",
+        "resolutions"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "GET /issues": {
+    "path": "/issues",
+    "method": "GET",
+    "summary": "Yêu cầu hỗ trợ",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "POST /issues": {
+    "path": "/issues",
+    "method": "POST",
+    "summary": "Gửi yêu cầu",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "description"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "GET /issues/{id}": {
+    "path": "/issues/{id}",
+    "method": "GET",
+    "summary": "Chi tiết yêu cầu",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "PUT /issues/{id}": {
+    "path": "/issues/{id}",
+    "method": "PUT",
+    "summary": "Sửa yêu cầu đang mở",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "description"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "DELETE /issues/{id}": {
+    "path": "/issues/{id}",
+    "method": "DELETE",
+    "summary": "Xóa yêu cầu đang mở",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "PATCH /issues/{id}": {
+    "path": "/issues/{id}",
+    "method": "PATCH",
+    "summary": "Phản hồi yêu cầu",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "OPEN",
+            "IN_PROGRESS",
+            "RESOLVED",
+            "CLOSED"
+          ]
+        },
+        "response": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "response"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "GET /audit-logs": {
+    "path": "/audit-logs",
+    "method": "GET",
+    "summary": "Nhật ký hoạt động",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "skip",
+        "in": "query",
+        "schema": {
+          "type": "integer"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "GET /counter-orders": {
+    "path": "/counter-orders",
+    "method": "GET",
+    "summary": "Đơn bán tại quầy",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "POST /counter-orders": {
+    "path": "/counter-orders",
+    "method": "POST",
+    "summary": "Tạo đơn chờ thanh toán",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "planId": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "CASH",
+            "BANK_TRANSFER"
+          ]
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "memberId",
+        "planId",
+        "method"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "POST /counter-orders/{id}/confirm": {
+    "path": "/counter-orders/{id}/confirm",
+    "method": "POST",
+    "summary": "Xác nhận thu tiền và kích hoạt gói",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "GET /subjects": {
+    "path": "/subjects",
+    "method": "GET",
+    "summary": "Get list of sports",
+    "security": [],
+    "parameters": [
+      {
+        "in": "query",
+        "name": "search",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Search by name"
+      },
+      {
+        "in": "query",
+        "name": "areaType",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "POOL",
+            "INDOOR",
+            "OUTDOOR"
+          ]
+        },
+        "description": "Filter sports supporting an area type"
+      },
+      {
+        "in": "query",
+        "name": "isActive",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ]
+        },
+        "description": "Filter by active status"
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer",
+          "default": 1
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer",
+          "default": 10
+        }
+      }
+    ],
+    "body": null,
     "statusCodes": [
       "200",
       "400",
       "500"
     ]
   },
-  "POST /auth/reset-password": {
-    "path": "/auth/reset-password",
+  "POST /subjects": {
+    "path": "/subjects",
     "method": "POST",
-    "summary": "Đặt lại mật khẩu bằng OTP nhận qua email",
-    "security": [],
+    "summary": "Create a new sport",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
     "parameters": [],
     "body": {
       "type": "object",
       "required": [
-        "email",
-        "otp",
-        "newPassword"
+        "name",
+        "areaTypes"
       ],
       "properties": {
-        "email": {
+        "name": {
           "type": "string",
-          "format": "email"
+          "example": "Yoga"
         },
-        "otp": {
+        "description": {
           "type": "string",
-          "minLength": 6,
-          "maxLength": 6,
-          "pattern": "^[0-9]{6}$"
+          "example": "Yoga class improves flexibility"
         },
-        "newPassword": {
-          "type": "string",
-          "minLength": 6
+        "areaTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "POOL",
+              "INDOOR",
+              "OUTDOOR"
+            ]
+          },
+          "minItems": 1,
+          "example": [
+            "INDOOR"
+          ],
+          "description": "Area types this sport supports (at least one)"
+        }
+      }
+    },
+    "statusCodes": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "409",
+      "500"
+    ]
+  },
+  "GET /subjects/{id}": {
+    "path": "/subjects/{id}",
+    "method": "GET",
+    "summary": "View sport details",
+    "security": [],
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "404",
+      "500"
+    ]
+  },
+  "PATCH /subjects/{id}": {
+    "path": "/subjects/{id}",
+    "method": "PATCH",
+    "summary": "Update sport",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "areaTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "POOL",
+              "INDOOR",
+              "OUTDOOR"
+            ]
+          },
+          "minItems": 1,
+          "description": "Area types this sport supports. Cannot remove a type used by an active Class."
+        },
+        "isActive": {
+          "type": "boolean"
         }
       }
     },
     "statusCodes": [
       "200",
       "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  "DELETE /subjects/{id}": {
+    "path": "/subjects/{id}",
+    "method": "DELETE",
+    "summary": "Deactivate sport (soft delete)",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
       "500"
     ]
   }

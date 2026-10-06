@@ -12,7 +12,7 @@ import {
   MemberPicker,
   Table,
 } from "../components";
-export function PaymentsPage({ role = "STAFF" }: { role?: string }) {
+export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
   const [member, setMember] = useState<RecordData | null>(null);
   const [record, setRecord] = useState(false);
   const [invoiceId, setInvoiceId] = useState("");
@@ -97,45 +97,73 @@ export function PaymentsPage({ role = "STAFF" }: { role?: string }) {
             </label>
             <ListState result={payments}>
               {(rows) => (
-                <Table
-                  rows={rows}
-                  columns={[
-                    ["amount", "Số tiền"],
-                    ["method", "Phương thức"],
-                    ["status", "Trạng thái"],
-                    ["createdAt", "Ngày tạo"],
-                  ]}
-                  actions={(row) => (
-                    <>
-                      <button
-                        className="button small"
-                        onClick={() => setPaymentId(String(row.id))}
-                      >
-                        Chi tiết
-                      </button>
-                      {Boolean(row.gateway) && (
-                        <small>
-                          Giao dịch online được chốt qua webhook/đối soát.
-                        </small>
-                      )}
-                      {row.activationStatus === "REQUIRES_REVIEW" && (
-                        <span role="status">
-                          Cần đối soát — chưa kích hoạt gói
-                        </span>
-                      )}
-                      <StatusAction
-                        operation="PATCH /payments/{id}/status"
-                        id={String(row.id)}
-                        statuses={paymentTransitions(
-                          String(row.status),
-                          role,
-                          row.gateway,
+                <>
+                  <dl className="payment-summary">
+                    <div>
+                      <dt>Giao dịch đang hiển thị</dt>
+                      <dd>{rows.length}</dd>
+                    </div>
+                    <div>
+                      <dt>Đã thu trong danh sách</dt>
+                      <dd>
+                        {money(
+                          rows
+                            .filter((r) => r.status === "SUCCESS")
+                            .reduce(
+                              (total, r) => total + (Number(r.amount) || 0),
+                              0,
+                            ),
                         )}
-                        explanation="Cập nhật thanh toán sẽ cập nhật hóa đơn tương ứng. Hoàn tiền ở đây chỉ ghi nhận trạng thái, không chuyển tiền qua ngân hàng và không tự hủy quyền lợi gói. Đối chiếu giao dịch thực tế trước khi xác nhận."
-                      />
-                    </>
-                  )}
-                />
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Chờ xử lý trong danh sách</dt>
+                      <dd>
+                        {rows.filter((r) => r.status === "PENDING").length}
+                      </dd>
+                    </div>
+                  </dl>
+                  <Table
+                    rows={rows}
+                    columns={[
+                      ["amount", "Số tiền"],
+                      ["method", "Phương thức"],
+                      ["status", "Trạng thái"],
+                      ["createdAt", "Ngày tạo"],
+                    ]}
+                    actions={(row) => (
+                      <>
+                        <button
+                          className="button small"
+                          onClick={() => setPaymentId(String(row.id))}
+                        >
+                          Chi tiết
+                        </button>
+                        {Boolean(row.gateway) && (
+                          <small>
+                            Giao dịch online được cập nhật sau khi hệ thống xác
+                            nhận thanh toán.
+                          </small>
+                        )}
+                        {row.activationStatus === "REQUIRES_REVIEW" && (
+                          <span role="status">
+                            Cần đối soát — chưa kích hoạt gói
+                          </span>
+                        )}
+                        <StatusAction
+                          operation="PATCH /payments/{id}/status"
+                          id={String(row.id)}
+                          statuses={paymentTransitions(
+                            String(row.status),
+                            role,
+                            row.gateway,
+                          )}
+                          explanation="Cập nhật thanh toán sẽ cập nhật hóa đơn tương ứng. Hoàn tiền ở đây chỉ ghi nhận trạng thái, không chuyển tiền qua ngân hàng và không tự hủy quyền lợi gói. Đối chiếu giao dịch thực tế trước khi xác nhận."
+                        />
+                      </>
+                    )}
+                  />
+                </>
               )}
             </ListState>
           </section>
