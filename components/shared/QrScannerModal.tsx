@@ -9,6 +9,8 @@ import { Icon } from './Icon';
 import type { AttendanceCredential } from '../../services/memberService';
 import { Colors } from '../../constants/theme';
 
+import { Haptic } from '../../lib/haptics';
+
 // Mã dự phòng: đúng 6 ký tự A-HJ-NP-Z2-9 (không dùng 0/O/1/I) — khớp quy tắc BE.
 // Khác với QR token (JWT dài) nên phải gửi đúng field, không thì BE luôn báo sai mã.
 const MANUAL_CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/;
@@ -25,6 +27,7 @@ export function QrScannerModal({ visible, onClose, onSubmitCredential, isSubmitt
   const [manualCode, setManualCode] = useState('');
 
   const handleClose = () => {
+    Haptic.light();
     setManualCode('');
     onClose();
   };
@@ -33,6 +36,7 @@ export function QrScannerModal({ visible, onClose, onSubmitCredential, isSubmitt
   // Camera luôn trả về đúng nội dung QR (JWT) nên gửi thẳng dưới field qrToken.
   const handleBarcodeScanned = ({ data }: { data: string }) => {
     if (isSubmitting) return;
+    Haptic.medium();
     onSubmitCredential({ qrToken: data });
   };
 
@@ -41,6 +45,7 @@ export function QrScannerModal({ visible, onClose, onSubmitCredential, isSubmitt
   const handleManualSubmit = () => {
     const raw = manualCode.trim();
     if (!raw) return;
+    Haptic.medium();
     const normalized = raw.toUpperCase().replace(/\s/g, '');
     if (MANUAL_CODE_RE.test(normalized)) {
       onSubmitCredential({ code: normalized });

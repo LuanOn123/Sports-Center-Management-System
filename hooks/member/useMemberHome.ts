@@ -5,6 +5,7 @@ import { useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { useMembershipData, usePendingRequest } from './useMembership';
 import { useUpcomingEnrollments } from './useEnrollments';
+import { Haptic } from '../../lib/haptics';
 
 export function useMemberHome(userId: string | undefined, memberId: string | undefined) {
   const {
@@ -34,6 +35,7 @@ export function useMemberHome(userId: string | undefined, memberId: string | und
   );
 
   const onRefresh = async () => {
+    Haptic.light();
     await Promise.all([refreshMembership(), refetchEnroll()]);
     await loadPending();
   };

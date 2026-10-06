@@ -1,15 +1,18 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
-  Platform, ActivityIndicator,
+  Platform, ActivityIndicator, Keyboard,
 } from 'react-native';
 import clsx from 'clsx';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Icon } from '../../components/shared/Icon';
 import { useAuth } from '../../context/AuthContext';
 import { useChatMessages, usePartnerName } from '../../hooks/shared/useChat';
+import { GENERAL_CHAT_ID } from '../../services/chatService';
 import { Colors } from '../../constants/theme';
 import { KeyboardAwareView } from '../../components/shared/KeyboardAwareView';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Haptic } from '../../lib/haptics';
 
 // toLocaleDateString('vi-VN', ...) không đáng tin trên RN/Hermes — ICU của máy
 // có thể trả dấu "-" thay vì "/" giữa ngày/tháng. Tự ghép chuỗi cho chắc.
@@ -33,25 +36,53 @@ function isSameDay(a: string, b: string) {
 export default function ChatScreen() {
   const { userId, name } = useLocalSearchParams<{ userId: string; name?: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const flatListRef = useRef<FlatList>(null);
   const [text, setText] = useState('');
   const textRef = useRef('');
 
   // ─── Hooks (logic) ──────────────────────────────────────────────────────────
-  const { messages, isLoading, handleSend } = useChatMessages(userId, user?.id);
+  const { messages, isLoading, handleSend, isGeneral } = useChatMessages(userId, user?.id);
   const partnerName = usePartnerName(userId, name);
+  const headerTitle = isGeneral ? 'Phòng chung' : partnerName;
+
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) {
+      const t = setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 100);
+      return () => clearTimeout(t);
+    }
+  }, [isLoading]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const subShow = Keyboard.addListener(showEvent, () => {
+      setIsKeyboardOpen(true);
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+    });
+    const subHide = Keyboard.addListener(hideEvent, () => {
+      setIsKeyboardOpen(false);
+    });
+    return () => {
+      subShow.remove();
+      subHide.remove();
+    };
+  }, []);
 
   const onSend = () => {
-    // Dùng textRef để tránh gửi trùng nếu onSend bị gọi liên tiếp
     const trimmed = textRef.current.trim();
     if (!trimmed) return;
     textRef.current = '';
     setText('');
+    Haptic.medium();
     handleSend(trimmed, user);
   };
 
   const handleBack = () => {
+    Haptic.light();
     if (router.canGoBack()) {
       router.back();
     } else {
@@ -59,18 +90,37 @@ export default function ChatScreen() {
     }
   };
 
+  const headerTopPadding = Math.max(insets.top, Platform.OS === 'android' ? 24 : 16) + 6;
+
   // ─── UI ─────────────────────────────────────────────────────────────────────
   return (
     <KeyboardAwareView className="flex-1 bg-bg-primary">
       {/* Header */}
-      <View className={clsx('flex-row items-center gap-md px-lg pb-md bg-bg-surface border-b border-border', Platform.OS === 'ios' ? 'pt-[54px]' : 'pt-xl')}>
-        <TouchableOpacity className="p-1" onPress={handleBack}>
+      <View
+        className="flex-row items-center gap-md px-lg pb-md border-b border-border"
+        style={{
+          paddingTop: headerTopPadding,
+          backgroundColor: Colors.bg.surface,
+          zIndex: 10,
+          elevation: 4,
+        }}
+      >
+        <TouchableOpacity className="p-1" onPress={handleBack} activeOpacity={0.7}>
           <Icon name="arrow-back" size={22} color={Colors.text.primary} />
         </TouchableOpacity>
         <View className="w-9 h-9 rounded-full bg-[#A3E63525] justify-center items-center">
-          <Text className="text-md font-bold font-bevn-bold text-primary">{partnerName[0]?.toUpperCase()}</Text>
+          {isGeneral ? (
+            <Icon name="group" size={18} color={Colors.primary} />
+          ) : (
+            <Text className="text-md font-bold font-bevn-bold text-primary">{partnerName[0]?.toUpperCase()}</Text>
+          )}
         </View>
-        <Text className="flex-1 text-md font-bold font-bevn-bold text-text-primary" numberOfLines={1}>{partnerName}</Text>
+        <View className="flex-1">
+          <Text className="text-md font-bold font-bevn-bold text-text-primary" numberOfLines={1}>{headerTitle}</Text>
+          {isGeneral && (
+            <Text className="text-xs text-text-secondary font-bevn-regular" numberOfLines={1}>Không gian chung của trung tâm</Text>
+          )}
+        </View>
       </View>
 
       {/* Messages */}
@@ -89,6 +139,9 @@ export default function ChatScreen() {
             const isMine = item.senderId === user?.id;
             const prevMsg = index > 0 ? messages[index - 1] : null;
             const showDateSep = !prevMsg || !isSameDay(prevMsg.createdAt, item.createdAt);
+            // Phòng chung có nhiều người gửi khác nhau — cần hiện tên để phân biệt,
+            // khác với chat 1-1 chỉ có đúng 1 đối phương (partnerName cố định).
+            const senderLabel = isGeneral ? (item.sender?.fullName ?? 'Người dùng') : partnerName;
 
             return (
               <View>
@@ -100,7 +153,7 @@ export default function ChatScreen() {
                 <View className={clsx('flex-row items-end mb-sm gap-sm', isMine && 'flex-row-reverse')}>
                   {!isMine && (
                     <View className="w-7 h-7 rounded-full bg-bg-elevated justify-center items-center mb-0.5">
-                      <Text className="text-xs font-bold font-bevn-bold text-text-secondary">{partnerName[0]?.toUpperCase()}</Text>
+                      <Text className="text-xs font-bold font-bevn-bold text-text-secondary">{senderLabel[0]?.toUpperCase()}</Text>
                     </View>
                   )}
                   <View
@@ -109,12 +162,19 @@ export default function ChatScreen() {
                       isMine ? 'bg-primary rounded-br-sm' : 'bg-bg-surface border border-border rounded-bl-sm'
                     )}
                   >
+                    {isGeneral && !isMine && (
+                      <Text className="text-xs font-bevn-semibold text-primary mb-0.5">{senderLabel}</Text>
+                    )}
                     {item.content ? (
                       <Text className={clsx('text-sm font-bevn-regular', isMine ? 'text-text-inverse' : 'text-text-primary')}>{item.content}</Text>
                     ) : null}
                     {item.fileUrl ? (
-                      <Text className={clsx('text-sm font-bevn-regular', isMine ? 'text-text-inverse' : 'text-text-primary')}>📎 Tệp đính kèm</Text>
+                      <View className="flex-row items-center gap-1">
+                        <Icon name="attach-file" size={14} color={isMine ? Colors.text.inverse : Colors.text.primary} />
+                        <Text className={clsx('text-sm font-bevn-regular', isMine ? 'text-text-inverse' : 'text-text-primary')}>Tệp đính kèm</Text>
+                      </View>
                     ) : null}
+
                     <Text
                       className="text-[10px] font-bevn-regular mt-1 self-end"
                       style={{ color: isMine ? Colors.text.inverse + 'AA' : Colors.text.muted }}
@@ -136,7 +196,13 @@ export default function ChatScreen() {
       )}
 
       {/* Input */}
-      <View className={clsx('flex-row items-end gap-sm px-lg py-md bg-bg-surface border-t border-border', Platform.OS === 'ios' ? 'pb-8' : 'pb-md')}>
+      <View
+        className="flex-row items-end gap-sm px-lg py-md border-t border-border"
+        style={{
+          paddingBottom: isKeyboardOpen ? 12 : Math.max(insets.bottom, 12),
+          backgroundColor: Colors.bg.surface,
+        }}
+      >
         <TextInput
           className="flex-1 bg-bg-elevated rounded-lg px-lg py-sm text-text-primary font-bevn-regular text-sm max-h-[100px] border border-border"
           value={text}
@@ -148,7 +214,7 @@ export default function ChatScreen() {
           placeholderTextColor={Colors.text.muted}
           multiline
           maxLength={1000}
-          blurOnSubmit={false}
+          submitBehavior="submit"
           returnKeyType="send"
           onSubmitEditing={onSend}
           onKeyPress={(e) => {

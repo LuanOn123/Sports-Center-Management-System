@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { Colors } from '../constants/theme';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AlertModal, AppLoadingScreen } from '../components';
+import { AlertModal, AppLoadingScreen, NoFacilityScreen } from '../components';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,10 +37,15 @@ function AuthGuard() {
 }
 
 function RootLayoutContent() {
-  const { isLoading } = useAuth();
+  const { isLoading, isAuthenticated, facilities } = useAuth();
 
   if (isLoading) {
     return <AppLoadingScreen message="Đang kiểm tra phiên đăng nhập..." />;
+  }
+
+  // Không có cơ sở thì BE từ chối gần như mọi API nghiệp vụ — báo rõ thay vì để màn hình toàn lỗi.
+  if (isAuthenticated && facilities.length === 0) {
+    return <NoFacilityScreen />;
   }
 
   return (
@@ -57,6 +62,8 @@ function RootLayoutContent() {
   );
 }
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     BeVietnamPro_400Regular,
@@ -70,14 +77,16 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <StatusBar style="light" />
-          <RootLayoutContent />
-          <AlertModal />
-        </AuthProvider>
-      </QueryClientProvider>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <StatusBar style="light" />
+            <RootLayoutContent />
+            <AlertModal />
+          </AuthProvider>
+        </QueryClientProvider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

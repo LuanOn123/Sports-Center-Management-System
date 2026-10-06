@@ -2,10 +2,10 @@
 // Business logic cho enrollments của hội viên — React Query + mutations
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMyEnrollments, cancelEnrollment, transferEnrollment } from '../../services/enrollmentService';
+import { getMyEnrollments, cancelEnrollment, transferEnrollment, getMyQuota, enrollWholeCourse } from '../../services/enrollmentService';
 import { showAlert, showConfirm } from '../../lib/alert';
 import { ApiError } from '../../lib/api';
-import type { Enrollment } from '../../lib/types';
+import type { ConcurrentClassQuota, Enrollment } from '../../lib/types';
 
 export function useMyEnrollments(status?: string, limit?: string) {
   return useQuery({
@@ -38,6 +38,16 @@ export function useUpcomingEnrollments() {
   return { ...query, upcoming };
 }
 
+/** Hook lấy quota lớp học song song của hội viên — GET /enrollments/my/quota */
+export function useMyQuota() {
+  return useQuery<{ data: ConcurrentClassQuota }, Error, ConcurrentClassQuota>({
+    queryKey: ['enrollment-quota'],
+    queryFn: getMyQuota,
+    select: (res) => res.data,
+    staleTime: 60_000, // 1 phút — quota thay đổi khi book/cancel
+  });
+}
+
 /** Hook cancel enrollment với confirm dialog */
 export function useCancelEnrollment() {
   const queryClient = useQueryClient();
@@ -47,6 +57,7 @@ export function useCancelEnrollment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-enrollments'] });
       queryClient.invalidateQueries({ queryKey: ['my-enrollments-upcoming'] });
+      queryClient.invalidateQueries({ queryKey: ['enrollment-quota'] });
       showAlert('Thành công', 'Đã hủy đăng ký ca học thành công.');
     },
     onError: (e) => {
@@ -91,3 +102,55 @@ export function useTransferEnrollment() {
   return mutation;
 }
 
+/**
+ * Hook đăng ký trọn khóa — POST /enrollments/bulk (all-or-nothing).
+ * Parse chi tiết lỗi từ BE 409 COURSE_ENROLLMENT_FAILED và hiện thành thông báo rõ ràng.
+ */
+export function useEnrollWholeCourse() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (classId: string) => enrollWholeCourse(classId),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['my-enrollments'] });
+      queryClient.invalidateQueries({ queryKey: ['my-enrollments-upcoming'] });
+      queryClient.invalidateQueries({ queryKey: ['enrollment-quota'] });
+      const d = res.data;
+      const lines: string[] = [];
+      if (d.enrolled > 0) lines.push(`Đăng ký mới: ${d.enrolled} buổi`);
+      if (d.reactivated > 0) lines.push(`Kích hoạt lại: ${d.reactivated} buổi`);
+      if (d.alreadyBooked > 0) lines.push(`Đã đặt trước: ${d.alreadyBooked} buổi`);
+      showAlert(
+        'Đăng ký trọn khóa thành công',
+        lines.join('\n') || `Đã xử lý ${d.totalSessions} buổi học.`
+      );
+
+    },
+    onError: (e) => {
+      if (e instanceof ApiError) {
+        // Thử parse errors.details[] từ BE 409 COURSE_ENROLLMENT_FAILED
+        const details = (e.errors as any)?.[0]?.details;
+        if (Array.isArray(details) && details.length > 0) {
+          const firstDetail = details[0];
+          showAlert('Không thể đăng ký trọn khóa', firstDetail.message ?? e.message);
+        } else {
+          showAlert('Không thể đăng ký trọn khóa', e.message);
+        }
+      } else {
+        showAlert('Lỗi', 'Đăng ký trọn khóa thất bại. Vui lòng thử lại.');
+      }
+    },
+  });
+
+  const handleEnrollWholeCourse = (classId: string, className: string) => {
+    showConfirm(
+      'Đăng ký trọn khóa',
+      `Đăng ký toàn bộ các buổi học sắp tới của lớp "${className}"?\n\nThao tác này áp dụng tất cả hoặc không buổi nào.`,
+      () => mutation.mutate(classId),
+      undefined,
+      'Đăng ký ngay'
+    );
+  };
+
+  return { handleEnrollWholeCourse, isPending: mutation.isPending };
+}

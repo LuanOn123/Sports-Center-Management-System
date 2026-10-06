@@ -6,8 +6,10 @@ import {
 import clsx from 'clsx';
 import { useRouter } from 'expo-router';
 import { Icon } from '../../components/shared/Icon';
+import { ScreenHeader } from '../../components/shared/ScreenHeader';
 import { useNotifications } from '../../hooks/shared/useNotifications';
 import { Colors } from '../../constants/theme';
+import { Haptic } from '../../lib/haptics';
 import type { AppNotification, NotificationType } from '../../lib/types';
 
 const TYPE_ICON: Record<NotificationType, React.ComponentProps<typeof Icon>['name']> = {
@@ -91,45 +93,40 @@ export default function NotificationsScreen() {
   const hasUnread = notifications.some((n) => !n.isRead);
 
   const handlePress = (item: AppNotification) => {
+    Haptic.light();
     if (!item.isRead) markRead(item.id);
     const route = resolveNotificationRoute(item);
     if (route) router.push(route as any);
   };
 
+  const handleMarkAllRead = () => {
+    Haptic.medium();
+    markAllRead();
+  };
+
+  const handleRefresh = () => {
+    Haptic.light();
+    refetch();
+  };
+
   return (
     <View className="flex-1 bg-bg-primary">
-      {/* Header */}
-      <View
-        className={clsx(
-          'flex-row justify-between items-center px-md pb-sm bg-bg-surface border-b border-border mb-sm',
-          Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
-        )}
-      >
-        <TouchableOpacity
-          className="w-10 h-10 justify-center items-center rounded-full"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
-        >
-          <Icon name="arrow-back" size={24} color={Colors.text.primary} />
-        </TouchableOpacity>
-        <View className="flex-1 items-center px-xs">
-          <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center">Thông báo</Text>
-          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>
-            Cập nhật và tin tức từ trung tâm
-          </Text>
-        </View>
-        {hasUnread ? (
-          <TouchableOpacity
-            className="px-sm py-1 rounded-full border border-primary"
-            onPress={() => markAllRead()}
-            disabled={isMarkingAllRead}
-          >
-            <Text className="text-xs text-primary font-bevn-semibold">Đọc hết</Text>
-          </TouchableOpacity>
-        ) : (
-          <View className="w-10 h-10" />
-        )}
-      </View>
-
+      <ScreenHeader
+        title="Thông báo"
+        subtitle="Cập nhật và tin tức từ trung tâm"
+        rightAction={
+          hasUnread ? (
+            <TouchableOpacity
+              className="px-sm py-1 rounded-full border border-primary"
+              onPress={handleMarkAllRead}
+              disabled={isMarkingAllRead}
+              activeOpacity={0.7}
+            >
+              <Text className="text-xs text-primary font-bevn-semibold">Đọc hết</Text>
+            </TouchableOpacity>
+          ) : undefined
+        }
+      />
       {isLoading ? (
         <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} size="large" />
       ) : (
@@ -137,7 +134,7 @@ export default function NotificationsScreen() {
           data={notifications}
           keyExtractor={(n) => n.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
-          refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={Colors.primary} />}
+          refreshControl={<RefreshControl refreshing={false} onRefresh={handleRefresh} tintColor={Colors.primary} />}
           ListEmptyComponent={
             <View className="items-center mt-[60px] px-xl">
               <Icon name="notifications-none" size={52} color={Colors.text.muted} style={{ marginBottom: 12 }} />

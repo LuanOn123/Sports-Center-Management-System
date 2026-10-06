@@ -8,7 +8,9 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon } from '../shared/Icon';
+import { Avatar } from '../shared/Avatar';
 import { Brand } from '../shared/Brand';
+import { FacilityPicker } from '../shared/FacilityPicker';
 import { ClassCardSkeleton } from '../shared/Skeleton';
 import { useMemberHome } from '../../hooks/member/useMemberHome';
 import { useUnreadNotificationCount } from '../../hooks/shared/useNotifications';
@@ -46,8 +48,11 @@ interface MemberHomeViewProps {
   user: User | null;
 }
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 export function MemberHomeView({ user }: MemberHomeViewProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const memberId = user?.memberProfile?.id ?? user?.id;
   const unreadNotificationsCount = useUnreadNotificationCount();
 
@@ -65,7 +70,11 @@ export function MemberHomeView({ user }: MemberHomeViewProps) {
   return (
     <ScrollView
       className="flex-1 bg-bg-primary"
-      contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
+      contentContainerStyle={{
+        paddingHorizontal: 20,
+        paddingTop: Math.max(insets.top, 16) + 10,
+        paddingBottom: 32,
+      }}
       refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
     >
       {/* Top Bar Header */}
@@ -91,15 +100,14 @@ export function MemberHomeView({ user }: MemberHomeViewProps) {
           {/* Avatar Profile */}
           <TouchableOpacity
             onPress={() => router.push('/(tabs)/profile')}
-            className="w-10 h-10 rounded-full bg-primary justify-center items-center"
             activeOpacity={0.7}
           >
-            <Text className="text-base font-bold font-bevn-bold text-text-inverse">
-              {user?.fullName?.charAt(0)?.toUpperCase() ?? 'M'}
-            </Text>
+            <Avatar uri={user?.avatarUrl} name={user?.fullName} size={40} />
           </TouchableOpacity>
         </View>
       </View>
+
+      <FacilityPicker />
 
       {/* Greeting */}
       <View className="mb-xl">

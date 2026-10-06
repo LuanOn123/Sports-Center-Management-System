@@ -30,10 +30,29 @@ const schema = z
   });
 type FormData = z.infer<typeof schema>;
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Keyboard } from 'react-native';
+import { Haptic } from '../../lib/haptics';
+
 export default function RegisterScreen() {
   const { register: authRegister } = useAuth();
+  const insets = useSafeAreaInsets();
+  const scrollViewRef = React.useRef<ScrollView>(null);
   const [showPwd, setShowPwd] = useState(false);
   const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+
+  React.useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const subShow = Keyboard.addListener(showEvent, () => setIsKeyboardOpen(true));
+    const subHide = Keyboard.addListener(hideEvent, () => setIsKeyboardOpen(false));
+    return () => {
+      subShow.remove();
+      subHide.remove();
+    };
+  }, []);
+
   const { control, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -46,6 +65,7 @@ export default function RegisterScreen() {
   });
 
   const onSubmit = async (data: FormData) => {
+    Haptic.medium();
     try {
       await authRegister({
         email: data.email,
@@ -53,16 +73,34 @@ export default function RegisterScreen() {
         fullName: data.fullName,
         phone: data.phone || undefined,
       });
+      Haptic.success();
     } catch (e) {
+      Haptic.error();
       const msg = e instanceof ApiError ? e.message : 'Đăng ký thất bại. Vui lòng thử lại.';
       showAlert('Lỗi đăng ký', msg);
     }
   };
 
+  const handleInputFocus = (offset = 60) => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: offset, animated: true });
+    }, 100);
+  };
 
   return (
     <KeyboardAwareView className="flex-1 bg-bg-primary">
-      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        ref={scrollViewRef}
+        className="flex-1"
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: 20,
+          paddingTop: Math.max(insets.top, 24) + 10,
+          paddingBottom: Math.max(insets.bottom, 24) + 20,
+        }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View className="items-center mb-xl">
           <Brand size="lg" />
@@ -155,6 +193,7 @@ export default function RegisterScreen() {
                     secureTextEntry={!showPwd}
                     value={value ?? ''}
                     onChangeText={onChange}
+                    onFocus={() => handleInputFocus(180)}
                   />
                 )}
               />
@@ -180,6 +219,7 @@ export default function RegisterScreen() {
                     secureTextEntry={!showConfirmPwd}
                     value={value ?? ''}
                     onChangeText={onChange}
+                    onFocus={() => handleInputFocus(260)}
                   />
                 )}
               />

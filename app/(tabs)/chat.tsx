@@ -6,8 +6,10 @@ import {
 import clsx from 'clsx';
 import { useRouter } from 'expo-router';
 import { Icon } from '../../components/shared/Icon';
+import { ScreenHeader } from '../../components/shared/ScreenHeader';
 import { useAuth } from '../../context/AuthContext';
 import { useConversations, useContacts } from '../../hooks/shared/useChat';
+import { GENERAL_CHAT_ID } from '../../services/chatService';
 import { Colors } from '../../constants/theme';
 import type { ChatConversation } from '../../lib/types';
 
@@ -25,15 +27,17 @@ function timeAgo(iso: string) {
 const ROLE_LABEL: Record<string, string> = {
   COACH: 'Huấn luyện viên',
   MEMBER: 'Hội viên',
-  STAFF: 'Nhân viên',
+  RECEPTIONIST: 'Lễ tân',
   MANAGER: 'Quản lý',
+  ADMIN: 'Quản trị viên',
 };
 
 const ROLE_COLOR: Record<string, string> = {
   COACH: Colors.accent,
   MEMBER: Colors.status.scheduled,
-  STAFF: Colors.status.suspended,
+  RECEPTIONIST: Colors.status.suspended,
   MANAGER: Colors.primary,
+  ADMIN: Colors.primary,
 };
 
 export default function ChatTabScreen() {
@@ -78,27 +82,11 @@ export default function ChatTabScreen() {
   // ─── UI ─────────────────────────────────────────────────────────────────────
   return (
     <View className="flex-1 bg-bg-primary">
-      {/* Header */}
-      <View
-        className={clsx(
-          'flex-row justify-between items-center px-md pb-sm bg-bg-surface border-b border-border mb-md',
-          Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
-        )}
-      >
-        <TouchableOpacity
-          className="w-10 h-10 justify-center items-center rounded-full"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
-        >
-          <Icon name="arrow-back" size={24} color={Colors.text.primary} />
-        </TouchableOpacity>
-        <View className="flex-1 items-center px-xs">
-          <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center">Tin nhắn</Text>
-          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>
-            Liên lạc với huấn luyện viên & đội ngũ
-          </Text>
-        </View>
-        <View className="w-10 h-10" />
-      </View>
+      <ScreenHeader
+        title="Tin nhắn"
+        subtitle="Liên lạc với huấn luyện viên & đội ngũ"
+      />
+
 
       {/* Tìm kiếm theo tên/email — lọc client-side trên danh sách đã gộp */}
       <View className="px-xl pb-sm">
@@ -123,6 +111,24 @@ export default function ChatTabScreen() {
             </TouchableOpacity>
           )}
         </Pressable>
+      </View>
+
+      {/* Phòng chung — kênh chung toàn trung tâm, luôn ghim đầu danh sách (không lọc theo search) */}
+      <View className="px-xl pb-sm">
+        <TouchableOpacity
+          className="flex-row items-center gap-md rounded-lg p-lg border border-[#A3E63540] bg-[#A3E63510]"
+          onPress={() => router.push({ pathname: '/chat/[userId]', params: { userId: GENERAL_CHAT_ID, name: 'Phòng chung' } } as any)}
+          activeOpacity={0.7}
+        >
+          <View className="w-12 h-12 rounded-full bg-[#A3E63525] justify-center items-center">
+            <Icon name="group" size={22} color={Colors.primary} />
+          </View>
+          <View className="flex-1">
+            <Text className="text-md font-bold font-bevn-bold text-text-primary">Phòng chung</Text>
+            <Text className="text-xs text-text-muted font-bevn-regular" numberOfLines={1}>Không gian trao đổi của trung tâm</Text>
+          </View>
+          <Icon name="chevron-right" size={20} color={Colors.text.muted} />
+        </TouchableOpacity>
       </View>
 
       {isLoading ? (
@@ -188,8 +194,9 @@ export default function ChatTabScreen() {
                     {item.latestMessage.content}
                   </Text>
                 ) : item.latestMessage?.fileUrl ? (
-                  <Text className="text-sm text-text-muted font-bevn-regular" numberOfLines={1}>📎 Tệp đính kèm</Text>
+                  <Text className="text-sm text-text-muted font-bevn-regular" numberOfLines={1}>[Tệp đính kèm]</Text>
                 ) : (
+
                   <Text className="text-sm text-text-muted font-bevn-regular italic" numberOfLines={1}>Chưa có tin nhắn — bấm để bắt đầu</Text>
                 )}
               </View>

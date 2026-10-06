@@ -6,8 +6,10 @@ import {
 import clsx from 'clsx';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Icon } from '../shared/Icon';
+import { ScreenHeader } from '../shared/ScreenHeader';
 import { useMyEnrollments, useCancelEnrollment } from '../../hooks/member/useEnrollments';
 import { Colors } from '../../constants/theme';
+import { Haptic } from '../../lib/haptics';
 import type { Enrollment } from '../../lib/types';
 
 const WEEKDAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -157,7 +159,10 @@ export function MemberScheduleView() {
             {showCancel && item.status === 'BOOKED' && !past && (
               <TouchableOpacity
                 className="bg-[#EF444420] rounded-md px-md py-xs"
-                onPress={() => handleCancel(item.id, item.schedule?.class?.name)}
+                onPress={() => {
+                  Haptic.warning();
+                  handleCancel(item.id, item.schedule?.class?.name);
+                }}
                 disabled={cancelPending}
               >
                 <Text className="text-xs text-status-failed font-semibold font-bevn-semibold">Hủy</Text>
@@ -171,39 +176,27 @@ export function MemberScheduleView() {
 
   return (
     <View className="flex-1 bg-bg-primary">
-      {/* Header */}
-      <View
-        className={clsx(
-          'flex-row justify-between items-center px-md pb-sm bg-bg-surface border-b border-border mb-md',
-          Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
-        )}
-      >
-        <TouchableOpacity
-          className="w-10 h-10 justify-center items-center rounded-full"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
-        >
-          <Icon name="arrow-back" size={24} color={Colors.text.primary} />
-        </TouchableOpacity>
-        <View className="flex-1 items-center px-xs">
-          <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center">Lịch tập cá nhân</Text>
-          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>
-            Thời khóa biểu các ca học đã đặt của bạn theo tuần
-          </Text>
-        </View>
-        <View className="w-10 h-10" />
-      </View>
-
+      <ScreenHeader
+        title="Lịch tập cá nhân"
+        subtitle="Thời khóa biểu các ca học đã đặt của bạn theo tuần"
+      />
       {/* Mode tabs */}
       <View className="flex-row px-xl gap-sm mb-sm">
         <TouchableOpacity
           className={clsx('flex-1 py-xs rounded-md items-center border', mode === 'week' ? 'bg-primary border-primary' : 'bg-bg-surface border-border')}
-          onPress={() => setMode('week')}
+          onPress={() => {
+            Haptic.selection();
+            setMode('week');
+          }}
         >
           <Text className={clsx('text-sm font-bevn-medium', mode === 'week' ? 'text-text-inverse font-bold font-bevn-bold' : 'text-text-secondary')}>Lịch tuần</Text>
         </TouchableOpacity>
         <TouchableOpacity
           className={clsx('flex-1 py-xs rounded-md items-center border', mode === 'list' ? 'bg-primary border-primary' : 'bg-bg-surface border-border')}
-          onPress={() => setMode('list')}
+          onPress={() => {
+            Haptic.selection();
+            setMode('list');
+          }}
         >
           <Text className={clsx('text-sm font-bevn-medium', mode === 'list' ? 'text-text-inverse font-bold font-bevn-bold' : 'text-text-secondary')}>Danh sách</Text>
         </TouchableOpacity>
@@ -216,7 +209,7 @@ export function MemberScheduleView() {
           {/* Khung điều hướng tháng — cùng kiểu kẻ ngang với khung thứ/ngày bên dưới, không đóng khung */}
           <View className="px-xl mt-sm pt-md pb-md border-t border-divider">
             <View className="flex-row items-center justify-between">
-              <TouchableOpacity className="p-xs" onPress={() => setSelectedDay((d) => addDays(d, -7))}>
+              <TouchableOpacity className="p-xs" onPress={() => { Haptic.selection(); setSelectedDay((d) => addDays(d, -7)); }}>
                 <Icon name="arrow-back" size={18} color={Colors.text.secondary} />
               </TouchableOpacity>
               <View className="flex-1 items-center">
@@ -224,7 +217,7 @@ export function MemberScheduleView() {
                   {formatDayMonth(weekDays[0])} – {formatDayMonth(weekDays[6])}/{weekDays[6].getFullYear()}
                 </Text>
               </View>
-              <TouchableOpacity className="p-xs" onPress={() => setSelectedDay((d) => addDays(d, 7))}>
+              <TouchableOpacity className="p-xs" onPress={() => { Haptic.selection(); setSelectedDay((d) => addDays(d, 7)); }}>
                 <Icon name="arrow-forward" size={18} color={Colors.text.secondary} />
               </TouchableOpacity>
             </View>
@@ -244,7 +237,14 @@ export function MemberScheduleView() {
                 const selected = isSameDay(d, selectedDay);
                 const hasClass = upcomingBooked.some((e) => isSameDay(new Date(e.schedule!.startTime), d));
                 return (
-                  <TouchableOpacity key={d.toISOString()} className="flex-1 items-center gap-0.5" onPress={() => setSelectedDay(d)}>
+                  <TouchableOpacity
+                    key={d.toISOString()}
+                    className="flex-1 items-center gap-0.5"
+                    onPress={() => {
+                      Haptic.selection();
+                      setSelectedDay(d);
+                    }}
+                  >
                     <View
                       className={clsx(
                         'w-7 h-7 rounded-full items-center justify-center border',

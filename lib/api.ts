@@ -1,5 +1,7 @@
 import axios, { type AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
 import { storage } from './storage';
+import { emitSessionExpired } from './sessionEvents';
+import type { User } from './types';
 
 if (!process.env.EXPO_PUBLIC_API_BASE_URL) {
   throw new Error('[api] EXPO_PUBLIC_API_BASE_URL is not set. Please create a .env file (see .env.example).');
@@ -66,6 +68,36 @@ export function getRefreshToken() {
   return _refreshToken;
 }
 
+// ─── Facility context ────────────────────────────────────────────────────────
+// BE bắt buộc header X-Facility-Id trên hầu hết route nghiệp vụ (lớp, lịch, đăng ký,
+// điểm danh, gói tập...) — thiếu sẽ trả 400 FACILITY_CONTEXT_REQUIRED.
+
+let _facilityId = '';
+
+export async function initFacility() {
+  _facilityId = (await storage.getFacilityId()) || '';
+}
+
+export async function setFacilityId(id: string | null) {
+  _facilityId = id ?? '';
+  await storage.setFacilityId(id);
+}
+
+export function getFacilityId() {
+  return _facilityId;
+}
+
+// Mã lỗi thô của BE → câu tiếng Việt cho người dùng.
+const SERVER_MESSAGE_VI: Record<string, string> = {
+  FACILITY_CONTEXT_REQUIRED: 'Vui lòng chọn cơ sở để tiếp tục.',
+  CONFLICTING_FACILITY_CONTEXT: 'Thông tin cơ sở không khớp. Vui lòng thử lại.',
+  FORBIDDEN_SCOPE: 'Bạn không có quyền truy cập cơ sở này.',
+};
+
+function viMessage(message?: string) {
+  return message ? (SERVER_MESSAGE_VI[message] ?? message) : message;
+}
+
 // ─── Axios Instance ───────────────────────────────────────────────────────────
 
 const axiosInstance = axios.create({
@@ -81,6 +113,12 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (_accessToken) {
     config.headers.Authorization = `Bearer ${_accessToken}`;
+  }
+  // /auth không cần cơ sở; /facilities tự nhận facilityId ở path — gửi thêm header
+  // sẽ bị BE coi là CONFLICTING_FACILITY_CONTEXT.
+  const url = config.url ?? '';
+  if (_facilityId && !url.startsWith('/auth') && !url.startsWith('/facilities')) {
+    config.headers['X-Facility-Id'] = _facilityId;
   }
   return config;
 });
@@ -103,6 +141,9 @@ async function doRefresh() {
       const status = err.response?.status ?? 0;
       if ([400, 401, 403].includes(status)) {
         await clearTokens();
+        // Refresh token bị BE từ chối dứt khoát (thu hồi do đổi mật khẩu/khóa
+        // tài khoản/đổi role) — báo cho AuthContext tự đăng xuất, tránh "nửa phiên".
+        emitSessionExpired();
       }
       throw new ApiError(
         err.response?.data?.message || 'Phiên đăng nhập đã hết hạn.',
@@ -143,7 +184,7 @@ axiosInstance.interceptors.response.use(
     }
     const { status, data } = error.response;
     throw new ApiError(
-      data?.message || `Yêu cầu thất bại (${status})`,
+      viMessage(data?.message) || `Yêu cầu thất bại (${status})`,
       status,
       data?.errors,
     );
@@ -160,6 +201,7 @@ export async function apiRequest<T>(
     query?: Record<string, string | undefined>;
     signal?: AbortSignal;
     requiresAuth?: boolean;
+    headers?: Record<string, string>;
   } = {},
 ): Promise<Envelope<T>> {
   // Lọc bỏ các query param undefined/rỗng
@@ -176,6 +218,7 @@ export async function apiRequest<T>(
     params: Object.keys(params).length ? params : undefined,
     data: options.body,
     signal: options.signal,
+    headers: options.headers,
   };
 
   // requiresAuth chỉ quyết định có tự refresh token + retry khi gặp 401 hay không
@@ -215,4 +258,16 @@ export const api = {
 
   publicPost: <T>(path: string, body?: unknown) =>
     apiRequest<T>(path, 'POST', { body, requiresAuth: false }),
+
+  // Content-Type ép về multipart để transformRequest của axios không JSON-hoá
+  // FormData (mặc định instance là application/json) — thiếu dòng này ảnh sẽ
+  // không được gửi dưới dạng file nhị phân. Không cần set boundary thủ công:
+  // resolveConfig của axios tự xoá header này trước khi gửi thật (browser/RN tự
+  // sinh boundary đúng).
+  uploadAvatar: (formData: FormData) =>
+    apiRequest<User>('/auth/me/avatar', 'POST', {
+      body: formData,
+      requiresAuth: true,
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
 };

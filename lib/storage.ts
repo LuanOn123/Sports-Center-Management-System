@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 const KEYS = {
   ACCESS: 'pulse.access',
   REFRESH: 'pulse.refresh',
+  FACILITY: 'pulse.facility',
 } as const;
 
 const isWeb = Platform.OS === 'web';
@@ -55,6 +56,29 @@ export const storage = {
         SecureStore.deleteItemAsync(KEYS.ACCESS),
         SecureStore.deleteItemAsync(KEYS.REFRESH),
       ]);
+    } catch {
+      // Ignore storage errors
+    }
+  },
+  async getFacilityId(): Promise<string | null> {
+    try {
+      if (isWeb && typeof window !== 'undefined') {
+        return window.localStorage.getItem(KEYS.FACILITY);
+      }
+      return await SecureStore.getItemAsync(KEYS.FACILITY);
+    } catch {
+      return null;
+    }
+  },
+  async setFacilityId(id: string | null): Promise<void> {
+    try {
+      if (isWeb && typeof window !== 'undefined') {
+        if (id) window.localStorage.setItem(KEYS.FACILITY, id);
+        else window.localStorage.removeItem(KEYS.FACILITY);
+        return;
+      }
+      if (id) await SecureStore.setItemAsync(KEYS.FACILITY, id);
+      else await SecureStore.deleteItemAsync(KEYS.FACILITY);
     } catch {
       // Ignore storage errors
     }

@@ -19,7 +19,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize"
     },
     "web": {
       "name": "Pulse | Sports Center",
@@ -34,6 +35,12 @@
         "expo-camera",
         {
           "cameraPermission": "Pulse cần quyền camera để quét mã QR điểm danh vào lớp học."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Pulse cần quyền truy cập thư viện ảnh để bạn đổi ảnh đại diện."
         }
       ]
     ],

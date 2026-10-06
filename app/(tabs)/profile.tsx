@@ -15,12 +15,16 @@ import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import * as ImagePicker from 'expo-image-picker';
 import { Icon } from '../../components/shared/Icon';
+import { Avatar } from '../../components/shared/Avatar';
+import { ScreenHeader } from '../../components/shared/ScreenHeader';
 import { useAuth } from '../../context/AuthContext';
 import { api, ApiError } from '../../lib/api';
 import { showAlert, showConfirm } from '../../lib/alert';
 import { Colors } from '../../constants/theme';
 import { KeyboardAwareView } from '../../components/shared/KeyboardAwareView';
+import { Haptic } from '../../lib/haptics';
 
 const profileSchema = z.object({
   fullName: z.string().min(2, 'Ít nhất 2 ký tự'),
@@ -50,13 +54,24 @@ const LEVEL_OPTIONS = [
 const ROLE_LABEL: Record<string, string> = {
   MEMBER: 'Hội viên',
   COACH: 'Huấn luyện viên',
-  STAFF: 'Lễ tân',
+  RECEPTIONIST: 'Lễ tân',
   MANAGER: 'Quản lý',
+  ADMIN: 'Quản trị viên',
 };
 const LEVEL_LABEL: Record<string, string> = {
   BEGINNER: 'Cơ bản',
   INTERMEDIATE: 'Trung cấp',
   ADVANCED: 'Nâng cao',
+};
+
+const FIELD_SCROLL_OFFSETS: Record<string, number> = {
+  fullName: 60,
+  phone: 140,
+  fitnessGoal: 220,
+  trainingPreference: 320,
+  currentPassword: 80,
+  newPassword: 160,
+  confirmPassword: 240,
 };
 
 export default function ProfileScreen() {
@@ -115,24 +130,11 @@ export default function ProfileScreen() {
       }
     }
 
-    // Native (iOS/Android): measure and scroll ScrollView
-    const inputRef = inputRefs.current[fieldKey];
-    if (inputRef?.current && scrollViewRef.current) {
-      setTimeout(() => {
-        try {
-          const scrollNode = scrollViewRef.current?.getScrollableNode?.();
-          if (scrollNode && typeof inputRef.current.measureLayout === 'function') {
-            inputRef.current.measureLayout(
-              scrollNode,
-              (_left: number, top: number) => {
-                scrollViewRef.current?.scrollTo({ y: Math.max(0, top - 100), animated: true });
-              },
-              () => {}
-            );
-          }
-        } catch {}
-      }, 100);
-    }
+    // Native (iOS/Android): Scroll smoothly to exact position so active input is centered in view
+    const targetOffset = FIELD_SCROLL_OFFSETS[fieldKey] ?? 160;
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: targetOffset, animated: true });
+    }, 120);
   };
 
   const { control, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<ProfileForm>({
@@ -172,83 +174,155 @@ export default function ProfileScreen() {
   });
 
   const updateProfile = useMutation({
-    mutationFn: (data: ProfileForm) => api.patch('/auth/me', data),
+    mutationFn: (data: ProfileForm) => {
+      Haptic.medium();
+      return api.patch('/auth/me', data);
+    },
     onSuccess: async () => {
+      Haptic.success();
       await refreshUser();
       showAlert('Thành công', 'Hồ sơ đã được cập nhật!');
     },
     onError: (e) => {
+      Haptic.error();
       showAlert('Lỗi', e instanceof ApiError ? e.message : 'Cập nhật thất bại');
     },
   });
 
-  const changePwd = useMutation({
-    mutationFn: (data: PwdForm) =>
-      api.patch('/auth/me/change-password', {
-        currentPassword: data.currentPassword,
-        newPassword: data.newPassword,
-      }),
-    onSuccess: () => {
-      resetPwd();
-      showAlert('Thành công', 'Mật khẩu đã được thay đổi!');
+  const uploadAvatar = useMutation({
+    mutationFn: async (asset: ImagePicker.ImagePickerAsset) => {
+      Haptic.medium();
+      const formData = new FormData();
+      // Ưu tiên suy đuôi file từ mimeType (đáng tin trên mọi nền tảng) thay vì parse
+      // asset.uri — trên web/Android, uri có thể là "blob:..."/"content://..." không
+      // có phần đuôi, parse kiểu split('.').pop() sẽ ra rác.
+      const mimeExt = asset.mimeType?.split('/')[1]?.toLowerCase();
+      const ext = (mimeExt === 'jpeg' ? 'jpg' : mimeExt) || asset.fileName?.split('.').pop()?.toLowerCase() || 'jpg';
+      const mimeType = asset.mimeType || `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+      const fileName = asset.fileName || `avatar.${ext}`;
+
+      if (Platform.OS === 'web') {
+        // Web KHÔNG hỗ trợ FormData.append(field, {uri,name,type}) kiểu RN native —
+        // phải là Blob thật, nếu không multer nhận field "avatar" như text
+        // "[object Object]" thay vì file ⇒ BE báo "Avatar file is required".
+        const blob = await fetch(asset.uri).then((r) => r.blob());
+        formData.append('avatar', blob, fileName);
+      } else {
+        formData.append('avatar', { uri: asset.uri, name: fileName, type: mimeType } as unknown as Blob);
+      }
+      return api.uploadAvatar(formData);
+    },
+    onSuccess: async () => {
+      Haptic.success();
+      await refreshUser();
     },
     onError: (e) => {
+      Haptic.error();
+      showAlert('Lỗi', e instanceof ApiError ? e.message : 'Cập nhật ảnh đại diện thất bại');
+    },
+  });
+
+  const handlePickAvatar = async () => {
+    Haptic.light();
+    const { status, canAskAgain } = await ImagePicker.getMediaLibraryPermissionsAsync();
+    if (status !== ImagePicker.PermissionStatus.GRANTED) {
+      const req = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (req.status !== ImagePicker.PermissionStatus.GRANTED) {
+        showAlert(
+          'Thiếu quyền truy cập',
+          canAskAgain === false
+            ? 'Vui lòng cấp quyền thư viện ảnh cho Pulse trong Cài đặt thiết bị.'
+            : 'Cần quyền truy cập thư viện ảnh để đổi ảnh đại diện.'
+        );
+        return;
+      }
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+      showAlert('Ảnh quá lớn', 'Ảnh đại diện tối đa 5MB. Vui lòng chọn ảnh khác.');
+      return;
+    }
+    uploadAvatar.mutate(asset);
+  };
+
+  const changePwd = useMutation({
+    mutationFn: (data: PwdForm) => {
+      Haptic.medium();
+      return api.patch('/auth/me/change-password', {
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      });
+    },
+    onSuccess: () => {
+      Haptic.success();
+      resetPwd();
+      // BE thu hồi toàn bộ refresh token của các thiết bị khi đổi mật khẩu — chủ động
+      // đăng xuất ngay thay vì chờ tới request kế tiếp mới phát hiện qua 401.
+      showAlert('Thành công', 'Mật khẩu đã được thay đổi. Vui lòng đăng nhập lại.', () => {
+        logout();
+      });
+    },
+    onError: (e) => {
+      Haptic.error();
       showAlert('Lỗi', e instanceof ApiError ? e.message : 'Đổi mật khẩu thất bại');
     },
   });
 
   const updateLevel = useMutation({
-    mutationFn: (level: string) => api.patch('/auth/me', { trainingLevel: level }),
+    mutationFn: (level: string) => {
+      Haptic.selection();
+      return api.patch('/auth/me', { trainingLevel: level });
+    },
     onSuccess: async () => {
+      Haptic.success();
       await refreshUser();
       setEditingLevel(false);
     },
     onError: (e) => {
+      Haptic.error();
       showAlert('Lỗi', e instanceof ApiError ? e.message : 'Cập nhật thất bại');
     },
   });
 
   const handleLogout = () => {
+    Haptic.warning();
     showConfirm('Đăng xuất', 'Bạn có chắc muốn đăng xuất?', logout, undefined, 'Đăng xuất', true);
   };
 
   return (
     <KeyboardAwareView className="flex-1 bg-bg-primary">
-      {/* Header */}
-      <View
-        className={clsx(
-          'flex-row justify-between items-center px-md pb-sm bg-bg-surface border-b border-border',
-          Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
-        )}
-      >
-        <TouchableOpacity
-          className="w-10 h-10 justify-center items-center rounded-full"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
-        >
-          <Icon name="arrow-back" size={24} color={Colors.text.primary} />
-        </TouchableOpacity>
-        <View className="flex-1 items-center px-xs">
-          <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center">Hồ sơ cá nhân</Text>
-          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>
-            Thông tin tài khoản & cài đặt bảo mật
-          </Text>
-        </View>
-        <View className="w-10 h-10" />
-      </View>
+      <ScreenHeader
+        title="Hồ sơ cá nhân"
+        subtitle="Thông tin tài khoản & cài đặt bảo mật"
+      />
 
       <ScrollView
         ref={scrollViewRef}
         className="flex-1 bg-bg-primary"
-        contentContainerStyle={{ padding: 20, paddingBottom: isInputFocused ? 280 : 32 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: isInputFocused ? 200 : 40 }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
         {/* Avatar Header */}
         <View className="items-center mb-xl">
-          <View className="w-20 h-20 rounded-full bg-primary justify-center items-center mb-md">
-            <Text className="text-xxxl font-bold font-bevn-bold text-text-inverse">{user?.fullName?.charAt(0)?.toUpperCase()}</Text>
-          </View>
+          <TouchableOpacity className="mb-md" onPress={handlePickAvatar} disabled={uploadAvatar.isPending} activeOpacity={0.8}>
+            <Avatar uri={user?.avatarUrl} name={user?.fullName} size={80} />
+            <View className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-bg-elevated border-2 border-bg-primary justify-center items-center">
+              {uploadAvatar.isPending ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                <Icon name="photo-camera" size={14} color={Colors.text.primary} />
+              )}
+            </View>
+          </TouchableOpacity>
           <Text className="text-xl font-bold font-bevn-bold text-text-primary">{user?.fullName}</Text>
           <Text className="text-sm text-text-secondary mt-0.5 font-bevn-regular">{user?.email}</Text>
           <View className={clsx('flex-row items-center gap-1 mt-sm bg-[#A3E63520] rounded-full px-lg py-1', isCoach && 'bg-[#A3E63525] border border-[#A3E63540]')}>
