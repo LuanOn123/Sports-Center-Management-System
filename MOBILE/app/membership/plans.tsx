@@ -6,6 +6,7 @@ import {
 import clsx from 'clsx';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Icon } from '../../components/shared/Icon';
+import { ScreenHeader } from '../../components/shared/ScreenHeader';
 import { useAuth } from '../../context/AuthContext';
 import {
   useMembershipData, usePendingRequest, useCancelSubscription, estimateSelfCancelRefund,
@@ -165,24 +166,12 @@ export default function MembershipPlansScreen() {
   // ─── UI ─────────────────────────────────────────────────────────────────────
   return (
     <View className="flex-1 bg-bg-primary">
-      {/* Header with Back button */}
-      <View
-        className={clsx(
-          'flex-row justify-between items-center px-md pb-sm bg-bg-surface border-b border-border',
-          Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
-        )}
-      >
-        <TouchableOpacity className="w-10 h-10 justify-center items-center rounded-full" onPress={handleGoBack}>
-          <Icon name="arrow-back" size={24} color={Colors.text.primary} />
-        </TouchableOpacity>
-        <View className="flex-1 items-center px-xs">
-          <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center">Gói thành viên</Text>
-          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>
-            Các gói tập & quyền lợi hội viên
-          </Text>
-        </View>
-        <View className="w-10 h-10" />
-      </View>
+      <ScreenHeader
+        title="Gói thành viên"
+        subtitle="Các gói tập & quyền lợi hội viên"
+        onBackPress={handleGoBack}
+      />
+
 
       <ScrollView
         className="flex-1 bg-bg-primary"

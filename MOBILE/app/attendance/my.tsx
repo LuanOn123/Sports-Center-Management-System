@@ -9,8 +9,10 @@ import {
 import clsx from 'clsx';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Icon } from '../../components/shared/Icon';
+import { ScreenHeader } from '../../components/shared/ScreenHeader';
 import { useMyAttendance, useMyAttendanceSummary, useAppealPenalty } from '../../hooks/member/useAttendanceHistory';
 import { Colors } from '../../constants/theme';
+import { Haptic } from '../../lib/haptics';
 import type { AttendanceStatus, AttendanceBucketStatus, AttendancePenaltyStatus } from '../../lib/types';
 
 const STATUS_LABEL: Record<AttendanceStatus, string> = {
@@ -77,22 +79,29 @@ export default function MyAttendanceScreen() {
   };
 
   const onRefresh = async () => {
+    Haptic.light();
     await Promise.all([summary.refetch(), history.refetch()]);
   };
 
   const startAppeal = (id: string) => {
+    Haptic.light();
     setAppealingId(id);
     setReason('');
   };
 
   const submitAppeal = (id: string) => {
     if (reason.trim().length < 5) return;
+    Haptic.medium();
     appealMutation.mutate(
       { id, reason: reason.trim() },
       {
         onSuccess: () => {
+          Haptic.success();
           setAppealingId(null);
           setReason('');
+        },
+        onError: () => {
+          Haptic.error();
         },
       }
     );
@@ -104,23 +113,12 @@ export default function MyAttendanceScreen() {
 
   return (
     <View className="flex-1 bg-bg-primary">
-      <View
-        className={clsx(
-          'flex-row justify-between items-center px-md pb-sm bg-bg-surface border-b border-border',
-          Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
-        )}
-      >
-        <TouchableOpacity className="w-10 h-10 justify-center items-center rounded-full" onPress={handleGoBack}>
-          <Icon name="arrow-back" size={24} color={Colors.text.primary} />
-        </TouchableOpacity>
-        <View className="flex-1 items-center px-xs">
-          <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center">Chuyên cần & Điểm danh</Text>
-          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>
-            Tỉ lệ tham gia & lịch sử điểm danh
-          </Text>
-        </View>
-        <View className="w-10 h-10" />
-      </View>
+      <ScreenHeader
+        title="Chuyên cần & Điểm danh"
+        subtitle="Tỉ lệ tham gia & lịch sử điểm danh"
+        onBackPress={handleGoBack}
+      />
+
 
       <ScrollView
         className="flex-1 bg-bg-primary"

@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getConversations, getContacts, getMessages, markMessagesRead, sendMessage } from '../../services/chatService';
+import { getConversations, getContacts, getMessages, markMessagesRead, sendMessage, GENERAL_CHAT_ID } from '../../services/chatService';
 import { getSocket } from '../../lib/socket';
 import type { ChatMessage, ChatConversation, User } from '../../lib/types';
 
@@ -26,7 +26,8 @@ export function useConversations(currentUserId: string | undefined) {
     if (!socket) return;
 
     const handleNewMessage = (msg: ChatMessage) => {
-      if (msg.senderId !== currentUserId) {
+      // Tin phòng chung (receiverId null) không thuộc danh sách hội thoại 1-1 — bỏ qua.
+      if (msg.receiverId != null && msg.senderId !== currentUserId) {
         query.refetch();
       }
     };
@@ -52,10 +53,16 @@ export function useChatMessages(userId: string | undefined, currentUserId: strin
   const queryClient = useQueryClient();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
+  // Route param "general" = phòng chung — BE biểu diễn bằng receiverId null trên
+  // cùng bảng ChatMessage, không có targetId/endpoint riêng.
+  const isGeneral = userId === GENERAL_CHAT_ID;
+  const targetId = isGeneral ? undefined : userId;
+  const ready = Boolean(userId);
+
   const query = useQuery({
-    queryKey: ['chat-messages', userId],
-    queryFn: () => getMessages(userId!),
-    enabled: Boolean(userId),
+    queryKey: ['chat-messages', userId ?? null],
+    queryFn: () => getMessages(targetId),
+    enabled: ready,
   });
 
   // Sync REST data into local state
@@ -63,43 +70,44 @@ export function useChatMessages(userId: string | undefined, currentUserId: strin
     if (query.data?.data) setMessages(query.data.data);
   }, [query.data]);
 
-  // Mark as read on mount
+  // Mark as read on mount — phòng chung không có khái niệm đã đọc, BE trả count:0
   useEffect(() => {
-    if (userId) markMessagesRead(userId);
-  }, [userId]);
+    if (ready) markMessagesRead(targetId);
+  }, [ready, targetId]);
 
   // Listen for socket events
   useEffect(() => {
     const socket = getSocket();
-    if (!socket || !userId) return;
+    if (!socket || !ready) return;
 
     const handleNewMessage = (msg: ChatMessage) => {
-      if (
-        (msg.senderId === userId && msg.receiverId === currentUserId) ||
-        (msg.senderId === currentUserId && msg.receiverId === userId)
-      ) {
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === msg.id)) return prev;
-          return [...prev, msg];
-        });
-        if (msg.senderId === userId) {
-          markMessagesRead(userId);
-        }
+      const belongsHere = isGeneral
+        ? msg.receiverId == null
+        : (msg.senderId === userId && msg.receiverId === currentUserId) ||
+          (msg.senderId === currentUserId && msg.receiverId === userId);
+      if (!belongsHere) return;
+
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
+      if (!isGeneral && msg.senderId === userId) {
+        markMessagesRead(targetId);
       }
     };
 
     socket.on('newMessage', handleNewMessage);
     return () => { socket.off('newMessage', handleNewMessage); };
-  }, [userId, currentUserId]);
+  }, [userId, currentUserId, isGeneral, ready, targetId]);
 
   const handleSend = useCallback(
     async (content: string, currentUser?: User | null) => {
-      if (!userId || !content.trim()) return;
+      if (!ready || !content.trim()) return;
 
       const optMsg: ChatMessage = {
         id: `temp-${Date.now()}`,
         senderId: currentUserId ?? '',
-        receiverId: userId,
+        receiverId: targetId ?? null,
         content: content.trim(),
         isRead: false,
         createdAt: new Date().toISOString(),
@@ -108,17 +116,19 @@ export function useChatMessages(userId: string | undefined, currentUserId: strin
       setMessages((prev) => [...prev, optMsg]);
 
       try {
-        const res = await sendMessage({ receiverId: userId, content: content.trim() });
+        const res = await sendMessage({ receiverId: targetId, content: content.trim() });
         setMessages((prev) =>
           prev.map((m) => (m.id === optMsg.id ? res.data : m))
         );
-        queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+        if (!isGeneral) {
+          queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+        }
       } catch (err) {
         setMessages((prev) => prev.filter((m) => m.id !== optMsg.id));
         throw err;
       }
     },
-    [userId, currentUserId, queryClient]
+    [ready, targetId, isGeneral, currentUserId, queryClient]
   );
 
   return {
@@ -127,5 +137,6 @@ export function useChatMessages(userId: string | undefined, currentUserId: strin
     refetch: query.refetch,
     handleSend,
     send: handleSend,
+    isGeneral,
   };
 }

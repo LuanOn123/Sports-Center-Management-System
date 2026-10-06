@@ -7,6 +7,7 @@ import clsx from 'clsx';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Icon } from '../../components/shared/Icon';
+import { ScreenHeader } from '../../components/shared/ScreenHeader';
 import { api, ApiError } from '../../lib/api';
 import { showAlert, showConfirm } from '../../lib/alert';
 import { QrScannerModal } from '../../components/shared/QrScannerModal';
@@ -98,19 +99,10 @@ export default function ScheduleDetailScreen() {
   };
 
   const topNav = (
-    <View
-      className={clsx(
-        'flex-row items-center px-md pb-sm bg-bg-surface border-b border-border',
-        Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
-      )}
-    >
-      <TouchableOpacity className="w-10 h-10 justify-center items-center rounded-full" onPress={handleGoBack}>
-        <Icon name="arrow-back" size={24} color={Colors.text.primary} />
-      </TouchableOpacity>
-      <Text className="text-lg font-bold font-bevn-bold text-text-primary ml-sm" numberOfLines={1}>
-        {s?.class?.name ?? 'Chi tiết buổi học'}
-      </Text>
-    </View>
+    <ScreenHeader
+      title={s?.class?.name ?? 'Chi tiết buổi học'}
+      onBackPress={handleGoBack}
+    />
   );
 
   if (isLoading) {

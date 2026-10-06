@@ -4,7 +4,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
-import { getMembershipStatus, getMembershipPlans, getSubscriptions, cancelSubscription } from '../../services/membershipService';
+import { getMembershipStatus, getMembershipPlans, getMembershipPlanById, getSubscriptions, cancelSubscription } from '../../services/membershipService';
 import { storage } from '../../lib/storage';
 import type { MembershipStatus, MembershipTier, Subscription, PendingMembershipRequest, MembershipPlan } from '../../lib/types';
 
@@ -14,7 +14,7 @@ export function useMembershipStatus(memberId: string | undefined) {
   return useQuery({
     queryKey: ['membership-status', memberId],
     queryFn: () => getMembershipStatus(memberId!),
-    // BE chỉ cho MANAGER/STAFF gọi API này -> luôn 403 với MEMBER. Tắt hẳn,
+    // BE chỉ cho MANAGER/RECEPTIONIST/ADMIN gọi API này -> luôn 403 với MEMBER. Tắt hẳn,
     // dùng fallback tính từ subscriptions trong useMembershipData.
     enabled: false,
   });
@@ -26,6 +26,16 @@ export function useMembershipPlans() {
     queryFn: getMembershipPlans,
   });
 }
+
+export function useMembershipPlan(planId: string | undefined) {
+  return useQuery({
+    queryKey: ['membership-plan', planId],
+    queryFn: () => getMembershipPlanById(planId!),
+    enabled: Boolean(planId),
+  });
+}
+
+
 
 export function useSubscriptions(memberId: string | undefined) {
   return useQuery({

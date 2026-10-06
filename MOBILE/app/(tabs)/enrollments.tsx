@@ -18,11 +18,13 @@ import clsx from 'clsx';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Icon } from '../../components/shared/Icon';
+import { ScreenHeader } from '../../components/shared/ScreenHeader';
 import { ClassCardSkeleton } from '../../components/shared/Skeleton';
 import {
   useMyEnrollments,
   useCancelEnrollment,
   useTransferEnrollment,
+  useMyQuota,
 } from '../../hooks/member/useEnrollments';
 import { api } from '../../lib/api';
 import { Colors } from '../../constants/theme';
@@ -178,6 +180,53 @@ function EnrollmentCard({
   );
 }
 
+// ─── Quota Banner ─────────────────────────────────────────────────────────────
+
+function QuotaBanner() {
+  const { data: quota, isLoading } = useMyQuota();
+  if (isLoading || !quota) return null;
+
+  const TIER_LABEL: Record<string, string> = { FREE: 'Miễn phí', MEMBERSHIP: 'Hội viên', PREMIUM: 'Premium' };
+  const tierLabel = quota.tier ? (TIER_LABEL[quota.tier] ?? quota.tier) : null;
+  const isFull = quota.hasActiveSubscription && quota.remaining === 0;
+
+  return (
+    <View className={clsx(
+      'mx-xl mb-sm rounded-xl px-lg py-sm flex-row items-center border gap-2',
+      isFull ? 'bg-[#EF444412] border-[#EF444430]' : 'bg-[#A3E63510] border-[#A3E63530]'
+    )}>
+      <Icon
+        name={isFull ? 'block' : 'school'}
+        size={16}
+        color={isFull ? Colors.status.cancelled : Colors.status.active}
+      />
+      <View className="flex-1">
+        <Text className={clsx(
+          'text-xs font-bevn-semibold',
+          isFull ? 'text-status-cancelled' : 'text-status-active'
+        )}>
+          {quota.hasActiveSubscription
+            ? `${tierLabel ? `Gói ${tierLabel} · ` : ''}Quota: ${quota.used}/${quota.limit} lớp song song`
+            : 'Chưa có gói tập — mua gói để đặt lịch'}
+        </Text>
+      </View>
+      {quota.hasActiveSubscription && (
+        <View className={clsx(
+          'rounded-full px-sm py-0.5',
+          isFull ? 'bg-[#EF444420]' : 'bg-[#A3E63520]'
+        )}>
+          <Text className={clsx(
+            'text-xs font-bevn-bold',
+            isFull ? 'text-status-cancelled' : 'text-status-active'
+          )}>
+            {isFull ? 'Hết quota' : `Còn ${quota.remaining}`}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function EnrollmentsScreen() {
@@ -324,27 +373,14 @@ export default function EnrollmentsScreen() {
 
   return (
     <View className="flex-1 bg-bg-primary">
-      {/* Header */}
-      <View
-        className={clsx(
-          'flex-row justify-between items-center px-md pb-sm bg-bg-surface border-b border-border mb-md',
-          Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
-        )}
-      >
-        <TouchableOpacity
-          className="w-10 h-10 justify-center items-center rounded-full"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
-        >
-          <Icon name="arrow-back" size={24} color={Colors.text.primary} />
-        </TouchableOpacity>
-        <View className="flex-1 items-center px-xs">
-          <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center">Lớp học</Text>
-          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>
-            Quản lý các lớp học đã đăng ký của bạn
-          </Text>
-        </View>
-        <View className="w-10 h-10" />
-      </View>
+      <ScreenHeader
+        title="Lớp học"
+        subtitle="Quản lý các lớp học đã đăng ký của bạn"
+      />
+
+
+      {/* Quota chip — hiện số slot còn lại */}
+      <QuotaBanner />
 
       {/* Tab switcher: 3 tabs — Sắp tới, Hoàn thành, Đã hủy */}
       <View className="flex-row px-xl gap-sm mb-md">

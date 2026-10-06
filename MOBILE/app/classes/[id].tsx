@@ -7,11 +7,15 @@ import clsx from 'clsx';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Icon } from '../../components/shared/Icon';
+import { ScreenHeader } from '../../components/shared/ScreenHeader';
 import { api, ApiError } from '../../lib/api';
 import { showAlert, showConfirm } from '../../lib/alert';
 import { CoachRating } from '../../components/shared/CoachRating';
+import { useMyQuota, useEnrollWholeCourse } from '../../hooks/member/useEnrollments';
+import { useAuth } from '../../context/AuthContext';
 import type { Class, ClassSchedule, Enrollment, EnrollmentStatus } from '../../lib/types';
 import { Colors } from '../../constants/theme';
+import { Haptic } from '../../lib/haptics';
 
 const TYPE_LABEL: Record<string, string> = { REGULAR: 'Tiêu Chuẩn', PREMIUM: 'Cao Cấp' };
 
@@ -34,6 +38,12 @@ export default function ClassDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isMember = user?.role === 'MEMBER';
+
+  // Quota lớp học song song — chỉ dùng cho MEMBER
+  const { data: quota } = useMyQuota();
+  const { handleEnrollWholeCourse, isPending: bulkPending } = useEnrollWholeCourse();
 
   const handleGoBack = () => {
     if (router.canGoBack()) router.back();
@@ -63,12 +73,17 @@ export default function ClassDetailScreen() {
   });
 
   const bookMutation = useMutation({
-    mutationFn: (scheduleId: string) => api.post('/enrollments', { scheduleId }),
+    mutationFn: (scheduleId: string) => {
+      Haptic.medium();
+      return api.post('/enrollments', { scheduleId });
+    },
     onSuccess: () => {
+      Haptic.success();
       queryClient.invalidateQueries({ queryKey: ['my-enrollments'] });
       showAlert('Đặt lịch thành công', 'Lịch học đã được thêm vào danh sách của bạn.');
     },
     onError: (e) => {
+      Haptic.error();
       const msg = e instanceof ApiError ? e.message : 'Đặt lịch thất bại. Vui lòng thử lại.';
       showAlert('Lỗi', msg);
     },
@@ -86,19 +101,10 @@ export default function ClassDetailScreen() {
   });
 
   const topNav = (
-    <View
-      className={clsx(
-        'flex-row items-center px-md pb-sm bg-bg-surface border-b border-border',
-        Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
-      )}
-    >
-      <TouchableOpacity className="w-10 h-10 justify-center items-center rounded-full" onPress={handleGoBack}>
-        <Icon name="arrow-back" size={24} color={Colors.text.primary} />
-      </TouchableOpacity>
-      <Text className="text-lg font-bold font-bevn-bold text-text-primary ml-sm" numberOfLines={1}>
-        {cls?.name ?? 'Chi tiết lớp học'}
-      </Text>
-    </View>
+    <ScreenHeader
+      title={cls?.name ?? 'Chi tiết lớp học'}
+      onBackPress={handleGoBack}
+    />
   );
 
   if (isLoading) {
@@ -196,9 +202,65 @@ export default function ClassDetailScreen() {
         />
       )}
 
+      {/* Quota Banner — chỉ hiện với Member */}
+      {isMember && quota && (
+        <View className="bg-bg-surface rounded-xl p-lg mb-xl border border-border flex-row items-center">
+          <Icon name="school" size={20} color={Colors.primary} style={{ marginRight: 10 }} />
+          <View className="flex-1">
+            <Text className="text-sm font-bold font-bevn-bold text-text-primary">
+              Quota lớp học song song
+            </Text>
+            <Text className="text-xs text-text-secondary font-bevn-regular mt-0.5">
+              {quota.hasActiveSubscription
+                ? `Đang dùng ${quota.used}/${quota.limit} lớp · Còn lại ${quota.remaining} chỗ`
+                : 'Chưa có gói tập — cần mua gói để đặt lịch'}
+            </Text>
+          </View>
+          {quota.hasActiveSubscription && (
+            <View
+              className={clsx(
+                'rounded-full w-10 h-10 justify-center items-center',
+                quota.remaining === 0 ? 'bg-[#EF444420]' : 'bg-[#A3E63520]'
+              )}
+            >
+              <Text
+                className={clsx(
+                  'text-sm font-bold font-bevn-bold',
+                  quota.remaining === 0 ? 'text-status-cancelled' : 'text-status-active'
+                )}
+              >
+                {quota.remaining}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
       {/* Schedules */}
       <View className="mb-xl">
-        <Text className="text-lg font-bold font-bevn-bold text-text-primary mb-md">Lịch Học Sắp Tới</Text>
+        <View className="flex-row justify-between items-center mb-md">
+          <Text className="text-lg font-bold font-bevn-bold text-text-primary">Lịch Học Sắp Tới</Text>
+          {/* Nút đăng ký trọn khóa — chỉ hiện với Member khi có lịch */}
+          {isMember && schedules.length > 0 && (
+            <TouchableOpacity
+              className={clsx(
+                'flex-row items-center gap-1 rounded-lg px-md py-xs',
+                bulkPending ? 'bg-bg-elevated' : 'bg-primary'
+              )}
+              onPress={() => cls && handleEnrollWholeCourse(cls.id, cls.name)}
+              disabled={bulkPending}
+            >
+              {bulkPending ? (
+                <ActivityIndicator size="small" color={Colors.text.muted} />
+              ) : (
+                <>
+                  <Icon name="playlist-add-check" size={16} color={Colors.text.inverse} />
+                  <Text className="text-xs font-bold font-bevn-bold text-text-inverse">Trọn khóa</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
         {schedLoading ? (
           <ActivityIndicator color={Colors.primary} style={{ marginTop: 16 }} />
         ) : schedules.length === 0 ? (

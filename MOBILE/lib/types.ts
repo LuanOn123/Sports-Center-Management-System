@@ -1,7 +1,9 @@
 // TypeScript types derived from the API schema (operations.json snapshot 2026-09-12)
 
 export type Gender = 'MALE' | 'FEMALE' | 'OTHER';
-export type Role = 'MEMBER' | 'COACH' | 'STAFF' | 'MANAGER';
+export type Role = 'MEMBER' | 'COACH' | 'RECEPTIONIST' | 'MANAGER' | 'ADMIN';
+// Mobile chỉ phục vụ 2 role này — các role còn lại dùng bản web.
+export const MOBILE_ROLES: readonly Role[] = ['MEMBER', 'COACH'];
 export type TrainingLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
 export type SubscriptionStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | 'SUSPENDED';
 export type ScheduleStatus = 'SCHEDULED' | 'CANCELLED' | 'COMPLETED';
@@ -9,7 +11,9 @@ export type EnrollmentStatus = 'BOOKED' | 'CANCELLED' | 'COMPLETED';
 export type PaymentMethod = 'CASH' | 'BANK_TRANSFER';
 export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
 export type ClassType = 'REGULAR' | 'PREMIUM';
+export type AreaType = 'BADMINTON' | 'PICKLEBALL' | 'TENNIS' | 'GYM' | 'YOGA' | 'SWIMMING' | 'FOOTBALL' | 'BASKETBALL' | 'TABLE_TENNIS' | 'OTHER' | string;
 export type MembershipTier = 'FREE' | 'MEMBERSHIP' | 'PREMIUM';
+
 
 // ─── Auth / User ─────────────────────────────────────────────────────────────
 
@@ -34,6 +38,7 @@ export interface User {
   phone?: string;
   gender?: Gender;
   dateOfBirth?: string | null;
+  avatarUrl?: string | null;
   role: Role;
   isActive: boolean;
   createdAt: string;
@@ -45,6 +50,20 @@ export interface User {
 export interface LoginTokens {
   accessToken: string;
   refreshToken: string;
+}
+
+// ─── Facility (cơ sở) ────────────────────────────────────────────────────────
+// BE bắt buộc header X-Facility-Id trên hầu hết route nghiệp vụ; id là chuỗi
+// (vd. "legacy-main", "seed-fac-q1"), KHÔNG phải UUID.
+
+export interface Facility {
+  id: string;
+  code: string;
+  name: string;
+  address?: string | null;
+  contactInfo?: string | null;
+  timezone?: string | null;
+  isActive: boolean;
 }
 
 // ─── Membership ──────────────────────────────────────────────────────────────
@@ -116,6 +135,7 @@ export interface Sport {
   id: string;
   name: string;
   description?: string;
+  areaTypes?: string[];
   isActive: boolean;
   _count?: { classes: number };
 }
@@ -371,6 +391,153 @@ export interface AppNotification {
   createdAt: string;
 }
 
+// ─── Enrollment Quota ─────────────────────────────────────────────────────────
+
+export interface ConcurrentClassQuotaEntry {
+  classId: string;
+  className: string;
+  classType: ClassType;
+  scheduleId: string;
+  scheduleStartTime: string;
+  futureBookedScheduleCount: number;
+}
+
+export interface ConcurrentClassQuota {
+  hasActiveSubscription: boolean;
+  tier: MembershipTier | null;
+  limit: number;
+  used: number;
+  remaining: number;
+  classes: ConcurrentClassQuotaEntry[];
+}
+
+// ─── Bulk / Whole-Course Enrollment ──────────────────────────────────────────
+
+export type BulkEnrollStatus = 'ENROLLED' | 'ALREADY_BOOKED' | 'REACTIVATED';
+
+export interface BulkEnrollSessionResult {
+  scheduleId: string;
+  status: BulkEnrollStatus;
+  startTime?: string;
+}
+
+export interface WholeCourseEnrollmentResult {
+  classId: string;
+  className: string;
+  enrolled: number;
+  alreadyBooked: number;
+  reactivated: number;
+  totalSessions: number;
+  results: BulkEnrollSessionResult[];
+}
+
+// ─── Course Plan ──────────────────────────────────────────────────────────────
+
+export interface CoursePlanSlot {
+  weekday: number;
+  weekdayLabel: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+  roomId: string;
+  roomName: string;
+  sessionCount: number;
+  firstSessionStart: string;
+  lastSessionStart: string;
+  sessionIds: string[];
+}
+
+export interface CourseTimeSlot {
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+}
+
+export interface CoursePlanSession {
+  id: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+  weekday: number;
+  weekdayLabel: string;
+  timeLabel: string;
+  status: ScheduleStatus;
+  room: Room;
+  bookedCount: number;
+  remainingSlots: number;
+  isFull: boolean;
+  isBookable: boolean;
+  canBook: boolean;
+  myEnrollmentId: string | null;
+  myEnrollmentStatus: EnrollmentStatus | null;
+  conflictWith: {
+    classId: string;
+    className: string;
+    scheduleId: string;
+    startTime: string;
+    endTime: string;
+  } | null;
+}
+
+export interface CourseRegistrationBlocker {
+  code: string;
+  message: string;
+  sessionId?: string;
+  startTime?: string;
+  endTime?: string;
+  roomId?: string;
+  roomName?: string;
+  details?: Record<string, unknown>;
+}
+
+export interface CourseRegistration {
+  eligible: boolean;
+  blockers: CourseRegistrationBlocker[];
+  subscription: {
+    tier: MembershipTier;
+    endDate: string;
+    planName: string | null;
+  } | null;
+  quota: ConcurrentClassQuota | null;
+  penalty: {
+    id: string;
+    blockedUntil: string | null;
+    attendanceRate: number;
+    sampleSize: number;
+  } | null;
+  registeredSessions: number;
+  remainingSessionsToRegister: number;
+  isFullyRegistered: boolean;
+}
+
+export interface CoursePlan {
+  course: {
+    classId: string;
+    className: string;
+    description: string | null;
+    classType: ClassType;
+    areaType: AreaType;
+    capacity: number;
+    sports: Sport[];
+    totalSessions: number;
+    firstSessionStart: string;
+    lastSessionStart: string;
+    lastSessionEnd: string;
+    weekdays: number[];
+    weekdayLabels: string[];
+    timeSlots: CourseTimeSlot[];
+    rooms: Room[];
+    slots: CoursePlanSlot[];
+    availability: {
+      minRemainingSlots: number;
+      fullSessionCount: number;
+      isFullyBookable: boolean;
+    };
+  } | null;
+  sessions: CoursePlanSession[];
+  registration: CourseRegistration | null;
+}
+
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 export interface Pagination {
@@ -379,3 +546,4 @@ export interface Pagination {
   total: number;
   totalPages: number;
 }
+

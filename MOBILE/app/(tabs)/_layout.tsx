@@ -52,10 +52,15 @@ function NotificationsTabIcon({ color }: { color: string | any }) {
   );
 }
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { Haptic } from '../../lib/haptics';
+
 export default function TabLayout() {
   const { user } = useAuth();
   const tabs = getTabConfigForRole(user?.role);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -86,6 +91,9 @@ export default function TabLayout() {
     };
   }, []);
 
+  const bottomInset = insets.bottom;
+  const tabHeight = 60 + bottomInset;
+
   return (
     <Tabs
       screenOptions={{
@@ -97,8 +105,8 @@ export default function TabLayout() {
           backgroundColor: Colors.bg.surface,
           borderTopColor: Colors.border,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 84 : 68,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 10,
+          height: tabHeight,
+          paddingBottom: Math.max(bottomInset, 8),
           paddingTop: 6,
         },
         tabBarItemStyle: {
@@ -119,6 +127,11 @@ export default function TabLayout() {
         <Tabs.Screen
           key={tab.name}
           name={tab.name}
+          listeners={{
+            tabPress: () => {
+              Haptic.selection();
+            },
+          }}
           options={{
             title: tab.title,
             href: tab.visible ? undefined : null,

@@ -1,8 +1,6 @@
-// hooks/shared/useClasses.ts
-// Business logic cho classes & sports — Dùng chung cho Member & Coach
-
 import { useQuery } from '@tanstack/react-query';
-import { getClasses, getSports, ClassFilters } from '../../services/classService';
+import { getClasses, getSports, getCoursePlan, ClassFilters } from '../../services/classService';
+import type { CoursePlan } from '../../lib/types';
 
 export function useSports() {
   return useQuery({
@@ -19,3 +17,14 @@ export function useClasses(filters?: ClassFilters, options?: { enabled?: boolean
     enabled: options?.enabled ?? true,
   });
 }
+
+export function useCoursePlan(classId: string | undefined, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ['course-plan', classId],
+    queryFn: () => getCoursePlan(classId!),
+    select: (res) => res.data,
+    enabled: Boolean(classId) && (options?.enabled ?? true),
+  });
+}
+
+

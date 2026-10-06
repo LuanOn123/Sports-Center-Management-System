@@ -24,9 +24,16 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Keyboard } from 'react-native';
+
+import { Haptic } from '../../lib/haptics';
+
 export default function LoginScreen() {
   const { login } = useAuth();
+  const insets = useSafeAreaInsets();
   const [showPwd, setShowPwd] = useState(false);
+
   const { control, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -36,20 +43,33 @@ export default function LoginScreen() {
   });
 
   const onSubmit = async (data: FormData) => {
+    Haptic.medium();
     try {
       await login(data.email, data.password);
+      Haptic.success();
     } catch (e) {
+      Haptic.error();
       const msg = e instanceof ApiError ? e.message : 'Đăng nhập thất bại. Vui lòng thử lại.';
       showAlert('Lỗi đăng nhập', msg);
     }
   };
 
-
   return (
     <KeyboardAwareView className="flex-1 bg-bg-primary">
-      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'center',
+          paddingHorizontal: 20,
+          paddingTop: Math.max(insets.top, 24) + 10,
+          paddingBottom: Math.max(insets.bottom, 20) + 16,
+        }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Logo / Header */}
-        <View className="items-center mb-xxxl">
+        <View className="items-center mb-xl">
           <Brand size="lg" />
           <Text className="text-sm text-text-secondary mt-sm font-bevn-regular">Trung tâm thể thao của bạn</Text>
         </View>
@@ -107,6 +127,11 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
             {errors.password && <Text className="text-xs text-status-failed mt-1 font-bevn-regular">{errors.password.message}</Text>}
+            <Link href="/auth/forgot-password" asChild>
+              <TouchableOpacity className="self-end mt-sm">
+                <Text className="text-primary text-sm font-bevn-medium">Quên mật khẩu?</Text>
+              </TouchableOpacity>
+            </Link>
           </View>
 
           {/* Submit */}

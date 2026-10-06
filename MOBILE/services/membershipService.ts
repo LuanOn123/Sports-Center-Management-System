@@ -12,6 +12,11 @@ export const getMembershipStatus = (memberId: string) =>
 export const getMembershipPlans = () =>
   api.publicGet<MembershipPlan[]>('/membership-plans', { isActive: 'true' });
 
+/** GET /membership-plans/:id */
+export const getMembershipPlanById = (id: string) =>
+  api.publicGet<MembershipPlan>(`/membership-plans/${id}`);
+
+
 /** GET /subscriptions/member/:memberId */
 export const getSubscriptions = (memberId: string) =>
   api.get<Subscription[]>(`/subscriptions/member/${memberId}`);

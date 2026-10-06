@@ -5,6 +5,7 @@ import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
 import { getCoachClasses, getCoachSchedules } from '../../services/coachService';
+import { Haptic } from '../../lib/haptics';
 import type { Class, ClassSchedule } from '../../lib/types';
 
 export function useCoachHome(coachId: string | undefined) {
@@ -49,6 +50,7 @@ export function useCoachHome(coachId: string | undefined) {
   }, [schedulesData, classIds, coachClasses.length]);
 
   const onRefresh = async () => {
+    Haptic.light();
     await Promise.all([refetchClasses(), refetchSchedules()]);
   };
 

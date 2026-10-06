@@ -1,16 +1,18 @@
 import React, { useRef, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
-  TextInput, ActivityIndicator, RefreshControl, Platform, Pressable,
+  TextInput, RefreshControl, Pressable,
 } from 'react-native';
 import clsx from 'clsx';
 import { useRouter } from 'expo-router';
 import { Icon } from '../../components/shared/Icon';
+import { ScreenHeader } from '../../components/shared/ScreenHeader';
 import { ClassCardSkeleton } from '../../components/shared/Skeleton';
 import { useAuth } from '../../context/AuthContext';
 import { useClasses, useSports } from '../../hooks/shared/useClasses';
 import type { ClassFilters } from '../../services/classService';
 import { Colors } from '../../constants/theme';
+import { Haptic } from '../../lib/haptics';
 
 const TYPE_LABEL: Record<string, string> = { REGULAR: 'Tiêu Chuẩn', PREMIUM: 'Cao Cấp' };
 
@@ -38,33 +40,18 @@ export default function ClassesScreen() {
   const sports = sportsData?.data ?? [];
   const classes = data?.data ?? [];
 
+  const handleRefresh = () => {
+    Haptic.light();
+    refetch();
+  };
+
   // ─── UI ─────────────────────────────────────────────────────────────────────
   return (
     <View className="flex-1 bg-bg-primary">
-      {/* Header */}
-      <View
-        className={clsx(
-          'flex-row justify-between items-center px-md pb-sm bg-bg-surface border-b border-border mb-md',
-          Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
-        )}
-      >
-        <TouchableOpacity
-          className="w-10 h-10 justify-center items-center rounded-full"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
-        >
-          <Icon name="arrow-back" size={24} color={Colors.text.primary} />
-        </TouchableOpacity>
-        <View className="flex-1 items-center px-xs">
-          <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center">
-            {isCoach ? 'Lớp dạy' : 'Khám phá'}
-          </Text>
-          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>
-            {isCoach ? 'Các lớp bạn đang phụ trách' : 'Tìm và đăng ký lớp tập phù hợp'}
-          </Text>
-        </View>
-        <View className="w-10 h-10" />
-      </View>
-
+      <ScreenHeader
+        title={isCoach ? 'Lớp dạy' : 'Khám phá'}
+        subtitle={isCoach ? 'Các lớp bạn đang phụ trách' : 'Tìm và đăng ký lớp tập phù hợp'}
+      />
       {/* Search */}
       <View className="px-xl mb-sm">
         <Pressable
@@ -104,7 +91,10 @@ export default function ClassesScreen() {
                 'px-lg py-xs rounded-full border',
                 selectedSport === item.id ? 'bg-primary border-primary' : 'bg-bg-surface border-border'
               )}
-              onPress={() => setSelectedSport(item.id || undefined)}
+              onPress={() => {
+                Haptic.selection();
+                setSelectedSport(item.id || undefined);
+              }}
             >
               <Text className={clsx('text-sm font-bevn-medium', selectedSport === item.id ? 'text-text-inverse font-bold' : 'text-text-secondary')}>
                 {item.name}
@@ -123,7 +113,10 @@ export default function ClassesScreen() {
               'flex-1 py-xs rounded-md items-center border',
               selectedType === type ? 'bg-[#A3E63520] border-primary' : 'bg-bg-surface border-border'
             )}
-            onPress={() => setSelectedType(type)}
+            onPress={() => {
+              Haptic.selection();
+              setSelectedType(type);
+            }}
           >
             <Text className={clsx('text-xs font-bevn-medium', selectedType === type ? 'text-primary font-semibold' : 'text-text-secondary')}>
               {type ? TYPE_LABEL[type] : 'Tất cả'}
@@ -146,7 +139,7 @@ export default function ClassesScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           contentContainerStyle={{ padding: 20, gap: 12 }}
-          refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={Colors.primary} />}
+          refreshControl={<RefreshControl refreshing={false} onRefresh={handleRefresh} tintColor={Colors.primary} />}
           ListEmptyComponent={
             <View className="items-center mt-[60px]">
               <Icon name="fitness-center" size={48} color={Colors.text.muted} style={{ marginBottom: 12 }} />
@@ -158,7 +151,10 @@ export default function ClassesScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity
               className="bg-bg-surface rounded-xl p-lg border border-border"
-              onPress={() => router.push(`/classes/${item.id}`)}
+              onPress={() => {
+                Haptic.light();
+                router.push(`/classes/${item.id}`);
+              }}
               activeOpacity={0.8}
             >
               <View className="mb-md">
@@ -189,7 +185,6 @@ export default function ClassesScreen() {
                     <Text className="text-xs text-text-muted font-bevn-regular">{item.coaches!.length} HLV</Text>
                   </View>
                 )}
-                <Icon name="chevron-right" size={22} color={Colors.primary} style={{ marginLeft: 'auto' }} />
               </View>
             </TouchableOpacity>
           )}

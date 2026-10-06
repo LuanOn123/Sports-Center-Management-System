@@ -9,6 +9,7 @@ import {
 import clsx from 'clsx';
 import { useRouter } from 'expo-router';
 import { Icon } from '../shared/Icon';
+import { ScreenHeader } from '../shared/ScreenHeader';
 import QRCode from 'react-native-qrcode-svg';
 import { useCoachTraining } from '../../hooks/coach/useCoachTraining';
 import { useQrAttendance } from '../../hooks/coach/useQrAttendance';
@@ -66,27 +67,11 @@ export function CoachTrainingView({ coachId }: CoachTrainingViewProps) {
 
   return (
     <View className="flex-1 bg-bg-primary">
-      {/* Header */}
-      <View
-        className={clsx(
-          'flex-row justify-between items-center px-md pb-sm bg-bg-surface border-b border-border mb-md',
-          Platform.OS === 'ios' ? 'pt-[52px]' : Platform.OS === 'android' ? 'pt-[42px]' : 'pt-[14px]'
-        )}
-      >
-        <TouchableOpacity
-          className="w-10 h-10 justify-center items-center rounded-full"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
-        >
-          <Icon name="arrow-back" size={24} color={Colors.text.primary} />
-        </TouchableOpacity>
-        <View className="flex-1 items-center px-xs">
-          <Text className="text-lg font-bold font-bevn-bold text-text-primary text-center">Quản lý giảng dạy</Text>
-          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>
-            Điểm danh học viên & theo dõi ca dạy
-          </Text>
-        </View>
-        <View className="w-10 h-10" />
-      </View>
+      <ScreenHeader
+        title="Quản lý giảng dạy"
+        subtitle="Điểm danh học viên & theo dõi ca dạy"
+      />
+
 
       {/* Tabs */}
       <View className="flex-row px-xl mb-md gap-sm">
