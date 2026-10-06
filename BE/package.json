@@ -36,7 +36,8 @@
     "test:operations:migration": "tsx tests/facility-migration.integration.ts",
     "test:integration:audit": "tsx tests/integration-audit.ts",
     "test:integration:audit:browser": "tsx tests/integration-audit.ts --browser",
-    "test:integration:room-ui": "tsx tests/browser-room-audit.ts"
+    "test:integration:room-ui": "tsx tests/browser-room-audit.ts",
+    "test:operations:cross-facility": "tsx tests/cross-facility-booking.integration.ts"
   },
   "dependencies": {
     "@getbrevo/brevo": "^6.0.3",

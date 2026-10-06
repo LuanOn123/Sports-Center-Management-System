@@ -452,7 +452,9 @@ async function assertScheduleMoveKeepsBookingsValid(
 
   const memberIds = booked.map((b) => b.memberId);
   const [conflicts, coverage] = await Promise.all([
-    tx.enrollment.findMany({
+    // A member's timetable spans facilities. Only this conflict lookup is
+    // global; entitlement checks below still use the moved session's facility.
+    requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, () => tx.enrollment.findMany({
       where: {
         memberId: { in: memberIds },
         status: "BOOKED",
@@ -464,7 +466,7 @@ async function assertScheduleMoveKeepsBookingsValid(
         },
       },
       select: { memberId: true },
-    }),
+    })),
     getMembershipCoverageIntervals(tx, memberIds),
   ]);
 

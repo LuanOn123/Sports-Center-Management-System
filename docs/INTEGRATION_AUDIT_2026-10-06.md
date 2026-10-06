@@ -2,6 +2,8 @@
 
 ## Kết luận
 
+Update với tài khoản ADMIN deploy thực tế: xem [chẩn đoán ADMIN 403](DEPLOYED_ADMIN_403_2026-10-06.md). Login/me xác nhận ADMIN active, nhưng users/members/reports bị guard BE deploy trả 403; thêm cơ sở không khắc phục. Source authorization hiện tại đã cho phép các request này.
+
 Đã sửa các lỗi integration xác định được trong checkout, đồng bộ contract từ source BE, chạy FE/BE và kiểm thử với MongoDB/PostgreSQL thật trong database kiểm thử riêng. Đối chiếu tĩnh có **151/151 operations khớp method/path**, không còn operation FE thiếu route tương ứng trong catalogue đã kiểm tra.
 
 **Không thể kết luận môi trường production đã ổn định:** FE đang cấu hình gọi Render, trong khi backend Render chưa đồng bộ đầy đủ với source hiện tại. `/issues` và `/slots` trả 404; Swagger Render có 117 operations, source có 151. Cần triển khai cùng phiên bản BE và migrations trước khi dùng kết quả local để đánh giá production. Audit không push, deploy hoặc mutation dữ liệu Render.
