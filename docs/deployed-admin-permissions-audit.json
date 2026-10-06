@@ -1,0 +1,241 @@
+{
+  "base": "https://sports-center-management-system.onrender.com/api/v1",
+  "login": {
+    "status": 200,
+    "success": true,
+    "message": "Login successful",
+    "tokenRole": "ADMIN"
+  },
+  "results": [
+    {
+      "path": "/auth/me",
+      "scope": "none",
+      "status": 200,
+      "success": true,
+      "message": "Profile retrieved successfully",
+      "role": "ADMIN",
+      "active": true
+    },
+    {
+      "path": "/facilities",
+      "scope": "none",
+      "status": 200,
+      "success": true,
+      "message": "Success",
+      "records": 4
+    },
+    {
+      "path": "/users",
+      "scope": "none",
+      "status": 403,
+      "success": false,
+      "message": "Forbidden: insufficient permissions"
+    },
+    {
+      "path": "/members",
+      "scope": "none",
+      "status": 403,
+      "success": false,
+      "message": "Forbidden: insufficient permissions"
+    },
+    {
+      "path": "/coaches",
+      "scope": "none",
+      "status": 200,
+      "success": true,
+      "message": "Coaches retrieved successfully",
+      "records": 8
+    },
+    {
+      "path": "/sports",
+      "scope": "none",
+      "status": 200,
+      "success": true,
+      "message": "Sports retrieved successfully",
+      "records": 10
+    },
+    {
+      "path": "/membership-plans",
+      "scope": "none",
+      "status": 200,
+      "success": true,
+      "message": "Plans retrieved successfully",
+      "records": 9
+    },
+    {
+      "path": "/rooms",
+      "scope": "none",
+      "status": 200,
+      "success": true,
+      "message": "Rooms retrieved successfully",
+      "records": 10
+    },
+    {
+      "path": "/classes",
+      "scope": "none",
+      "status": 200,
+      "success": true,
+      "message": "Classes retrieved successfully",
+      "records": 10
+    },
+    {
+      "path": "/class-schedules",
+      "scope": "none",
+      "status": 200,
+      "success": true,
+      "message": "Schedules retrieved successfully",
+      "records": 10
+    },
+    {
+      "path": "/reports/revenue",
+      "scope": "none",
+      "status": 403,
+      "success": false,
+      "message": "Forbidden: insufficient permissions"
+    },
+    {
+      "path": "/audit-logs",
+      "scope": "none",
+      "status": 404,
+      "success": false,
+      "message": "Route not found"
+    },
+    {
+      "path": "/issues",
+      "scope": "none",
+      "status": 404,
+      "success": false,
+      "message": "Route not found"
+    },
+    {
+      "path": "/slots",
+      "scope": "none",
+      "status": 404,
+      "success": false,
+      "message": "Route not found"
+    },
+    {
+      "path": "/users",
+      "scope": "selected",
+      "status": 403,
+      "success": false,
+      "message": "Forbidden: insufficient permissions"
+    },
+    {
+      "path": "/members",
+      "scope": "selected",
+      "status": 403,
+      "success": false,
+      "message": "Forbidden: insufficient permissions"
+    },
+    {
+      "path": "/coaches",
+      "scope": "selected",
+      "status": 200,
+      "success": true,
+      "message": "Coaches retrieved successfully",
+      "records": 8
+    },
+    {
+      "path": "/rooms",
+      "scope": "selected",
+      "status": 200,
+      "success": true,
+      "message": "Rooms retrieved successfully",
+      "records": 10
+    },
+    {
+      "path": "/classes",
+      "scope": "selected",
+      "status": 200,
+      "success": true,
+      "message": "Classes retrieved successfully",
+      "records": 10
+    },
+    {
+      "path": "/class-schedules",
+      "scope": "selected",
+      "status": 200,
+      "success": true,
+      "message": "Schedules retrieved successfully",
+      "records": 10
+    },
+    {
+      "path": "/reports/revenue",
+      "scope": "selected",
+      "status": 403,
+      "success": false,
+      "message": "Forbidden: insufficient permissions"
+    },
+    {
+      "path": "/audit-logs",
+      "scope": "selected",
+      "status": 404,
+      "success": false,
+      "message": "Route not found"
+    },
+    {
+      "path": "/issues",
+      "scope": "selected",
+      "status": 404,
+      "success": false,
+      "message": "Route not found"
+    },
+    {
+      "path": "/slots",
+      "scope": "selected",
+      "status": 404,
+      "success": false,
+      "message": "Route not found"
+    },
+    {
+      "path": "/staff-candidates",
+      "scope": "selected",
+      "status": 404,
+      "success": false,
+      "message": "Route not found"
+    },
+    {
+      "path": "/schedule-patterns",
+      "scope": "selected",
+      "status": 404,
+      "success": false,
+      "message": "Route not found"
+    },
+    {
+      "path": "/leave-requests",
+      "scope": "selected",
+      "status": 404,
+      "success": false,
+      "message": "Route not found"
+    },
+    {
+      "path": "/counter-orders",
+      "scope": "selected",
+      "status": 404,
+      "success": false,
+      "message": "Route not found"
+    },
+    {
+      "path": "/reports/members",
+      "scope": "selected",
+      "status": 403,
+      "success": false,
+      "message": "Forbidden: insufficient permissions"
+    },
+    {
+      "path": "/reports/enrollments",
+      "scope": "selected",
+      "status": 403,
+      "success": false,
+      "message": "Forbidden: insufficient permissions"
+    },
+    {
+      "path": "/reports/memberships",
+      "scope": "selected",
+      "status": 403,
+      "success": false,
+      "message": "Forbidden: insufficient permissions"
+    }
+  ]
+}
