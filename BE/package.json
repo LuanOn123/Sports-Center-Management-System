@@ -24,6 +24,7 @@
     "test:e2e:lifecycle": "tsx tests/subscription-lifecycle.e2e.ts",
     "test:sepay:smoke": "tsx tests/sepay-smoke.ts",
     "test:cloudinary:check": "tsx tests/cloudinary-check.ts",
+    "test:mailer": "tsx tests/mailer-smoke.ts",
     "test:e2e:all": "npm run test:e2e && npm run test:e2e:attendance && npm run test:e2e:course && npm run test:e2e:sepay && npm run test:e2e:chat && npm run test:e2e:lifecycle",
     "predev": "npm run db:generate",
     "prebuild": "npm run db:generate",

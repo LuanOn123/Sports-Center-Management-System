@@ -252,6 +252,8 @@ router.patch(
  *     responses:
  *       200: { $ref: "#/components/responses/MessageOk" }
  *       400: { $ref: "#/components/responses/BadRequest" }
+ *       502:
+ *         description: Không gửi được email OTP (tất cả driver mail đều thất bại) — thử lại sau.
  *       500: { $ref: "#/components/responses/ServerError" }
  */
 router.post("/forgot-password", validate(ForgotPasswordSchema), authController.forgotPassword);
