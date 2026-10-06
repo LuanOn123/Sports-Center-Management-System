@@ -1,0 +1,115 @@
+MongoDB connected successfully
+[avatarStorage] driver = local (uploads/avatars)
+POST /api/v1/auth/login 200 987.185 ms - 471
+GET /api/v1/auth/me 200 413.190 ms - 374
+POST /api/v1/auth/refresh-token 200 178.193 ms - 274
+PASS ADMIN: login -> /auth/me -> refresh
+POST /api/v1/auth/login 200 957.133 ms - 475
+GET /api/v1/auth/me 200 430.415 ms - 523
+POST /api/v1/auth/refresh-token 200 158.885 ms - 276
+PASS MANAGER: login -> /auth/me -> refresh
+POST /api/v1/auth/login 200 973.898 ms - 489
+GET /api/v1/auth/me 200 519.055 ms - 395
+POST /api/v1/auth/refresh-token 200 170.220 ms - 283
+PASS RECEPTIONIST: login -> /auth/me -> refresh
+POST /api/v1/auth/login 200 795.431 ms - 471
+GET /api/v1/auth/me 200 395.529 ms - 573
+POST /api/v1/auth/refresh-token 200 159.788 ms - 274
+PASS COACH: login -> /auth/me -> refresh
+POST /api/v1/auth/login 200 689.682 ms - 473
+GET /api/v1/auth/me 200 439.622 ms - 586
+POST /api/v1/auth/refresh-token 200 192.145 ms - 275
+PASS MEMBER: login -> /auth/me -> refresh
+POST /api/v1/facilities 201 659.909 ms - 380
+POST /api/v1/facilities/d2213fc5-9636-49ef-942a-586857d8abc8/staff 201 4499.592 ms - 308
+POST /api/v1/facilities/d2213fc5-9636-49ef-942a-586857d8abc8/staff 201 2524.635 ms - 313
+POST /api/v1/facilities/d2213fc5-9636-49ef-942a-586857d8abc8/staff 201 2488.193 ms - 306
+GET /api/v1/facilities 200 713.838 ms - 902
+PASS ADMIN: assigned facility and profile
+GET /api/v1/facilities 200 652.359 ms - 360
+PASS MANAGER: assigned facility and profile
+GET /api/v1/facilities 200 382.932 ms - 360
+PASS RECEPTIONIST: assigned facility and profile
+GET /api/v1/facilities 200 347.645 ms - 360
+PASS COACH: assigned facility and profile
+GET /api/v1/facilities 200 355.246 ms - 902
+PASS MEMBER: assigned facility and profile
+GET /api/v1/rooms 401 0.200 ms - 57
+[ERROR] AppError: Invalid email or password
+POST /api/v1/auth/login 401 317.246 ms - 55
+POST /api/v1/rooms 403 782.984 ms - 65
+POST /api/v1/rooms 400 1012.957 ms - 170
+[ERROR] AppError: FACILITY_CONTEXT_REQUIRED
+GET /api/v1/rooms 400 83.899 ms - 55
+PASS auth/validation: anonymous, bad login, invalid enum, role denial
+POST /api/v1/membership-plans 201 2543.333 ms - 357
+PATCH /api/v1/membership-plans/227f4e20-c36a-4917-afcd-034bde339e1b 200 3149.538 ms - 362
+PATCH /api/v1/membership-plans/227f4e20-c36a-4917-afcd-034bde339e1b 403 737.298 ms - 65
+POST /api/v1/sports 201 1650.224 ms - 302
+PUT /api/v1/coaches/6ac47a4d27bb1877f6ec289f/specializations 200 5837.743 ms - 177
+PASS ADMIN: create/read/update global catalog; MANAGER price write denied
+PATCH /api/v1/coaches/6ac47a4d27bb1877f6ec289e 200 1359.634 ms - 452
+GET /api/v1/coaches/6ac47a4d27bb1877f6ec289e 200 1457.835 ms - 511
+PASS MANAGER: coach profile update persisted to Mongo and projection
+POST /api/v1/subscriptions 201 17149.388 ms - 2212
+GET /api/v1/payments/b5eed25f-2d61-4471-aa31-3152b6301f58 200 4569.453 ms - 2654
+PASS RECEPTIONIST: subscription -> payment -> invoice persisted
+POST /api/v1/rooms 201 3492.495 ms - 360
+POST /api/v1/classes 201 7958.899 ms - 717
+POST /api/v1/classes/442e7c9c-4b5e-4225-ae38-bf298c4f7ee3/coaches 200 16551.839 ms - 1264
+POST /api/v1/class-schedules 201 14685.863 ms - 1313
+GET /api/v1/class-schedules/ff5451dc-6773-4e12-ae8c-89b1e130993e 200 4478.368 ms - 1788
+GET /api/v1/class-schedules?classId=442e7c9c-4b5e-4225-ae38-bf298c4f7ee3 200 2991.178 ms - 1405
+[ERROR] AppError: Room is already booked for "Audit class f4180c3f-5f14-4a46-aa99-25f8ffd61c79" from 2026-10-06T04:50:58.572Z to 2026-10-06T05:50:58.572Z
+POST /api/v1/class-schedules 409 11704.416 ms - 167
+PASS MANAGER: room/class/coach -> schedule -> list/detail; overlap rejected
+POST /api/v1/enrollments 201 20243.233 ms - 1658
+GET /api/v1/enrollments/my 200 3087.182 ms - 1729
+[ERROR] AppError: You are already enrolled in this class
+POST /api/v1/enrollments 409 11521.594 ms - 68
+PASS MEMBER: book -> my list -> duplicate rejected -> database
+GET /api/v1/enrollments/schedule/ff5451dc-6773-4e12-ae8c-89b1e130993e 200 4068.068 ms - 817
+POST /api/v1/attendance 400 724.073 ms - 104
+FAIL COACH: roster -> manual attendance with Mongo profile ID -> member history: POST /attendance: 400 Validation failed
+POST /api/v1/feedbacks 201 8216.358 ms - 1054
+POST /api/v1/feedbacks 400 427.364 ms - 141
+PASS MEMBER: feedback accepts ObjectId; invalid ID rejected
+DELETE /api/v1/enrollments/9ef87dfc-2e04-4b9e-aa41-c5210f7bf730 200 5224.347 ms - 1213
+[ERROR] AppError: Forbidden: Coaches cannot book classes for members
+POST /api/v1/enrollments 403 406.459 ms - 80
+FAIL MEMBER cancel -> ADMIN book on behalf -> cancel (inherited permission): POST /enrollments: 403 Forbidden: Coaches cannot book classes for members
+PATCH /api/v1/class-schedules/ff5451dc-6773-4e12-ae8c-89b1e130993e 200 9933.380 ms - 1313
+DELETE /api/v1/classes/442e7c9c-4b5e-4225-ae38-bf298c4f7ee3 200 4776.806 ms - 417
+DELETE /api/v1/rooms/88e052cc-521c-439f-9a8a-359b02de5b8b 200 4983.365 ms - 365
+PASS MANAGER: cancel schedule -> persisted state; catalog deactivate
+POST /api/v1/auth/logout 200 222.750 ms - 64
+[ERROR] AppError: Refresh token has been revoked
+POST /api/v1/auth/refresh-token 401 65.073 ms - 60
+PASS ADMIN: logout revokes refresh
+POST /api/v1/auth/logout 200 205.230 ms - 64
+[ERROR] AppError: Refresh token has been revoked
+POST /api/v1/auth/refresh-token 401 67.342 ms - 60
+PASS MANAGER: logout revokes refresh
+POST /api/v1/auth/logout 200 357.059 ms - 64
+[ERROR] AppError: Refresh token has been revoked
+POST /api/v1/auth/refresh-token 401 74.496 ms - 60
+PASS RECEPTIONIST: logout revokes refresh
+POST /api/v1/auth/logout 200 219.773 ms - 64
+[ERROR] AppError: Refresh token has been revoked
+POST /api/v1/auth/refresh-token 401 87.168 ms - 60
+PASS COACH: logout revokes refresh
+POST /api/v1/auth/logout 200 230.303 ms - 64
+[ERROR] AppError: Refresh token has been revoked
+POST /api/v1/auth/refresh-token 401 68.439 ms - 60
+PASS MEMBER: logout revokes refresh
+{
+  "passed": 23,
+  "failures": [
+    "COACH: roster -> manual attendance with Mongo profile ID -> member history: POST /attendance: 400 Validation failed",
+    "MEMBER cancel -> ADMIN book on behalf -> cancel (inherited permission): POST /enrollments: 403 Forbidden: Coaches cannot book classes for members"
+  ]
+}
+Integration audit failures
+
+2 !== 0
+

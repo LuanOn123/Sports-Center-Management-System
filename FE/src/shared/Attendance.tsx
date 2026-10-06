@@ -81,6 +81,7 @@ export function Attendance({
                 scheduleId={id}
                 record={record}
                 writable={record ? ["ADMIN", "MANAGER"].includes(role) : canWrite}
+                canExcuse={["ADMIN", "MANAGER"].includes(role)}
                 onSave={() => {
                   void cache.invalidateQueries({
                     queryKey: ["attendance", id],
@@ -99,6 +100,7 @@ function AttendanceRow({
   scheduleId,
   record,
   writable,
+  canExcuse,
   onSave,
 }: {
   name: string;
@@ -106,6 +108,7 @@ function AttendanceRow({
   scheduleId: string;
   record?: AttendanceRecord;
   writable: boolean;
+  canExcuse: boolean;
   onSave: () => void;
 }) {
   const [status, setStatus] = useState(record?.status || ""),
@@ -146,7 +149,7 @@ function AttendanceRow({
                 onChange={(e) => setStatus(e.target.value)}
               >
                 <option value="">Chưa điểm danh</option>
-                {Object.entries(statuses).map(([v, l]) => (
+                {Object.entries(statuses).filter(([v]) => v !== "EXCUSED" || canExcuse).map(([v, l]) => (
                   <option key={v} value={v}>
                     {l}
                   </option>

@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
     "test:a11y": "playwright test accessibility.spec.ts",
     "check:conflicts": "node scripts/check-conflicts.mjs",
+    "check:api-contract": "node ../scripts/audit-api-contract.mjs",
     "prebuild": "npm run check:conflicts",
     "verify": "npm run check:conflicts && npm run typecheck && npm test && npm run build"
   },

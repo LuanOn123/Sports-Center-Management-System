@@ -23,7 +23,7 @@ export function Login({
   function submit(e: FormEvent) {
     e.preventDefault();
     if (busy) return;
-    void onLogin(email.trim(), password);
+    void onLogin(email.trim().toLowerCase(), password);
   }
   return (
     <AuthLayout>

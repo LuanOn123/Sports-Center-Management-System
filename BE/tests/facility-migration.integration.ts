@@ -10,9 +10,16 @@ async function main() {
   url.searchParams.set("schema", schema);
   assert.match(schema, /^scms_verify_/);
   const env = { ...process.env, DATABASE_URL: url.href };
+  // HEAD now contains facility operations. The baseline must precede this
+  // migration; stripping just Facility from HEAD leaves invalid relations.
+  const migrationCommit = execFileSync("git", [
+    "log", "-1", "--format=%H", "--diff-filter=A", "--",
+    "prisma/migrations/20261005000100_facility_operations/migration.sql",
+  ], { encoding: "utf8" }).trim();
+  if (!migrationCommit) throw new Error("Migration history is required for the legacy fixture");
   const baseline = execFileSync(
     "git",
-    ["show", "HEAD:BE/prisma/schema.prisma"],
+    ["show", `${migrationCommit}^:BE/prisma/schema.prisma`],
     { encoding: "utf8" },
   )
     .replace(/model Facility \{[\s\S]*?\n\}/, "")
@@ -32,15 +39,11 @@ async function main() {
         result.stderr.replace(/postgresql:\/\/[^\s]+/g, "[redacted]"),
       );
   };
-  cli([
-    "db",
-    "push",
-    "--schema",
-    "prisma/legacy-baseline.tmp.prisma",
-    "--skip-generate",
-  ]);
   const db = new PrismaClient({ datasources: { db: { url: url.href } } });
   try {
+    cli([
+      "db", "push", "--schema", "prisma/legacy-baseline.tmp.prisma", "--skip-generate",
+    ]);
     await db.$executeRaw`INSERT INTO "User"("id","email","password","fullName","role","updatedAt") VALUES ('legacy-staff','legacy-staff@test.invalid','test-hash','Legacy Staff','STAFF',CURRENT_TIMESTAMP)`;
     await db.$executeRaw`INSERT INTO "Room"("id","name","capacity","areaType","updatedAt") VALUES ('legacy-room','Legacy room',10,'INDOOR',CURRENT_TIMESTAMP)`;
     cli([

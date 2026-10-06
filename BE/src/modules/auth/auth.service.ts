@@ -1,4 +1,5 @@
 import { User } from "../../models/User.js";
+import { synchronizeUserProjection } from "../users/user-projection.service.js";
 import { MemberProfile } from "../../models/MemberProfile.js";
 import { CoachProfile } from "../../models/CoachProfile.js";
 import { ManagerProfile } from "../../models/ManagerProfile.js";
@@ -215,6 +216,7 @@ export async function updateMe(userId: string, data: UpdateProfileInput) {
     }
   }
 
+  await synchronizeUserProjection(userId);
   return getMe(userId);
 }
 
@@ -242,6 +244,7 @@ export async function updateAvatar(userId: string, avatarUrl: string) {
 
   const oldAvatarUrl = user.avatarUrl ?? null;
   await User.updateOne({ _id: userId }, { avatarUrl });
+  await synchronizeUserProjection(userId);
   if (oldAvatarUrl) removeStoredAvatar(oldAvatarUrl);
 
   return getMe(userId);

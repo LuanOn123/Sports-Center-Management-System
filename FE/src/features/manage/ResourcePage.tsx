@@ -116,8 +116,10 @@ export function ResourcePage({
         ? allPages<RecordData>(listKey, { query: requestQuery, signal })
         : api<RecordData[]>(listKey, { query: requestQuery, signal }),
   });
-  const readOnly = role !== "ADMIN" && (["users", "staff", "membership-plans", "sports", "coaches"].includes(r.slug)) || role === "RECEPTIONIST" && ["rooms", "classes", "schedules"].includes(r.slug);
-  const create = readOnly || role !== "ADMIN" && !!r.create ? "" : "POST " + (r.create || r.path);
+  const readOnly = role !== "ADMIN" && (["users", "staff", "membership-plans", "sports"].includes(r.slug)) || role === "RECEPTIONIST" && ["coaches", "rooms"].includes(r.slug);
+  const create = r.slug === "members" && role === "MANAGER"
+    ? "POST /auth/register"
+    : readOnly || role !== "ADMIN" && !!r.create ? "" : "POST " + (r.create || r.path);
   const update = readOnly ? "" : "PATCH " + r.path + "/{id}";
   const remove = readOnly ? "" : "DELETE " + r.path + "/{id}";
   const detailKey = "GET " + r.path + "/{id}";
@@ -180,7 +182,7 @@ export function ResourcePage({
           <Pencil size={16} />
         </button>
       )}
-      {r.slug === "classes" && (
+      {r.slug === "classes" && !readOnly && (
         <button
           aria-label="Phân công huấn luyện viên"
           title="Phân công huấn luyện viên"
@@ -190,7 +192,7 @@ export function ResourcePage({
           <UserPlus size={17} />
         </button>
       )}
-      {r.slug === "classes" && (
+      {r.slug === "classes" && !readOnly && (
         <button
           aria-label="Phân công huấn luyện viên hỗ trợ"
           title="Phân công huấn luyện viên hỗ trợ"
@@ -200,7 +202,7 @@ export function ResourcePage({
           <UsersRound size={17} />
         </button>
       )}
-      {r.slug === "schedules" && (
+      {r.slug === "schedules" && ["ADMIN", "MANAGER", "RECEPTIONIST"].includes(role) && (
         <button
           className="button small"
           disabled={!canCompleteSchedule(row)}
@@ -533,7 +535,7 @@ export function ResourcePage({
               initial={
                 modal.kind === "edit"
                   ? r.slug === "coaches"
-                    ? (modal.row?.coachProfile as RecordData)
+                    ? { ...modal.row, ...(modal.row?.coachProfile as RecordData) }
                     : r.slug === "members"
                       ? { ...modal.row, ...(modal.row?.user as RecordData) }
                       : modal.row

@@ -112,6 +112,6 @@ export function canGenerateAttendanceQr(
   return (
     schedule.status === "SCHEDULED" &&
     now >= Date.parse(String(schedule.startTime)) - 30 * 60_000 &&
-    now <= Date.parse(String(schedule.endTime)) + 30 * 60_000
+    now <= Date.parse(String(schedule.endTime))
   );
 }

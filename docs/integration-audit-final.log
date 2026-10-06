@@ -1,0 +1,289 @@
+MongoDB connected successfully
+[avatarStorage] driver = local (uploads/avatars)
+POST /api/v1/auth/register 201 6133.069 ms - 489
+[ERROR] AppError: Email is already in use
+POST /api/v1/auth/register 409 71.465 ms - 53
+PASS register: Mongo identity + PostgreSQL profile + FREE entitlement; duplicate rejected
+POST /api/v1/auth/login 200 388.169 ms - 471
+GET /api/v1/auth/me 200 394.236 ms - 374
+POST /api/v1/auth/refresh-token 200 179.099 ms - 274
+PASS ADMIN: login -> /auth/me -> refresh
+POST /api/v1/auth/login 200 391.957 ms - 475
+GET /api/v1/auth/me 200 404.619 ms - 523
+POST /api/v1/auth/refresh-token 200 168.674 ms - 276
+PASS MANAGER: login -> /auth/me -> refresh
+POST /api/v1/auth/login 200 381.694 ms - 489
+GET /api/v1/auth/me 200 429.339 ms - 395
+POST /api/v1/auth/refresh-token 200 156.037 ms - 283
+PASS RECEPTIONIST: login -> /auth/me -> refresh
+POST /api/v1/auth/login 200 432.276 ms - 471
+GET /api/v1/auth/me 200 365.186 ms - 573
+POST /api/v1/auth/refresh-token 200 143.731 ms - 274
+PASS COACH: login -> /auth/me -> refresh
+POST /api/v1/auth/login 200 361.602 ms - 473
+GET /api/v1/auth/me 200 391.169 ms - 586
+POST /api/v1/auth/refresh-token 200 154.582 ms - 275
+PASS MEMBER: login -> /auth/me -> refresh
+POST /api/v1/facilities 201 637.104 ms - 380
+POST /api/v1/facilities/9be27105-83f4-403a-8509-e45ddb411bdf/staff 201 3778.178 ms - 308
+POST /api/v1/facilities/9be27105-83f4-403a-8509-e45ddb411bdf/staff 201 2757.793 ms - 313
+POST /api/v1/facilities/9be27105-83f4-403a-8509-e45ddb411bdf/staff 201 2288.789 ms - 306
+GET /api/v1/facilities 200 616.843 ms - 935
+PASS ADMIN: assigned facility and profile
+GET /api/v1/facilities 200 627.608 ms - 360
+PASS MANAGER: assigned facility and profile
+GET /api/v1/facilities 200 335.141 ms - 360
+PASS RECEPTIONIST: assigned facility and profile
+GET /api/v1/facilities 200 326.393 ms - 360
+PASS COACH: assigned facility and profile
+GET /api/v1/facilities 200 335.135 ms - 935
+PASS MEMBER: assigned facility and profile
+GET /api/v1/rooms 401 0.091 ms - 57
+[ERROR] AppError: Invalid email or password
+POST /api/v1/auth/login 401 340.342 ms - 55
+POST /api/v1/rooms 403 396.086 ms - 65
+POST /api/v1/rooms 400 1005.572 ms - 170
+[ERROR] AppError: FACILITY_CONTEXT_REQUIRED
+GET /api/v1/rooms 400 78.441 ms - 55
+PASS auth/validation: anonymous, bad login, invalid enum, role denial
+POST /api/v1/membership-plans 201 2239.684 ms - 357
+PATCH /api/v1/membership-plans/e196ad8a-40ee-4e4c-9443-f9b4f6e9e262 200 2878.146 ms - 362
+PATCH /api/v1/membership-plans/e196ad8a-40ee-4e4c-9443-f9b4f6e9e262 403 680.632 ms - 65
+POST /api/v1/sports 201 1706.492 ms - 302
+PUT /api/v1/coaches/6ac47cda30a130d6cb359c94/specializations 200 5114.541 ms - 177
+PASS ADMIN: create/read/update global catalog; MANAGER price write denied
+PATCH /api/v1/coaches/6ac47cda30a130d6cb359c93 200 4650.374 ms - 452
+GET /api/v1/coaches/6ac47cda30a130d6cb359c93 200 1315.778 ms - 511
+PASS MANAGER: coach profile update persisted to Mongo and projection
+PATCH /api/v1/auth/me 200 2540.905 ms - 607
+PATCH /api/v1/members/6ac47cdf30a130d6cb359c97 200 4885.793 ms - 584
+PASS profile updates persist across Mongo /auth/me and relational member data
+POST /api/v1/subscriptions 201 14155.972 ms - 2220
+GET /api/v1/payments/31724559-5ee8-4ff6-8498-bba9df0b10ce 200 3985.622 ms - 2695
+PASS RECEPTIONIST: subscription -> payment -> invoice persisted
+GET /api/v1/payments/sepay/0b940e5c-275b-482b-b7f3-83a3e9cd08c3 200 1140.122 ms - 765
+GET /api/v1/payments/sepay/0b940e5c-275b-482b-b7f3-83a3e9cd08c3 200 1693.691 ms - 765
+[ERROR] AppError: Forbidden: only the owning MEMBER or MANAGER/RECEPTIONIST can operate on a SePay payment
+GET /api/v1/payments/sepay/0b940e5c-275b-482b-b7f3-83a3e9cd08c3 403 1241.762 ms - 118
+PASS SePay status permission: ADMIN inherited access, owning MEMBER allowed, COACH denied
+POST /api/v1/rooms 201 3064.313 ms - 360
+POST /api/v1/classes 201 7034.837 ms - 717
+POST /api/v1/classes/da6e6fcd-4f84-441d-b314-c70a40c9d186/coaches 200 14186.860 ms - 1273
+GET /api/v1/health 200 0.268 ms - 57
+POST /api/v1/class-schedules 201 14047.680 ms - 1313
+GET /api/v1/class-schedules/48a347f0-0a0c-40fe-9fc3-e61b970dce7a 200 4212.036 ms - 1797
+POST /api/v1/auth/login 200 583.051 ms - 475
+GET /api/v1/auth/me 200 347.607 ms - 525
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities - - ms - -
+GET /api/v1/auth/me 200 362.322 ms - 525
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities 200 315.824 ms - 347
+GET /api/v1/class-schedules?classId=da6e6fcd-4f84-441d-b314-c70a40c9d186 200 2662.382 ms - 1405
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/rooms?page=1&limit=10 - - ms - -
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/notifications/unread-count 200 2566.994 ms - 76
+GET /api/v1/chat/messages/unread-count 200 2670.176 ms - 41
+GET /api/v1/rooms?page=1&limit=10 200 3685.083 ms - 127
+[ERROR] AppError: Room is already booked for "Audit class 657ebfe2-fa14-4f6f-a1b1-a9a7a804d22f" from 2026-10-06T05:01:54.211Z to 2026-10-06T06:01:54.211Z
+POST /api/v1/class-schedules 409 12917.887 ms - 167
+PASS MANAGER: room/class/coach -> schedule -> list/detail; overlap rejected
+GET /api/v1/notifications/unread-count 200 824.090 ms - 76
+GET /api/v1/chat/messages/unread-count 200 818.663 ms - 41
+POST /api/v1/enrollments 201 19231.428 ms - 1658
+GET /api/v1/enrollments/my 200 2370.576 ms - 1729
+[ERROR] AppError: You are already enrolled in this class
+POST /api/v1/enrollments 409 7625.192 ms - 68
+PASS MEMBER: book -> my list -> duplicate rejected -> database
+GET /api/v1/notifications/unread-count 200 575.627 ms - 76
+POST /api/v1/auth/login 200 528.212 ms - 471
+GET /api/v1/chat/messages/unread-count 200 778.664 ms - 41
+GET /api/v1/auth/me 200 305.472 ms - 374
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities 200 801.202 ms - 1237
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/reports/memberships?startDate=2026-10-01&endDate=2026-10-06 - - ms - -
+GET /api/v1/reports/enrollments?startDate=2026-10-01&endDate=2026-10-06 - - ms - -
+GET /api/v1/reports/members?startDate=2026-10-01&endDate=2026-10-06 - - ms - -
+GET /api/v1/reports/revenue?startDate=2026-10-01&endDate=2026-10-06 - - ms - -
+GET /api/v1/class-schedules?date=2026-10-06&limit=5&page=1 - - ms - -
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/class-schedules?date=2026-10-06&limit=5&page=1 - - ms - -
+GET /api/v1/reports/enrollments?startDate=2026-10-01&endDate=2026-10-06 - - ms - -
+GET /api/v1/reports/members?startDate=2026-10-01&endDate=2026-10-06 - - ms - -
+GET /api/v1/reports/revenue?startDate=2026-10-01&endDate=2026-10-06 - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/reports/memberships?startDate=2026-10-01&endDate=2026-10-06 - - ms - -
+GET /api/v1/auth/me 200 280.381 ms - 374
+GET /api/v1/facilities 200 3121.774 ms - 1237
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/auth/me 200 293.113 ms - 374
+GET /api/v1/facilities 200 620.832 ms - 1237
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count 200 313.671 ms - 41
+GET /api/v1/notifications/unread-count 200 577.345 ms - 76
+PASS ADMIN: real browser login -> dashboard -> profile -> reload, no intercepted API
+POST /api/v1/auth/login 200 916.041 ms - 475
+GET /api/v1/auth/me 200 285.616 ms - 523
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities 200 574.805 ms - 360
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/reports/revenue?startDate=2026-10-01&endDate=2026-10-06 - - ms - -
+GET /api/v1/reports/members?startDate=2026-10-01&endDate=2026-10-06 - - ms - -
+GET /api/v1/reports/enrollments?startDate=2026-10-01&endDate=2026-10-06 - - ms - -
+GET /api/v1/reports/memberships?startDate=2026-10-01&endDate=2026-10-06 - - ms - -
+GET /api/v1/class-schedules?date=2026-10-06&limit=5&page=1 - - ms - -
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/reports/memberships?startDate=2026-10-01&endDate=2026-10-06 - - ms - -
+GET /api/v1/reports/enrollments?startDate=2026-10-01&endDate=2026-10-06 - - ms - -
+GET /api/v1/reports/members?startDate=2026-10-01&endDate=2026-10-06 - - ms - -
+GET /api/v1/reports/revenue?startDate=2026-10-01&endDate=2026-10-06 - - ms - -
+GET /api/v1/class-schedules?date=2026-10-06&limit=5&page=1 - - ms - -
+GET /api/v1/auth/me 200 346.271 ms - 523
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities 200 555.105 ms - 360
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/auth/me 200 344.130 ms - 523
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities 200 630.280 ms - 360
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count 200 449.393 ms - 41
+GET /api/v1/notifications/unread-count 200 691.964 ms - 76
+PASS MANAGER: real browser login -> dashboard -> profile -> reload, no intercepted API
+POST /api/v1/auth/login 200 933.589 ms - 489
+GET /api/v1/auth/me 200 325.371 ms - 395
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities 200 932.881 ms - 360
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/class-schedules?date=2026-10-06&page=1&limit=5 - - ms - -
+GET /api/v1/members?page=1&limit=5 - - ms - -
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/class-schedules?date=2026-10-06&page=1&limit=5 - - ms - -
+GET /api/v1/members?page=1&limit=5 - - ms - -
+GET /api/v1/auth/me 200 326.726 ms - 395
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities 200 328.461 ms - 360
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/auth/me 200 343.307 ms - 395
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities 200 325.761 ms - 360
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/notifications/unread-count 200 322.048 ms - 76
+GET /api/v1/chat/messages/unread-count 200 582.873 ms - 41
+PASS RECEPTIONIST: real browser login -> dashboard -> profile -> reload, no intercepted API
+POST /api/v1/auth/login 200 954.132 ms - 471
+GET /api/v1/auth/me 200 354.302 ms - 582
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities 200 314.003 ms - 360
+GET /api/v1/classes?coachId=6ac47cda30a130d6cb359c94&page=1&limit=100 - - ms - -
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/notifications/unread-count 200 302.219 ms - 76
+GET /api/v1/chat/messages/unread-count 200 309.543 ms - 41
+GET /api/v1/classes?coachId=6ac47cda30a130d6cb359c94&page=1&limit=100 - - ms - -
+GET /api/v1/auth/me 200 325.838 ms - 582
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities 200 398.338 ms - 360
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/notifications/unread-count 200 308.732 ms - 76
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/auth/me 200 302.252 ms - 582
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities 200 322.536 ms - 360
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/notifications/unread-count 200 316.726 ms - 76
+GET /api/v1/chat/messages/unread-count 200 332.955 ms - 41
+PASS COACH: real browser login -> dashboard -> profile -> reload, no intercepted API
+POST /api/v1/auth/login 200 949.669 ms - 473
+GET /api/v1/auth/me 200 364.117 ms - 619
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities 200 564.700 ms - 620
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/auth/me 200 284.540 ms - 619
+GET /api/v1/facilities 200 348.285 ms - 620
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/auth/me 200 369.178 ms - 619
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities 200 693.958 ms - 620
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count 200 375.332 ms - 41
+GET /api/v1/notifications/unread-count 200 374.338 ms - 76
+GET /api/v1/auth/me 200 347.008 ms - 619
+GET /api/v1/facilities - - ms - -
+GET /api/v1/facilities 200 376.822 ms - 620
+GET /api/v1/chat/messages/unread-count - - ms - -
+GET /api/v1/notifications/unread-count - - ms - -
+GET /api/v1/chat/messages/unread-count 200 547.608 ms - 41
+GET /api/v1/notifications/unread-count 200 563.601 ms - 76
+GET /api/v1/enrollments/my/quota 200 2580.437 ms - 474
+GET /api/v1/enrollments/my?status=BOOKED&page=1&limit=100 200 3065.031 ms - 1730
+PASS MEMBER: real browser login -> dashboard -> profile -> reload, no intercepted API
+GET /api/v1/enrollments/schedule/48a347f0-0a0c-40fe-9fc3-e61b970dce7a 200 5214.113 ms - 850
+[ERROR] AppError: Forbidden: chỉ MANAGER được xác nhận vắng có phép (EXCUSED)
+POST /api/v1/attendance 403 4371.622 ms - 102
+POST /api/v1/attendance 400 676.650 ms - 99
+POST /api/v1/attendance 201 6554.476 ms - 268
+GET /api/v1/attendance/my 200 3017.831 ms - 642
+POST /api/v1/attendance 403 678.367 ms - 65
+PATCH /api/v1/attendance/3f56aab2-e01e-4d69-b24d-5a1dc303fda7 403 764.951 ms - 65
+PATCH /api/v1/attendance/3f56aab2-e01e-4d69-b24d-5a1dc303fda7 200 6689.265 ms - 281
+PASS COACH: roster -> manual attendance with Mongo profile ID -> member history
+POST /api/v1/feedbacks 201 8908.362 ms - 1096
+POST /api/v1/feedbacks 400 613.386 ms - 141
+PASS MEMBER: feedback accepts ObjectId; invalid ID rejected
+DELETE /api/v1/enrollments/57f32e27-bedb-4e7b-b756-0649ade5d08a 200 5942.921 ms - 1213
+POST /api/v1/enrollments 201 20897.905 ms - 1658
+DELETE /api/v1/enrollments/57f32e27-bedb-4e7b-b756-0649ade5d08a 200 4643.570 ms - 1213
+PASS MEMBER cancel -> ADMIN book on behalf -> cancel (inherited permission)
+PATCH /api/v1/class-schedules/48a347f0-0a0c-40fe-9fc3-e61b970dce7a 200 10637.778 ms - 1313
+DELETE /api/v1/classes/da6e6fcd-4f84-441d-b314-c70a40c9d186 200 5304.102 ms - 417
+DELETE /api/v1/rooms/28f06f59-c0f2-4a02-a254-ebce9a38a70e 200 5136.502 ms - 365
+PASS MANAGER: cancel schedule -> persisted state; catalog deactivate
+POST /api/v1/auth/logout 200 187.858 ms - 64
+[ERROR] AppError: Refresh token has been revoked
+POST /api/v1/auth/refresh-token 401 60.601 ms - 60
+PASS ADMIN: logout revokes refresh
+POST /api/v1/auth/logout 200 190.449 ms - 64
+[ERROR] AppError: Refresh token has been revoked
+POST /api/v1/auth/refresh-token 401 79.467 ms - 60
+PASS MANAGER: logout revokes refresh
+POST /api/v1/auth/logout 200 205.401 ms - 64
+[ERROR] AppError: Refresh token has been revoked
+POST /api/v1/auth/refresh-token 401 61.259 ms - 60
+PASS RECEPTIONIST: logout revokes refresh
+POST /api/v1/auth/logout 200 186.744 ms - 64
+[ERROR] AppError: Refresh token has been revoked
+POST /api/v1/auth/refresh-token 401 61.177 ms - 60
+PASS COACH: logout revokes refresh
+POST /api/v1/auth/logout 200 202.149 ms - 64
+[ERROR] AppError: Refresh token has been revoked
+POST /api/v1/auth/refresh-token 401 61.756 ms - 60
+PASS MEMBER: logout revokes refresh
+{
+  "passed": 33,
+  "failures": []
+}

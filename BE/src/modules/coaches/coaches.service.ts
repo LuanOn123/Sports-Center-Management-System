@@ -3,6 +3,7 @@ import { CoachProfile } from "../../models/CoachProfile.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { prisma } from "../../config/prisma.js";
+import { synchronizeUserProjection } from "../users/user-projection.service.js";
 import type { CoachQueryInput, UpdateCoachInput } from "./coaches.schema.js";
 
 export async function listCoaches(query: CoachQueryInput) {
@@ -138,6 +139,7 @@ export async function updateCoach(id: string, data: UpdateCoachInput) {
     await CoachProfile.updateOne({ userId: id }, profileUpdate);
   }
 
+  await synchronizeUserProjection(id);
   // Return updated coach
   const updatedProfile = await CoachProfile.findOne({ userId: id }).lean();
   const updatedUser = await User.findById(id).lean();

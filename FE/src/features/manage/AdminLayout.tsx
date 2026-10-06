@@ -11,6 +11,7 @@ const items = [
   ["facilities", "Cơ sở"],
   ["staff", "Phân công nhân sự"],
   ["users", "Tài khoản"],
+  ["members", "Hội viên"],
   ["membership-plans", "Gói thành viên"],
   ["sports", "Bộ môn"],
   ["coaches", "Huấn luyện viên"],
@@ -35,7 +36,7 @@ export function AdminLayout(props: PortalProps) {
       items={items}
     >
       <Routes>
-        <Route path="/admin/dashboard" element={<Dashboard />} />
+        <Route path="/admin/dashboard" element={<Dashboard base="/admin" />} />
         {(
           [
             "facilities",

@@ -1,0 +1,4 @@
+MongoDB connected successfully
+PASS real UI: manager login -> create room -> list -> PostgreSQL
+PASS real UI: detail -> update capacity -> reload -> persisted PostgreSQL value
+PASS real UI: deactivate -> PostgreSQL inactive; no console/API failures or interceptions

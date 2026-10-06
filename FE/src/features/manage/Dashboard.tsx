@@ -28,7 +28,7 @@ function dateString(d: Date) {
     .toISOString()
     .slice(0, 10);
 }
-export function Dashboard({ reports = false }: { reports?: boolean }) {
+export function Dashboard({ reports = false, base = "/manager" }: { reports?: boolean; base?: "/manager" | "/admin" }) {
   const today = dateString(new Date());
   const [startDate, setStart] = useState(today.slice(0, 7) + "-01");
   const [endDate, setEnd] = useState(today);
@@ -273,7 +273,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                 <h2>Sẵn sàng cho lịch tập hôm nay</h2>
                 <p>Điều phối phòng tập, lớp học và đội ngũ huấn luyện viên.</p>
               </div>
-              <Link className="button lime" to="/manager/schedules">
+              <Link className="button lime" to={`${base}/schedules`}>
                 Xem lịch hoạt động <ArrowUpRight size={18} />
               </Link>
             </section>
@@ -364,7 +364,7 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                 </div>
                 <Link
                   className="text-link"
-                  to={reports ? "/manager/classes" : "/manager/schedules"}
+                  to={reports ? `${base}/classes` : `${base}/schedules`}
                 >
                   Xem tất cả <MoveUpRight size={15} />
                 </Link>
@@ -437,9 +437,9 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
                 chỉ cách bạn một chạm.
               </p>
               {[
-                ["/manager/members", "Quản lý hội viên", Users],
-                ["/manager/classes", "Tổ chức lớp học", Dumbbell],
-                ["/manager/membership-plans", "Thiết lập gói tập", CreditCard],
+                [`${base}/members`, "Quản lý hội viên", Users],
+                [`${base}/classes`, "Tổ chức lớp học", Dumbbell],
+                [`${base}/membership-plans`, "Thiết lập gói tập", CreditCard],
               ].map(([to, title, Icon]) => {
                 const I = Icon as typeof Users;
                 return (

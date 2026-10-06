@@ -72,10 +72,15 @@ export async function synchronizeUserProjection(id: string) {
           data: { coachId: coach._id.toString() },
         });
       }
+      const data = {
+        specialization: coach.specialization,
+        experienceYears: coach.experienceYears,
+        bio: coach.bio,
+      };
       await tx.coachProfile.upsert({
         where: { userId: id },
-        create: { id: coach._id.toString(), userId: id },
-        update: {},
+        create: { id: coach._id.toString(), userId: id, ...data },
+        update: data,
       });
     }
     if (manager) {

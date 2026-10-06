@@ -1,14 +1,19 @@
-{
-  "GET /users": {
-    "path": "/users",
+[
+  {
+    "key": "GET /users",
+    "feature": "users",
     "method": "GET",
-    "summary": "List all users",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/users",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/users/users.routes.ts:41",
+    "handler": "usersController.listUsers",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "role",
@@ -56,8 +61,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -65,17 +69,20 @@
       "500"
     ]
   },
-  "POST /users": {
-    "path": "/users",
+  {
+    "key": "POST /users",
+    "feature": "users",
     "method": "POST",
-    "summary": "Create staff, coach, manager or member account (MEMBER creates the member profile too)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/users",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/users/users.routes.ts:76",
+    "handler": "usersController.createUser",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "email",
@@ -122,7 +129,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "201",
       "400",
       "401",
@@ -131,27 +139,21 @@
       "500"
     ]
   },
-  "GET /users/{id}": {
-    "path": "/users/{id}",
+  {
+    "key": "GET /users/{id}",
+    "feature": "users",
     "method": "GET",
-    "summary": "Get user by ID",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/users/{id}",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/users/users.routes.ts:97",
+    "handler": "usersController.getUserById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -160,26 +162,19 @@
       "500"
     ]
   },
-  "PATCH /users/{id}": {
-    "path": "/users/{id}",
+  {
+    "key": "PATCH /users/{id}",
+    "feature": "users",
     "method": "PATCH",
-    "summary": "PATCH /users/{id}",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/users/{id}",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/users/users.routes.ts:131",
+    "handler": "usersController.updateUser",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "fullName": {
@@ -216,7 +211,8 @@
       },
       "required": []
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -224,27 +220,21 @@
       "404"
     ]
   },
-  "DELETE /users/{id}": {
-    "path": "/users/{id}",
+  {
+    "key": "DELETE /users/{id}",
+    "feature": "users",
     "method": "DELETE",
-    "summary": "Deactivate user (soft delete)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/users/{id}",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/users/users.routes.ts:152",
+    "handler": "usersController.deactivateUser",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -253,17 +243,20 @@
       "500"
     ]
   },
-  "POST /subscriptions": {
-    "path": "/subscriptions",
+  {
+    "key": "POST /subscriptions",
+    "feature": "subscriptions",
     "method": "POST",
-    "summary": "Register member to a membership plan",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/subscriptions",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/membership/MembershipPage.tsx",
+      "FE/src/api/membership.api.ts"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/subscriptions/subscriptions.routes.ts:43",
+    "handler": "subsController.createSubscription",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "memberId",
@@ -292,7 +285,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "201",
       "400",
       "401",
@@ -301,26 +295,20 @@
       "500"
     ]
   },
-  "POST /subscriptions/{id}/renew": {
-    "path": "/subscriptions/{id}/renew",
+  {
+    "key": "POST /subscriptions/{id}/renew",
+    "feature": "subscriptions",
     "method": "POST",
-    "summary": "Renew a membership subscription",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/subscriptions/{id}/renew",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/membership/MembershipPage.tsx",
+      "FE/src/api/membership.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/subscriptions/subscriptions.routes.ts:80",
+    "handler": "subsController.renewSubscription",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "planId",
@@ -342,7 +330,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "201",
       "400",
       "401",
@@ -351,24 +340,22 @@
       "500"
     ]
   },
-  "GET /subscriptions/member/{memberId}": {
-    "path": "/subscriptions/member/{memberId}",
+  {
+    "key": "GET /subscriptions/member/{memberId}",
+    "feature": "subscriptions",
     "method": "GET",
-    "summary": "Get all subscriptions for a member",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/subscriptions/member/{memberId}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/membership.api.ts",
+      "FE/src/features/reception/membership/MembershipPage.tsx",
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "memberId",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
+    "backend": "BE/src/modules/subscriptions/subscriptions.routes.ts:108",
+    "handler": "subsController.getMemberSubscriptions",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "status",
@@ -397,8 +384,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -406,27 +392,21 @@
       "500"
     ]
   },
-  "GET /subscriptions/{id}": {
-    "path": "/subscriptions/{id}",
+  {
+    "key": "GET /subscriptions/{id}",
+    "feature": "subscriptions",
     "method": "GET",
-    "summary": "Get subscription by ID",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/subscriptions/{id}",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/api/membership.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/subscriptions/subscriptions.routes.ts:134",
+    "handler": "subsController.getSubscriptionById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -435,26 +415,21 @@
       "500"
     ]
   },
-  "PATCH /subscriptions/{id}/status": {
-    "path": "/subscriptions/{id}/status",
+  {
+    "key": "PATCH /subscriptions/{id}/status",
+    "feature": "subscriptions",
     "method": "PATCH",
-    "summary": "Cập nhật trạng thái gói (Manager only)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/subscriptions/{id}/status",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/membership/MembershipPage.tsx",
+      "FE/src/shared/CancelSubscription.tsx",
+      "FE/src/api/membership.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/subscriptions/subscriptions.routes.ts:219",
+    "handler": "subsController.updateSubscriptionStatus",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "status"
@@ -470,7 +445,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -479,28 +455,20 @@
       "500"
     ]
   },
-  "PATCH /subscriptions/{id}/cancel": {
-    "path": "/subscriptions/{id}/cancel",
+  {
+    "key": "PATCH /subscriptions/{id}/cancel",
+    "feature": "subscriptions",
     "method": "PATCH",
-    "summary": "Member tự hủy gói của mình",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/subscriptions/{id}/cancel",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/shared/CancelSubscription.tsx",
+      "FE/src/api/membership.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "description": "Subscription ID (phải là gói của chính mình)"
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/subscriptions/subscriptions.routes.ts:303",
+    "handler": "subsController.cancelSubscriptionBySelf",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "reason": {
@@ -511,7 +479,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -520,12 +489,24 @@
       "500"
     ]
   },
-  "GET /sports": {
-    "path": "/sports",
+  {
+    "key": "GET /sports",
+    "feature": "sports",
     "method": "GET",
-    "summary": "Get list of sports",
-    "security": [],
-    "parameters": [
+    "path": "/sports",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/api/classes.api.ts",
+      "FE/src/features/manage/ActivityPlanner.tsx",
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/shared/forms/SchemaForm.tsx"
+    ],
+    "backend": "BE/src/modules/sports/sports.routes.ts:57",
+    "handler": "sportsController.listSports",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "search",
@@ -576,24 +557,29 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "500"
     ]
   },
-  "POST /sports": {
-    "path": "/sports",
+  {
+    "key": "POST /sports",
+    "feature": "sports",
     "method": "POST",
-    "summary": "Create a new sport",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/sports",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ActivityPlanner.tsx",
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/shared/forms/SchemaForm.tsx",
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/sports/sports.routes.ts:118",
+    "handler": "sportsController.createSport",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "name",
@@ -626,7 +612,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "201",
       "400",
       "401",
@@ -635,49 +622,40 @@
       "500"
     ]
   },
-  "GET /sports/{id}": {
-    "path": "/sports/{id}",
+  {
+    "key": "GET /sports/{id}",
+    "feature": "sports",
     "method": "GET",
-    "summary": "View sport details",
-    "security": [],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
+    "path": "/sports/{id}",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
     ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/sports/sports.routes.ts:78",
+    "handler": "sportsController.getSportById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "404",
       "500"
     ]
   },
-  "PATCH /sports/{id}": {
-    "path": "/sports/{id}",
+  {
+    "key": "PATCH /sports/{id}",
+    "feature": "sports",
     "method": "PATCH",
-    "summary": "Update sport",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/sports/{id}",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/sports/sports.routes.ts:166",
+    "handler": "sportsController.updateSport",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "name": {
@@ -704,7 +682,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -713,27 +692,21 @@
       "500"
     ]
   },
-  "DELETE /sports/{id}": {
-    "path": "/sports/{id}",
+  {
+    "key": "DELETE /sports/{id}",
+    "feature": "sports",
     "method": "DELETE",
-    "summary": "Deactivate sport (soft delete)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/sports/{id}",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/sports/sports.routes.ts:194",
+    "handler": "sportsController.deleteSport",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -742,16 +715,24 @@
       "500"
     ]
   },
-  "GET /rooms": {
-    "path": "/rooms",
+  {
+    "key": "GET /rooms",
+    "feature": "rooms",
     "method": "GET",
-    "summary": "Get list of rooms",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/rooms",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/manage/ActivityPlanner.tsx",
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/shared/forms/SchemaForm.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/rooms/rooms.routes.ts:56",
+    "handler": "roomsController.listRooms",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "search",
@@ -801,25 +782,28 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
       "500"
     ]
   },
-  "POST /rooms": {
-    "path": "/rooms",
+  {
+    "key": "POST /rooms",
+    "feature": "rooms",
     "method": "POST",
-    "summary": "Create a new room",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/rooms",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/config.ts",
+      "FE/src/shared/forms/SchemaForm.tsx",
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/rooms/rooms.routes.ts:122",
+    "handler": "roomsController.createRoom",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "name",
@@ -850,7 +834,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "201",
       "400",
       "401",
@@ -859,27 +844,21 @@
       "500"
     ]
   },
-  "GET /rooms/{id}": {
-    "path": "/rooms/{id}",
+  {
+    "key": "GET /rooms/{id}",
+    "feature": "rooms",
     "method": "GET",
-    "summary": "View room details",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/rooms/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/rooms/rooms.routes.ts:82",
+    "handler": "roomsController.getRoomById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -887,26 +866,19 @@
       "500"
     ]
   },
-  "PATCH /rooms/{id}": {
-    "path": "/rooms/{id}",
+  {
+    "key": "PATCH /rooms/{id}",
+    "feature": "rooms",
     "method": "PATCH",
-    "summary": "Update room info",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/rooms/{id}",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/rooms/rooms.routes.ts:169",
+    "handler": "roomsController.updateRoom",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "name": {
@@ -932,7 +904,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -941,27 +914,21 @@
       "500"
     ]
   },
-  "DELETE /rooms/{id}": {
-    "path": "/rooms/{id}",
+  {
+    "key": "DELETE /rooms/{id}",
+    "feature": "rooms",
     "method": "DELETE",
-    "summary": "Deactivate room (soft delete)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/rooms/{id}",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/rooms/rooms.routes.ts:197",
+    "handler": "roomsController.deleteRoom",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -970,27 +937,19 @@
       "500"
     ]
   },
-  "POST /rooms/{roomId}/transfer-schedules/preview": {
+  {
+    "key": "POST /rooms/{roomId}/transfer-schedules/preview",
+    "feature": "rooms",
+    "method": "POST",
     "path": "/rooms/{roomId}/transfer-schedules/preview",
-    "method": "POST",
-    "summary": "Preview bulk transfer of upcoming schedules to another room (no DB changes)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "roomId",
-        "required": true,
-        "schema": {
-          "type": "string"
-        },
-        "description": "Source room (damaged room)"
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/rooms/rooms.routes.ts:236",
+    "handler": "roomsController.previewTransferSchedules",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "targetRoomId"
@@ -1017,7 +976,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1026,27 +986,19 @@
       "500"
     ]
   },
-  "POST /rooms/{roomId}/transfer-schedules": {
-    "path": "/rooms/{roomId}/transfer-schedules",
+  {
+    "key": "POST /rooms/{roomId}/transfer-schedules",
+    "feature": "rooms",
     "method": "POST",
-    "summary": "Bulk transfer upcoming SCHEDULED schedules to another room (atomic, all-or-nothing)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/rooms/{roomId}/transfer-schedules",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "roomId",
-        "required": true,
-        "schema": {
-          "type": "string"
-        },
-        "description": "Source room (damaged room)"
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/rooms/rooms.routes.ts:279",
+    "handler": "roomsController.transferSchedules",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "targetRoomId"
@@ -1073,7 +1025,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1083,16 +1036,20 @@
       "500"
     ]
   },
-  "GET /reports/revenue": {
-    "path": "/reports/revenue",
+  {
+    "key": "GET /reports/revenue",
+    "feature": "reports",
     "method": "GET",
-    "summary": "Revenue report (total, by method, recent payments)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/reports/revenue",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/Dashboard.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/reports/reports.routes.ts:34",
+    "handler": "reportsController.getRevenueReport",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "startDate",
@@ -1112,8 +1069,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1121,16 +1077,20 @@
       "500"
     ]
   },
-  "GET /reports/members": {
+  {
+    "key": "GET /reports/members",
+    "feature": "reports",
+    "method": "GET",
     "path": "/reports/members",
-    "method": "GET",
-    "summary": "Member report (total, new, active, by tier)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/Dashboard.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/reports/reports.routes.ts:58",
+    "handler": "reportsController.getMemberReport",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "startDate",
@@ -1148,8 +1108,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1157,16 +1116,20 @@
       "500"
     ]
   },
-  "GET /reports/enrollments": {
+  {
+    "key": "GET /reports/enrollments",
+    "feature": "reports",
+    "method": "GET",
     "path": "/reports/enrollments",
-    "method": "GET",
-    "summary": "Enrollment report (top classes, by type)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/Dashboard.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/reports/reports.routes.ts:82",
+    "handler": "reportsController.getEnrollmentReport",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "startDate",
@@ -1184,8 +1147,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1193,16 +1155,20 @@
       "500"
     ]
   },
-  "GET /reports/memberships": {
+  {
+    "key": "GET /reports/memberships",
+    "feature": "reports",
+    "method": "GET",
     "path": "/reports/memberships",
-    "method": "GET",
-    "summary": "Membership subscription report (by status, tier, revenue)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/Dashboard.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/reports/reports.routes.ts:106",
+    "handler": "reportsController.getMembershipReport",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "startDate",
@@ -1220,8 +1186,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1229,16 +1194,18 @@
       "500"
     ]
   },
-  "GET /reports/subscription-logs": {
-    "path": "/reports/subscription-logs",
+  {
+    "key": "GET /reports/subscription-logs",
+    "feature": "reports",
     "method": "GET",
-    "summary": "Detailed log of subscription purchases",
-    "security": [
-      {
-        "BearerAuth": []
-      }
-    ],
-    "parameters": [
+    "path": "/reports/subscription-logs",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [],
+    "backend": "BE/src/modules/reports/reports.routes.ts:197",
+    "handler": "reportsController.getSubscriptionLogs",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "startDate",
@@ -1270,8 +1237,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1279,16 +1245,18 @@
       "500"
     ]
   },
-  "GET /reports/attendance": {
-    "path": "/reports/attendance",
+  {
+    "key": "GET /reports/attendance",
+    "feature": "reports",
     "method": "GET",
-    "summary": "Attendance report per (member × class) with OK/WARN/RELEASE status",
-    "security": [
-      {
-        "BearerAuth": []
-      }
-    ],
-    "parameters": [
+    "path": "/reports/attendance",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [],
+    "backend": "BE/src/modules/reports/reports.routes.ts:191",
+    "handler": "reportsController.getAttendanceReport",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "status",
@@ -1333,8 +1301,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1342,17 +1309,20 @@
       "500"
     ]
   },
-  "POST /payments": {
-    "path": "/payments",
+  {
+    "key": "POST /payments",
+    "feature": "payments",
     "method": "POST",
-    "summary": "Record a payment (auto-creates invoice on SUCCESS)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/payments",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx",
+      "FE/src/shared/forms/SchemaForm.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/payments/payments.routes.ts:39",
+    "handler": "paymentsController.createPayment",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "memberId",
@@ -1392,7 +1362,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "201",
       "400",
       "401",
@@ -1401,16 +1372,20 @@
       "500"
     ]
   },
-  "GET /payments": {
-    "path": "/payments",
+  {
+    "key": "GET /payments",
+    "feature": "payments",
     "method": "GET",
-    "summary": "List payments with filters",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/payments",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/payments/payments.routes.ts:75",
+    "handler": "paymentsController.listPayments",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "memberId",
@@ -1471,8 +1446,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1480,27 +1454,22 @@
       "500"
     ]
   },
-  "GET /payments/{id}": {
-    "path": "/payments/{id}",
+  {
+    "key": "GET /payments/{id}",
+    "feature": "payments",
     "method": "GET",
-    "summary": "Get payment by ID",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/payments/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx",
+      "FE/src/pages/member/PaymentsPage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/payments/payments.routes.ts:101",
+    "handler": "paymentsController.getPaymentById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1509,26 +1478,19 @@
       "500"
     ]
   },
-  "PATCH /payments/{id}/status": {
-    "path": "/payments/{id}/status",
+  {
+    "key": "PATCH /payments/{id}/status",
+    "feature": "payments",
     "method": "PATCH",
-    "summary": "Update payment status (thanh toán tại quầy)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/payments/{id}/status",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/payments/payments.routes.ts:139",
+    "handler": "paymentsController.updatePaymentStatus",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "status"
@@ -1545,7 +1507,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1554,27 +1517,21 @@
       "500"
     ]
   },
-  "POST /payments/{id}/retry-activation": {
-    "path": "/payments/{id}/retry-activation",
+  {
+    "key": "POST /payments/{id}/retry-activation",
+    "feature": "payments",
     "method": "POST",
-    "summary": "Kích hoạt bù cho giao dịch online đã thu tiền nhưng chưa cấp gói (Manager only)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/payments/{id}/retry-activation",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/payments/payments.routes.ts:171",
+    "handler": "paymentsController.retryPaymentActivation",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1584,17 +1541,21 @@
       "500"
     ]
   },
-  "POST /payments/sepay/checkout": {
-    "path": "/payments/sepay/checkout",
+  {
+    "key": "POST /payments/sepay/checkout",
+    "feature": "payments",
     "method": "POST",
-    "summary": "Create a SePay VietQR membership checkout",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/payments/sepay/checkout",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/api/sepay.api.ts",
+      "FE/src/shared/api.ts",
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/payments/payments.routes.ts:267",
+    "handler": "paymentsController.sepayCheckout",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "planId": {
@@ -1605,7 +1566,8 @@
         "planId"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "201",
       "400",
       "401",
@@ -1616,45 +1578,19 @@
       "503"
     ]
   },
-  "POST /payments/sepay/webhook": {
-    "path": "/payments/sepay/webhook",
+  {
+    "key": "POST /payments/sepay/webhook",
+    "feature": "payments",
     "method": "POST",
-    "summary": "SePay gọi server-to-server khi phát hiện giao dịch chuyển khoản",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/payments/sepay/webhook",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "header",
-        "name": "Authorization",
-        "required": false,
-        "schema": {
-          "type": "string"
-        },
-        "description": "`Apikey <SEPAY_WEBHOOK_API_KEY>` (phương thức API Key)"
-      },
-      {
-        "in": "header",
-        "name": "X-SePay-Signature",
-        "required": false,
-        "schema": {
-          "type": "string"
-        },
-        "description": "`sha256={hex}` — chữ ký HMAC-SHA256 (phương thức HMAC)"
-      },
-      {
-        "in": "header",
-        "name": "X-SePay-Timestamp",
-        "required": false,
-        "schema": {
-          "type": "string"
-        },
-        "description": "Unix timestamp (seconds) khi SePay ký — tham gia nội dung ký"
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/payments/payments.routes.ts:387",
+    "handler": "paymentsController.sepayWebhook",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "id",
@@ -1712,7 +1648,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1720,17 +1657,21 @@
       "503"
     ]
   },
-  "POST /payments/sepay/mock-confirm": {
-    "path": "/payments/sepay/mock-confirm",
+  {
+    "key": "POST /payments/sepay/mock-confirm",
+    "feature": "payments",
     "method": "POST",
-    "summary": "DEV/DEMO confirm a SePay membership checkout",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/payments/sepay/mock-confirm",
+    "roles": "MEMBER, MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/api/sepay.api.ts",
+      "FE/src/shared/api.ts",
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/payments/payments.routes.ts:443",
+    "handler": "paymentsController.sepayMockConfirm",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "paymentId": {
@@ -1741,7 +1682,8 @@
         "paymentId"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1750,27 +1692,21 @@
       "500"
     ]
   },
-  "GET /payments/sepay/{id}": {
-    "path": "/payments/sepay/{id}",
+  {
+    "key": "GET /payments/sepay/{id}",
+    "feature": "payments",
     "method": "GET",
-    "summary": "Get a SePay membership checkout",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/payments/sepay/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/payments/payments.routes.ts:514",
+    "handler": "paymentsController.sepayGetCheckout",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "401",
       "403",
@@ -1778,16 +1714,20 @@
       "500"
     ]
   },
-  "GET /notifications": {
-    "path": "/notifications",
+  {
+    "key": "GET /notifications",
+    "feature": "notifications",
     "method": "GET",
-    "summary": "GET /notifications",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/notifications",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/notifications/notifications.routes.ts:59",
+    "handler": "notificationsController.getMyNotifications",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "page",
@@ -1817,8 +1757,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1826,18 +1765,21 @@
       "404"
     ]
   },
-  "GET /notifications/unread-count": {
+  {
+    "key": "GET /notifications/unread-count",
+    "feature": "notifications",
+    "method": "GET",
     "path": "/notifications/unread-count",
-    "method": "GET",
-    "summary": "GET /notifications/unread-count",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
     ],
-    "parameters": [],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/notifications/notifications.routes.ts:75",
+    "handler": "notificationsController.getUnreadCount",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1845,18 +1787,21 @@
       "404"
     ]
   },
-  "PATCH /notifications/mark-all-read": {
+  {
+    "key": "PATCH /notifications/mark-all-read",
+    "feature": "notifications",
+    "method": "PATCH",
     "path": "/notifications/mark-all-read",
-    "method": "PATCH",
-    "summary": "PATCH /notifications/mark-all-read",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
     ],
-    "parameters": [],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/notifications/notifications.routes.ts:91",
+    "handler": "notificationsController.markAllRead",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1864,27 +1809,21 @@
       "404"
     ]
   },
-  "PATCH /notifications/{id}/read": {
+  {
+    "key": "PATCH /notifications/{id}/read",
+    "feature": "notifications",
+    "method": "PATCH",
     "path": "/notifications/{id}/read",
-    "method": "PATCH",
-    "summary": "PATCH /notifications/{id}/read",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/notifications/notifications.routes.ts:116",
+    "handler": "notificationsController.markRead",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1892,18 +1831,21 @@
       "404"
     ]
   },
-  "POST /notifications/trigger-upcoming-reminders": {
-    "path": "/notifications/trigger-upcoming-reminders",
+  {
+    "key": "POST /notifications/trigger-upcoming-reminders",
+    "feature": "notifications",
     "method": "POST",
-    "summary": "POST /notifications/trigger-upcoming-reminders",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/notifications/trigger-upcoming-reminders",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
     ],
-    "parameters": [],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/notifications/notifications.routes.ts:133",
+    "handler": "notificationsController.triggerUpcomingReminders",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -1911,12 +1853,23 @@
       "404"
     ]
   },
-  "GET /membership-plans": {
-    "path": "/membership-plans",
+  {
+    "key": "GET /membership-plans",
+    "feature": "membership-plans",
     "method": "GET",
-    "summary": "List membership plans (public)",
-    "security": [],
-    "parameters": [
+    "path": "/membership-plans",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/api/membership.api.ts",
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/features/reception/membership/MembershipPage.tsx"
+    ],
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:29",
+    "handler": "plansController.listPlans",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "tier",
@@ -1954,24 +1907,26 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "500"
     ]
   },
-  "POST /membership-plans": {
-    "path": "/membership-plans",
+  {
+    "key": "POST /membership-plans",
+    "feature": "membership-plans",
     "method": "POST",
-    "summary": "Create membership plan",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/membership-plans",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/manage/config.ts",
+      "FE/src/api/membership.api.ts"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:92",
+    "handler": "plansController.createPlan",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "name",
@@ -2006,7 +1961,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "201",
       "400",
       "401",
@@ -2015,49 +1971,40 @@
       "500"
     ]
   },
-  "GET /membership-plans/{id}": {
-    "path": "/membership-plans/{id}",
+  {
+    "key": "GET /membership-plans/{id}",
+    "feature": "membership-plans",
     "method": "GET",
-    "summary": "Get plan details (public)",
-    "security": [],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
+    "path": "/membership-plans/{id}",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/api/membership.api.ts"
     ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:49",
+    "handler": "plansController.getPlanById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "404",
       "500"
     ]
   },
-  "PATCH /membership-plans/{id}": {
-    "path": "/membership-plans/{id}",
+  {
+    "key": "PATCH /membership-plans/{id}",
+    "feature": "membership-plans",
     "method": "PATCH",
-    "summary": "PATCH /membership-plans/{id}",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/membership-plans/{id}",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/api/membership.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:145",
+    "handler": "plansController.updatePlan",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "name": {
@@ -2086,7 +2033,8 @@
       },
       "required": []
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -2094,27 +2042,21 @@
       "404"
     ]
   },
-  "DELETE /membership-plans/{id}": {
-    "path": "/membership-plans/{id}",
+  {
+    "key": "DELETE /membership-plans/{id}",
+    "feature": "membership-plans",
     "method": "DELETE",
-    "summary": "Deactivate membership plan",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/membership-plans/{id}",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/api/membership.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:171",
+    "handler": "plansController.deletePlan",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -2123,16 +2065,25 @@
       "500"
     ]
   },
-  "GET /members": {
-    "path": "/members",
+  {
+    "key": "GET /members",
+    "feature": "members",
     "method": "GET",
-    "summary": "List all members",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/members",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/features/reception/components.tsx",
+      "FE/src/features/reception/dashboard/DashboardPage.tsx",
+      "FE/src/features/reception/members/MembersPage.tsx",
+      "FE/src/features/reception/membership/MembershipPage.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/members/members.routes.ts:36",
+    "handler": "membersController.listMembers",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "search",
@@ -2167,8 +2118,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -2176,27 +2126,23 @@
       "500"
     ]
   },
-  "GET /members/{id}": {
-    "path": "/members/{id}",
+  {
+    "key": "GET /members/{id}",
+    "feature": "members",
     "method": "GET",
-    "summary": "Get member by ID (userId or profileId)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/members/{id}",
+    "roles": "MANAGER, RECEPTIONIST, COACH, ADMIN",
+    "consumers": [
+      "FE/src/features/coach/CoachWorkspace.tsx",
+      "FE/src/features/reception/members/MembersPage.tsx",
+      "FE/src/features/reception/membership/MembershipPage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/members/members.routes.ts:61",
+    "handler": "membersController.getMemberById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "401",
       "403",
@@ -2204,26 +2150,20 @@
       "500"
     ]
   },
-  "PATCH /members/{id}": {
-    "path": "/members/{id}",
+  {
+    "key": "PATCH /members/{id}",
+    "feature": "members",
     "method": "PATCH",
-    "summary": "PATCH /members/{id}",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/members/{id}",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/members/MembersPage.tsx",
+      "FE/src/features/reception/membership/MembershipPage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/members/members.routes.ts:100",
+    "handler": "membersController.updateMember",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "fullName": {
@@ -2261,7 +2201,8 @@
       },
       "required": []
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -2269,28 +2210,23 @@
       "404"
     ]
   },
-  "GET /members/{id}/membership-status": {
-    "path": "/members/{id}/membership-status",
+  {
+    "key": "GET /members/{id}/membership-status",
+    "feature": "members",
     "method": "GET",
-    "summary": "Get member effective tier and active subscription",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/members/{id}/membership-status",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/features/reception/membership/MembershipPage.tsx",
+      "FE/src/features/reception/members/MembersPage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        },
-        "description": "memberProfile.id hoặc userId"
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/members/members.routes.ts:131",
+    "handler": "membersController.getMembershipStatus",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "401",
       "403",
@@ -2298,16 +2234,20 @@
       "500"
     ]
   },
-  "GET /invoices": {
-    "path": "/invoices",
+  {
+    "key": "GET /invoices",
+    "feature": "invoices",
     "method": "GET",
-    "summary": "List all invoices",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/invoices",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/invoices/invoices.routes.ts:36",
+    "handler": "invoicesController.listInvoices",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "memberId",
@@ -2355,8 +2295,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -2364,24 +2303,21 @@
       "500"
     ]
   },
-  "GET /invoices/member/{memberId}": {
-    "path": "/invoices/member/{memberId}",
+  {
+    "key": "GET /invoices/member/{memberId}",
+    "feature": "invoices",
     "method": "GET",
-    "summary": "Get invoices for a specific member",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/invoices/member/{memberId}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx",
+      "FE/src/pages/member/PaymentsPage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "memberId",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
+    "backend": "BE/src/modules/invoices/invoices.routes.ts:62",
+    "handler": "invoicesController.getMemberInvoices",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "page",
@@ -2397,8 +2333,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -2407,27 +2342,21 @@
       "500"
     ]
   },
-  "GET /invoices/{id}": {
-    "path": "/invoices/{id}",
+  {
+    "key": "GET /invoices/{id}",
+    "feature": "invoices",
     "method": "GET",
-    "summary": "Get invoice by ID",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/invoices/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/invoices/invoices.routes.ts:87",
+    "handler": "invoicesController.getInvoiceById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -2436,17 +2365,19 @@
       "500"
     ]
   },
-  "POST /feedbacks": {
-    "path": "/feedbacks",
+  {
+    "key": "POST /feedbacks",
+    "feature": "feedbacks",
     "method": "POST",
-    "summary": "Member gửi đánh giá cho HLV",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/feedbacks",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/shared/CoachFeedback.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/feedbacks/feedbacks.routes.ts:90",
+    "handler": "controller.createFeedback",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "coachId",
@@ -2481,7 +2412,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "201",
       "401",
       "403",
@@ -2489,16 +2421,20 @@
       "500"
     ]
   },
-  "GET /feedbacks": {
-    "path": "/feedbacks",
+  {
+    "key": "GET /feedbacks",
+    "feature": "feedbacks",
     "method": "GET",
-    "summary": "Xem danh sách đánh giá của một HLV (public)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/feedbacks",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/CoachFeedback.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/feedbacks/feedbacks.routes.ts:150",
+    "handler": "controller.listFeedbacksForCoach",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "coachId",
@@ -2533,54 +2469,49 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
       "500"
     ]
   },
-  "GET /feedbacks/my": {
-    "path": "/feedbacks/my",
+  {
+    "key": "GET /feedbacks/my",
+    "feature": "feedbacks",
     "method": "GET",
-    "summary": "Member xem danh sách feedback mình đã gửi",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/feedbacks/my",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/shared/CoachFeedback.tsx"
     ],
-    "parameters": [],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/feedbacks/feedbacks.routes.ts:178",
+    "handler": "controller.getMyFeedbacks",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "401",
       "403",
       "500"
     ]
   },
-  "DELETE /feedbacks/{id}": {
+  {
+    "key": "DELETE /feedbacks/{id}",
+    "feature": "feedbacks",
+    "method": "DELETE",
     "path": "/feedbacks/{id}",
-    "method": "DELETE",
-    "summary": "Member xóa feedback của mình",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/shared/CoachFeedback.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        },
-        "description": "Feedback ID"
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/feedbacks/feedbacks.routes.ts:209",
+    "handler": "controller.deleteFeedback",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "401",
       "403",
@@ -2588,28 +2519,21 @@
       "500"
     ]
   },
-  "DELETE /feedbacks/{id}/manager": {
+  {
+    "key": "DELETE /feedbacks/{id}/manager",
+    "feature": "feedbacks",
+    "method": "DELETE",
     "path": "/feedbacks/{id}/manager",
-    "method": "DELETE",
-    "summary": "Manager xóa feedback vi phạm",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/shared/CoachFeedback.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        },
-        "description": "Feedback ID"
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/feedbacks/feedbacks.routes.ts:240",
+    "handler": "controller.deleteFeedbackByManager",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "401",
       "403",
@@ -2617,17 +2541,20 @@
       "500"
     ]
   },
-  "POST /enrollments": {
-    "path": "/enrollments",
+  {
+    "key": "POST /enrollments",
+    "feature": "enrollments",
     "method": "POST",
-    "summary": "Book a class (Member books own class; Staff/Manager book for a member)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/enrollments",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/enrollments.api.ts",
+      "FE/src/features/reception/classes/ClassesPage.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/enrollments/enrollments.routes.ts:79",
+    "handler": "enrollmentsController.bookClass",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "scheduleId"
@@ -2644,7 +2571,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "201",
       "400",
       "401",
@@ -2654,16 +2582,21 @@
       "500"
     ]
   },
-  "GET /enrollments/my": {
-    "path": "/enrollments/my",
+  {
+    "key": "GET /enrollments/my",
+    "feature": "enrollments",
     "method": "GET",
-    "summary": "Get current member's enrollments",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/enrollments/my",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/api/enrollments.api.ts",
+      "FE/src/pages/member/AttendancePage.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/enrollments/enrollments.routes.ts:103",
+    "handler": "enrollmentsController.getMyEnrollments",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "status",
@@ -2693,8 +2626,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -2702,18 +2634,21 @@
       "500"
     ]
   },
-  "GET /enrollments/my/quota": {
-    "path": "/enrollments/my/quota",
+  {
+    "key": "GET /enrollments/my/quota",
+    "feature": "enrollments",
     "method": "GET",
-    "summary": "Get my concurrent-class quota (Member only)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/enrollments/my/quota",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/api/enrollments.api.ts"
     ],
-    "parameters": [],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/enrollments/enrollments.routes.ts:147",
+    "handler": "enrollmentsController.getMyQuota",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "401",
       "403",
@@ -2721,17 +2656,19 @@
       "500"
     ]
   },
-  "POST /enrollments/bulk": {
-    "path": "/enrollments/bulk",
+  {
+    "key": "POST /enrollments/bulk",
+    "feature": "enrollments",
     "method": "POST",
-    "summary": "Enroll in a whole course (all upcoming sessions)",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/enrollments/bulk",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/enrollments.api.ts"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/enrollments/enrollments.routes.ts:236",
+    "handler": "enrollmentsController.enrollWholeCourse",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "classId": {
@@ -2745,7 +2682,8 @@
         "classId"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "201",
       "400",
       "401",
@@ -2755,24 +2693,23 @@
       "500"
     ]
   },
-  "GET /enrollments/schedule/{scheduleId}": {
-    "path": "/enrollments/schedule/{scheduleId}",
+  {
+    "key": "GET /enrollments/schedule/{scheduleId}",
+    "feature": "enrollments",
     "method": "GET",
-    "summary": "Get all enrollments for a schedule",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/enrollments/schedule/{scheduleId}",
+    "roles": "MANAGER, COACH, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/coach/CoachWorkspace.tsx",
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/features/reception/classes/ClassesPage.tsx",
+      "FE/src/api/enrollments.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "scheduleId",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
+    "backend": "BE/src/modules/enrollments/enrollments.routes.ts:261",
+    "handler": "enrollmentsController.getScheduleEnrollments",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "page",
@@ -2788,8 +2725,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -2797,27 +2733,22 @@
       "500"
     ]
   },
-  "DELETE /enrollments/{id}": {
-    "path": "/enrollments/{id}",
+  {
+    "key": "DELETE /enrollments/{id}",
+    "feature": "enrollments",
     "method": "DELETE",
-    "summary": "Cancel an enrollment",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/enrollments/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/reception/classes/ClassesPage.tsx",
+      "FE/src/api/enrollments.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/enrollments/enrollments.routes.ts:287",
+    "handler": "enrollmentsController.cancelEnrollment",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -2826,27 +2757,19 @@
       "500"
     ]
   },
-  "POST /enrollments/{id}/transfer": {
-    "path": "/enrollments/{id}/transfer",
+  {
+    "key": "POST /enrollments/{id}/transfer",
+    "feature": "enrollments",
     "method": "POST",
-    "summary": "Move a booking to another schedule (Member moves own booking; Staff/Manager any member)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/enrollments/{id}/transfer",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/enrollments.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        },
-        "description": "Enrollment ID của chỗ đặt hiện tại"
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/enrollments/enrollments.routes.ts:342",
+    "handler": "enrollmentsController.transferEnrollment",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "targetScheduleId"
@@ -2859,7 +2782,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -2869,16 +2793,24 @@
       "500"
     ]
   },
-  "GET /coaches": {
-    "path": "/coaches",
+  {
+    "key": "GET /coaches",
+    "feature": "coaches",
     "method": "GET",
-    "summary": "List all coaches",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/coaches",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/manage/ActivityPlanner.tsx",
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/shared/forms/SchemaForm.tsx",
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/coaches/coaches.routes.ts:53",
+    "handler": "coachController.listCoaches",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "page",
@@ -2912,8 +2844,7 @@
         "description": "Filter by specialization (partial match)"
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -2921,28 +2852,21 @@
       "500"
     ]
   },
-  "GET /coaches/{id}": {
-    "path": "/coaches/{id}",
+  {
+    "key": "GET /coaches/{id}",
+    "feature": "coaches",
     "method": "GET",
-    "summary": "Get coach by ID",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/coaches/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        },
-        "description": "Coach user ID"
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/coaches/coaches.routes.ts:82",
+    "handler": "coachController.getCoachById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -2950,27 +2874,19 @@
       "500"
     ]
   },
-  "PATCH /coaches/{id}": {
-    "path": "/coaches/{id}",
+  {
+    "key": "PATCH /coaches/{id}",
+    "feature": "coaches",
     "method": "PATCH",
-    "summary": "Update coach profile",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/coaches/{id}",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        },
-        "description": "Coach user ID"
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/coaches/coaches.routes.ts:129",
+    "handler": "coachController.updateCoach",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "fullName": {
@@ -3001,7 +2917,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3010,16 +2927,24 @@
       "500"
     ]
   },
-  "GET /classes": {
-    "path": "/classes",
+  {
+    "key": "GET /classes",
+    "feature": "classes",
     "method": "GET",
-    "summary": "Get list of classes",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/classes",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/coach/data.ts",
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/shared/forms/SchemaForm.tsx",
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/classes/classes.routes.ts:78",
+    "handler": "classesController.listClasses",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "search",
@@ -3097,25 +3022,29 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
       "500"
     ]
   },
-  "POST /classes": {
-    "path": "/classes",
+  {
+    "key": "POST /classes",
+    "feature": "classes",
     "method": "POST",
-    "summary": "Create a new class",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/classes",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ActivityPlanner.tsx",
+      "FE/src/features/manage/config.ts",
+      "FE/src/shared/forms/SchemaForm.tsx",
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/classes/classes.routes.ts:193",
+    "handler": "classesController.createClass",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "name",
@@ -3163,7 +3092,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "201",
       "400",
       "401",
@@ -3172,27 +3102,21 @@
       "500"
     ]
   },
-  "GET /classes/{id}": {
-    "path": "/classes/{id}",
+  {
+    "key": "GET /classes/{id}",
+    "feature": "classes",
     "method": "GET",
-    "summary": "View class details (includes coaches and upcoming schedules)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/classes/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/classes/classes.routes.ts:104",
+    "handler": "classesController.getClassById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3200,26 +3124,19 @@
       "500"
     ]
   },
-  "PATCH /classes/{id}": {
-    "path": "/classes/{id}",
+  {
+    "key": "PATCH /classes/{id}",
+    "feature": "classes",
     "method": "PATCH",
-    "summary": "Update class",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/classes/{id}",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/classes/classes.routes.ts:248",
+    "handler": "classesController.updateClass",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "name": {
@@ -3259,7 +3176,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3268,27 +3186,21 @@
       "500"
     ]
   },
-  "DELETE /classes/{id}": {
-    "path": "/classes/{id}",
+  {
+    "key": "DELETE /classes/{id}",
+    "feature": "classes",
     "method": "DELETE",
-    "summary": "Deactivate class (soft delete)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/classes/{id}",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/classes/classes.routes.ts:276",
+    "handler": "classesController.deleteClass",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3297,54 +3209,42 @@
       "500"
     ]
   },
-  "GET /classes/{id}/course-plan": {
-    "path": "/classes/{id}/course-plan",
+  {
+    "key": "GET /classes/{id}/course-plan",
+    "feature": "classes",
     "method": "GET",
-    "summary": "View a class as ONE course (grouped timetable) + enrollment eligibility",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/classes/{id}/course-plan",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/classes/classes.routes.ts:142",
+    "handler": "classesController.getClassCoursePlan",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "401",
       "404",
       "500"
     ]
   },
-  "POST /classes/{id}/coaches": {
-    "path": "/classes/{id}/coaches",
+  {
+    "key": "POST /classes/{id}/coaches",
+    "feature": "classes",
     "method": "POST",
-    "summary": "Assign coach to class (Sends COACH_CHANGED notification to enrolled members)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/classes/{id}/coaches",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ActivityPlanner.tsx",
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        },
-        "description": "Class ID"
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/classes/classes.routes.ts:320",
+    "handler": "classesController.assignCoach",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "coachId"
@@ -3361,7 +3261,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3370,27 +3271,21 @@
       "500"
     ]
   },
-  "POST /classes/{id}/coaches/support": {
-    "path": "/classes/{id}/coaches/support",
+  {
+    "key": "POST /classes/{id}/coaches/support",
+    "feature": "classes",
     "method": "POST",
-    "summary": "Assign a support coach to class (Sends COACH_CHANGED notification to enrolled members)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/classes/{id}/coaches/support",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ActivityPlanner.tsx",
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        },
-        "description": "Class ID"
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/classes/classes.routes.ts:367",
+    "handler": "classesController.assignSupportCoach",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "coachId"
@@ -3402,7 +3297,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3412,37 +3308,22 @@
       "500"
     ]
   },
-  "DELETE /classes/{id}/coaches/{coachId}": {
-    "path": "/classes/{id}/coaches/{coachId}",
+  {
+    "key": "DELETE /classes/{id}/coaches/{coachId}",
+    "feature": "classes",
     "method": "DELETE",
-    "summary": "Remove coach from class (Sends COACH_CHANGED notification to enrolled members)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/classes/{id}/coaches/{coachId}",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        },
-        "description": "Class ID"
-      },
-      {
-        "in": "path",
-        "name": "coachId",
-        "required": true,
-        "schema": {
-          "type": "string"
-        },
-        "description": "CoachProfile ID"
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/classes/classes.routes.ts:402",
+    "handler": "classesController.removeCoach",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3451,20 +3332,23 @@
       "500"
     ]
   },
-  "POST /class-schedules/activity-plan": {
-    "path": "/class-schedules/activity-plan",
+  {
+    "key": "POST /class-schedules/activity-plan",
+    "feature": "class-schedules",
     "method": "POST",
-    "summary": "Atomically create a complete activity plan",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/class-schedules/activity-plan",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:35",
+    "handler": "schedulesController.createActivityPlan",
+    "status": "MATCH",
+    "request": {
       "type": "object"
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "201",
       "400",
       "401",
@@ -3474,16 +3358,25 @@
       "500"
     ]
   },
-  "GET /class-schedules": {
-    "path": "/class-schedules",
+  {
+    "key": "GET /class-schedules",
+    "feature": "class-schedules",
     "method": "GET",
-    "summary": "Get list of schedules",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/class-schedules",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/classes.api.ts",
+      "FE/src/features/coach/data.ts",
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/manage/Dashboard.tsx",
+      "FE/src/features/reception/classes/ClassesPage.tsx",
+      "FE/src/features/reception/dashboard/DashboardPage.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:135",
+    "handler": "schedulesController.listSchedules",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "classId",
@@ -3597,25 +3490,28 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
       "500"
     ]
   },
-  "POST /class-schedules": {
-    "path": "/class-schedules",
+  {
+    "key": "POST /class-schedules",
+    "feature": "class-schedules",
     "method": "POST",
-    "summary": "Create a new schedule (checks area type, room & coach conflicts)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/class-schedules",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ActivityPlanner.tsx",
+      "FE/src/features/manage/config.ts",
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:208",
+    "handler": "schedulesController.createSchedule",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "classId",
@@ -3642,7 +3538,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "201",
       "400",
       "401",
@@ -3652,27 +3549,21 @@
       "500"
     ]
   },
-  "GET /class-schedules/{id}": {
-    "path": "/class-schedules/{id}",
+  {
+    "key": "GET /class-schedules/{id}",
+    "feature": "class-schedules",
     "method": "GET",
-    "summary": "View schedule details (including enrolled count)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/class-schedules/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:161",
+    "handler": "schedulesController.getScheduleById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3680,26 +3571,21 @@
       "500"
     ]
   },
-  "PATCH /class-schedules/{id}": {
-    "path": "/class-schedules/{id}",
+  {
+    "key": "PATCH /class-schedules/{id}",
+    "feature": "class-schedules",
     "method": "PATCH",
-    "summary": "Update schedule (re-checks conflicts if room/time changed)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/class-schedules/{id}",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/shared/forms/SchemaForm.tsx",
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:261",
+    "handler": "schedulesController.updateSchedule",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "roomId": {
@@ -3728,7 +3614,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3738,27 +3625,21 @@
       "500"
     ]
   },
-  "DELETE /class-schedules/{id}": {
-    "path": "/class-schedules/{id}",
+  {
+    "key": "DELETE /class-schedules/{id}",
+    "feature": "class-schedules",
     "method": "DELETE",
-    "summary": "Cancel schedule (automatically cancels all BOOKED enrollments)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/class-schedules/{id}",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:291",
+    "handler": "schedulesController.deleteSchedule",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3767,27 +3648,22 @@
       "500"
     ]
   },
-  "PATCH /class-schedules/{id}/complete": {
-    "path": "/class-schedules/{id}/complete",
+  {
+    "key": "PATCH /class-schedules/{id}/complete",
+    "feature": "class-schedules",
     "method": "PATCH",
-    "summary": "PATCH /class-schedules/{id}/complete",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/class-schedules/{id}/complete",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/api/classes.api.ts"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:318",
+    "handler": "schedulesController.completeSchedule",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3795,18 +3671,21 @@
       "404"
     ]
   },
-  "GET /chat/contacts": {
+  {
+    "key": "GET /chat/contacts",
+    "feature": "chat",
+    "method": "GET",
     "path": "/chat/contacts",
-    "method": "GET",
-    "summary": "GET /chat/contacts",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
     ],
-    "parameters": [],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/chat/chat.routes.ts:30",
+    "handler": "getContacts",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3814,18 +3693,21 @@
       "404"
     ]
   },
-  "GET /chat/conversations": {
+  {
+    "key": "GET /chat/conversations",
+    "feature": "chat",
+    "method": "GET",
     "path": "/chat/conversations",
-    "method": "GET",
-    "summary": "GET /chat/conversations",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
     ],
-    "parameters": [],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/chat/chat.routes.ts:45",
+    "handler": "getConversations",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3833,16 +3715,20 @@
       "404"
     ]
   },
-  "GET /chat/messages": {
-    "path": "/chat/messages",
+  {
+    "key": "GET /chat/messages",
+    "feature": "chat",
     "method": "GET",
-    "summary": "GET /chat/messages",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/chat/messages",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/chat/chat.routes.ts:66",
+    "handler": "getMessages",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "targetId",
@@ -3851,8 +3737,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3860,17 +3745,19 @@
       "404"
     ]
   },
-  "POST /chat/messages": {
-    "path": "/chat/messages",
+  {
+    "key": "POST /chat/messages",
+    "feature": "chat",
     "method": "POST",
-    "summary": "POST /chat/messages",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/chat/messages",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/chat/chat.routes.ts:98",
+    "handler": "sendMessage",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "receiverId": {
@@ -3886,7 +3773,8 @@
       },
       "required": []
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3894,45 +3782,38 @@
       "404"
     ]
   },
-  "GET /chat/attachments/{id}": {
-    "path": "/chat/attachments/{id}",
+  {
+    "key": "GET /chat/attachments/{id}",
+    "feature": "chat",
     "method": "GET",
-    "summary": "Tải file đính kèm của tin nhắn (yêu cầu đăng nhập + phân quyền)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
-    ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string",
-          "format": "uuid"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "path": "/chat/attachments/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [],
+    "backend": "BE/src/modules/chat/chat.routes.ts:125",
+    "handler": "downloadAttachment",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "401",
       "403",
       "404"
     ]
   },
-  "PATCH /chat/messages/read": {
-    "path": "/chat/messages/read",
+  {
+    "key": "PATCH /chat/messages/read",
+    "feature": "chat",
     "method": "PATCH",
-    "summary": "PATCH /chat/messages/read",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/chat/messages/read",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/chat/chat.routes.ts:150",
+    "handler": "markAsRead",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "targetId": {
@@ -3941,7 +3822,8 @@
       },
       "required": []
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3949,18 +3831,21 @@
       "404"
     ]
   },
-  "GET /chat/messages/unread-count": {
-    "path": "/chat/messages/unread-count",
+  {
+    "key": "GET /chat/messages/unread-count",
+    "feature": "chat",
     "method": "GET",
-    "summary": "GET /chat/messages/unread-count",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/chat/messages/unread-count",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/shared/Communication.tsx"
     ],
-    "parameters": [],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/chat/chat.routes.ts:165",
+    "handler": "getUnreadCount",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -3968,13 +3853,22 @@
       "404"
     ]
   },
-  "POST /auth/register": {
-    "path": "/auth/register",
+  {
+    "key": "POST /auth/register",
+    "feature": "auth",
     "method": "POST",
-    "summary": "Register a new member account",
-    "security": [],
-    "parameters": [],
-    "body": {
+    "path": "/auth/register",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/api/auth.api.ts",
+      "FE/src/features/auth/Register.tsx",
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/features/reception/members/MembersPage.tsx"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:50",
+    "handler": "authController.register",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "email",
@@ -4015,20 +3909,28 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "201",
       "400",
       "409",
       "500"
     ]
   },
-  "POST /auth/login": {
-    "path": "/auth/login",
+  {
+    "key": "POST /auth/login",
+    "feature": "auth",
     "method": "POST",
-    "summary": "Login and receive access + refresh tokens",
-    "security": [],
-    "parameters": [],
-    "body": {
+    "path": "/auth/login",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/api/auth.api.ts",
+      "FE/src/shared/api.ts"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:75",
+    "handler": "authController.login",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "email",
@@ -4044,24 +3946,28 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
       "500"
     ]
   },
-  "POST /auth/logout": {
+  {
+    "key": "POST /auth/logout",
+    "feature": "auth",
+    "method": "POST",
     "path": "/auth/logout",
-    "method": "POST",
-    "summary": "Logout and revoke refresh token",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/auth.api.ts",
+      "FE/src/shared/api.ts"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/auth/auth.routes.ts:99",
+    "handler": "authController.logout",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "refreshToken"
@@ -4072,7 +3978,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -4080,13 +3987,19 @@
       "500"
     ]
   },
-  "POST /auth/refresh-token": {
+  {
+    "key": "POST /auth/refresh-token",
+    "feature": "auth",
+    "method": "POST",
     "path": "/auth/refresh-token",
-    "method": "POST",
-    "summary": "Get a new access token using a refresh token",
-    "security": [],
-    "parameters": [],
-    "body": {
+    "roles": "Public",
+    "consumers": [
+      "FE/src/shared/api.ts"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:123",
+    "handler": "authController.refreshToken",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "refreshToken"
@@ -4097,42 +4010,51 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
       "500"
     ]
   },
-  "GET /auth/me": {
-    "path": "/auth/me",
+  {
+    "key": "GET /auth/me",
+    "feature": "auth",
     "method": "GET",
-    "summary": "Get current user profile",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/auth/me",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/auth.api.ts",
+      "FE/src/shared/api.ts"
     ],
-    "parameters": [],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/auth/auth.routes.ts:137",
+    "handler": "authController.getMe",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "401",
       "404",
       "500"
     ]
   },
-  "PATCH /auth/me": {
-    "path": "/auth/me",
+  {
+    "key": "PATCH /auth/me",
+    "feature": "auth",
     "method": "PATCH",
-    "summary": "Update current user profile",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/auth/me",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/auth.api.ts",
+      "FE/src/features/coach/CoachProfile.tsx",
+      "FE/src/shared/Profile.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/auth/auth.routes.ts:166",
+    "handler": "authController.updateMe",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "fullName": {
@@ -4173,7 +4095,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -4181,18 +4104,19 @@
       "500"
     ]
   },
-  "POST /auth/me/avatar": {
-    "path": "/auth/me/avatar",
+  {
+    "key": "POST /auth/me/avatar",
+    "feature": "auth",
     "method": "POST",
-    "summary": "Upload avatar image for the current user profile",
-    "security": [
-      {
-        "BearerAuth": []
-      }
-    ],
-    "parameters": [],
-    "body": null,
-    "statusCodes": [
+    "path": "/auth/me/avatar",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [],
+    "backend": "BE/src/modules/auth/auth.routes.ts:201",
+    "handler": "authController.uploadAvatar",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -4200,17 +4124,22 @@
       "500"
     ]
   },
-  "PATCH /auth/me/change-password": {
-    "path": "/auth/me/change-password",
+  {
+    "key": "PATCH /auth/me/change-password",
+    "feature": "auth",
     "method": "PATCH",
-    "summary": "Change current user password",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/auth/me/change-password",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/auth.api.ts",
+      "FE/src/features/coach/CoachProfile.tsx",
+      "FE/src/shared/api.ts",
+      "FE/src/shared/Profile.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/auth/auth.routes.ts:226",
+    "handler": "authController.changePassword",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "currentPassword",
@@ -4226,7 +4155,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -4234,13 +4164,19 @@
       "500"
     ]
   },
-  "POST /auth/forgot-password": {
-    "path": "/auth/forgot-password",
+  {
+    "key": "POST /auth/forgot-password",
+    "feature": "auth",
     "method": "POST",
-    "summary": "Gửi OTP đặt lại mật khẩu qua email",
-    "security": [],
-    "parameters": [],
-    "body": {
+    "path": "/auth/forgot-password",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/shared/api.ts"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:257",
+    "handler": "authController.forgotPassword",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "email"
@@ -4252,19 +4188,26 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "500"
     ]
   },
-  "POST /auth/reset-password": {
-    "path": "/auth/reset-password",
+  {
+    "key": "POST /auth/reset-password",
+    "feature": "auth",
     "method": "POST",
-    "summary": "Đặt lại mật khẩu bằng OTP nhận qua email",
-    "security": [],
-    "parameters": [],
-    "body": {
+    "path": "/auth/reset-password",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/shared/api.ts"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:285",
+    "handler": "authController.resetPassword",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "email",
@@ -4288,22 +4231,28 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "500"
     ]
   },
-  "GET /attendance": {
-    "path": "/attendance",
+  {
+    "key": "GET /attendance",
+    "feature": "attendance",
     "method": "GET",
-    "summary": "GET /attendance",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/attendance",
+    "roles": "MEMBER, COACH, MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/pages/member/AttendancePage.tsx",
+      "FE/src/shared/Attendance.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:54",
+    "handler": "controller.getAttendances",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "scheduleId",
@@ -4312,8 +4261,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -4321,17 +4269,19 @@
       "404"
     ]
   },
-  "POST /attendance": {
-    "path": "/attendance",
+  {
+    "key": "POST /attendance",
+    "feature": "attendance",
     "method": "POST",
-    "summary": "POST /attendance",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/attendance",
+    "roles": "COACH, MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/shared/Attendance.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:86",
+    "handler": "controller.createAttendance",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "scheduleId": {
@@ -4360,7 +4310,8 @@
         "status"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -4368,26 +4319,19 @@
       "404"
     ]
   },
-  "PATCH /attendance/{id}": {
-    "path": "/attendance/{id}",
+  {
+    "key": "PATCH /attendance/{id}",
+    "feature": "attendance",
     "method": "PATCH",
-    "summary": "PATCH /attendance/{id}",
-    "security": [
-      {
-        "bearerAuth": []
-      }
+    "path": "/attendance/{id}",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/shared/Attendance.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:115",
+    "handler": "controller.updateAttendance",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "status": {
@@ -4405,7 +4349,8 @@
       },
       "required": []
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -4413,17 +4358,19 @@
       "404"
     ]
   },
-  "POST /attendance/generate-qr": {
-    "path": "/attendance/generate-qr",
+  {
+    "key": "POST /attendance/generate-qr",
+    "feature": "attendance",
     "method": "POST",
-    "summary": "Generate a short-lived QR token + manual backup code for attendance (Coach/Manager only)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/attendance/generate-qr",
+    "roles": "COACH, MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/shared/QrAttendance.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:166",
+    "handler": "controller.generateQr",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "scheduleId"
@@ -4435,7 +4382,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -4444,17 +4392,19 @@
       "500"
     ]
   },
-  "POST /attendance/scan-qr": {
-    "path": "/attendance/scan-qr",
+  {
+    "key": "POST /attendance/scan-qr",
+    "feature": "attendance",
     "method": "POST",
-    "summary": "Check in by QR token OR manual backup code (Member only)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/attendance/scan-qr",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/shared/QrAttendance.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:254",
+    "handler": "controller.scanQr",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "additionalProperties": false,
       "description": "Chỉ gửi một trong hai: qrToken hoặc code",
@@ -4471,7 +4421,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -4480,16 +4431,20 @@
       "500"
     ]
   },
-  "GET /attendance/my": {
-    "path": "/attendance/my",
+  {
+    "key": "GET /attendance/my",
+    "feature": "attendance",
     "method": "GET",
-    "summary": "Get current member's own attendance history",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/attendance/my",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/pages/member/AttendancePage.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:302",
+    "handler": "controller.getMyAttendance",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "status",
@@ -4527,8 +4482,7 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "401",
       "403",
@@ -4536,18 +4490,21 @@
       "500"
     ]
   },
-  "GET /attendance/my/summary": {
-    "path": "/attendance/my/summary",
+  {
+    "key": "GET /attendance/my/summary",
+    "feature": "attendance",
     "method": "GET",
-    "summary": "Attendance rate per class for the current member + own penalties",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/attendance/my/summary",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/pages/member/AttendancePage.tsx"
     ],
-    "parameters": [],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:362",
+    "handler": "controller.getMyAttendanceSummary",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "401",
       "403",
@@ -4555,17 +4512,19 @@
       "500"
     ]
   },
-  "POST /attendance/warnings/scan": {
-    "path": "/attendance/warnings/scan",
+  {
+    "key": "POST /attendance/warnings/scan",
+    "feature": "attendance",
     "method": "POST",
-    "summary": "Scan attendance and send WARN notifications (Manager only)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/attendance/warnings/scan",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/AttendancePenalties.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:390",
+    "handler": "controller.scanWarnings",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "classId": {
@@ -4574,7 +4533,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -4582,16 +4542,20 @@
       "500"
     ]
   },
-  "GET /attendance/penalties": {
-    "path": "/attendance/penalties",
+  {
+    "key": "GET /attendance/penalties",
+    "feature": "attendance",
     "method": "GET",
-    "summary": "List attendance penalties (Manager only)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/attendance/penalties",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/AttendancePenalties.tsx"
     ],
-    "parameters": [
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:422",
+    "handler": "controller.listPenalties",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "status",
@@ -4636,43 +4600,47 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "401",
       "403",
       "500"
     ]
   },
-  "POST /attendance/penalties/preview": {
+  {
+    "key": "POST /attendance/penalties/preview",
+    "feature": "attendance",
+    "method": "POST",
     "path": "/attendance/penalties/preview",
-    "method": "POST",
-    "summary": "Preview members eligible for attendance penalty (Manager only, read-only)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/AttendancePenalties.tsx"
     ],
-    "parameters": [],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:463",
+    "handler": "controller.previewPenalties",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "401",
       "403",
       "500"
     ]
   },
-  "POST /attendance/penalties/apply": {
-    "path": "/attendance/penalties/apply",
+  {
+    "key": "POST /attendance/penalties/apply",
+    "feature": "attendance",
     "method": "POST",
-    "summary": "Apply attendance penalty (Manager only, atomic transaction)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/attendance/penalties/apply",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/AttendancePenalties.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:501",
+    "handler": "controller.applyPenalty",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "memberId",
@@ -4693,7 +4661,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -4703,26 +4672,19 @@
       "500"
     ]
   },
-  "POST /attendance/penalties/{id}/appeal": {
-    "path": "/attendance/penalties/{id}/appeal",
+  {
+    "key": "POST /attendance/penalties/{id}/appeal",
+    "feature": "attendance",
     "method": "POST",
-    "summary": "Member appeals own penalty (within 72h window)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/attendance/penalties/{id}/appeal",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/pages/member/AttendancePage.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:540",
+    "handler": "controller.appealPenalty",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "reason"
@@ -4735,7 +4697,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -4745,26 +4708,19 @@
       "500"
     ]
   },
-  "POST /attendance/penalties/{id}/revoke": {
-    "path": "/attendance/penalties/{id}/revoke",
+  {
+    "key": "POST /attendance/penalties/{id}/revoke",
+    "feature": "attendance",
     "method": "POST",
-    "summary": "Revoke a penalty (Manager only)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/attendance/penalties/{id}/revoke",
+    "roles": "MANAGER, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/AttendancePenalties.tsx"
     ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:581",
+    "handler": "controller.revokePenalty",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "reason": {
@@ -4777,7 +4733,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -4787,17 +4744,20 @@
       "500"
     ]
   },
-  "POST /ai/chat": {
-    "path": "/ai/chat",
+  {
+    "key": "POST /ai/chat",
+    "feature": "ai",
     "method": "POST",
-    "summary": "Trò chuyện với Smart Chatbot Assistant",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/ai/chat",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/ai/api.ts",
+      "FE/src/shared/api.ts"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/ai/ai.routes.ts:54",
+    "handler": "aiController.chat",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "message"
@@ -4830,102 +4790,70 @@
         "message": "Trung tâm có gói tập nào và tuần này có lớp Yoga không?"
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "500",
       "503"
     ]
   },
-  "GET /staff-candidates": {
+  {
+    "key": "GET /staff-candidates",
+    "feature": "staff-candidates",
+    "method": "GET",
     "path": "/staff-candidates",
-    "method": "GET",
-    "summary": "Nhân sự có thể phân công",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/operations/operations.routes.ts:45",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "GET /coaches/{id}/specializations": {
-    "path": "/coaches/{id}/specializations",
+  {
+    "key": "GET /coaches/{id}/specializations",
+    "feature": "coaches",
     "method": "GET",
-    "summary": "Chuyên môn huấn luyện viên",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/coaches/{id}/specializations",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "id",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/operations/operations.routes.ts:60",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "PUT /coaches/{id}/specializations": {
-    "path": "/coaches/{id}/specializations",
+  {
+    "key": "PUT /coaches/{id}/specializations",
+    "feature": "coaches",
     "method": "PUT",
-    "summary": "Chuyên môn huấn luyện viên",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/coaches/{id}/specializations",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "id",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/operations/operations.routes.ts:152",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "sportIds": {
@@ -4939,77 +4867,73 @@
         "sportIds"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "GET /leave-requests/{id}/affected": {
+  {
+    "key": "GET /leave-requests/{id}/affected",
+    "feature": "leave-requests",
+    "method": "GET",
     "path": "/leave-requests/{id}/affected",
-    "method": "GET",
-    "summary": "Buổi học cần xử lý khi nghỉ phép",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "id",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/operations/operations.routes.ts:63",
+    "handler": "async (req) => {\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "GET /facilities": {
-    "path": "/facilities",
+  {
+    "key": "GET /facilities",
+    "feature": "facilities",
     "method": "GET",
-    "summary": "Danh sách cơ sở",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/facilities",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/shared/api.ts",
+      "FE/src/shared/FacilityBoundary.tsx"
     ],
-    "parameters": [],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/facilities/facilities.route.ts:12",
+    "handler": "Controller.getFacilities",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "POST /facilities": {
-    "path": "/facilities",
+  {
+    "key": "POST /facilities",
+    "feature": "facilities",
     "method": "POST",
-    "summary": "Tạo cơ sở",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/facilities",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/shared/api.ts",
+      "FE/src/shared/FacilityBoundary.tsx"
     ],
-    "parameters": [],
-    "body": {
+    "backend": "BE/src/modules/facilities/facilities.route.ts:23",
+    "handler": "Controller.createFacility",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "code": {
@@ -5035,76 +4959,48 @@
         "address"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "GET /facilities/{facilityId}": {
-    "path": "/facilities/{facilityId}",
+  {
+    "key": "GET /facilities/{facilityId}",
+    "feature": "facilities",
     "method": "GET",
-    "summary": "Chi tiết cơ sở",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/facilities/{facilityId}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "facilityId",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": false,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/facilities/facilities.route.ts:15",
+    "handler": "Controller.getFacilityById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "PUT /facilities/{facilityId}": {
-    "path": "/facilities/{facilityId}",
+  {
+    "key": "PUT /facilities/{facilityId}",
+    "feature": "facilities",
     "method": "PUT",
-    "summary": "Sửa cơ sở",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/facilities/{facilityId}",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "facilityId",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": false,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/facilities/facilities.route.ts:32",
+    "handler": "Controller.updateFacility",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "code": {
@@ -5129,41 +5025,27 @@
       },
       "required": []
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "POST /facilities/{facilityId}/staff": {
-    "path": "/facilities/{facilityId}/staff",
+  {
+    "key": "POST /facilities/{facilityId}/staff",
+    "feature": "facilities",
     "method": "POST",
-    "summary": "Phân công nhân sự",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/facilities/{facilityId}/staff",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "facilityId",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": false,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/facilities/facilities.route.ts:42",
+    "handler": "Controller.assignStaff",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "userId": {
@@ -5183,92 +5065,49 @@
         "role"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "DELETE /facilities/{facilityId}/staff/{userId}/{role}": {
-    "path": "/facilities/{facilityId}/staff/{userId}/{role}",
+  {
+    "key": "DELETE /facilities/{facilityId}/staff/{userId}/{role}",
+    "feature": "facilities",
     "method": "DELETE",
-    "summary": "Gỡ phân công",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/facilities/{facilityId}/staff/{userId}/{role}",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "facilityId",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "userId",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "role",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": false,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/facilities/facilities.route.ts:52",
+    "handler": "Controller.removeStaff",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "PUT /rooms/{id}/capabilities": {
+  {
+    "key": "PUT /rooms/{id}/capabilities",
+    "feature": "rooms",
+    "method": "PUT",
     "path": "/rooms/{id}/capabilities",
-    "method": "PUT",
-    "summary": "Thiết bị và khả năng phòng",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "id",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/operations/operations.routes.ts:92",
+    "handler": "async (req) =>\r",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "values": {
@@ -5290,41 +5129,27 @@
         "values"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "PUT /subjects/{id}/requirements": {
+  {
+    "key": "PUT /subjects/{id}/requirements",
+    "feature": "subjects",
+    "method": "PUT",
     "path": "/subjects/{id}/requirements",
-    "method": "PUT",
-    "summary": "Yêu cầu bộ môn",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "id",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/operations/operations.routes.ts:130",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "values": {
@@ -5346,60 +5171,48 @@
         "values"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "GET /slots": {
-    "path": "/slots",
+  {
+    "key": "GET /slots",
+    "feature": "slots",
     "method": "GET",
-    "summary": "Khung giờ",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/slots",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/operations/operations.routes.ts:207",
+    "handler": "() =>\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "POST /slots": {
-    "path": "/slots",
+  {
+    "key": "POST /slots",
+    "feature": "slots",
     "method": "POST",
-    "summary": "Tạo khung giờ",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/slots",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/operations/operations.routes.ts:210",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "name": {
@@ -5418,60 +5231,48 @@
         "endMinute"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "GET /schedule-patterns": {
-    "path": "/schedule-patterns",
+  {
+    "key": "GET /schedule-patterns",
+    "feature": "schedule-patterns",
     "method": "GET",
-    "summary": "Lịch lặp",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/schedule-patterns",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/operations/operations.routes.ts:213",
+    "handler": "() =>\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "POST /schedule-patterns": {
-    "path": "/schedule-patterns",
+  {
+    "key": "POST /schedule-patterns",
+    "feature": "schedule-patterns",
     "method": "POST",
-    "summary": "Sinh lịch lặp",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/schedule-patterns",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/operations/operations.routes.ts:216",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "classId": {
@@ -5507,60 +5308,48 @@
         "endDate"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "GET /leave-requests": {
-    "path": "/leave-requests",
+  {
+    "key": "GET /leave-requests",
+    "feature": "leave-requests",
     "method": "GET",
-    "summary": "Đơn nghỉ phép",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/leave-requests",
+    "roles": "ADMIN, MANAGER, COACH",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/operations/operations.routes.ts:287",
+    "handler": "async (req) => {\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "POST /leave-requests": {
-    "path": "/leave-requests",
+  {
+    "key": "POST /leave-requests",
+    "feature": "leave-requests",
     "method": "POST",
-    "summary": "Gửi đơn nghỉ phép",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/leave-requests",
+    "roles": "COACH",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/operations/operations.routes.ts:306",
+    "handler": "async (req) => {\r",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "startTime": {
@@ -5581,41 +5370,27 @@
         "reason"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "PATCH /leave-requests/{id}": {
-    "path": "/leave-requests/{id}",
+  {
+    "key": "PATCH /leave-requests/{id}",
+    "feature": "leave-requests",
     "method": "PATCH",
-    "summary": "Duyệt đơn và xử lý lịch",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/leave-requests/{id}",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "id",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/operations/operations.routes.ts:342",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "status": {
@@ -5672,60 +5447,48 @@
         "resolutions"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "GET /issues": {
-    "path": "/issues",
+  {
+    "key": "GET /issues",
+    "feature": "issues",
     "method": "GET",
-    "summary": "Yêu cầu hỗ trợ",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/issues",
+    "roles": "MEMBER, MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/operations/operations.routes.ts:466",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "POST /issues": {
-    "path": "/issues",
+  {
+    "key": "POST /issues",
+    "feature": "issues",
     "method": "POST",
-    "summary": "Gửi yêu cầu",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/issues",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/operations/operations.routes.ts:477",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "title": {
@@ -5740,76 +5503,48 @@
         "description"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "GET /issues/{id}": {
-    "path": "/issues/{id}",
+  {
+    "key": "GET /issues/{id}",
+    "feature": "issues",
     "method": "GET",
-    "summary": "Chi tiết yêu cầu",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/issues/{id}",
+    "roles": "MEMBER, MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "id",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/operations/operations.routes.ts:519",
+    "handler": "async (req) => {\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "PUT /issues/{id}": {
-    "path": "/issues/{id}",
+  {
+    "key": "PUT /issues/{id}",
+    "feature": "issues",
     "method": "PUT",
-    "summary": "Sửa yêu cầu đang mở",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/issues/{id}",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "id",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/operations/operations.routes.ts:534",
+    "handler": "async (req) => {\r",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "title": {
@@ -5824,76 +5559,48 @@
         "description"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "DELETE /issues/{id}": {
-    "path": "/issues/{id}",
+  {
+    "key": "DELETE /issues/{id}",
+    "feature": "issues",
     "method": "DELETE",
-    "summary": "Xóa yêu cầu đang mở",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/issues/{id}",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "id",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/operations/operations.routes.ts:554",
+    "handler": "async (req) => {\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "PATCH /issues/{id}": {
-    "path": "/issues/{id}",
+  {
+    "key": "PATCH /issues/{id}",
+    "feature": "issues",
     "method": "PATCH",
-    "summary": "Phản hồi yêu cầu",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/issues/{id}",
+    "roles": "ADMIN, MANAGER, RECEPTIONIST",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "id",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/operations/operations.routes.ts:494",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "status": {
@@ -5914,31 +5621,28 @@
         "response"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "GET /audit-logs": {
-    "path": "/audit-logs",
+  {
+    "key": "GET /audit-logs",
+    "feature": "audit-logs",
     "method": "GET",
-    "summary": "Nhật ký hoạt động",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/audit-logs",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
+    "backend": "BE/src/modules/operations/operations.routes.ts:512",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "name": "skip",
         "in": "query",
@@ -5947,61 +5651,47 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "GET /counter-orders": {
-    "path": "/counter-orders",
+  {
+    "key": "GET /counter-orders",
+    "feature": "counter-orders",
     "method": "GET",
-    "summary": "Đơn bán tại quầy",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/counter-orders",
+    "roles": "ADMIN, MANAGER, RECEPTIONIST",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "backend": "BE/src/modules/operations/operations.routes.ts:562",
+    "handler": "() =>\r",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "POST /counter-orders": {
-    "path": "/counter-orders",
+  {
+    "key": "POST /counter-orders",
+    "feature": "counter-orders",
     "method": "POST",
-    "summary": "Tạo đơn chờ thanh toán",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/counter-orders",
+    "roles": "ADMIN, MANAGER, RECEPTIONIST",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/operations/operations.routes.ts:570",
+    "handler": "async (req) => {\r",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "memberId": {
@@ -6027,41 +5717,27 @@
         "method"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "POST /counter-orders/{id}/confirm": {
-    "path": "/counter-orders/{id}/confirm",
+  {
+    "key": "POST /counter-orders/{id}/confirm",
+    "feature": "counter-orders",
     "method": "POST",
-    "summary": "Xác nhận thu tiền và kích hoạt gói",
-    "security": [
-      {
-        "BearerAuth": []
-      }
+    "path": "/counter-orders/{id}/confirm",
+    "roles": "ADMIN, MANAGER, RECEPTIONIST",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "parameters": [
-      {
-        "name": "id",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      },
-      {
-        "name": "X-Facility-Id",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "backend": "BE/src/modules/operations/operations.routes.ts:616",
+    "handler": "(req) =>\r",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "reason": {
@@ -6072,19 +5748,26 @@
         "reason"
       ]
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "403",
       "409"
     ]
   },
-  "GET /subjects": {
-    "path": "/subjects",
+  {
+    "key": "GET /subjects",
+    "feature": "subjects",
     "method": "GET",
-    "summary": "Get list of sports",
-    "security": [],
-    "parameters": [
+    "path": "/subjects",
+    "roles": "Public",
+    "consumers": [],
+    "backend": "BE/src/modules/sports/sports.routes.ts:57",
+    "handler": "sportsController.listSports",
+    "status": "MATCH",
+    "request": null,
+    "query": [
       {
         "in": "query",
         "name": "search",
@@ -6135,24 +5818,23 @@
         }
       }
     ],
-    "body": null,
-    "statusCodes": [
+    "responseStatuses": [
       "200",
       "400",
       "500"
     ]
   },
-  "POST /subjects": {
-    "path": "/subjects",
+  {
+    "key": "POST /subjects",
+    "feature": "subjects",
     "method": "POST",
-    "summary": "Create a new sport",
-    "security": [
-      {
-        "BearerAuth": []
-      }
-    ],
-    "parameters": [],
-    "body": {
+    "path": "/subjects",
+    "roles": "ADMIN",
+    "consumers": [],
+    "backend": "BE/src/modules/sports/sports.routes.ts:118",
+    "handler": "sportsController.createSport",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "required": [
         "name",
@@ -6185,7 +5867,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "201",
       "400",
       "401",
@@ -6194,49 +5877,36 @@
       "500"
     ]
   },
-  "GET /subjects/{id}": {
-    "path": "/subjects/{id}",
+  {
+    "key": "GET /subjects/{id}",
+    "feature": "subjects",
     "method": "GET",
-    "summary": "View sport details",
-    "security": [],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "path": "/subjects/{id}",
+    "roles": "Public",
+    "consumers": [],
+    "backend": "BE/src/modules/sports/sports.routes.ts:78",
+    "handler": "sportsController.getSportById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "404",
       "500"
     ]
   },
-  "PATCH /subjects/{id}": {
-    "path": "/subjects/{id}",
+  {
+    "key": "PATCH /subjects/{id}",
+    "feature": "subjects",
     "method": "PATCH",
-    "summary": "Update sport",
-    "security": [
-      {
-        "BearerAuth": []
-      }
-    ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": {
+    "path": "/subjects/{id}",
+    "roles": "ADMIN",
+    "consumers": [],
+    "backend": "BE/src/modules/sports/sports.routes.ts:166",
+    "handler": "sportsController.updateSport",
+    "status": "MATCH",
+    "request": {
       "type": "object",
       "properties": {
         "name": {
@@ -6263,7 +5933,8 @@
         }
       }
     },
-    "statusCodes": [
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -6272,27 +5943,19 @@
       "500"
     ]
   },
-  "DELETE /subjects/{id}": {
-    "path": "/subjects/{id}",
+  {
+    "key": "DELETE /subjects/{id}",
+    "feature": "subjects",
     "method": "DELETE",
-    "summary": "Deactivate sport (soft delete)",
-    "security": [
-      {
-        "BearerAuth": []
-      }
-    ],
-    "parameters": [
-      {
-        "in": "path",
-        "name": "id",
-        "required": true,
-        "schema": {
-          "type": "string"
-        }
-      }
-    ],
-    "body": null,
-    "statusCodes": [
+    "path": "/subjects/{id}",
+    "roles": "ADMIN",
+    "consumers": [],
+    "backend": "BE/src/modules/sports/sports.routes.ts:194",
+    "handler": "sportsController.deleteSport",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
       "200",
       "400",
       "401",
@@ -6301,4 +5964,4 @@
       "500"
     ]
   }
-}
+]

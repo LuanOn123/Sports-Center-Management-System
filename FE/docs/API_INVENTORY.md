@@ -2,7 +2,7 @@
 
 Source: BE/src/config/swagger.ts + BE/src/modules/**/*.routes.ts (local checkout)
 
-Snapshot: 2026-10-05. Production base: https://sports-center-management-system.onrender.com/api/v1
+Snapshot: 2026-10-06. Production base: https://sports-center-management-system.onrender.com/api/v1
 
 Response examples are documentation only, never application data. The client sends the documented HTTP Bearer token.
 
@@ -7553,12 +7553,10 @@ Request body:
   "properties": {
     "coachId": {
       "type": "string",
-      "format": "uuid",
-      "description": "CoachProfile ID"
+      "description": "CoachProfile ID (Mongo ObjectId 24-hex; UUID legacy vẫn được chấp nhận)"
     },
     "classId": {
       "type": "string",
-      "format": "uuid",
       "description": "Lớp học liên quan (tuỳ chọn)"
     },
     "rating": {
@@ -7597,7 +7595,7 @@ Responses/status codes:
           "message": "Cảm ơn bạn đã gửi đánh giá!",
           "data": {
             "id": "fb-uuid",
-            "coachId": "coach-uuid",
+            "coachId": "665f1c2e9b1e8a3d4c5b6a71",
             "rating": 5,
             "comment": "HLV rất nhiệt tình!",
             "isAnonymous": false,
@@ -7686,8 +7684,7 @@ Parameters:
     "name": "coachId",
     "required": true,
     "schema": {
-      "type": "string",
-      "format": "uuid"
+      "type": "string"
     },
     "description": "CoachProfile ID cần xem đánh giá"
   },
@@ -7695,8 +7692,7 @@ Parameters:
     "in": "query",
     "name": "classId",
     "schema": {
-      "type": "string",
-      "format": "uuid"
+      "type": "string"
     },
     "description": "Lọc theo lớp học cụ thể (tuỳ chọn)"
   },
@@ -7922,8 +7918,7 @@ Parameters:
     "name": "id",
     "required": true,
     "schema": {
-      "type": "string",
-      "format": "uuid"
+      "type": "string"
     },
     "description": "Feedback ID"
   }
@@ -8024,8 +8019,7 @@ Parameters:
     "name": "id",
     "required": true,
     "schema": {
-      "type": "string",
-      "format": "uuid"
+      "type": "string"
     },
     "description": "Feedback ID"
   }

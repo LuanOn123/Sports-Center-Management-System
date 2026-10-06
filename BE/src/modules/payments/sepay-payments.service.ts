@@ -367,7 +367,7 @@ async function assertSepayPaymentOperator(
     }
     return;
   }
-  if (role === "MANAGER" || role === "RECEPTIONIST") return;
+  if (["ADMIN", "MANAGER", "RECEPTIONIST"].includes(role)) return;
   throw new AppError(
     "Forbidden: only the owning MEMBER or MANAGER/RECEPTIONIST can operate on a SePay payment",
     403

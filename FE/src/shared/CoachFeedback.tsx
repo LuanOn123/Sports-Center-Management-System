@@ -69,7 +69,7 @@ export function CoachFeedback({
   const remove = useMutation({
     mutationFn: () =>
       api(
-        role === "MANAGER"
+        ["ADMIN", "MANAGER"].includes(role)
           ? "DELETE /feedbacks/{id}/manager"
           : "DELETE /feedbacks/{id}",
         { params: { id: removeId } },
@@ -104,7 +104,7 @@ export function CoachFeedback({
                 · {String(f.rating)}/5
               </strong>
               <p>{String(f.comment || "Không có nhận xét.")}</p>
-              {(role === "MANAGER" ||
+              {(["ADMIN", "MANAGER"].includes(role) ||
                 (role === "MEMBER" && f.isOwn === true)) && (
                 <button
                   className="button small danger-text"
@@ -113,7 +113,7 @@ export function CoachFeedback({
                     setRemoveId(String(f.id));
                   }}
                 >
-                  {role === "MANAGER" ? "Xóa đánh giá vi phạm" : "Xóa đánh giá"}
+                  {["ADMIN", "MANAGER"].includes(role) ? "Xóa đánh giá vi phạm" : "Xóa đánh giá"}
                 </button>
               )}
             </article>

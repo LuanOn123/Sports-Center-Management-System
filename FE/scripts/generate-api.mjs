@@ -1,10 +1,21 @@
 import fs from "node:fs";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 const sourceLabel = process.argv.includes("--local")
   ? "BE/src/config/swagger.ts + BE/src/modules/**/*.routes.ts (local checkout)"
   : undefined;
 const openApiUrl =
   "https://sports-center-management-system.onrender.com/api/v1/docs/swagger-ui-init.js";
 const openApiFile = new URL("../docs/openapi.json", import.meta.url);
+
+if (process.argv.includes("--local")) {
+  const result = spawnSync(process.execPath, [
+    "--import", "tsx", "--input-type=module", "-e",
+    'import { swaggerSpec } from "./src/config/swagger.ts"; process.stdout.write(JSON.stringify(swaggerSpec));',
+  ], { cwd: fileURLToPath(new URL("../../BE/", import.meta.url)), encoding: "utf8" });
+  if (result.status !== 0) throw new Error(result.stderr || "Cannot export local backend Swagger");
+  fs.writeFileSync(openApiFile, JSON.stringify(JSON.parse(result.stdout), null, 2));
+}
 
 if (process.argv.includes("--live")) {
   const source = await fetch(openApiUrl).then((response) => {

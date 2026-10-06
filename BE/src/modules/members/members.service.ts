@@ -1,4 +1,5 @@
 import { User } from "../../models/User.js";
+import { synchronizeUserProjection } from "../users/user-projection.service.js";
 import { MemberProfile } from "../../models/MemberProfile.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
@@ -151,6 +152,7 @@ export async function updateMember(id: string, data: UpdateMemberInput) {
     await MemberProfile.updateOne({ _id: memberProfile._id }, profileData);
   }
 
+  await synchronizeUserProjection(memberProfile.userId);
   return getMemberById(id);
 }
 
