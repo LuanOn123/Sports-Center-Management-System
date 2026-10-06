@@ -258,7 +258,24 @@ function hashOtp(otp: string): string {
 export async function forgotPassword(data: ForgotPasswordInput) {
   const OTP_TTL_MS = 5 * 60 * 1000;
   const user = await User.findOne({ email: data.email });
-  if (!user || !user.isActive) return;
+  if (!user || !user.isActive) {
+    // Chống user enumeration: luôn trả 200 chung ở controller. Chỉ log để dev biết
+    // vì sao không có mail (thường do email sai / account chỉ tồn tại ở PostgreSQL).
+    try {
+      const pgOnly = await prisma.user.findUnique({ where: { email: data.email } });
+      if (pgOnly)
+        console.warn(
+          `[forgotPassword] ${data.email} tồn tại ở PostgreSQL NHƯNG KHÔNG có trong MongoDB (drift) → không gửi OTP được. Cần đồng bộ lại MongoDB.`
+        );
+      else
+        console.warn(
+          `[forgotPassword] Không tìm thấy user hoạt động với email ${data.email} → bỏ qua gửi OTP.`
+        );
+    } catch {
+      console.warn(`[forgotPassword] Không tìm thấy user hoạt động với email ${data.email} → bỏ qua gửi OTP.`);
+    }
+    return;
+  }
 
   const otp = String(randomInt(100_000, 999_999));
   const expiresAt = new Date(Date.now() + OTP_TTL_MS);
@@ -268,9 +285,17 @@ export async function forgotPassword(data: ForgotPasswordInput) {
     { resetPasswordOtp: hashOtp(otp), resetPasswordOtpExpiresAt: expiresAt }
   );
 
-  sendOtpEmail(user.email, otp).catch((mailErr: any) => {
-    console.error("[forgotPassword] Failed to send OTP email to", user.email, mailErr);
-  });
+  // AWAIT: trước đây lỗi gửi mail bị nuốt (`.catch(console.error)`) nên FE luôn
+  // hiển thị "đã gửi" dù email không đi đâu cả. Giờ throw 502 để client báo lỗi thật.
+  try {
+    await sendOtpEmail(user.email, otp);
+  } catch (mailErr) {
+    console.error("[forgotPassword] Gửi OTP email thất bại cho", user.email, mailErr);
+    throw new AppError(
+      "Không gửi được mã OTP qua email. Vui lòng thử lại sau ít phút.",
+      502
+    );
+  }
 }
 
 export async function resetPassword(data: ResetPasswordInput) {
