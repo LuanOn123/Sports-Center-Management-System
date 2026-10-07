@@ -25,6 +25,13 @@ const DAY = 24 * HOUR;
 
 let baseUrl = "";
 
+/**
+ * Fixture facility: Class/Room mặc định `facilityId = legacy-main` (schema test cô lập chạy
+ * `db push` nên không có data seed) → mọi HTTP qua `checkFacilityScope` phải mang đúng
+ * context này (header X-Facility-Id) mới không bị 400 FACILITY_CONTEXT_REQUIRED.
+ */
+const FACILITY_ID = "legacy-main";
+
 type HttpResult = { status: number; body: any };
 
 async function http(
@@ -36,6 +43,7 @@ async function http(
     method,
     headers: {
       "Content-Type": "application/json",
+      "X-Facility-Id": FACILITY_ID,
       ...(opts.token ? { Authorization: `Bearer ${opts.token}` } : {}),
     },
     body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
@@ -90,7 +98,7 @@ const created = {
 type FixtureUser = { id: string; email: string; token: string; memberProfileId: string };
 
 async function createUser(
-  role: "MEMBER" | "COACH" | "RECEPTIONIST" | "MANAGER",
+  role: "MEMBER" | "COACH" | "RECEPTIONIST" | "MANAGER" | "ADMIN",
   tag: string,
   hashedPassword: string
 ): Promise<FixtureUser> {
@@ -99,6 +107,13 @@ async function createUser(
   created.userIds.push(user.id);
   const memberProfileId = user.memberProfile?.id ?? "";
   if (memberProfileId) created.memberProfileIds.push(memberProfileId);
+  // Staff (MANAGER/COACH/RECEPTIONIST) phải được phân công vào facility fixture —
+  // checkFacilityScope trả 403 FORBIDDEN_SCOPE nếu thiếu (MEMBER/ADMIN bypass).
+  if (role !== "MEMBER") {
+    await prisma.facilityStaff.create({
+      data: { userId: user.id, facilityId: FACILITY_ID, role: role as any },
+    });
+  }
 
   const login = await http("POST", "/auth/login", { body: { email, password: PASSWORD } });
   const token = login.body?.data?.accessToken as string | undefined;
@@ -111,6 +126,12 @@ async function createUser(
 let roomId = "";
 
 async function setupRoom(): Promise<void> {
+  // db push (schema test cô lập) KHÔNG chạy data migration → seed row legacy-main chưa tồn tại.
+  await prisma.facility.upsert({
+    where: { id: FACILITY_ID },
+    update: {},
+    create: { id: FACILITY_ID, code: "legacy-main", name: "Legacy Main", address: "Seed" },
+  });
   const room = await prisma.room.create({
     data: { name: `E2E Course Room ${RUN}`, capacity: 50, areaType: "INDOOR", location: "E2E" },
   });
@@ -518,6 +539,13 @@ async function cleanup(): Promise<void> {
   }
 
 async function main(): Promise<void> {
+  // SAFETY: E2E này TẠO dữ liệu qua HTTP + Prisma — chỉ được chạy trên schema test cô lập.
+  const guardSchema = new URL(process.env.DATABASE_URL!).searchParams.get("schema") ?? "";
+  if (!guardSchema.startsWith("scms_verify_")) {
+    throw new Error(
+      `SAFETY GUARD: DATABASE_URL schema "${guardSchema || "(default)"}" is not scms_verify_* — refusing to run write-capable E2E against a business/production database.`,
+    );
+  }
   await connectTestMongo();
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));
@@ -528,6 +556,8 @@ async function main(): Promise<void> {
   const hashed = await hashPassword(PASSWORD);
   try {
     await setupRoom();
+    // POST /membership-plans là authorize("ADMIN") → cần fixture ADMIN riêng.
+    const admin = await createUser("ADMIN", "admin", hashed);
     const manager = await createUser("MANAGER", "manager", hashed);
     const coach = await createUser("COACH", "coach", hashed);
     const staff = await createUser("RECEPTIONIST", "staff", hashed);
@@ -535,21 +565,21 @@ async function main(): Promise<void> {
     for (let i = 1; i <= 9; i++) members.push(await createUser("MEMBER", `member${i}`, hashed));
     const filler = await createUser("MEMBER", "filler", hashed);
 
-    const membership3 = await createPlan(manager.token, {
+    const membership3 = await createPlan(admin.token, {
       name: `E2E Course M3 ${RUN}`,
       price: 300000,
       durationDays: 90,
       tier: "MEMBERSHIP",
       maxConcurrentClasses: 3,
     });
-    const membership1 = await createPlan(manager.token, {
+    const membership1 = await createPlan(admin.token, {
       name: `E2E Course M1 ${RUN}`,
       price: 300000,
       durationDays: 90,
       tier: "MEMBERSHIP",
       maxConcurrentClasses: 1,
     });
-    const short5 = await createPlan(manager.token, {
+    const short5 = await createPlan(admin.token, {
       name: `E2E Course Short5 ${RUN}`,
       price: 100000,
       durationDays: 5,

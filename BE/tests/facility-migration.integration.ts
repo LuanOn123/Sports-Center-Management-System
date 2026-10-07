@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config({ path: ".env.test", quiet: true });
+dotenv.config({ path: ".env", quiet: true });
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { execFileSync, spawnSync } from "node:child_process";

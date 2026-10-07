@@ -463,53 +463,71 @@ export const getMyAttendanceSummary = async (userId: string) => {
 };
 
 /**
- * §7 + hardening: gửi warning cho bucket WARN (70% <= rate < 80%).
+ * FINAL — Hai lớp tách bạch:
+ * - Advisory (NOTICE/WARNING) CHỈ gửi thông báo tham khảo, KHÔNG phạt/khóa/hủy.
+ * - Penalty là quyết định thủ công của Manager (POST /attendance/penalties/apply),
+ *   KHÔNG bao giờ tự sinh từ scan job. WARNING ≠ BAN BOOKING.
  *
  * Dedupe theo STATE TRANSITION (không dùng số rate đã format làm identity):
- * - Chưa từng thông báo gì cho (member × class) => OK -> WARN: gửi.
- * - Warning gần nhất vẫn là WARN => KHÔNG gửi lại dù rate nhích (77.8% -> 76.4% -> 75%).
- * - Penalty đã áp dụng sau warning gần nhất (RELEASE) => khi quay về WARN thì gửi lại.
- * - Trạng thái RELEASE không gửi warning (do penalty flow xử lý); state WARN được lưu trong metadata.
+ * - Chưa từng thông báo gì cho (member × class) => NOTICE/WARNING mới: gửi.
+ * - Trạng thái tư vấn gần nhất vẫn giống => KHÔNG gửi lại dù rate nhích.
+ * - Chuyển NOTICE <-> WARNING => gửi đúng 1 lần cho trạng thái mới.
+ * - Penalty thủ công là luồng riêng, không tham gia dedupe ở đây.
  */
 export async function scanAttendanceWarnings(classId?: string, now = new Date()) {
   const buckets = await computeAttendanceBuckets(prisma, { classId, now });
-  const warnBuckets = buckets.filter((b) => b.status === "WARN");
+  const advisoryBuckets = buckets.filter((b) => b.status === "NOTICE" || b.status === "WARNING");
   let sent = 0;
   let skippedDuplicate = 0;
 
-  for (const bucket of warnBuckets) {
+  for (const bucket of advisoryBuckets) {
     if (!bucket.memberUserId) continue;
-    // Trạng thái chuyên cần gần nhất ĐÃ thông báo cho (member × class):
-    // ATTENDANCE_WARNING -> "WARN"; ATTENDANCE_PENALTY -> "RELEASE" (đã bị thu hồi chỗ).
+    // Trạng thái tư vấn gần nhất ĐÃ thông báo cho (member × class).
     const lastNotified = await prisma.notification.findFirst({
       where: {
         userId: bucket.memberUserId,
-        type: { in: ["ATTENDANCE_WARNING", "ATTENDANCE_PENALTY"] },
+        type: "ATTENDANCE_WARNING",
         metadata: { path: ["classId"], equals: bucket.classId },
       },
       orderBy: { createdAt: "desc" },
-      select: { type: true, metadata: true },
+      select: { metadata: true },
     });
     const lastState =
-      lastNotified?.type === "ATTENDANCE_PENALTY"
-        ? "RELEASE"
-        : ((lastNotified?.metadata as { state?: string } | null)?.state ?? null);
+      (lastNotified?.metadata as { state?: string } | null)?.state ?? null;
 
-    if (lastState === "WARN") {
+    if (lastState === bucket.status) {
       skippedDuplicate++;
       continue;
     }
+    const isWarning = bucket.status === "WARNING";
+    const isFixed = (bucket as { policy?: string }).policy === "FIXED";
+    const fixedDetail =
+      isFixed && typeof (bucket as { totalPlannedSessions?: number | null }).totalPlannedSessions === "number"
+        ? ` Khóa này có ${(bucket as { totalPlannedSessions: number }).totalPlannedSessions} buổi, ` +
+          `được phép vắng tối đa ${(bucket as { allowedAbsences: number }).allowedAbsences} buổi, ` +
+          `bạn đã vắng ${(bucket as { currentAbsences: number }).currentAbsences} buổi.`
+        : "";
     await createNotification(
       bucket.memberUserId,
       "ATTENDANCE_WARNING",
-      `Cảnh báo chuyên cần: ${bucket.className}`,
+      isWarning
+        ? `Cảnh báo chuyên cần: ${bucket.className}`
+        : `Nhắc nhở chuyên cần: ${bucket.className}`,
       `Chuyên cần của bạn ở lớp "${bucket.className}" hiện là ${bucket.attendanceRate}% trên ${bucket.sampleSize} buổi được tính ` +
-        `(${bucket.presentCount} có mặt, ${bucket.lateCount} đi muộn, ${bucket.absentCount} vắng, ${bucket.noShowCount} không điểm danh). ` +
-        `Dưới ${ATTENDANCE.WARN_THRESHOLD}% bạn có thể bị thu hồi chỗ đặt. Vui lòng sắp xếp tham gia đầy đủ hoặc gửi khiếu nại nếu có lý do chính đáng.`,
+        `(${bucket.presentCount} có mặt, ${bucket.lateCount} đi muộn, ${bucket.absentCount} vắng, ${bucket.noShowCount} không điểm danh).` + fixedDetail +
+        ` ` +
+        (isWarning
+          ? `Bạn đã vượt/hết số buổi vắng cho phép. Hãy tham gia đầy đủ các buổi còn lại; trường hợp cần xem xét sẽ do Quản lý quyết định, không tự động khóa đặt lớp hay ảnh hưởng gói tập.`
+          : `Bạn đã dùng hết số buổi vắng cho phép. Hãy tham gia đầy đủ các buổi còn lại để giữ chuyên cần. Thông báo này chỉ mang tính tham khảo.`),
       {
         metadata: {
           classId: bucket.classId,
-          state: "WARN",
+          state: bucket.status,
+          policy: (bucket as { policy?: string }).policy ?? "RECURRING",
+          totalPlannedSessions: (bucket as { totalPlannedSessions?: number | null }).totalPlannedSessions ?? null,
+          completedSessions: (bucket as { completedSessions?: number }).completedSessions ?? 0,
+          currentAbsences: (bucket as { currentAbsences?: number }).currentAbsences ?? 0,
+          allowedAbsences: (bucket as { allowedAbsences?: number }).allowedAbsences ?? 0,
           attendanceRate: bucket.attendanceRate,
           sampleSize: bucket.sampleSize,
         },
@@ -518,5 +536,5 @@ export async function scanAttendanceWarnings(classId?: string, now = new Date())
     sent++;
   }
 
-  return { checked: buckets.length, warnBuckets: warnBuckets.length, sent, skippedDuplicate };
+  return { checked: buckets.length, advisoryBuckets: advisoryBuckets.length, sent, skippedDuplicate };
 }

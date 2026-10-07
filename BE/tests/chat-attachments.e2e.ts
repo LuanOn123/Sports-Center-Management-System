@@ -167,6 +167,20 @@ async function cleanup(): Promise<void> {
       },
     });
     await prisma.notification.deleteMany({ where: { userId: { in: created.userIds } } });
+    // MF-08: đăng nhập tự cấp gói FREE → xoá mọi row con của MemberProfile
+    // (subscription FK RESTRICT) TRƯỚC khi xoá User.
+    const memberProfiles = await prisma.memberProfile.findMany({
+      where: { userId: { in: created.userIds } },
+      select: { id: true },
+    });
+    const memberIds = memberProfiles.map((m) => m.id);
+    if (memberIds.length > 0) {
+      await prisma.enrollment.deleteMany({ where: { memberId: { in: memberIds } } });
+      await prisma.attendance.deleteMany({ where: { memberId: { in: memberIds } } });
+      await prisma.invoice.deleteMany({ where: { memberId: { in: memberIds } } });
+      await prisma.payment.deleteMany({ where: { memberId: { in: memberIds } } });
+      await prisma.membershipSubscription.deleteMany({ where: { memberId: { in: memberIds } } });
+    }
     await prisma.user.deleteMany({ where: { id: { in: created.userIds } } });
     await deleteIdentities(created.userIds);
       }
@@ -355,6 +369,13 @@ async function scenarioAvatarSignature(coach: FixtureUser) {
 
 // ─── Runner ───────────────────────────────────────────────────────────────
 async function main(): Promise<void> {
+  // SAFETY: E2E này TẠO dữ liệu qua HTTP + Prisma — chỉ được chạy trên schema test cô lập.
+  const guardSchema = new URL(process.env.DATABASE_URL!).searchParams.get("schema") ?? "";
+  if (!guardSchema.startsWith("scms_verify_")) {
+    throw new Error(
+      `SAFETY GUARD: DATABASE_URL schema "${guardSchema || "(default)"}" is not scms_verify_* — refusing to run write-capable E2E against a business/production database.`,
+    );
+  }
   await connectTestMongo();
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));

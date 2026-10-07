@@ -18,6 +18,14 @@ import app from "../src/app.js";
  * chốt giao dịch → FE polling thấy SUCCESS → subscription ACTIVE với gói SePay Test 5K.
  */
 async function main() {
+  // SAFETY: smoke này checkout + kích hoạt gói thật qua app local — chỉ chạy trên schema
+  // test cô lập scms_verify_* (không bao giờ chạm database kinh doanh/Render).
+  const guardSchema = new URL(process.env.DATABASE_URL!).searchParams.get("schema") ?? "";
+  if (!guardSchema.startsWith("scms_verify_")) {
+    throw new Error(
+      `SAFETY GUARD: DATABASE_URL schema "${guardSchema || "(default)"}" is not scms_verify_* — refusing to run SePay smoke against a business/production database.`,
+    );
+  }
   const server = app.listen(0, "127.0.0.1");
   await new Promise((r) => server.once("listening", r));
   const port = (server.address() as AddressInfo).port;

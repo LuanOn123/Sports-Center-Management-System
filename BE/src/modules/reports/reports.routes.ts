@@ -135,17 +135,23 @@ router.get("/memberships", validate(DateRangeSchema, "query"), reportsController
  * @swagger
  * /reports/attendance:
  *   get:
- *     summary: Attendance report per (member × class) with OK/WARN/RELEASE status
+ *     summary: Attendance report per (member × class) with FIXED allowance or RECURRING fallback
  *     description: |
- *       Cửa sổ cố định: tối đa 10 buổi ĐÃ KẾT THÚC gần nhất của (member × class) — KHÔNG theo schedule,
- *       nên đổi buổi trong cùng lớp không reset lịch sử.
- *       `rate = (PRESENT + LATE) / (PRESENT + LATE + ABSENT + NO_SHOW)`; EXCUSED không vào tử/mẫu.
- *       sampleSize < 5 -> OK; rate >= 80% -> OK; 70% <= rate < 80% -> WARN; rate < 70% -> RELEASE.
+ *       FIXED (Class.attendancePolicy = FIXED + plannedSessionCount > 0, snapshot cố định):
+ *       allowance = floor(plannedSessionCount × 20%);
+ *       currentAbsences (ABSENT + NO_SHOW đã chốt) < allowance -> NORMAL;
+ *       == allowance -> NOTICE; > allowance -> WARNING. Đánh giá sớm sau mỗi buổi chốt.
+ *       Thêm schedule sau này KHÔNG làm tăng snapshot (amendment phải tạo Class/cohort mới).
+ *       RECURRING (mọi trường hợp còn lại): rolling tối đa 10 buổi đã kết thúc;
+ *       sampleSize < 5 -> NORMAL; rate >= 80% -> NORMAL; 70–<80% -> NOTICE; < 70% -> WARNING.
+ *       rate = (PRESENT + LATE) / (PRESENT + LATE + ABSENT + NO_SHOW); EXCUSED/cancelled/tương lai loại.
+ *       NOTICE/WARNING chỉ gửi thông báo tham khảo; Penalty là quyết định thủ công riêng của Manager.
+ *       Hàng FIXED có thêm policy/totalPlannedSessions/completedSessions/currentAbsences/allowedAbsences/remainingAbsences.
  *     tags: [Reports]
  *     parameters:
  *       - in: query
  *         name: status
- *         schema: { type: string, enum: [OK, WARN, RELEASE] }
+ *         schema: { type: string, enum: [NORMAL, NOTICE, WARNING] }
  *       - in: query
  *         name: classId
  *         schema: { type: string }
@@ -167,12 +173,18 @@ router.get("/memberships", validate(DateRangeSchema, "query"), reportsController
  *               success: true
  *               message: Attendance report retrieved successfully
  *               data:
- *                 summary: { total: 12, ok: 9, warn: 2, release: 1 }
+ *                 summary: { total: 12, normal: 9, notice: 2, warning: 1 }
  *                 rows:
  *                   - memberId: "member-uuid"
  *                     memberName: "Nguyễn Văn A"
  *                     classId: "class-uuid"
  *                     className: "Yoga cơ bản"
+ *                     policy: "FIXED"
+ *                     totalPlannedSessions: 10
+ *                     completedSessions: 5
+ *                     currentAbsences: 2
+ *                     allowedAbsences: 2
+ *                     remainingAbsences: 0
  *                     sampleSize: 8
  *                     presentCount: 5
  *                     lateCount: 0
@@ -180,7 +192,7 @@ router.get("/memberships", validate(DateRangeSchema, "query"), reportsController
  *                     noShowCount: 1
  *                     excusedCount: 1
  *                     attendanceRate: 62.5
- *                     status: RELEASE
+ *                     status: WARNING
  *                     activePenalty: null
  *               pagination: { page: 1, limit: 20, total: 12, totalPages: 1 }
  *       400: { $ref: "#/components/responses/BadRequest" }
@@ -195,5 +207,37 @@ router.get(
 );
 
 router.get("/subscription-logs", reportsController.getSubscriptionLogs);
+
+/**
+ * @swagger
+ * /reports/cross-facility-usage:
+ *   get:
+ *     summary: Cross-facility usage (origin vs actual usage)
+ *     description: |
+ *       "Member mua gói ở A đang dùng ở đâu?" — origin = Subscription.facilityId,
+ *       usage = Class.facilityId của Enrollment / Facility.facilityId của Visit.
+ *       Không đổi model subscription, không tạo bảng mới.
+ *     tags: [Reports]
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Cross-facility usage report }
+ *       400: { $ref: "#/components/responses/BadRequest" }
+ *       401: { $ref: "#/components/responses/Unauthorized" }
+ *       403: { $ref: "#/components/responses/Forbidden" }
+ *       500: { $ref: "#/components/responses/ServerError" }
+ */
+router.get(
+  "/cross-facility-usage",
+  validate(DateRangeSchema, "query"),
+  reportsController.getCrossFacilityUsage,
+);
 
 export default router;

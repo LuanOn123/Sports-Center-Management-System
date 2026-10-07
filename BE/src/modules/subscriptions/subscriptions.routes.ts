@@ -38,6 +38,7 @@ const router = Router();
  *       401: { $ref: "#/components/responses/Unauthorized" }
  *       403: { $ref: "#/components/responses/Forbidden" }
  *       404: { $ref: "#/components/responses/NotFound" }
+ *       409: { $ref: "#/components/responses/Conflict" }
  *       500: { $ref: "#/components/responses/ServerError" }
  */
 router.post(
@@ -52,6 +53,11 @@ router.post(
  * /subscriptions/{id}/renew:
  *   post:
  *     summary: Renew a membership subscription
+ *     description: |
+ *       FINAL Policy A — renew là **replacement nguyên tử**: khóa theo member + CAS suspend
+ *       gói ACTIVE hiện có, kỳ mới bắt đầu **ngay** (không stack sau endDate cũ, không tạo
+ *       ACTIVE tương lai, không cộng ngày dư). Trả 409 `SUBSCRIPTION_STATE_CHANGED` nếu
+ *       gói thay đổi giữa chừng.
  *     tags: [Subscriptions]
  *     parameters:
  *       - in: path
@@ -75,6 +81,7 @@ router.post(
  *       401: { $ref: "#/components/responses/Unauthorized" }
  *       403: { $ref: "#/components/responses/Forbidden" }
  *       404: { $ref: "#/components/responses/NotFound" }
+ *       409: { $ref: "#/components/responses/Conflict" }
  *       500: { $ref: "#/components/responses/ServerError" }
  */
 router.post(
@@ -150,9 +157,12 @@ router.get(
  *       - Nếu gói đã hết hạn (0 ngày còn lại) → Không hoàn tiền, gửi `SUBSCRIPTION_CANCELLED`.
  *       - Toàn bộ lịch học tương lai (`BOOKED`) của member **tự động bị hủy**.
  *
- *       **Khi đổi sang `SUSPENDED`:** Lưu số ngày còn lại để khôi phục sau.
+ *       **Khi đổi sang `SUSPENDED` (FINAL Policy A):** Gói cũ bị thay thế — trạng thái **CUỐI**;
+ *       `suspendedAt`/`remainingDays` chỉ ghi để audit/đối soát, **không cộng ngày** vào gói mới.
  *
- *       **Khi đổi từ `SUSPENDED` → `ACTIVE`:** Cộng lại số ngày còn dư vào ngày kết thúc mới.
+ *       **Cấm resume:** `SUSPENDED`/`EXPIRED`/`CANCELLED` → `ACTIVE` luôn trả **400**
+ *       với `errors.code = "SUBSCRIPTION_RESUME_FORBIDDEN"`. Muốn dùng tiếp phải
+ *       mua/gia hạn gói **MỚI** (atomic replacement, 1 member = 1 ACTIVE).
  *     tags: [Subscriptions]
  *     security:
  *       - BearerAuth: []
@@ -178,7 +188,7 @@ router.get(
  *               summary: Tạm dừng gói
  *               value: { status: "SUSPENDED" }
  *             resume:
- *               summary: Kích hoạt lại từ tạm dừng
+ *               summary: Cấm resume — luôn bị từ chối 400 (SUBSCRIPTION_RESUME_FORBIDDEN)
  *               value: { status: "ACTIVE" }
  *     responses:
  *       200:

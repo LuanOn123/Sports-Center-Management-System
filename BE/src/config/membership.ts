@@ -61,3 +61,27 @@ export const FREE_PLAN = {
   tier: "FREE" as MemberTier,
 } as const;
 
+/**
+ * Phase 1 — check-in vào cơ sở (FacilityVisit).
+ * Cửa sổ chống check-in trùng vô tình (quét QR 2 lần liên tiếp / double-click):
+ * cùng (member × facility) trong N phút → trả về lượt đã có thay vì tạo mới.
+ * Tập trung một nơi để tránh hard-code trong service.
+ */
+export const FACILITY_CHECKIN = {
+  DEDUPE_MINUTES: 5,
+} as const;
+
+/**
+ * Phase 4 — travel buffer liên cơ sở (phút).
+ * Cùng facility: giữ nguyên luật trùng giờ (chạm biên cho phép).
+ * Khác facility: 2 buổi coi như xung đột nếu khoảng nghỉ < buffer
+ * (không đủ thời gian di chuyển). Không dùng khoảng cách địa lý/map —
+ * đây là business rule lịch học, không phải hệ thống định vị.
+ * Đọc env động để vận hành chỉnh không cần deploy lại code.
+ */
+export function crossFacilityTravelBufferMinutes(): number {
+  const raw = Number(process.env.CROSS_FACILITY_TRAVEL_BUFFER_MINUTES ?? 30);
+  if (!Number.isFinite(raw) || raw < 0) return 30;
+  return Math.min(180, Math.floor(raw));
+}
+

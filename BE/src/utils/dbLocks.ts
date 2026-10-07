@@ -4,6 +4,16 @@ import { prisma } from "../config/prisma.js";
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
 /**
+ * Serialize mua/gia hạn gói của MỘT member (Policy A: 1 member = 1 ACTIVE).
+ * Hai purchase/renew/webhook-settlement đồng thời cho cùng member phải xếp hàng,
+ * nếu không cả hai cùng đọc ACTIVE cũ rồi cùng SUSPEND + cùng tạo ACTIVE mới.
+ * Lock sống trong transaction, tự release khi commit/rollback.
+ */
+export async function lockMemberSubscription(db: DbClient, memberId: string) {
+  await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('membership:member:' || ${memberId}::text))`;
+}
+
+/**
  * Thứ tự lock bắt buộc cho mọi flow đặt chỗ / đổi chỗ / hình phạt:
  *
  *   1. `lockMemberQuota()`  — quota là tài nguyên theo MỘT memberId (không phải memberId × classId)
@@ -55,4 +65,14 @@ export async function lockSchedules(db: DbClient, scheduleIds: string[]) {
  */
 export async function lockPaymentWebhook(db: DbClient, paymentId: string) {
   await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('payment:webhook:' || ${paymentId}::text))`;
+}
+
+/**
+ * Phase 1 — serialize check-in vào cửa của một hội viên.
+ * Hai request check-in đồng thời của cùng member phải xếp hàng để cửa sổ
+ * chống-duplicate đọc được dữ liệu mới nhất (không tạo 2 lượt trong vài giây).
+ * Lock sống trong transaction, tự release khi commit/rollback.
+ */
+export async function lockMemberCheckIn(db: DbClient, memberId: string) {
+  await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('facility-visit:member:' || ${memberId}::text))`;
 }

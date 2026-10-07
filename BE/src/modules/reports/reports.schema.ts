@@ -9,7 +9,7 @@ export const DateRangeSchema = z.object({
 });
 
 export const AttendanceReportQuerySchema = z.object({
-  status: z.enum(["OK", "WARN", "RELEASE"]).optional(),
+  status: z.enum(["NORMAL", "NOTICE", "WARNING"]).optional(),
   classId: z.string().optional(),
   memberId: z.string().optional(),
   page: z.string().optional(),

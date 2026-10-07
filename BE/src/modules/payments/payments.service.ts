@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma.js";
+import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 
@@ -160,7 +161,12 @@ export async function updatePaymentStatus(id: string, status: string) {
       const subscription = await tx.membershipSubscription.findUnique({ where: { id: payment.subscriptionId } });
       if (subscription?.status === "ACTIVE") {
         await tx.membershipSubscription.update({ where: { id: subscription.id }, data: { status: "CANCELLED", cancelledAt: new Date() } });
-        await tx.enrollment.updateMany({ where: { memberId: subscription.memberId, status: "BOOKED", schedule: { startTime: { gt: new Date() } } }, data: { status: "CANCELLED", cancelledAt: new Date() } });
+        // Hủy gói = side-effect GLOBAL: bỏ scope facility cho đúng câu này để hủy
+        // booking của member ở MỌI cơ sở; where vẫn giới hạn memberId + BOOKED + tương lai.
+        await requestContext.run(
+          { ...requestContext.getStore(), facilityId: undefined },
+          () => tx.enrollment.updateMany({ where: { memberId: subscription.memberId, status: "BOOKED", schedule: { startTime: { gt: new Date() } } }, data: { status: "CANCELLED", cancelledAt: new Date() } }),
+        );
       }
     }
 

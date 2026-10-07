@@ -1,5 +1,6 @@
 import { Prisma, MemberTier } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
+import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
@@ -39,6 +40,9 @@ export interface ConcurrentClassQuota {
  * Resolver MembershipSubscription đang hiệu lực — NGUỒN DUY NHẤT dùng chung cho
  * luật đặt chỗ (`assertCanBook`) và quota: ACTIVE + startDate <= now <= endDate,
  * ưu tiên tier cao hơn rồi endDate xa hơn (giữ nguyên cách chọn hiện có của dự án).
+ *
+ * GLOBAL: `MembershipSubscription` KHÔNG nằm trong facility scope của DAL, nên kết quả
+ * KHÔNG phụ thuộc `X-Facility-Id` — đổi cơ sở không làm membership/tier biến mất.
  */
 export async function findActiveSubscription(
   db: DbClient,
@@ -59,6 +63,8 @@ export async function findActiveSubscription(
 
 /**
  * Quota lớp học song song của một hội viên — tính ĐỘNG từ DB, không lưu counter.
+ *
+ * GLOBAL: `used` tính trên enrollment của MỌI cơ sở (không nhân thêm quota khi đổi cơ sở).
  *
  * `used` = COUNT(DISTINCT Class) mà hội viên đang có ít nhất 1 Enrollment BOOKED ở
  * một buổi CHƯA bắt đầu và còn hợp lệ để học (ClassSchedule.status = SCHEDULED,
@@ -82,20 +88,24 @@ export async function getMemberConcurrentClassQuota(
 
   const [activeSub, bookedRows] = await Promise.all([
     findActiveSubscription(db, memberProfileId, now),
-    db.enrollment.findMany({
-      where: {
-        memberId: memberProfileId,
-        status: "BOOKED",
-        schedule: { status: "SCHEDULED", startTime: { gt: now } },
-      },
-      select: {
-        id: true,
-        classId: true,
-        schedule: { select: { id: true, startTime: true, class: { select: { name: true } } } },
-      },
-      // Buổi gần nhất đại diện cho Class trong response.
-      orderBy: { schedule: { startTime: "asc" } },
-    }),
+    // GLOBAL: tính quota trên TOÀN bộ enrollment của hội viên. Bỏ scope facility của DAL
+    // (Enrollment đang bị lọc theo Class.facilityId) để giữ nguyên limit đã bán.
+    requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, () =>
+      db.enrollment.findMany({
+        where: {
+          memberId: memberProfileId,
+          status: "BOOKED",
+          schedule: { status: "SCHEDULED", startTime: { gt: now } },
+        },
+        select: {
+          id: true,
+          classId: true,
+          schedule: { select: { id: true, startTime: true, class: { select: { name: true } } } },
+        },
+        // Buổi gần nhất đại diện cho Class trong response.
+        orderBy: { schedule: { startTime: "asc" } },
+      }),
+    ),
   ]);
 
   const hasActiveSubscription = Boolean(activeSub);
