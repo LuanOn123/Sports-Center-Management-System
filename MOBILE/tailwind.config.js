@@ -1,5 +1,5 @@
 // tailwind.config.js
-// Map 1:1 các token trong constants/theme.ts sang Tailwind — giữ nguyên UI khi convert dần từng file.
+// Token giao diện cho className (màu khớp constants/theme.ts — nơi code JS lấy màu cho style/props).
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {

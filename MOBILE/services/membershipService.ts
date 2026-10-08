@@ -1,21 +1,12 @@
 // services/membershipService.ts
-// Tầng gọi API thuần túy — không có state, không có hook
+// Tầng gọi API gói hội viên — không có state, không có hook
 
 import { api } from '../lib/api';
-import type { CancelSubscriptionResult, MembershipPlan, MembershipStatus, Subscription } from '../lib/types';
-
-/** GET /members/:memberId/membership-status */
-export const getMembershipStatus = (memberId: string) =>
-  api.get<MembershipStatus>(`/members/${memberId}/membership-status`);
+import type { CancelSubscriptionResult, MembershipPlan, Subscription } from '../lib/types';
 
 /** GET /membership-plans?isActive=true */
 export const getMembershipPlans = () =>
   api.publicGet<MembershipPlan[]>('/membership-plans', { isActive: 'true' });
-
-/** GET /membership-plans/:id */
-export const getMembershipPlanById = (id: string) =>
-  api.publicGet<MembershipPlan>(`/membership-plans/${id}`);
-
 
 /** GET /subscriptions/member/:memberId */
 export const getSubscriptions = (memberId: string) =>

@@ -67,18 +67,32 @@ Sau khi server Metro Bundler khởi động:
 
 ```text
 MOBILE/
-├── app/                  # File-based routing (Expo Router)
-│   ├── (tabs)/           # 6 Tab chính: Home, Classes, Schedule, Training, Notifications, Profile
-│   ├── auth/             # Màn hình Đăng nhập & Đăng ký
-│   ├── classes/          # Chi tiết lớp học & Đặt lịch
-│   ├── membership/       # Gói hội viên & Đăng ký gói
-│   └── schedule/         # Chi tiết lịch học
-├── constants/            # Theme màu sắc (Dark Mode/Lime), Font chữ
-├── context/              # AuthContext (Xác thực & Lưu phiên đăng nhập)
-├── lib/                  # HTTP Client (api.ts), Secure Storage (storage.ts), Types (types.ts)
-├── .env.example          # Mẫu cấu hình môi trường
-└── app.json              # Cấu hình Expo app
+├── app/                  # Route (Expo Router) — CHỈ đọc params + render 1 View, không chứa logic/UI
+│   ├── _layout.tsx       # Provider + AuthGuard (chặn theo đăng nhập & vai trò)
+│   ├── auth/             # Đăng nhập, đăng ký, quên mật khẩu
+│   ├── (tabs)/           # Trang chủ, Tin nhắn, Hồ sơ (+ các tab ẩn: classes, enrollments,
+│   │                     #   schedule, notifications, coach-attendance)
+│   ├── classes/[id].tsx, schedule/[scheduleId].tsx, payment/[paymentId].tsx, chat/[userId].tsx
+│   ├── membership/plans.tsx
+│   └── attendance/my.tsx
+├── components/
+│   ├── shared/           # Dùng chung mọi vai trò (Icon, ScreenHeader, InfoBanner, ScheduleDetailView…)
+│   ├── member/           # Màn/khối của Hội viên (membership/, payment/, …)
+│   └── coach/            # Màn/khối của Huấn luyện viên (Lịch dạy, Điểm danh, …)
+├── hooks/{shared,member,coach}/   # State + business logic (React Query)
+├── services/             # Gọi API thuần, đặt tên theo nghiệp vụ (attendanceService, coachService…)
+├── navigation/           # routes.ts (ROUTES + quyền theo vai trò), tabConfig, quickAccessConfig
+├── constants/            # theme, membership, payment, schedule, attendance — không hard code trong màn
+├── lib/                  # api, storage, socket, format, date, businessRules (bản sao FE web), types
+└── context/              # AuthContext (phiên đăng nhập, cơ sở)
 ```
+
+### Quy tắc khi code
+1. **Không hard code logic**: số/cấu hình → `constants/`, định dạng & luật nghiệp vụ → `lib/`.
+2. **Tách lớp đúng kiến trúc**: `app/` mỏng → `components/` (UI) → `hooks/` (logic) → `services/` (API).
+3. **Theo flow của web**: đọc trang FE tương ứng (`FE/src/...`) trước khi làm màn mobile.
+4. **Điều hướng** luôn dùng `ROUTES` trong `navigation/routes.ts`; route chỉ dành cho một vai trò
+   phải khai báo trong `ROUTE_ROLES` của cùng file.
 
 ---
 

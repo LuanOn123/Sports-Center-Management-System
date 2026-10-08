@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from './Icon';
 import { Colors } from '../../constants/theme';
+import { ROUTES } from '../../navigation/routes';
 
 interface ScreenHeaderProps {
   title: string;
@@ -29,7 +30,7 @@ export function ScreenHeader({
     } else if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(tabs)');
+      router.replace(ROUTES.home);
     }
   };
 

@@ -20,9 +20,3 @@ export const getClasses = (filters?: ClassFilters) =>
 /** GET /sports */
 export const getSports = () =>
   api.publicGet<Sport[]>('/sports', { isActive: 'true', limit: '50' });
-
-/** GET /classes/:id/course-plan — xem kế hoạch khóa học */
-export const getCoursePlan = (classId: string) =>
-  api.get<import('../lib/types').CoursePlan>(`/classes/${classId}/course-plan`);
-
-

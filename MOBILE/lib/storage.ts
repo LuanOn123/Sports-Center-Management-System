@@ -9,6 +9,10 @@ const KEYS = {
 
 const isWeb = Platform.OS === 'web';
 
+// SecureStore chỉ nhận key gồm chữ/số và . - _ (id dạng uuid hợp lệ)
+const pendingPaymentKey = (userId: string, facilityId: string) =>
+  `pulse.pending_checkout.${userId}.${facilityId || 'none'}`;
+
 export const storage = {
   async getAccessToken(): Promise<string | null> {
     try {
@@ -83,35 +87,34 @@ export const storage = {
       // Ignore storage errors
     }
   },
-  async getPendingPlan(userId: string): Promise<any | null> {
+  // Chỉ lưu paymentId của đơn SePay gần nhất (theo hội viên + cơ sở, như FE web) để mở lại màn QR —
+  // trạng thái thật luôn lấy từ BE.
+  async getPendingPaymentId(userId: string, facilityId: string): Promise<string | null> {
     try {
-      const key = `pulse.pending_plan.${userId}`;
+      const key = pendingPaymentKey(userId, facilityId);
       if (isWeb && typeof window !== 'undefined') {
-        const val = window.localStorage.getItem(key);
-        return val ? JSON.parse(val) : null;
+        return window.localStorage.getItem(key);
       }
-      const val = await SecureStore.getItemAsync(key);
-      return val ? JSON.parse(val) : null;
+      return await SecureStore.getItemAsync(key);
     } catch {
       return null;
     }
   },
-  async setPendingPlan(userId: string, data: any): Promise<void> {
+  async setPendingPaymentId(userId: string, facilityId: string, paymentId: string): Promise<void> {
     try {
-      const key = `pulse.pending_plan.${userId}`;
-      const val = JSON.stringify(data);
+      const key = pendingPaymentKey(userId, facilityId);
       if (isWeb && typeof window !== 'undefined') {
-        window.localStorage.setItem(key, val);
+        window.localStorage.setItem(key, paymentId);
         return;
       }
-      await SecureStore.setItemAsync(key, val);
+      await SecureStore.setItemAsync(key, paymentId);
     } catch {
       // Ignore storage errors
     }
   },
-  async clearPendingPlan(userId: string): Promise<void> {
+  async clearPendingPaymentId(userId: string, facilityId: string): Promise<void> {
     try {
-      const key = `pulse.pending_plan.${userId}`;
+      const key = pendingPaymentKey(userId, facilityId);
       if (isWeb && typeof window !== 'undefined') {
         window.localStorage.removeItem(key);
         return;

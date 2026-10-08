@@ -43,7 +43,29 @@ export const Colors = {
     MEMBERSHIP: '#3B82F6',
     PREMIUM: '#F59E0B',
   },
+  // Logo thương hiệu — khớp FE web (public/brand/pulse-member.svg + shared/portal-theme.css)
+  brand: {
+    markBg: '#1C2534',
+    markBorder: '#293445',
+    ink: '#0B0F17',
+    accent: '#D4FF00',
+    pulse: '#38BDF8',
+    text: '#F1F4F9',
+    tagline: '#9BAAC0',
+  },
+  // Màu nhấn cho ô Truy cập nhanh (navigation/quickAccessConfig.ts)
+  feature: {
+    lime: '#A3E635',
+    violet: '#8B5CF6',
+    cyan: '#06B6D4',
+    amber: '#F59E0B',
+    emerald: '#10B981',
+    pink: '#EC4899',
+  },
 } as const;
+
+/** Hậu tố alpha (hex) cho nền nhạt của icon: màu + TINT_ALPHA */
+export const TINT_ALPHA = '18';
 
 export const Spacing = {
   xs: 4,
@@ -63,25 +85,6 @@ export const Radius = {
   xl: 20,
   full: 999,
 } as const;
-
-export const FontSize = {
-  xs: 11,
-  sm: 13,
-  md: 15,
-  lg: 17,
-  xl: 20,
-  xxl: 24,
-  xxxl: 30,
-  display: 36,
-} as const;
-
-export const FontWeight = {
-  regular: '400' as const,
-  medium: '500' as const,
-  semibold: '600' as const,
-  bold: '700' as const,
-  extrabold: '800' as const,
-};
 
 export const Shadow = {
   sm: Platform.select({

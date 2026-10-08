@@ -11,6 +11,9 @@ import { useMyEnrollments, useCancelEnrollment } from '../../hooks/member/useEnr
 import { Colors } from '../../constants/theme';
 import { Haptic } from '../../lib/haptics';
 import type { Enrollment } from '../../lib/types';
+import { ROUTES } from '../../navigation/routes';
+import { addDays, isSameDay, isToday, startOfWeek } from '../../lib/date';
+import { formatDayMonth, formatTime, pad2 } from '../../lib/format';
 
 const WEEKDAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
@@ -25,36 +28,10 @@ const STATUS_LABEL: Record<string, string> = {
   CANCELLED: 'Đã hủy',
 };
 
-
 function isSchedulePast(endTime?: string) {
   return Boolean(endTime) && new Date(endTime!) < new Date();
 }
 
-function startOfWeek(d: Date) {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  date.setDate(date.getDate() + diffToMonday);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-function addDays(d: Date, n: number) {
-  const date = new Date(d);
-  date.setDate(date.getDate() + n);
-  return date;
-}
-function isSameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-function isToday(d: Date) {
-  return isSameDay(d, new Date());
-}
-
-// toLocaleDateString('vi-VN', ...) không đáng tin trên RN/Hermes — ICU của máy
-// có thể trả dấu "-" thay vì "/" giữa ngày/tháng. Tự ghép chuỗi cho chắc.
-function pad2(n: number) {
-  return String(n).padStart(2, '0');
-}
 function formatDateTime(iso: string) {
   const d = new Date(iso);
   return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
@@ -63,13 +40,6 @@ function formatDate(iso: string) {
   const d = new Date(iso);
   const weekday = WEEKDAY_LABELS[(d.getDay() + 6) % 7];
   return `${weekday}, ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`;
-}
-function formatTime(iso: string) {
-  const d = new Date(iso);
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
-function formatDayMonth(d: Date) {
-  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`;
 }
 
 export function MemberScheduleView() {
@@ -128,7 +98,7 @@ export function MemberScheduleView() {
     return (
       <TouchableOpacity
         className="bg-bg-surface rounded-xl border border-border overflow-hidden"
-        onPress={() => item.scheduleId && router.push(`/schedule/${item.scheduleId}`)}
+        onPress={() => item.scheduleId && router.push(ROUTES.scheduleDetail(item.scheduleId))}
         activeOpacity={0.8}
       >
         {Boolean(item.schedule) && (
@@ -181,7 +151,7 @@ export function MemberScheduleView() {
         subtitle="Thời khóa biểu các ca học đã đặt của bạn theo tuần"
       />
       {/* Mode tabs */}
-      <View className="flex-row px-xl gap-sm mb-sm">
+      <View className="flex-row px-xl pt-xl gap-sm mb-sm">
         <TouchableOpacity
           className={clsx('flex-1 py-xs rounded-md items-center border', mode === 'week' ? 'bg-primary border-primary' : 'bg-bg-surface border-border')}
           onPress={() => {
@@ -294,7 +264,7 @@ export function MemberScheduleView() {
                             key={e.id}
                             className="flex-row items-center gap-sm p-md rounded-md bg-[#A3E63515] border border-[#A3E63540]"
                             activeOpacity={0.8}
-                            onPress={() => e.scheduleId && router.push(`/schedule/${e.scheduleId}`)}
+                            onPress={() => e.scheduleId && router.push(ROUTES.scheduleDetail(e.scheduleId))}
                           >
                             <View className="flex-1 gap-0.5">
                               <Text className="text-sm font-bold font-bevn-bold text-text-primary" numberOfLines={1}>

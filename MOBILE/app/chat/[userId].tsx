@@ -13,6 +13,7 @@ import { Colors } from '../../constants/theme';
 import { KeyboardAwareView } from '../../components/shared/KeyboardAwareView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Haptic } from '../../lib/haptics';
+import { ROUTES } from '../../navigation/routes';
 
 // toLocaleDateString('vi-VN', ...) không đáng tin trên RN/Hermes — ICU của máy
 // có thể trả dấu "-" thay vì "/" giữa ngày/tháng. Tự ghép chuỗi cho chắc.
@@ -86,7 +87,7 @@ export default function ChatScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(tabs)/chat');
+      router.replace(ROUTES.chat);
     }
   };
 

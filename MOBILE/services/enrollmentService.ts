@@ -24,3 +24,7 @@ export const getMyQuota = () =>
 export const enrollWholeCourse = (classId: string) =>
   api.post<WholeCourseEnrollmentResult>('/enrollments/bulk', { classId });
 
+
+/** POST /enrollments — hội viên đặt một buổi học (đặt lại buổi đã hủy: BE tự kích hoạt lại) */
+export const enrollSchedule = (scheduleId: string) =>
+  api.post<Enrollment>('/enrollments', { scheduleId });

@@ -2,7 +2,7 @@
 // Tạo mã QR điểm danh + mã dự phòng cho 1 ca học — tự đổi mã định kỳ, dừng khi đóng modal
 
 import { useCallback, useEffect, useState } from 'react';
-import { generateAttendanceQr } from '../../services/coachService';
+import { generateAttendanceQr } from '../../services/attendanceService';
 import { ApiError } from '../../lib/api';
 
 // BE tự tài liệu: "FE tự làm mới mã mỗi 55 giây" — QR JWT sống 600s nhưng mã dự

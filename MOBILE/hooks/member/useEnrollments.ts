@@ -2,16 +2,17 @@
 // Business logic cho enrollments của hội viên — React Query + mutations
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMyEnrollments, cancelEnrollment, transferEnrollment, getMyQuota, enrollWholeCourse } from '../../services/enrollmentService';
+import { getMyEnrollments, cancelEnrollment, transferEnrollment, getMyQuota, enrollWholeCourse, enrollSchedule } from '../../services/enrollmentService';
 import { showAlert, showConfirm } from '../../lib/alert';
 import { ApiError } from '../../lib/api';
 import type { ConcurrentClassQuota, Enrollment } from '../../lib/types';
 
-export function useMyEnrollments(status?: string, limit?: string) {
+export function useMyEnrollments(status?: string, limit?: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['my-enrollments', status, limit],
     queryFn: () => getMyEnrollments(status, limit),
     placeholderData: (prev) => prev,
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -153,4 +154,18 @@ export function useEnrollWholeCourse() {
   };
 
   return { handleEnrollWholeCourse, isPending: mutation.isPending };
+}
+
+/** Hook đặt một buổi học — POST /enrollments */
+export function useBookSchedule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (scheduleId: string) => enrollSchedule(scheduleId),
+    onSuccess: (_res, scheduleId) => {
+      queryClient.invalidateQueries({ queryKey: ['my-enrollments'] });
+      queryClient.invalidateQueries({ queryKey: ['my-enrollments-upcoming'] });
+      queryClient.invalidateQueries({ queryKey: ['enrollment-quota'] });
+      queryClient.invalidateQueries({ queryKey: ['schedule', scheduleId] });
+    },
+  });
 }
