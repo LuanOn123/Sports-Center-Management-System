@@ -1,3 +1,4 @@
+import { AuditLogPage } from "./AuditLogPage";
 import { OperationsPage } from "../operations/OperationsPage";
 import { Link, Navigate, Route, Routes } from "react-router-dom";
 import {
@@ -33,6 +34,7 @@ import { PaymentsPage } from "../reception/payments/PaymentsPage";
 import { ClassesPage } from "../reception/classes/ClassesPage";
 import { AttendancePenalties } from "./AttendancePenalties";
 import { ActivityPlanner } from "./ActivityPlanner";
+import { FacilityVisits } from "../../shared/FacilityVisits";
 const navGroups: NavigationGroup[] = [
   { title: "TỔNG QUAN", items: [["dashboard", "Tổng quan", LayoutDashboard]] },
   {
@@ -57,6 +59,7 @@ const navGroups: NavigationGroup[] = [
       ["payments", "Thanh toán & hóa đơn", Receipt],
       ["bookings", "Đăng ký lớp", BookOpen],
       ["attendance-rules", "Chuyên cần", Activity],
+      ["checkin", "Check-in cơ sở", ContactRound],
     ],
   },
   {
@@ -83,13 +86,14 @@ export function ManagerLayout({
       title="Quản lý trung tâm"
       base="/manager"
       items={[]}
-      groups={navGroups.map(g => ({ ...g, items: g.items.filter(([slug]) => !["users", "roles"].includes(slug)) })).concat([{ title: "ĐIỀU PHỐI", items: [["requirements", "Điều kiện giảng dạy", Warehouse], ["slots", "Khung giờ", CalendarDays], ["patterns", "Sinh lịch định kỳ", CalendarDays], ["leave", "Nghỉ phép", CalendarDays], ["issues", "Yêu cầu hỗ trợ", ClipboardList], ["orders", "Bán gói tại quầy", CreditCard]] }])}
+      groups={navGroups.map(g => ({ ...g, items: g.items.filter(([slug]) => !["users", "roles"].includes(slug)) })).concat([{ title: "ĐIỀU PHỐI", items: [["requirements", "Điều kiện giảng dạy", Warehouse], ["slots", "Khung giờ", CalendarDays], ["patterns", "Sinh lịch định kỳ", CalendarDays], ["leave", "Nghỉ phép", CalendarDays], ["issues", "Yêu cầu hỗ trợ", ClipboardList]] }])}
     >
       <Routes>
-        {(["requirements", "slots", "patterns", "leave", "issues", "orders"] as const).map(kind => <Route key={kind} path={"/manager/" + kind} element={<OperationsPage kind={kind} role="MANAGER" />} />)}
+        {(["requirements", "slots", "patterns", "leave", "issues"] as const).map(kind => <Route key={kind} path={"/manager/" + kind} element={<OperationsPage kind={kind} role="MANAGER" />} />)}
         <Route path="/manager/staff" element={<OperationsPage kind="staff" role="MANAGER" />} />
         <Route path="/manager/dashboard" element={<Dashboard />} />
         <Route path="/manager/reports" element={<Dashboard reports />} />
+        <Route path="/manager/checkin" element={<FacilityVisits staff />} />
         <Route
           path="/manager/membership"
           element={<MembershipPage role="MANAGER" />}
@@ -120,7 +124,7 @@ export function ManagerLayout({
         <Route path="/manager/roles" element={<Unavailable type="roles" />} />
         <Route
           path="/manager/audit-logs"
-          element={<OperationsPage kind="audit" role="MANAGER" />}
+          element={<AuditLogPage role="MANAGER" />}
         />
         <Route
           path="/"

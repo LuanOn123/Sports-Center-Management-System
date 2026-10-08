@@ -15,6 +15,8 @@ async function fixture(page: Page, role = "MEMBER") {
     id: "c1",
     name: "Yoga & Pilates",
     capacity: 20,
+    defaultRoomId: "r1",
+    areaType: "INDOOR",
     classType: "REGULAR",
     isActive: true,
     sports: [
@@ -132,9 +134,10 @@ async function fixture(page: Page, role = "MEMBER") {
       };
     else if (path === "/sports")
       data = [
-        { id: "s1", name: "Yoga", isActive: true },
-        { id: "s2", name: "Pilates", isActive: true },
+        { id: "s1", name: "Yoga", areaTypes: ["INDOOR"], isActive: true },
+        { id: "s2", name: "Pilates", areaTypes: ["INDOOR"], isActive: true },
       ];
+    else if (path === "/rooms") data = [{ id: "r1", name: "Phòng A", areaType: "INDOOR", capacity: 20, isActive: true }];
     else if (path === "/class-schedules")
       data = [
         {
@@ -296,8 +299,8 @@ for (const width of [375, 1440])
       .getByRole("button", { name: "Chỉnh sửa", exact: true })
       .first()
       .click();
-    await expect(page.getByLabel("Các bộ môn")).toHaveValues(["s1", "s2"]);
-    await page.getByRole("button", { name: "Lưu thay đổi" }).click();
+    await expect(dialog.locator(".sport-chip")).toHaveText(["Yoga", "Pilates"]);
+    await page.getByRole("button", { name: "Lưu lớp học" }).click();
     await expect
       .poll(
         () =>

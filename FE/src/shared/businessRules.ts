@@ -45,12 +45,7 @@ export function subscriptionTransitions(
 ): string[] {
   if (role !== "MANAGER") return [];
   if (s.status === "ACTIVE") return ["SUSPENDED", "CANCELLED"];
-  // Older automatically suspended records have no remainingDays. Resuming them
-  // on the current backend would silently expire the entitlement immediately.
-  if (s.status === "SUSPENDED")
-    return typeof s.remainingDays === "number" && s.remainingDays > 0
-      ? ["ACTIVE", "CANCELLED"]
-      : ["CANCELLED"];
+  // Policy A: historical subscriptions never resume; remainingDays is audit only.
   return [];
 }
 
@@ -68,7 +63,13 @@ export function terminalSessionError(message: string) {
 }
 
 export function downgradeReason(
-  current: { tier: unknown; plan?: { durationDays?: unknown } } | undefined,
+  current:
+    | {
+        tier: unknown;
+        durationDaysSnapshot?: unknown;
+        plan?: { durationDays?: unknown };
+      }
+    | undefined,
   plan: { tier: unknown; durationDays: unknown },
 ) {
   if (!current) return "";
@@ -77,7 +78,8 @@ export function downgradeReason(
     return "Không thể mua gói thấp hơn hạng hiện tại.";
   if (
     plan.tier === current.tier &&
-    Number(plan.durationDays) < Number(current.plan?.durationDays)
+    Number(plan.durationDays) <
+      Number(current.durationDaysSnapshot ?? current.plan?.durationDays)
   )
     return "Không thể mua gói ngắn hơn cùng hạng.";
   return "";

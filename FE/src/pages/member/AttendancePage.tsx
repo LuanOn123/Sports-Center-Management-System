@@ -23,7 +23,12 @@ type AttendanceBucket = {
   noShowCount: number;
   excusedCount: number;
   attendanceRate: number;
-  status: "OK" | "WARN" | "RELEASE";
+  status: "NORMAL" | "NOTICE" | "WARNING";
+  policy: "FIXED" | "RECURRING";
+  totalPlannedSessions: number | null;
+  currentAbsences: number;
+  allowedAbsences: number;
+  remainingAbsences: number;
 };
 type AttendancePenalty = {
   id: string;
@@ -52,9 +57,9 @@ const statusLabels: Record<string, string> = {
   ABSENT: "Vắng mặt",
   LATE: "Đi muộn",
   EXCUSED: "Vắng có phép",
-  OK: "Đạt",
-  WARN: "Cần cải thiện",
-  RELEASE: "Dưới ngưỡng",
+  NORMAL: "Bình thường",
+  NOTICE: "Nhắc nhở",
+  WARNING: "Cảnh báo",
 };
 
 export function AttendancePage() {
@@ -63,39 +68,8 @@ export function AttendancePage() {
   const [reason, setReason] = useState("");
   const history = useQuery({
     queryKey: ["my-attendance"],
-    queryFn: async ({ signal }) => {
-      try {
-        return await allPages<AttendanceRecord>("GET /attendance/my", { signal });
-      } catch (error) {
-        // Backward-compatible fallback for an older deployment during rolling updates.
-        const enrollments = await allPages<RecordData>("GET /enrollments/my", { signal });
-        const eligible = enrollments.data.filter(
-          (entry) =>
-            entry.status !== "CANCELLED" &&
-            Date.parse(String((entry.schedule as RecordData)?.startTime || "")) <= Date.now(),
-        );
-        const records: AttendanceRecord[] = [];
-        for (const enrollment of eligible) {
-          const schedule = enrollment.schedule as RecordData;
-          const scheduleId = String(enrollment.scheduleId || schedule?.id || "");
-          const result = await api<AttendanceRecord[]>("GET /attendance", {
-            query: { scheduleId },
-            signal,
-          });
-          const own = result.data.find(
-            (record) => record.memberId === enrollment.memberId,
-          );
-          if (own)
-            records.push({
-              ...own,
-              schedule: (own.schedule as AttendanceRecord["schedule"]) ||
-                (schedule as AttendanceRecord["schedule"]),
-            });
-        }
-        if (!records.length && error) throw error;
-        return { data: records };
-      }
-    },
+    queryFn: ({ signal }) =>
+      allPages<AttendanceRecord>("GET /attendance/my", { signal }),
   });
   const summary = useQuery({
     queryKey: ["my-attendance-summary"],
@@ -122,7 +96,11 @@ export function AttendancePage() {
         <div className="panel-heading">
           <div>
             <h2>Tỷ lệ chuyên cần theo lớp</h2>
-            <p>Tính trên tối đa 10 buổi đã kết thúc; vắng có phép không làm giảm tỷ lệ.</p>
+            <p>
+              Khóa cố định tính số lần vắng theo 20% tổng buổi kế hoạch. Lớp
+              định kỳ tính trên 10 buổi gần nhất, tối thiểu 5 buổi. Cảnh báo chỉ
+              để tham khảo; quyết định hạn chế đặt lớp do quản lý áp dụng riêng.
+            </p>
           </div>
         </div>
         {summary.isPending ? (
@@ -136,11 +114,31 @@ export function AttendancePage() {
             {summary.data.data.buckets.map((bucket) => (
               <article className="workflow-card" key={bucket.classId}>
                 <div className="panel-heading">
-                  <div><h3>{bucket.className}</h3><p>{bucket.sampleSize} buổi được tính</p></div>
-                  <strong style={{ fontSize: 24 }}>{bucket.attendanceRate.toLocaleString("vi-VN")} %</strong>
+                  <div>
+                    <h3>{bucket.className}</h3>
+                    <p>{bucket.sampleSize} buổi được tính</p>
+                  </div>
+                  <strong style={{ fontSize: 24 }}>
+                    {bucket.attendanceRate.toLocaleString("vi-VN")} %
+                  </strong>
                 </div>
-                <span className={`badge ${bucket.status === "OK" ? "" : "muted"}`}>{statusLabels[bucket.status]}</span>{" "}
-                <small>Có mặt {bucket.presentCount} · muộn {bucket.lateCount} · vắng {bucket.absentCount} · không điểm danh {bucket.noShowCount} · có phép {bucket.excusedCount}</small>
+                <span
+                  className={`badge ${bucket.status === "NORMAL" ? "" : "muted"}`}
+                >
+                  {statusLabels[bucket.status]}
+                </span>{" "}
+                {bucket.policy === "FIXED" && (
+                  <p>
+                    Khóa {bucket.totalPlannedSessions} buổi · đã vắng{" "}
+                    {bucket.currentAbsences}/{bucket.allowedAbsences} buổi cho
+                    phép · còn {bucket.remainingAbsences} buổi được vắng.
+                  </p>
+                )}
+                <small>
+                  Có mặt {bucket.presentCount} · muộn {bucket.lateCount} · vắng{" "}
+                  {bucket.absentCount} · không điểm danh {bucket.noShowCount} ·
+                  có phép {bucket.excusedCount}
+                </small>
               </article>
             ))}
           </div>
@@ -153,14 +151,33 @@ export function AttendancePage() {
             {summary.data.data.penalties.map((penalty) => (
               <article className="workflow-card" key={penalty.id}>
                 <div className="panel-heading">
-                  <div><h3>{penalty.className}</h3><p>{penalty.reason}</p></div>
+                  <div>
+                    <h3>{penalty.className}</h3>
+                    <p>{penalty.reason}</p>
+                  </div>
                   <span className="badge muted">{display(penalty.status)}</span>
                 </div>
-                {penalty.blockedUntil && <p>Không thể đặt lại lớp đến {display(penalty.blockedUntil)}.</p>}
+                {penalty.status === "APPLIED" && penalty.blockedUntil && (
+                  <p>
+                    Không thể đặt lại lớp này đến{" "}
+                    {display(penalty.blockedUntil)}. Gói tập và quyền đặt các
+                    lớp khác vẫn giữ nguyên.
+                  </p>
+                )}
                 {penalty.appealedAt ? (
-                  <p className="success">Đã gửi khiếu nại: {penalty.appealReason}</p>
+                  <p className="success">
+                    Đã gửi khiếu nại: {penalty.appealReason}
+                  </p>
                 ) : penalty.canAppeal ? (
-                  <button className="button" onClick={() => { appealMutation.reset(); setAppeal(penalty); }}>Gửi khiếu nại</button>
+                  <button
+                    className="button"
+                    onClick={() => {
+                      appealMutation.reset();
+                      setAppeal(penalty);
+                    }}
+                  >
+                    Gửi khiếu nại
+                  </button>
                 ) : null}
               </article>
             ))}
@@ -181,7 +198,9 @@ export function AttendancePage() {
               <article className="workflow-card" key={record.id}>
                 <h3>{record.schedule?.class?.name || "Buổi học"}</h3>
                 <p>{display(record.schedule?.startTime)}</p>
-                <span className="badge">{statusLabels[record.status] || record.status}</span>
+                <span className="badge">
+                  {statusLabels[record.status] || record.status}
+                </span>
                 {record.note && <p>{record.note}</p>}
               </article>
             ))}
@@ -189,13 +208,36 @@ export function AttendancePage() {
         )}
       </section>
       {appeal && (
-        <Modal title={`Khiếu nại quyết định · ${appeal.className}`} dismissible={!appealMutation.isPending} onClose={() => setAppeal(null)}>
-          <p className="confirm-copy">Nêu rõ lý do và thông tin cần quản lý kiểm tra. Gửi khiếu nại không tự động gỡ quyết định.</p>
-          <label>Lý do khiếu nại <b className="required">*</b><textarea value={reason} minLength={5} maxLength={1000} onChange={(event) => setReason(event.target.value)} /></label>
+        <Modal
+          title={`Khiếu nại quyết định · ${appeal.className}`}
+          dismissible={!appealMutation.isPending}
+          onClose={() => setAppeal(null)}
+        >
+          <p className="confirm-copy">
+            Nêu rõ lý do và thông tin cần quản lý kiểm tra. Gửi khiếu nại không
+            tự động gỡ quyết định.
+          </p>
+          <label>
+            Lý do khiếu nại <b className="required">*</b>
+            <textarea
+              value={reason}
+              minLength={5}
+              maxLength={1000}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </label>
           {appealMutation.error && <ErrorState error={appealMutation.error} />}
           <div className="modal-footer">
-            <button className="button" onClick={() => setAppeal(null)}>Đóng</button>
-            <button className="button primary" disabled={reason.trim().length < 5 || appealMutation.isPending} onClick={() => appealMutation.mutate()}>{appealMutation.isPending ? "Đang gửi…" : "Gửi khiếu nại"}</button>
+            <button className="button" onClick={() => setAppeal(null)}>
+              Đóng
+            </button>
+            <button
+              className="button primary"
+              disabled={reason.trim().length < 5 || appealMutation.isPending}
+              onClick={() => appealMutation.mutate()}
+            >
+              {appealMutation.isPending ? "Đang gửi…" : "Gửi khiếu nại"}
+            </button>
           </div>
         </Modal>
       )}

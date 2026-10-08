@@ -101,6 +101,9 @@ export function SchemaForm({
 }) {
   const errorId = useId();
   const schema = contract[operation]?.body;
+  const attendancePolicyLocked =
+    operation === "PATCH /classes/{id}" &&
+    Number(at(initial, "_count.enrollments") ?? 0) > 0;
   const [values, setValues] = useState<RecordData>(() => ({
     ...Object.fromEntries(
       Object.entries(schema?.properties || {}).map(([k, s]) => [
@@ -145,6 +148,17 @@ export function SchemaForm({
     setError(undefined);
     const body: RecordData = {};
     for (const [k, s] of Object.entries(schema!.properties || {})) {
+      if (k === "timezone" && operation.includes("/facilities")) continue;
+      if (
+        attendancePolicyLocked &&
+        ["attendancePolicy", "plannedSessionCount"].includes(k)
+      )
+        continue;
+      if (
+        k === "plannedSessionCount" &&
+        values.attendancePolicy === "RECURRING"
+      )
+        continue;
       if (
         ["fitnessGoal", "trainingLevel", "trainingPreference"].includes(k) &&
         values.role &&
@@ -203,7 +217,9 @@ export function SchemaForm({
           (s.type === "integer" && !Number.isInteger(v)) ||
           (["price", "amount", "capacity", "durationDays"].includes(k) &&
             Number(v) <= 0) ||
-          (k === "experienceYears" && Number(v) < 0))
+          (["experienceYears", "maxConcurrentClasses"].includes(k) &&
+            Number(v) < 0) ||
+          (k === "plannedSessionCount" && (Number(v) < 1 || Number(v) > 1000)))
       ) {
         setError(
           new Error(
@@ -237,6 +253,23 @@ export function SchemaForm({
         return;
       }
     }
+    if (
+      operation === "PATCH /classes/{id}" &&
+      body.attendancePolicy === initial.attendancePolicy &&
+      (body.plannedSessionCount ?? null) ===
+        (initial.plannedSessionCount ?? null)
+    ) {
+      delete body.attendancePolicy;
+      delete body.plannedSessionCount;
+    }
+    if (
+      / \/classes(?:\/|$)/.test(operation) &&
+      body.attendancePolicy === "FIXED" &&
+      body.plannedSessionCount === undefined
+    ) {
+      setError(new Error("Khóa cố định cần tổng số buổi kế hoạch (1–1000)."));
+      return;
+    }
     if (operation === "PATCH /class-schedules/{id}") {
       // Lifecycle actions must use their dedicated endpoints and confirmations.
       delete body.status;
@@ -267,12 +300,18 @@ export function SchemaForm({
   }
   return (
     <form ref={formRef} onSubmit={submit} aria-busy={busy}>
+      {attendancePolicyLocked && (
+        <p className="field-note">
+          Chính sách chuyên cần đã khóa vì lớp có lượt đăng ký. Muốn đổi chính
+          sách hoặc tổng số buổi, hãy tạo lớp mới.
+        </p>
+      )}
       {/POST \/subscriptions/.test(operation) && (
         <p className="confirm-copy">
           Chỉ lưu sau khi đã nhận đủ tiền. Hệ thống sẽ ghi nhận thanh toán thành
-          công và xuất hóa đơn ngay. Đăng ký gói mới tạm dừng các gói đang hoạt
-          động và cộng ngày dư của gói trả phí vào gói mới (gói FREE không
-          cộng); gia hạn tạo thêm một kỳ gói.
+          công và xuất hóa đơn ngay. Mua hoặc gia hạn thay thế gói đang hoạt
+          động bằng một gói mới. Kỳ mới bắt đầu ngay, không cộng ngày dư và
+          không nối tiếp sau ngày hết hạn cũ.
         </p>
       )}
       {operation === "POST /payments" && (
@@ -283,11 +322,22 @@ export function SchemaForm({
       )}
       <fieldset className="form-grid" disabled={busy}>
         {Object.entries(schema.properties || {})
+          .filter(([k]) => !(k === "timezone" && operation.includes("/facilities")))
           .filter(
             ([k]) =>
               !(operation === "PATCH /class-schedules/{id}" && k === "status"),
           )
           .filter(([k]) => !(k in fixed))
+          .filter(
+            ([k]) =>
+              !attendancePolicyLocked ||
+              !["attendancePolicy", "plannedSessionCount"].includes(k),
+          )
+          .filter(
+            ([k]) =>
+              k !== "plannedSessionCount" ||
+              values.attendancePolicy === "FIXED",
+          )
           .filter(
             ([k]) =>
               !["fitnessGoal", "trainingLevel", "trainingPreference"].includes(
@@ -427,11 +477,18 @@ export function SchemaForm({
                     required={required}
                     minLength={s.minLength}
                     min={
-                      ["capacity", "durationDays"].includes(k)
+                      [
+                        "capacity",
+                        "durationDays",
+                        "plannedSessionCount",
+                      ].includes(k)
                         ? 1
                         : ["price", "amount"].includes(k)
                           ? 0.01
-                          : ["experienceYears"].includes(k)
+                          : [
+                                "experienceYears",
+                                "maxConcurrentClasses",
+                              ].includes(k)
                             ? 0
                             : undefined
                     }

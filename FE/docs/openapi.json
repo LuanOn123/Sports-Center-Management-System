@@ -1684,9 +1684,281 @@
     {
       "name": "Feedbacks",
       "description": "Member đánh giá HLV sau buổi học"
+    },
+    {
+      "name": "Facility Visits",
+      "description": "Check-in vào cơ sở & lượt vào cửa"
+    },
+    {
+      "name": "Waitlist",
+      "description": "Hàng chờ khi buổi học đã đầy"
     }
   ],
   "paths": {
+    "/waitlist": {
+      "post": {
+        "summary": "Member vào hàng chờ cho buổi đã FULL",
+        "description": "Chỉ nhận khi buổi `SCHEDULED`, chưa bắt đầu và ĐÃ ĐẦY (còn slot → 409 yêu cầu book\nthẳng). Bảo đảm 1 mục WAITING/(member × buổi) — unique từng phần trong DB: đã chờ →\n409; đã BOOKED/COMPLETED buổi này → 409. `position` = max(position WAITING của buổi)\n+ 1 trong lock schedule (tăng dần, không có API sửa tay).\nFACILITY-scope — facility lấy từ header `X-Facility-Id`.\nLưu ý: vào chờ KHÔNG trừ quota; khi có slot trống, promotion chạy trong transaction\nhủy chỗ và TÁI KIỂM TRA quota/điều kiện đặt (`assertCanBook`) trước khi xếp lên.\n",
+        "tags": [
+          "Waitlist"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "scheduleId"
+                ],
+                "properties": {
+                  "scheduleId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Joined waitlist successfully"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
+      }
+    },
+    "/waitlist/{id}": {
+      "delete": {
+        "summary": "Member hủy mục chờ của chính mình (WAITING → CANCELLED, CAS)",
+        "description": "Chỉ hủy được mục CHÍNH mình còn đang `WAITING` (updateMany CAS theo\nid + memberId + status); không phải mục của mình / đã kết thúc → 404.\nKhông ảnh hưởng quota hay booking; không có tác dụng với mục đã PROMOTED.\n",
+        "tags": [
+          "Waitlist"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Left waitlist successfully"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/waitlist/my": {
+      "get": {
+        "summary": "Lịch sử hàng chờ của CHÍNH member (mọi cơ sở)",
+        "description": "GLOBAL — mọi mục chờ của member, lọc theo `scheduleId` và `status`.\nVẫn thuộc root FACILITY-scope nên request phải mang facility context\n(header `X-Facility-Id`).\n",
+        "tags": [
+          "Waitlist"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "maximum": 100
+            }
+          },
+          {
+            "in": "query",
+            "name": "scheduleId",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WAITING",
+                "PROMOTED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Waitlist retrieved successfully (kèm pagination)"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/waitlist/schedule/{scheduleId}": {
+      "get": {
+        "summary": "Staff xem waitlist của 1 buổi (MANAGER/RECEPTIONIST/COACH)",
+        "description": "FACILITY-SCOPED qua DAL (Schedule → Class → facility đang chọn) — thiếu\n`X-Facility-Id` → 400 `FACILITY_CONTEXT_REQUIRED`. Sắp xếp theo\nstatus rồi `position` (thứ tự ưu tiên xếp lớp).\n",
+        "tags": [
+          "Waitlist"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scheduleId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "maximum": 100
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WAITING",
+                "PROMOTED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Waitlist retrieved successfully (kèm pagination)"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
     "/users": {
       "get": {
         "summary": "List all users",
@@ -2051,15 +2323,30 @@
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/subscriptions/{id}/renew": {
       "post": {
         "summary": "Renew a membership subscription",
+        "description": "FINAL Policy A — renew là **replacement nguyên tử**: khóa theo member + CAS suspend\ngói ACTIVE hiện có, kỳ mới bắt đầu **ngay** (không stack sau endDate cũ, không tạo\nACTIVE tương lai, không cộng ngày dư). Trả 409 `SUBSCRIPTION_STATE_CHANGED` nếu\ngói thay đổi giữa chừng.\n",
         "tags": [
           "Subscriptions"
         ],
@@ -2071,6 +2358,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -2118,6 +2414,9 @@
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
@@ -2151,6 +2450,15 @@
                 "SUSPENDED"
               ]
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -2186,6 +2494,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -2213,7 +2530,7 @@
     "/subscriptions/{id}/status": {
       "patch": {
         "summary": "Cập nhật trạng thái gói (Manager only)",
-        "description": "**Khi đổi sang `CANCELLED` (Manager hủy gói):**\n- Tự động tính hoàn tiền theo tỷ lệ ngày còn lại *(Prorated)*:\n  `refundAmount = (giá_gốc / tổng_ngày) × ngày_còn_lại`\n- Nếu còn ngày sử dụng → Payment gốc chuyển sang `REFUNDED`, Member nhận Notification `PAYMENT_REFUNDED`.\n- Nếu gói đã hết hạn (0 ngày còn lại) → Không hoàn tiền, gửi `SUBSCRIPTION_CANCELLED`.\n- Toàn bộ lịch học tương lai (`BOOKED`) của member **tự động bị hủy**.\n\n**Khi đổi sang `SUSPENDED`:** Lưu số ngày còn lại để khôi phục sau.\n\n**Khi đổi từ `SUSPENDED` → `ACTIVE`:** Cộng lại số ngày còn dư vào ngày kết thúc mới.\n",
+        "description": "**Khi đổi sang `CANCELLED` (Manager hủy gói):**\n- Tự động tính hoàn tiền theo tỷ lệ ngày còn lại *(Prorated)*:\n  `refundAmount = (giá_gốc / tổng_ngày) × ngày_còn_lại`\n- Nếu còn ngày sử dụng → Payment gốc chuyển sang `REFUNDED`, Member nhận Notification `PAYMENT_REFUNDED`.\n- Nếu gói đã hết hạn (0 ngày còn lại) → Không hoàn tiền, gửi `SUBSCRIPTION_CANCELLED`.\n- Toàn bộ lịch học tương lai (`BOOKED`) của member **tự động bị hủy**.\n\n**Khi đổi sang `SUSPENDED` (FINAL Policy A):** Gói cũ bị thay thế — trạng thái **CUỐI**;\n`suspendedAt`/`remainingDays` chỉ ghi để audit/đối soát, **không cộng ngày** vào gói mới.\n\n**Cấm resume:** `SUSPENDED`/`EXPIRED`/`CANCELLED` → `ACTIVE` luôn trả **400**\nvới `errors.code = \"SUBSCRIPTION_RESUME_FORBIDDEN\"`. Muốn dùng tiếp phải\nmua/gia hạn gói **MỚI** (atomic replacement, 1 member = 1 ACTIVE).\n",
         "tags": [
           "Subscriptions"
         ],
@@ -2230,6 +2547,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -2266,7 +2592,7 @@
                   }
                 },
                 "resume": {
-                  "summary": "Kích hoạt lại từ tạm dừng",
+                  "summary": "Cấm resume — luôn bị từ chối 400 (SUBSCRIPTION_RESUME_FORBIDDEN)",
                   "value": {
                     "status": "ACTIVE"
                   }
@@ -2356,6 +2682,15 @@
               "format": "uuid"
             },
             "description": "Subscription ID (phải là gói của chính mình)"
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -2579,7 +2914,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/sports/{id}": {
@@ -2627,6 +2973,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -2697,6 +3052,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -2775,6 +3139,15 @@
               "type": "integer",
               "default": 10
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -2854,7 +3227,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/rooms/{id}": {
@@ -2871,6 +3255,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -2904,6 +3297,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -2973,6 +3375,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -3012,6 +3423,15 @@
               "type": "string"
             },
             "description": "Source room (damaged room)"
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -3086,6 +3506,15 @@
               "type": "string"
             },
             "description": "Source room (damaged room)"
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -3171,6 +3600,15 @@
               "type": "string",
               "example": "2026-12-31"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -3214,6 +3652,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -3257,6 +3704,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -3300,6 +3756,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -3357,6 +3822,15 @@
               "type": "integer",
               "default": 20
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -3380,8 +3854,8 @@
     },
     "/reports/attendance": {
       "get": {
-        "summary": "Attendance report per (member × class) with OK/WARN/RELEASE status",
-        "description": "Cửa sổ cố định: tối đa 10 buổi ĐÃ KẾT THÚC gần nhất của (member × class) — KHÔNG theo schedule,\nnên đổi buổi trong cùng lớp không reset lịch sử.\n`rate = (PRESENT + LATE) / (PRESENT + LATE + ABSENT + NO_SHOW)`; EXCUSED không vào tử/mẫu.\nsampleSize < 5 -> OK; rate >= 80% -> OK; 70% <= rate < 80% -> WARN; rate < 70% -> RELEASE.\n",
+        "summary": "Attendance report per (member × class) with FIXED allowance or RECURRING fallback",
+        "description": "FIXED (Class.attendancePolicy = FIXED + plannedSessionCount > 0, snapshot cố định):\nallowance = floor(plannedSessionCount × 20%);\ncurrentAbsences (ABSENT + NO_SHOW đã chốt) < allowance -> NORMAL;\n== allowance -> NOTICE; > allowance -> WARNING. Đánh giá sớm sau mỗi buổi chốt.\nThêm schedule sau này KHÔNG làm tăng snapshot (amendment phải tạo Class/cohort mới).\nRECURRING (mọi trường hợp còn lại): rolling tối đa 10 buổi đã kết thúc;\nsampleSize < 5 -> NORMAL; rate >= 80% -> NORMAL; 70–<80% -> NOTICE; < 70% -> WARNING.\nrate = (PRESENT + LATE) / (PRESENT + LATE + ABSENT + NO_SHOW); EXCUSED/cancelled/tương lai loại.\nNOTICE/WARNING chỉ gửi thông báo tham khảo; Penalty là quyết định thủ công riêng của Manager.\nHàng FIXED có thêm policy/totalPlannedSessions/completedSessions/currentAbsences/allowedAbsences/remainingAbsences.\n",
         "tags": [
           "Reports"
         ],
@@ -3392,9 +3866,9 @@
             "schema": {
               "type": "string",
               "enum": [
-                "OK",
-                "WARN",
-                "RELEASE"
+                "NORMAL",
+                "NOTICE",
+                "WARNING"
               ]
             }
           },
@@ -3428,6 +3902,15 @@
               "type": "integer",
               "default": 20
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -3441,9 +3924,9 @@
                   "data": {
                     "summary": {
                       "total": 12,
-                      "ok": 9,
-                      "warn": 2,
-                      "release": 1
+                      "normal": 9,
+                      "notice": 2,
+                      "warning": 1
                     },
                     "rows": [
                       {
@@ -3451,6 +3934,12 @@
                         "memberName": "Nguyễn Văn A",
                         "classId": "class-uuid",
                         "className": "Yoga cơ bản",
+                        "policy": "FIXED",
+                        "totalPlannedSessions": 10,
+                        "completedSessions": 5,
+                        "currentAbsences": 2,
+                        "allowedAbsences": 2,
+                        "remainingAbsences": 0,
                         "sampleSize": 8,
                         "presentCount": 5,
                         "lateCount": 0,
@@ -3458,7 +3947,7 @@
                         "noShowCount": 1,
                         "excusedCount": 1,
                         "attendanceRate": 62.5,
-                        "status": "RELEASE",
+                        "status": "WARNING",
                         "activePenalty": null
                       }
                     ]
@@ -3472,6 +3961,59 @@
                 }
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/reports/cross-facility-usage": {
+      "get": {
+        "summary": "Cross-facility usage (origin vs actual usage)",
+        "description": "\"Member mua gói ở A đang dùng ở đâu?\" — origin = Subscription.facilityId,\nusage = Class.facilityId của Enrollment / Facility.facilityId của Visit.\nKhông đổi model subscription, không tạo bảng mới.\n",
+        "tags": [
+          "Reports"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "startDate",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cross-facility usage report"
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
@@ -3560,7 +4102,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       },
       "get": {
         "summary": "List payments with filters",
@@ -3613,6 +4166,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -3648,6 +4210,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -3687,6 +4258,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -3750,6 +4330,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -3912,7 +4501,18 @@
           "503": {
             "description": "Chưa cấu hình tài khoản nhận tiền (VIETQR_BANK_ID / VIETQR_ACCOUNT_NO)"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/payments/sepay/webhook": {
@@ -4148,7 +4748,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/payments/sepay/{id}": {
@@ -4172,6 +4783,15 @@
               "type": "string"
             },
             "description": "Payment.id nhận được từ `POST /payments/sepay/checkout`"
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -4555,7 +5175,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/membership-plans/{id}": {
@@ -4604,6 +5235,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -4682,6 +5322,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -4745,6 +5394,15 @@
             "schema": {
               "type": "integer"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -4780,6 +5438,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -4813,6 +5480,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -4896,6 +5572,15 @@
               "type": "string"
             },
             "description": "memberProfile.id hoặc userId"
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -4955,6 +5640,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -4990,6 +5684,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -5028,6 +5731,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -5159,7 +5871,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       },
       "get": {
         "summary": "Xem danh sách đánh giá của một HLV (public)",
@@ -5205,6 +5928,15 @@
               "type": "integer",
               "default": 10
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -5313,7 +6045,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/feedbacks/{id}": {
@@ -5336,6 +6079,15 @@
               "type": "string"
             },
             "description": "Feedback ID"
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -5390,6 +6142,15 @@
               "type": "string"
             },
             "description": "Feedback ID"
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -5417,6 +6178,306 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/facility-visits/check-in": {
+      "post": {
+        "summary": "Member tự check-in vào cơ sở đang chọn (method QR mặc định)",
+        "description": "FACILITY-scope — facility lấy từ header `X-Facility-Id` (body KHÔNG chứa\nfacilityId); thiếu → 400 `FACILITY_CONTEXT_REQUIRED`.\n- Cần một gói ACTIVE (kể cả FREE); không có gói → 403. Facility không tồn tại → 404,\n  facility `isActive = false` → 403 `FORBIDDEN_SCOPE`.\n- Dedupe 5 phút cùng facility: nếu vừa check-in → trả **200** kèm visit cũ\n  (`duplicate: true`), không tạo bản mới.\n- Không có MemberProfile → 404; tài khoản bị khóa → 400. Không gửi body → 400\n  validation (gửi `{}` nếu không kèm tham số).\n",
+        "tags": [
+          "Facility Visits"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "QR",
+                      "RECEPTION"
+                    ],
+                    "default": "QR"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Already checked in recently — trả về lượt check-in gần nhất (dedupe 5 phút)"
+          },
+          "201": {
+            "description": "Checked in successfully"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
+      }
+    },
+    "/facility-visits/reception-check-in": {
+      "post": {
+        "summary": "Lễ tân check-in hộ member (MANAGER/RECEPTIONIST)",
+        "description": "Cùng luồng với self check-in (entitlement GLOBAL, dedupe 5 phút, cần gói ACTIVE),\nkhác ở chỗ chỉ định member qua `memberId` (id hoặc userId của MemberProfile) và\n`method` mặc định `RECEPTION`.\nFACILITY-scope — facility lấy từ header `X-Facility-Id`.\n",
+        "tags": [
+          "Facility Visits"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "memberId"
+                ],
+                "properties": {
+                  "memberId": {
+                    "type": "string",
+                    "description": "MemberProfile id hoặc userId"
+                  },
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "QR",
+                      "RECEPTION"
+                    ],
+                    "default": "RECEPTION"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Already checked in recently (dedupe 5 phút)"
+          },
+          "201": {
+            "description": "Checked in successfully"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
+      }
+    },
+    "/facility-visits/my": {
+      "get": {
+        "summary": "Lịch sử vào cửa của CHÍNH member (mọi cơ sở)",
+        "description": "GLOBAL — DAL được nới scope (`facilityId: undefined`) nên trả về lượt vào cửa tại\nMỌI cơ sở của member. Vẫn thuộc root FACILITY-scope nên request phải mang facility\ncontext (header `X-Facility-Id`).\n",
+        "tags": [
+          "Facility Visits"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "maximum": 100
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "checkInAt >= from"
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "checkInAt <= to"
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visits retrieved successfully (kèm pagination)"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/facility-visits": {
+      "get": {
+        "summary": "Danh sách lượt vào cửa của cơ sở đang chọn (staff)",
+        "description": "FACILITY-SCOPED qua DAL — chỉ trả về lượt vào cửa tại facility đang chọn\n(header `X-Facility-Id`). Lọc theo member (`memberId` = id hoặc userId),\nkhoảng thời gian `from`/`to` trên `checkInAt`.\n",
+        "tags": [
+          "Facility Visits"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "maximum": 100
+            }
+          },
+          {
+            "in": "query",
+            "name": "memberId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "MemberProfile id hoặc userId"
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visits retrieved successfully (kèm pagination)"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           },
           "500": {
             "$ref": "#/components/responses/ServerError"
@@ -5529,7 +6590,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/enrollments/my": {
@@ -5550,6 +6622,15 @@
                 "COMPLETED"
               ]
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -5599,7 +6680,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/enrollments/bulk": {
@@ -5720,7 +6812,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/enrollments/schedule/{scheduleId}": {
@@ -5737,6 +6840,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -5772,6 +6884,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -5817,6 +6938,15 @@
               "type": "string"
             },
             "description": "Enrollment ID của chỗ đặt hiện tại"
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -5910,6 +7040,15 @@
               "type": "string"
             },
             "description": "Filter by specialization (partial match)"
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -5951,6 +7090,15 @@
               "type": "string"
             },
             "description": "Coach user ID"
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -5990,6 +7138,15 @@
               "type": "string"
             },
             "description": "Coach user ID"
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -6110,6 +7267,18 @@
           },
           {
             "in": "query",
+            "name": "attendancePolicy",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "FIXED",
+                "RECURRING"
+              ]
+            },
+            "description": "Filter by attendance policy (FIXED | RECURRING)"
+          },
+          {
+            "in": "query",
             "name": "isActive",
             "schema": {
               "type": "string",
@@ -6134,6 +7303,15 @@
               "type": "integer",
               "default": 10
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -6205,6 +7383,24 @@
                     ],
                     "example": "INDOOR",
                     "description": "Area type required by this class. Every selected sport must support it."
+                  },
+                  "attendancePolicy": {
+                    "type": "string",
+                    "enum": [
+                      "FIXED",
+                      "RECURRING"
+                    ],
+                    "default": "RECURRING",
+                    "description": "FIXED = khóa cố định với plannedSessionCount; RECURRING = lớp mở định kỳ."
+                  },
+                  "plannedSessionCount": {
+                    "type": "integer",
+                    "example": 10,
+                    "description": "Required when attendancePolicy = FIXED; forbidden when RECURRING."
+                  },
+                  "defaultRoomId": {
+                    "type": "string",
+                    "description": "Phòng mặc định cùng cơ sở, đúng khu vực và đủ sức chứa. Lịch học có thể chọn phòng phù hợp khác."
                   }
                 }
               }
@@ -6230,7 +7426,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/classes/{id}": {
@@ -6247,6 +7454,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -6280,6 +7496,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -6323,6 +7548,10 @@
                   },
                   "isActive": {
                     "type": "boolean"
+                  },
+                  "defaultRoomId": {
+                    "type": "string",
+                    "description": "Phòng mặc định cùng cơ sở, đúng khu vực và đủ sức chứa. Lịch học có thể chọn phòng phù hợp khác."
                   }
                 }
               }
@@ -6363,6 +7592,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -6408,6 +7646,15 @@
               "type": "string"
             },
             "description": "Class ID"
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -6441,6 +7688,15 @@
               "type": "string"
             },
             "description": "Class ID"
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -6505,6 +7761,15 @@
               "type": "string"
             },
             "description": "Class ID"
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -6575,6 +7840,15 @@
               "type": "string"
             },
             "description": "CoachProfile ID"
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -6631,7 +7905,18 @@
           "409": {
             "$ref": "#/components/responses/Conflict"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/class-schedules": {
@@ -6753,6 +8038,15 @@
               "type": "integer",
               "default": 10
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -6832,7 +8126,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/class-schedules/{id}": {
@@ -6849,6 +8154,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -6883,6 +8197,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -6959,6 +8282,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -6997,6 +8329,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -7653,6 +8994,9 @@
           },
           "500": {
             "$ref": "#/components/responses/ServerError"
+          },
+          "502": {
+            "description": "Không gửi được email OTP (tất cả driver mail đều thất bại) — thử lại sau."
           }
         }
       }
@@ -7729,6 +9073,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -7794,7 +9147,18 @@
           "201": {
             "description": "Success"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/attendance/{id}": {
@@ -7817,6 +9181,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -7914,7 +9287,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/attendance/scan-qr": {
@@ -8057,7 +9441,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/attendance/my": {
@@ -8107,6 +9502,15 @@
               "type": "integer",
               "default": 20
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -8163,7 +9567,7 @@
     "/attendance/my/summary": {
       "get": {
         "summary": "Attendance rate per class for the current member + own penalties",
-        "description": "Trả về bucket theo (member × class): sampleSize, present/late/absent/noShow/excused,\nattendanceRate, status (OK | WARN | RELEASE) cùng danh sách hình phạt của chính member\n(kèm `canAppeal` để FE bật nút khiếu nại trong cửa sổ 72 giờ).\n",
+        "description": "FINAL advisory — bucket theo (member × class): sampleSize, present/late/absent/noShow/excused,\nattendanceRate, status (NORMAL >= 80% | NOTICE 70–<80% | WARNING <70%) cùng danh sách hình phạt\nthủ công của chính member (luồng riêng, không tự trigger từ ngưỡng).\n(kèm `canAppeal` để FE bật nút khiếu nại trong cửa sổ 72 giờ).\n",
         "tags": [
           "Attendance"
         ],
@@ -8202,7 +9606,7 @@
                         "noShowCount": 2,
                         "excusedCount": 0,
                         "attendanceRate": 60,
-                        "status": "RELEASE"
+                        "status": "WARNING"
                       }
                     ],
                     "penalties": [
@@ -8236,13 +9640,24 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/attendance/warnings/scan": {
       "post": {
-        "summary": "Scan attendance and send WARN notifications (Manager only)",
-        "description": "Gửi `ATTENDANCE_WARNING` cho các (member × class) có 70% <= rate < 80%.\nKhông gửi trùng khi cùng rate (dedupe theo classId + attendanceRate).\n",
+        "summary": "Scan attendance and send advisory notifications (Manager only)",
+        "description": "FINAL advisory — gửi `ATTENDANCE_WARNING` cho NOTICE (70–<80%) và WARNING (<70%).\nKhông phạt/khóa/hủy/thu hồi chỗ. Dedupe theo state transition (classId + state).\n",
         "tags": [
           "Attendance"
         ],
@@ -8269,7 +9684,7 @@
         },
         "responses": {
           "200": {
-            "description": "Scan result: { checked, warnBuckets, sent, skippedDuplicate }"
+            "description": "Scan result: { checked, advisoryBuckets, sent, skippedDuplicate }"
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
@@ -8283,7 +9698,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/attendance/penalties": {
@@ -8340,6 +9766,15 @@
               "type": "integer",
               "default": 20
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {
@@ -8406,7 +9841,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/attendance/penalties/apply": {
@@ -8475,7 +9921,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/attendance/penalties/{id}/appeal": {
@@ -8498,6 +9955,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -8565,6 +10031,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -8694,6 +10169,170 @@
           },
           "503": {
             "description": "AI chưa được cấu hình"
+          }
+        }
+      }
+    },
+    "/classes/{id}/registrations": {
+      "get": {
+        "summary": "Hội viên đã đăng ký khóa học (staff)",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/reports/facilities": {
+      "get": {
+        "summary": "Tổng quan toàn hệ thống theo cơ sở (ADMIN)",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/facilities/{facilityId}/manager": {
+      "put": {
+        "summary": "Thêm hoặc thay quản lý cơ sở (ADMIN)",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "facilityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userId": {
+                    "type": "string"
+                  },
+                  "replacedUserId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "userId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
           }
         }
       }
@@ -8900,7 +10539,19 @@
             "BearerAuth": []
           }
         ],
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success"
@@ -8926,7 +10577,19 @@
             "BearerAuth": []
           }
         ],
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -9074,8 +10737,7 @@
                   "isActive": {
                     "type": "boolean"
                   }
-                },
-                "required": []
+                }
               }
             }
           }
@@ -10143,6 +11805,20 @@
             "schema": {
               "type": "integer"
             }
+          },
+          {
+            "name": "entity",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filterFacilityId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -10463,7 +12139,18 @@
           "500": {
             "$ref": "#/components/responses/ServerError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ]
       }
     },
     "/subjects/{id}": {
@@ -10511,6 +12198,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "requestBody": {
@@ -10581,6 +12277,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
           }
         ],
         "responses": {

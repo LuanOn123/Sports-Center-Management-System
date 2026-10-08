@@ -9,12 +9,26 @@ const openApiUrl =
 const openApiFile = new URL("../docs/openapi.json", import.meta.url);
 
 if (process.argv.includes("--local")) {
-  const result = spawnSync(process.execPath, [
-    "--import", "tsx", "--input-type=module", "-e",
-    'import { swaggerSpec } from "./src/config/swagger.ts"; process.stdout.write(JSON.stringify(swaggerSpec));',
-  ], { cwd: fileURLToPath(new URL("../../BE/", import.meta.url)), encoding: "utf8" });
-  if (result.status !== 0) throw new Error(result.stderr || "Cannot export local backend Swagger");
-  fs.writeFileSync(openApiFile, JSON.stringify(JSON.parse(result.stdout), null, 2));
+  const result = spawnSync(
+    process.execPath,
+    [
+      "--import",
+      "tsx",
+      "--input-type=module",
+      "-e",
+      'import { swaggerSpec } from "./src/config/swagger.ts"; process.stdout.write(JSON.stringify(swaggerSpec));',
+    ],
+    {
+      cwd: fileURLToPath(new URL("../../BE/", import.meta.url)),
+      encoding: "utf8",
+    },
+  );
+  if (result.status !== 0)
+    throw new Error(result.stderr || "Cannot export local backend Swagger");
+  fs.writeFileSync(
+    openApiFile,
+    JSON.stringify(JSON.parse(result.stdout), null, 2),
+  );
 }
 
 if (process.argv.includes("--live")) {
@@ -30,6 +44,13 @@ if (process.argv.includes("--live")) {
   fs.writeFileSync(openApiFile, JSON.stringify(JSON.parse(match[1]), null, 2));
 }
 const doc = JSON.parse(fs.readFileSync(openApiFile, "utf8"));
+const overrideUrl = new URL(
+  "../docs/workflow-contract-overrides.json",
+  import.meta.url,
+);
+const workflowOverrides = fs.existsSync(overrideUrl)
+  ? JSON.parse(fs.readFileSync(overrideUrl, "utf8"))
+  : {};
 const schemaType = (s) =>
   s.enum
     ? s.enum.map(JSON.stringify).join(" | ")
@@ -75,7 +96,9 @@ Response examples are documentation only, never application data. The client sen
 for (const [p, methods] of Object.entries(doc.paths))
   for (const [m, o] of Object.entries(methods)) {
     const key = m.toUpperCase() + " " + p;
-    const body = o.requestBody?.content?.["application/json"]?.schema;
+    const body =
+      workflowOverrides[key]?.body ??
+      o.requestBody?.content?.["application/json"]?.schema;
     const name = (m + " " + p)
       .replace(/[{}]/g, "")
       .split(/[^a-zA-Z0-9]+/)
@@ -105,12 +128,8 @@ for (const [k, r] of Object.entries(doc.components.responses)) {
 }
 // Swagger omits request bodies and pagination supported by the checked backend.
 // Keep these audited contracts reproducible until the backend publishes them.
-const overrideUrl = new URL(
-  "../docs/workflow-contract-overrides.json",
-  import.meta.url,
-);
 if (fs.existsSync(overrideUrl)) {
-  Object.assign(ops, JSON.parse(fs.readFileSync(overrideUrl, "utf8")));
+  Object.assign(ops, workflowOverrides);
   md +=
     "\n## Verified workflow contracts\nAdditional operations and missing bodies/parameters are preserved in workflow-contract-overrides.json, reviewed against the backend checkout. See WORKFLOW_ALIGNMENT.md and BACKEND_SYNC_2026-10-04.md.\n";
 }

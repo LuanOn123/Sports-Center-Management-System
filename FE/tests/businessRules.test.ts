@@ -7,6 +7,8 @@ import {
   paymentTransitions,
   subscriptionTransitions,
   terminalSessionError,
+  downgradeReason,
+  refundEstimate,
 } from "../src/shared/businessRules";
 import { translateApiMessage } from "../src/shared/apiErrors";
 import { ATTENDANCE } from "../../BE/src/config/attendance";
@@ -51,16 +53,23 @@ describe("workflow state boundaries", () => {
       "REFUNDED",
     ]);
   });
-  it("does not resume auto-suspended subscriptions without saved entitlement", () => {
+  it("never resumes historical subscriptions, even with audited remaining days", () => {
     expect(subscriptionTransitions({ status: "SUSPENDED" }, "MANAGER")).toEqual(
-      ["CANCELLED"],
+      [],
     );
     expect(
       subscriptionTransitions(
         { status: "SUSPENDED", remainingDays: 4 },
         "MANAGER",
       ),
-    ).toEqual(["ACTIVE", "CANCELLED"]);
+    ).toEqual([]);
+    expect(subscriptionTransitions({ status: "EXPIRED" }, "MANAGER")).toEqual(
+      [],
+    );
+    expect(subscriptionTransitions({ status: "ACTIVE" }, "MANAGER")).toEqual([
+      "SUSPENDED",
+      "CANCELLED",
+    ]);
     expect(subscriptionTransitions({ status: "CANCELLED" }, "MANAGER")).toEqual(
       [],
     );
@@ -113,14 +122,54 @@ describe("workflow state boundaries", () => {
   });
 });
 
+it("checks the sold duration snapshot even after a plan is edited", () => {
+  const current = {
+    tier: "MEMBERSHIP",
+    durationDaysSnapshot: 90,
+    plan: { durationDays: 30 },
+  };
+  expect(
+    downgradeReason(current, { tier: "MEMBERSHIP", durationDays: 60 }),
+  ).toContain("ngắn hơn");
+  expect(
+    downgradeReason(current, { tier: "MEMBERSHIP", durationDays: 90 }),
+  ).toBe("");
+  expect(
+    downgradeReason(current, { tier: "FREE", durationDays: 3650 }),
+  ).toContain("thấp hơn");
+  expect(
+    downgradeReason(
+      { ...current, tier: "FREE" },
+      { tier: "MEMBERSHIP", durationDays: 30 },
+    ),
+  ).toBe("");
+});
+
+it("keeps member refund boundary separate from capped manager prorating", () => {
+  const end = new Date(now + 15 * 86400000).toISOString();
+  expect(refundEstimate(end, 1000000, 30, "MEMBER", now).refundAmount).toBe(0);
+  expect(refundEstimate(end, 1000000, 30, "MEMBER", now - 1).refundAmount).toBe(
+    300000,
+  );
+  expect(refundEstimate(end, 1000000, 30, "MANAGER", now).refundAmount).toBe(
+    500000,
+  );
+  expect(refundEstimate(end, 1000000, 10, "MANAGER", now).refundAmount).toBe(
+    1000000,
+  );
+});
+
 it("opens attendance QR only within inclusive server time bounds for scheduled sessions", () => {
   const schedule = {
     status: "SCHEDULED",
     startTime: "2026-09-27T10:00:00Z",
     endTime: "2026-09-27T11:00:00Z",
   };
-  const open = Date.parse(schedule.startTime) - ATTENDANCE.SCAN_OPEN_MINUTES_BEFORE * 60_000;
-  const close = Date.parse(schedule.endTime) + ATTENDANCE.SCAN_CLOSE_MINUTES_AFTER * 60_000;
+  const open =
+    Date.parse(schedule.startTime) -
+    ATTENDANCE.SCAN_OPEN_MINUTES_BEFORE * 60_000;
+  const close =
+    Date.parse(schedule.endTime) + ATTENDANCE.SCAN_CLOSE_MINUTES_AFTER * 60_000;
   expect(canGenerateAttendanceQr(schedule, open - 1)).toBe(false);
   expect(canGenerateAttendanceQr(schedule, open)).toBe(true);
   expect(canGenerateAttendanceQr(schedule, close)).toBe(true);

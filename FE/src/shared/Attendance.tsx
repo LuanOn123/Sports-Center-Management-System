@@ -50,8 +50,7 @@ export function Attendance({
           <AttendanceQr scheduleId={id} schedule={schedule} />
         )}
       <p>
-        Hoàn tất lịch học không tự xác nhận hội viên có mặt. Mỗi học viên cần
-        được ghi nhận riêng.
+        Hoàn tất lịch học sẽ ghi vắng cho hội viên chưa điểm danh. Mỗi học viên có mặt cần được ghi nhận trước khi hoàn tất buổi.
       </p>
       {!canWrite && (
         <p>

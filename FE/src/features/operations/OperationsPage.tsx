@@ -808,9 +808,9 @@ function RequirementsPage({
               {admin && (
                 <>
                   <option value="sports">Yêu cầu bộ môn</option>
-                  <option value="coaches">Chuyên môn huấn luyện viên</option>
                 </>
               )}
+              {manager && <option value="coaches">Chuyên môn huấn luyện viên</option>}
             </select>
           </label>
           {q.isPending ? (

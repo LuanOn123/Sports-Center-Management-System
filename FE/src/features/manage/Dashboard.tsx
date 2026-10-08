@@ -1,5 +1,6 @@
 ﻿import { DistributionChart } from "../../shared/DistributionChart";
 import { useState } from "react";
+import { BusinessReports } from "./BusinessReports";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
@@ -212,6 +213,7 @@ export function Dashboard({ reports = false, base = "/manager" }: { reports?: bo
           )}
         </div>
       </div>
+      {reports && base === "/manager" && <BusinessReports startDate={startDate} endDate={endDate} />}
       {!valid ? (
         <ErrorState
           error={

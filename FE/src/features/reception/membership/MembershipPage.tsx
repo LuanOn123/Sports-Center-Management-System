@@ -1,5 +1,5 @@
 import { CancelSubscription } from "../../../shared/CancelSubscription";
-import { downgradeReason } from "../../../shared/businessRules";
+import { downgradeReason, isEffectiveSubscription } from "../../../shared/businessRules";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { RecordData } from "../../../shared/api";
@@ -42,12 +42,11 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
   const hasPlans = (plans.data?.data || []).some(
     (p) => p.id && p.isActive !== false,
   );
-  const current = subscriptions.data?.data.find((s) => s.status === "ACTIVE");
+  const current = subscriptions.data?.data.find((s) => isEffectiveSubscription({ status: String(s.status), startDate: String(s.startDate), endDate: String(s.endDate) }));
   const choices = (plans.data?.data || [])
     .filter((p) => p.id && p.isActive !== false)
     .filter(
       (p) =>
-        action?.id ||
         !downgradeReason(
           current as
             { tier: unknown; plan?: { durationDays?: unknown } } | undefined,
@@ -91,10 +90,9 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
             )}
             <p>
               Đăng ký hoặc gia hạn sẽ ghi nhận đã thu tiền và phát hành hóa đơn
-              ngay. Chỉ xác nhận sau khi đã nhận đủ tiền. Đăng ký gói mới sẽ tạm
-              dừng gói ACTIVE và cộng ngày dư của gói trả phí vào gói mới (gói
-              FREE không cộng), không cho phép hạ hạng hoặc giảm thời hạn cùng
-              hạng. Gia hạn tạo một kỳ gói mới.
+              ngay. Chỉ xác nhận sau khi đã nhận đủ tiền. Mua hoặc gia hạn sẽ
+              thay thế gói ACTIVE bằng gói mới bắt đầu ngay, không cộng ngày dư,
+              không nối kỳ, không cho phép hạ hạng hoặc giảm thời hạn đã bán cùng hạng.
             </p>
             <button
               className="button primary"
@@ -158,7 +156,7 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
                         ).filter(
                           (s) => s !== "CANCELLED" || row.status !== "ACTIVE",
                         )}
-                        explanation="Tạm dừng sẽ lưu số ngày còn lại. Tiếp tục sẽ khôi phục thời hạn được bảo lưu. Hủy gói tạm dừng sẽ chấm dứt quyền lợi; thao tác này chưa tự động hoàn tiền hoặc hủy các lịch đã đặt."
+                        explanation="Ngừng quyền lợi là trạng thái cuối, không thể khôi phục gói này. Số ngày còn lại chỉ lưu để đối soát, không cộng vào gói mới. Muốn dùng tiếp, hãy mua hoặc gia hạn để tạo gói mới."
                       />
                     </>
                   )}

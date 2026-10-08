@@ -13,6 +13,8 @@ export function CancelSubscription({
     id: string;
     endDate: string;
     status: string;
+    durationDaysSnapshot?: number | null;
+    payments?: Array<{ amount: string | number; status: string }>;
     plan?: { price: string | number; durationDays: number };
   };
   role: "MEMBER" | "MANAGER";
@@ -37,8 +39,12 @@ export function CancelSubscription({
   });
   const estimate = refundEstimate(
     subscription.endDate,
-    Number(subscription.plan?.price || 0),
-    subscription.plan?.durationDays || 0,
+    Number(
+      subscription.payments?.find((p) => p.status === "SUCCESS")?.amount ??
+        subscription.plan?.price ??
+        0,
+    ),
+    subscription.durationDaysSnapshot ?? subscription.plan?.durationDays ?? 0,
     role,
   );
   const close = () => {
@@ -71,14 +77,18 @@ export function CancelSubscription({
                 Gói tập và các lượt đặt lớp tương lai đã được hủy.
               </p>
               <p>
-                {mutation.data.data.willRefund
-                  ? `Số tiền hoàn: ${money(mutation.data.data.refundAmount)}. Vui lòng liên hệ quầy để nhận tiền.`
-                  : "Không phát sinh hoàn tiền."}
+                {role === "MANAGER"
+                  ? "Gói đã được xử lý theo chính sách hoàn tiền theo ngày còn lại. Xem giao dịch để biết số tiền hoàn chính thức."
+                  : mutation.data.data.willRefund
+                    ? `Số tiền hoàn: ${money(mutation.data.data.refundAmount)}. Vui lòng liên hệ quầy để nhận tiền.`
+                    : "Không phát sinh hoàn tiền."}
               </p>
-              <p>
-                Còn {String(at(mutation.data.data, "daysLeft") ?? 0)} ngày tại
-                thời điểm hủy.
-              </p>
+              {role === "MEMBER" && (
+                <p>
+                  Còn {String(at(mutation.data.data, "daysLeft") ?? 0)} ngày tại
+                  thời điểm hủy.
+                </p>
+              )}
             </div>
           ) : (
             <div className="confirm-copy">
@@ -88,7 +98,7 @@ export function CancelSubscription({
                   {String(at(subscription, "plan.name") || "gói tập")}
                 </strong>{" "}
                 sẽ chấm dứt quyền lợi và hủy toàn bộ lượt đặt lớp trong tương
-                lai.
+                lai ở mọi cơ sở.
               </p>
               <p>
                 {role === "MEMBER"
@@ -100,8 +110,9 @@ export function CancelSubscription({
                 <strong>{money(estimate.refundAmount)}</strong>.
               </p>
               <p className="field-note">
-                Ước tính theo giá gói hiện tại. Số tiền chính thức được xác định
-                theo khoản thanh toán gốc và thời điểm xác nhận.
+                Ước tính theo khoản đã thu nếu có, hoặc giá gói hiện tại. Số
+                tiền chính thức được xác định theo khoản thanh toán gốc và thời
+                điểm xác nhận.
               </p>
               {role === "MEMBER" && (
                 <label>

@@ -203,6 +203,7 @@ export function ActivityPlanner({ role }: { role: "ADMIN" | "MANAGER" | "RECEPTI
           name: className.trim(),
           description: classDescription.trim() || undefined,
           sportIds: [resolvedSportId],
+          defaultRoomId: roomId,
           capacity,
           classType,
           areaType,

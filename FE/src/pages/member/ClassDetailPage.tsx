@@ -12,6 +12,7 @@ import {
   StatusBadge,
 } from "../../components/common";
 import { CoachFeedback } from "../../shared/CoachFeedback";
+import { WaitlistAction } from "../../shared/Waitlist";
 import { ErrorState } from "../../shared/feedback";
 import { formatMemberDate } from "../../shared/memberFormat";
 import { sportNames } from "../../shared/sports";
@@ -648,6 +649,12 @@ export function ClassDetailPage() {
                       >
                         {label.text}
                       </span>
+                      {session.isFull &&
+                        session.status === "SCHEDULED" &&
+                        Date.parse(session.startTime) > Date.now() &&
+                        !["BOOKED", "COMPLETED"].includes(
+                          session.myEnrollmentStatus ?? "",
+                        ) && <WaitlistAction scheduleId={session.id} />}
                     </div>
                   );
                 })}

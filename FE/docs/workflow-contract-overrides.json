@@ -47,7 +47,9 @@
           "enum": [
             "MEMBER",
             "COACH",
-            "RECEPTIONIST", "MANAGER", "ADMIN"
+            "RECEPTIONIST",
+            "MANAGER",
+            "ADMIN"
           ]
         }
       },
@@ -1161,6 +1163,98 @@
       "403",
       "404",
       "409",
+      "500"
+    ]
+  },
+  "PATCH /classes/{id}": {
+    "path": "/classes/{id}",
+    "method": "PATCH",
+    "summary": "Update class",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "sportIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "capacity": {
+          "type": "integer"
+        },
+        "classType": {
+          "type": "string",
+          "enum": [
+            "REGULAR",
+            "PREMIUM"
+          ]
+        },
+        "areaType": {
+          "type": "string",
+          "enum": [
+            "POOL",
+            "INDOOR",
+            "OUTDOOR"
+          ],
+          "description": "New area type. All sports of this class must support it, and upcoming schedules must use a matching Room."
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "attendancePolicy": {
+          "type": "string",
+          "enum": [
+            "FIXED",
+            "RECURRING"
+          ]
+        },
+        "plannedSessionCount": {
+          "type": "integer",
+          "description": "Required for FIXED. Locked after any enrollment exists (ATTENDANCE_POLICY_LOCKED)."
+        },
+        "defaultRoomId": {
+          "type": "string",
+          "description": "Phòng mặc định phù hợp loại khu vực và sức chứa lớp"
+        }
+      }
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
       "500"
     ]
   }

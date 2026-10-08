@@ -72,6 +72,10 @@ export interface CoachInfo {
 }
 
 export interface ClassItem {
+  facilityId?: string;
+  facility?: { id: string; name: string };
+  attendancePolicy?: "FIXED" | "RECURRING";
+  plannedSessionCount?: number | null;
   id: string;
   name: string;
   description?: string | null;
@@ -273,6 +277,7 @@ export interface WholeCourseEnrollmentResult {
 }
 
 export interface MembershipPlan {
+  maxConcurrentClasses?: number;
   id: string;
   name: string;
   description?: string | null;
@@ -285,6 +290,11 @@ export interface MembershipPlan {
 }
 
 export interface MembershipSubscription {
+  facilityId?: string | null;
+  planNameSnapshot?: string | null;
+  durationDaysSnapshot?: number | null;
+  maxConcurrentClassesSnapshot?: number | null;
+  payments?: Array<{ amount: string | number; status: PaymentStatus }>;
   id: string;
   memberId: string;
   planId: string;
@@ -297,7 +307,7 @@ export interface MembershipSubscription {
   updatedAt: string;
 }
 
-export type SepayPaymentStatus = "PENDING" | "SUCCESS" | "FAILED";
+export type SepayPaymentStatus = "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED";
 
 export type PaymentActivationStatus = "ACTIVATED" | "REQUIRES_REVIEW";
 

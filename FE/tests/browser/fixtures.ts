@@ -11,6 +11,7 @@ export async function setup(page: Page, role = "RECEPTIONIST", longText = false)
   await page.route("**/api/v1/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace("/api/v1", "");
+    if (path === "/reports/facilities") return route.fulfill({ json: { success: true, data: { totalMembers: 0, totalBookings: 0, totalRevenue: 0, refundedAmount: 0, netRevenue: 0, facilities: [] } } });
     if (path === "/facilities") return route.fulfill({ json: { success: true, data: [{ id: "facility-a", code: "A", name: "Cơ sở A", isActive: true }, { id: "facility-b", code: "B", name: "Cơ sở B", isActive: true }] } });
     if (/^\/facilities\/[^/]+$/.test(path)) return route.fulfill({ json: { success: true, data: { id: "facility-a", staffs: [] } } });
     const coursePlanMatch = path.match(/^\/classes\/([^/]+)\/course-plan$/);

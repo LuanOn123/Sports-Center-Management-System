@@ -1,7 +1,10 @@
 import { StatusBadge } from "../../shared/StatusBadge";
+import { ClassForm } from "./ClassForm";
+import { ClassRegistrations, MemberProfile } from "./UserCourseDetails";
 import { ResourceCollection } from "../../shared/ResourceCollection";
 import { CoachFeedback } from "../../shared/CoachFeedback";
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutGrid,
@@ -20,6 +23,7 @@ import {
 import { api, contract } from "../../shared/api";
 import { canCompleteSchedule } from "../../shared/businessRules";
 import { Attendance } from "../../shared/Attendance";
+import { Waitlist } from "../../shared/Waitlist";
 import { allPages } from "../../shared/pagedApi";
 import type { RecordData } from "../../shared/api";
 import type { Resource } from "./config";
@@ -60,7 +64,8 @@ export function ResourcePage({
   const [view, setView] = useState<"visual" | "table">(
     cardView || r.slug === "schedules" ? "visual" : "table",
   );
-  const [query, setQuery] = useState<Record<string, string>>({});
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState<Record<string, string>>((): Record<string, string> => r.slug === "users" && searchParams.get("role") === "MEMBER" ? { role: "MEMBER" } : {});
   const [page, setPage] = useState(1);
   const search = useDebouncedValue(query.search);
   const [modal, setModal] = useState<{ kind: string; row?: RecordData } | null>(
@@ -116,7 +121,7 @@ export function ResourcePage({
         ? allPages<RecordData>(listKey, { query: requestQuery, signal })
         : api<RecordData[]>(listKey, { query: requestQuery, signal }),
   });
-  const readOnly = role !== "ADMIN" && (["users", "staff", "membership-plans", "sports"].includes(r.slug)) || role === "RECEPTIONIST" && ["coaches", "rooms"].includes(r.slug);
+  const readOnly = ["ADMIN", "RECEPTIONIST"].includes(role) && r.slug === "schedules" || role !== "ADMIN" && (["users", "staff", "membership-plans", "sports"].includes(r.slug)) || role === "RECEPTIONIST" && ["coaches", "rooms"].includes(r.slug);
   const create = r.slug === "members" && role === "MANAGER"
     ? "POST /auth/register"
     : readOnly || role !== "ADMIN" && !!r.create ? "" : "POST " + (r.create || r.path);
@@ -182,7 +187,7 @@ export function ResourcePage({
           <Pencil size={16} />
         </button>
       )}
-      {r.slug === "classes" && !readOnly && (
+      {r.slug === "classes" && role === "MANAGER" && !readOnly && (
         <button
           aria-label="Phân công huấn luyện viên"
           title="Phân công huấn luyện viên"
@@ -192,7 +197,7 @@ export function ResourcePage({
           <UserPlus size={17} />
         </button>
       )}
-      {r.slug === "classes" && !readOnly && (
+      {r.slug === "classes" && role === "MANAGER" && !readOnly && (
         <button
           aria-label="Phân công huấn luyện viên hỗ trợ"
           title="Phân công huấn luyện viên hỗ trợ"
@@ -202,7 +207,7 @@ export function ResourcePage({
           <UsersRound size={17} />
         </button>
       )}
-      {r.slug === "schedules" && ["ADMIN", "MANAGER", "RECEPTIONIST"].includes(role) && (
+      {r.slug === "schedules" && !readOnly && ["MANAGER", "RECEPTIONIST"].includes(role) && (
         <button
           className="button small"
           disabled={!canCompleteSchedule(row)}
@@ -511,7 +516,9 @@ export function ResourcePage({
             if (!busy) setModal(null);
           }}
         >
-          {modal.kind === "transferRoom" ? (
+          {r.slug === "classes" && ["create", "edit"].includes(modal.kind) ? (
+            <ClassForm initial={modal.kind === "edit" ? modal.row : {}} onSuccess={done} onCancel={() => setModal(null)} onBusyChange={setBusy} />
+          ) : modal.kind === "transferRoom" ? (
             <RoomScheduleTransfer
               source={modal.row!}
               onDone={done}
@@ -599,9 +606,9 @@ export function ResourcePage({
             <ErrorState error={detail.error} retry={() => detail.refetch()} />
           ) : (
             <>
-              {["members", "schedules", "classes", "coaches"].includes(
+              {(["members", "schedules", "classes", "coaches"].includes(
                 r.slug,
-              ) && (
+              ) || r.slug === "users" && modal.row?.role === "MEMBER") && (
                 <div
                   className="detail-tabs"
                   role="group"
@@ -619,18 +626,18 @@ export function ResourcePage({
                     aria-pressed={detailTab === "related"}
                     onClick={() => setDetailTab("related")}
                   >
-                    {r.slug === "members"
+                    {r.slug === "members" || r.slug === "users"
                       ? "Gói & tập luyện"
                       : r.slug === "schedules"
                         ? "Học viên & điểm danh"
                         : r.slug === "coaches"
                           ? "Đánh giá"
-                          : "Phân công HLV"}
+                          : role !== "MANAGER" ? "Khóa học & đăng ký" : "Phân công HLV"}
                   </button>
                 </div>
               )}
               {detailTab === "overview" && <Details value={detail.data.data} />}
-              {detailTab === "overview" && r.slug === "schedules" && (
+              {detailTab === "overview" && r.slug === "schedules" && !readOnly && (
                 <div className="modal-footer schedule-detail-actions">
                   <button
                     className="button"
@@ -677,14 +684,16 @@ export function ResourcePage({
                   <MemberStatus id={String(modal.row?.id)} />
                 </>
               )}
+              {detailTab === "related" && r.slug === "users" && modal.row?.role === "MEMBER" && <><MemberProfile id={String(modal.row.id)} /><MemberStatus id={String(modal.row.id)} /></>}
               {detailTab === "related" && r.slug === "schedules" && (
                 <Enrollments
                   id={String(modal.row?.id)}
                   schedule={detail.data.data}
-                  role={role}
+                  role={role === "ADMIN" ? "VIEWER" : role}
                 />
               )}
-              {detailTab === "related" && r.slug === "classes" && (
+              {detailTab === "related" && r.slug === "classes" && role !== "MANAGER" && <ClassRegistrations id={String(modal.row?.id)} />}
+              {detailTab === "related" && r.slug === "classes" && role === "MANAGER" && (
                 <CoachAssignments
                   id={String(modal.row?.id)}
                   data={detail.data.data}
@@ -911,6 +920,7 @@ function Enrollments({
       ) : (
         <Empty text="Chưa có hội viên đăng ký" />
       )}
+      <Waitlist scheduleId={id} />
     </section>
   );
 }

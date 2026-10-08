@@ -11,17 +11,26 @@ const guides: Record<string, Guide[]> = {
       path: "facilities",
       steps: [
         "Tạo hoặc chỉnh sửa thông tin cơ sở.",
-        "Chọn cơ sở đang làm việc trước khi thao tác.",
-        "Phân công nhân sự theo đúng vai trò tài khoản.",
+        "Mở cơ sở để thêm hoặc thay quản lý phụ trách.",
+        "Chọn MANAGER chưa được gán cơ sở, hoặc tạo tài khoản quản lý mới.",
       ],
     },
     {
-      title: "Thiết lập điều kiện giảng dạy",
-      path: "requirements",
+      title: "Quản lý người dùng và hội viên",
+      path: "users",
       steps: [
-        "Khai báo thiết bị phòng và yêu cầu bộ môn.",
-        "Gán chuyên môn cho huấn luyện viên trước khi phân công lớp.",
-        "Kiểm tra nhật ký sau khi chỉnh sửa cấu hình.",
+        "Lọc vai trò để tìm người dùng hoặc hội viên.",
+        "Mở chi tiết hội viên, chọn Gói & tập luyện để xem hồ sơ và gói hiện tại.",
+        "Chỉnh sửa tài khoản hoặc hồ sơ hội viên tại cùng màn hình.",
+      ],
+    },
+    {
+      title: "Xem lịch và đăng ký khóa học",
+      path: "classes",
+      steps: [
+        "Mở chi tiết lớp, chọn Khóa học & đăng ký.",
+        "Xem số hội viên, danh sách người đăng ký và lịch của khóa học.",
+        "Manager phụ trách tạo và quản lý lịch hoạt động.",
       ],
     },
   ],

@@ -1,5 +1,5 @@
 import { OperationsPage } from "../operations/OperationsPage";
-import { Routes, Route } from "react-router-dom";
+import { Navigate, Routes, Route } from "react-router-dom";
 import type { PortalProps } from "../../app/RoleRouter";
 import { PortalLayout } from "../../shared/PortalLayout";
 import { Profile } from "../../shared/Profile";
@@ -11,16 +11,16 @@ import { ClassesPage } from "./classes/ClassesPage";
 import { PaymentsPage } from "./payments/PaymentsPage";
 import { resources } from "../manage/config";
 import { ResourcePage } from "../manage/ResourcePage";
-import { ActivityPlanner } from "../manage/ActivityPlanner";
+import { FacilityVisits } from "../../shared/FacilityVisits";
 const items = [
   ["dashboard", "Tổng quan"],
   ["members", "Hội viên"],
+  ["checkin", "Check-in cơ sở"],
   ["membership", "Gói thành viên"],
   ["orders", "Bán gói tại quầy"],
   ["classes", "Đăng ký lớp"],
   ["catalogue", "Quản lý lớp học"],
   ["schedules", "Lịch & điểm danh"],
-  ["activity-planner", "Tạo lịch nhanh"],
   ["sports", "Bộ môn"],
   ["rooms", "Phòng tập"],
   ["payments", "Thanh toán & hóa đơn"],
@@ -41,7 +41,7 @@ export function ReceptionLayout(props: PortalProps) {
         <Route path="/receptionist/classes" element={<ClassesPage />} />
         <Route
           path="/receptionist/activity-planner"
-          element={<ActivityPlanner role="RECEPTIONIST" />}
+          element={<Navigate replace to="/receptionist/schedules" />}
         />
         <Route path="/receptionist/payments" element={<PaymentsPage />} />
         {resources
@@ -65,10 +65,7 @@ export function ReceptionLayout(props: PortalProps) {
         <Route
           path="/receptionist/checkin"
           element={
-            <Placeholder
-              title="Điểm danh hội viên"
-              description="Chức năng điểm danh đang chờ kết nối hệ thống. Vui lòng thực hiện theo quy trình tại quầy."
-            />
+            <FacilityVisits staff />
           }
         />
         <Route
