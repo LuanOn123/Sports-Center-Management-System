@@ -58,14 +58,15 @@ export function getTabConfigForRole(role: Role | undefined): TabItemConfig[] {
     },
     {
       name: 'schedule',
-      title: 'Lịch tập',
-      iconName: 'event',
+      title: isCoach ? 'Lịch dạy' : 'Lịch tập',
+      iconName: 'today',
       visible: false,
     },
     {
-      name: 'training',
+      // Chỉ HLV vào được — chặn ở navigation/routes.ts (canAccessRoute)
+      name: 'coach-attendance',
       title: 'Điểm danh',
-      iconName: 'how-to-reg',
+      iconName: 'check-circle',
       visible: false,
     },
     {

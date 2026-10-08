@@ -1,69 +1,46 @@
 // hooks/coach/useCoachHome.ts
-// Logic cho Trang chủ Huấn luyện viên
+// Logic cho Trang chủ Huấn luyện viên — lớp phụ trách + lịch dạy sắp tới
 
 import { useCallback, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
-import { getCoachClasses, getCoachSchedules } from '../../services/coachService';
+import { useCoachSchedules } from './useCoachSchedules';
+import { COACH_UPCOMING_DAYS } from '../../constants/schedule';
+import { daysFromNow, endOfDay, startOfDay } from '../../lib/date';
 import { Haptic } from '../../lib/haptics';
-import type { Class, ClassSchedule } from '../../lib/types';
 
 export function useCoachHome(coachId: string | undefined) {
-  // 1. Lấy danh sách lớp HLV phụ trách
-  const {
-    data: classesData,
-    isLoading: classesLoading,
-    refetch: refetchClasses,
-  } = useQuery({
-    queryKey: ['coach-home-classes', coachId],
-    queryFn: () => getCoachClasses(coachId!),
-    enabled: Boolean(coachId),
-  });
+  // Tính theo ngày (không theo giây) để queryKey ổn định giữa các lần render
+  const todayKey = startOfDay(new Date()).toISOString();
+  const range = useMemo(
+    () => ({
+      startAfter: todayKey,
+      startBefore: endOfDay(daysFromNow(COACH_UPCOMING_DAYS)).toISOString(),
+      status: 'SCHEDULED' as const,
+    }),
+    [todayKey]
+  );
 
-  // 2. Lấy lịch dạy sắp tới
-  const {
-    data: schedulesData,
-    isLoading: schedulesLoading,
-    refetch: refetchSchedules,
-  } = useQuery({
-    queryKey: ['coach-home-schedules'],
-    queryFn: () => getCoachSchedules(),
-  });
+  const { classes, schedules, isLoading, refetch } = useCoachSchedules(coachId, range);
 
   useFocusEffect(
     useCallback(() => {
-      if (coachId) refetchClasses();
-      refetchSchedules();
-    }, [coachId, refetchClasses, refetchSchedules])
+      refetch();
+    }, [coachId, range])
   );
 
-  const coachClasses: Class[] = classesData?.data ?? [];
-  const classIds = useMemo(() => new Set(coachClasses.map((c) => c.id)), [coachClasses]);
-
-  // Lọc lịch dạy thuộc các lớp mà HLV phụ trách
-  const teachingSchedules = useMemo(() => {
-    const rawSchedules: ClassSchedule[] = schedulesData?.data ?? [];
-    if (coachClasses.length === 0) return [];
-    return rawSchedules
-      .filter((s) => classIds.has(s.classId))
-      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-  }, [schedulesData, classIds, coachClasses.length]);
+  // Buổi chưa kết thúc (buổi đang diễn ra vẫn hiện)
+  const teachingSchedules = schedules.filter((s) => Date.parse(s.endTime) >= Date.now());
 
   const onRefresh = async () => {
     Haptic.light();
-    await Promise.all([refetchClasses(), refetchSchedules()]);
+    await refetch();
   };
 
-  const isLoading = classesLoading || schedulesLoading;
-
   return {
-    coachClasses,
+    coachClasses: classes,
     teachingSchedules,
     isLoading,
-    classesLoading,
-    schedulesLoading,
+    classesLoading: isLoading,
     onRefresh,
-    refetchClasses,
-    refetchSchedules,
   };
 }

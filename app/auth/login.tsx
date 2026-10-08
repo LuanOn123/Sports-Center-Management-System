@@ -15,6 +15,7 @@ import { ApiError } from '../../lib/api';
 import { Brand } from '../../components';
 import { showAlert } from '../../lib/alert';
 import { KeyboardAwareView } from '../../components/shared/KeyboardAwareView';
+import { ROUTES } from '../../navigation/routes';
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
@@ -127,7 +128,7 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
             {errors.password && <Text className="text-xs text-status-failed mt-1 font-bevn-regular">{errors.password.message}</Text>}
-            <Link href="/auth/forgot-password" asChild>
+            <Link href={ROUTES.forgotPassword} asChild>
               <TouchableOpacity className="self-end mt-sm">
                 <Text className="text-primary text-sm font-bevn-medium">Quên mật khẩu?</Text>
               </TouchableOpacity>
@@ -149,7 +150,7 @@ export default function LoginScreen() {
           {/* Register link */}
           <View className="flex-row justify-center items-center mt-xl">
             <Text className="text-text-secondary text-sm font-bevn-regular">Chưa có tài khoản? </Text>
-            <Link href="/auth/register" asChild>
+            <Link href={ROUTES.register} asChild>
               <TouchableOpacity>
                 <Text className="text-primary text-sm font-semibold font-bevn-semibold">Đăng ký ngay</Text>
               </TouchableOpacity>

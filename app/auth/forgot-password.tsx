@@ -19,6 +19,7 @@ import { api, ApiError } from '../../lib/api';
 import { Brand } from '../../components';
 import { showAlert } from '../../lib/alert';
 import { Haptic } from '../../lib/haptics';
+import { ROUTES } from '../../navigation/routes';
 
 const OTP_TTL_MS = 5 * 60 * 1000;
 
@@ -118,7 +119,7 @@ export default function ForgotPasswordScreen() {
       });
       Haptic.success();
       showAlert('Thành công', 'Mật khẩu đã được đặt lại. Vui lòng đăng nhập lại.', () => {
-        router.replace('/auth/login');
+        router.replace(ROUTES.login);
       });
     } catch (e) {
       Haptic.error();
@@ -277,7 +278,7 @@ export default function ForgotPasswordScreen() {
 
           {/* Back to login */}
           <View className="flex-row justify-center items-center mt-xl">
-            <Link href="/auth/login" asChild>
+            <Link href={ROUTES.login} asChild>
               <TouchableOpacity onPress={() => Haptic.light()} activeOpacity={0.7}>
                 <Text className="text-primary text-sm font-semibold font-bevn-semibold">Quay lại đăng nhập</Text>
               </TouchableOpacity>

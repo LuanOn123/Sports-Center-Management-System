@@ -15,6 +15,7 @@ import { ApiError } from '../../lib/api';
 import { Brand } from '../../components';
 import { showAlert } from '../../lib/alert';
 import { KeyboardAwareView } from '../../components/shared/KeyboardAwareView';
+import { ROUTES } from '../../navigation/routes';
 
 const schema = z
   .object({
@@ -245,7 +246,7 @@ export default function RegisterScreen() {
           {/* Login link */}
           <View className="flex-row justify-center items-center mt-xl">
             <Text className="text-text-secondary text-sm font-bevn-regular">Đã có tài khoản? </Text>
-            <Link href="/auth/login" asChild>
+            <Link href={ROUTES.login} asChild>
               <TouchableOpacity>
                 <Text className="text-primary text-sm font-semibold font-bevn-semibold">Đăng nhập</Text>
               </TouchableOpacity>

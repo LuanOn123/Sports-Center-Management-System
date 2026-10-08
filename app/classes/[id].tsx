@@ -16,6 +16,7 @@ import { useAuth } from '../../context/AuthContext';
 import type { Class, ClassSchedule, Enrollment, EnrollmentStatus } from '../../lib/types';
 import { Colors } from '../../constants/theme';
 import { Haptic } from '../../lib/haptics';
+import { ROUTES } from '../../navigation/routes';
 
 const TYPE_LABEL: Record<string, string> = { REGULAR: 'Tiêu Chuẩn', PREMIUM: 'Cao Cấp' };
 
@@ -47,7 +48,7 @@ export default function ClassDetailScreen() {
 
   const handleGoBack = () => {
     if (router.canGoBack()) router.back();
-    else router.replace('/(tabs)/classes');
+    else router.replace(ROUTES.classes);
   };
 
   const { data: classData, isLoading } = useQuery({

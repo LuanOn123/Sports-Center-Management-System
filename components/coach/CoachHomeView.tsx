@@ -12,10 +12,13 @@ import { Avatar } from '../shared/Avatar';
 import { Brand } from '../shared/Brand';
 import { FacilityPicker } from '../shared/FacilityPicker';
 import { ClassCardSkeleton } from '../shared/Skeleton';
+import { QuickAccessGrid } from '../shared/QuickAccessGrid';
+import { getQuickAccessForRole } from '../../navigation/quickAccessConfig';
 import { useCoachHome } from '../../hooks/coach/useCoachHome';
 import { useUnreadNotificationCount } from '../../hooks/shared/useNotifications';
 import { Colors } from '../../constants/theme';
 import type { User } from '../../lib/types';
+import { ROUTES } from '../../navigation/routes';
 
 const CLASS_TYPE_LABEL: Record<string, string> = {
   REGULAR: 'Tiêu Chuẩn',
@@ -74,7 +77,7 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
         <View className="flex-row items-center gap-3">
           {/* Nút thông báo */}
           <TouchableOpacity
-            onPress={() => router.push('/(tabs)/notifications')}
+            onPress={() => router.push(ROUTES.notifications)}
             className="w-10 h-10 rounded-full bg-bg-surface border border-border justify-center items-center relative"
             activeOpacity={0.7}
           >
@@ -90,7 +93,7 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
 
           {/* Avatar Profile */}
           <TouchableOpacity
-            onPress={() => router.push('/(tabs)/profile')}
+            onPress={() => router.push(ROUTES.profile)}
             activeOpacity={0.7}
           >
             <Avatar uri={user?.avatarUrl} name={user?.fullName} size={40} />
@@ -136,72 +139,13 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
       </View>
 
       {/* ─── TRUY CẬP NHANH (QUICK ACCESS CHO HLV) — ĐƯỢC ĐẶT LÊN TRÊN LỊCH DẠY ─── */}
-      <View className="mb-xl">
-        <View className="flex-row justify-between items-center mb-md">
-          <Text className="text-lg font-bold font-bevn-bold text-text-primary">Truy cập nhanh</Text>
-        </View>
-
-        <View className="flex-row flex-wrap gap-md">
-          {[
-            {
-              icon: 'fitness-center' as const,
-              label: 'Lớp dạy',
-              desc: 'Danh sách lớp phụ trách',
-              route: '/(tabs)/classes' as const,
-              color: Colors.primary,
-              bgColor: '#A3E63518',
-            },
-            {
-              icon: 'how-to-reg' as const,
-              label: 'Điểm danh',
-              desc: 'Điểm danh học viên',
-              route: '/(tabs)/training' as const,
-              color: '#10B981',
-              bgColor: '#10B98118',
-            },
-            {
-              icon: 'event' as const,
-              label: 'Lịch dạy',
-              desc: 'Thời khóa biểu tuần',
-              route: '/(tabs)/schedule' as const,
-              color: '#06B6D4',
-              bgColor: '#06B6D418',
-            },
-            {
-              icon: 'person' as const,
-              label: 'Hồ sơ',
-              desc: 'Thông tin cá nhân',
-              route: '/(tabs)/profile' as const,
-              color: '#8B5CF6',
-              bgColor: '#8B5CF618',
-            },
-          ].map((item) => (
-            <TouchableOpacity
-              key={item.label}
-              className="flex-1 min-w-[46%] bg-bg-surface rounded-xl p-md border border-border flex-row items-center gap-md"
-              onPress={() => router.push(item.route)}
-              activeOpacity={0.75}
-            >
-              <View
-                className="w-11 h-11 rounded-lg justify-center items-center"
-                style={{ backgroundColor: item.bgColor }}
-              >
-                <Icon name={item.icon} size={22} color={item.color} />
-              </View>
-              <View className="flex-1">
-                <Text className="text-sm font-semibold font-bevn-semibold text-text-primary">{item.label}</Text>
-                <Text className="text-[11px] text-text-muted font-bevn-regular mt-0.5" numberOfLines={1}>{item.desc}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
+      <QuickAccessGrid items={getQuickAccessForRole('COACH')} />
 
       {/* ─── LỊCH DẠY SẮP TỚI ─── */}
       <View className="mb-xl">
         <View className="flex-row justify-between items-center mb-md">
           <Text className="text-lg font-bold font-bevn-bold text-text-primary">Lịch dạy sắp tới</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/training')} className="flex-row items-center gap-1">
+          <TouchableOpacity onPress={() => router.push(ROUTES.coachAttendance)} className="flex-row items-center gap-1">
             <Text className="text-sm text-primary font-bevn-medium">Điểm danh</Text>
             <Icon name="arrow-forward" size={16} color={Colors.primary} />
           </TouchableOpacity>
@@ -215,7 +159,7 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
           <View className="bg-bg-surface rounded-xl p-xxxl items-center border border-border">
             <Icon name="event-available" size={44} color={Colors.text.muted} style={{ marginBottom: 12 }} />
             <Text className="text-text-muted text-sm font-bevn-regular mb-lg">Chưa có lịch dạy sắp tới</Text>
-            <TouchableOpacity className="bg-primary rounded-md px-xl py-sm" onPress={() => router.push('/(tabs)/classes')}>
+            <TouchableOpacity className="bg-primary rounded-md px-xl py-sm" onPress={() => router.push(ROUTES.classes)}>
               <Text className="text-text-inverse font-bold font-bevn-bold">Xem danh sách lớp</Text>
             </TouchableOpacity>
           </View>
@@ -224,7 +168,7 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
             <TouchableOpacity
               key={s.id}
               className="bg-bg-surface rounded-lg p-lg mb-md border border-border shadow-sm"
-              onPress={() => router.push(`/schedule/${s.id}`)}
+              onPress={() => router.push(ROUTES.scheduleDetail(s.id))}
               activeOpacity={0.8}
             >
               <View className="flex-row justify-between items-center mb-xs">
@@ -268,7 +212,7 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
       <View className="mb-xl">
         <View className="flex-row justify-between items-center mb-md">
           <Text className="text-lg font-bold font-bevn-bold text-text-primary">Lớp học phụ trách</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/classes')} className="flex-row items-center gap-1">
+          <TouchableOpacity onPress={() => router.push(ROUTES.classes)} className="flex-row items-center gap-1">
             <Text className="text-sm text-primary font-bevn-medium">Tất cả lớp</Text>
             <Icon name="arrow-forward" size={16} color={Colors.primary} />
           </TouchableOpacity>
@@ -286,7 +230,7 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
             <TouchableOpacity
               key={c.id}
               className="bg-bg-surface rounded-lg p-lg mb-sm flex-row items-center justify-between border border-border"
-              onPress={() => router.push(`/classes/${c.id}`)}
+              onPress={() => router.push(ROUTES.classDetail(c.id))}
               activeOpacity={0.8}
             >
               <View className="flex-1 mr-sm">

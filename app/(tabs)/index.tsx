@@ -7,12 +7,12 @@ import { CoachHomeView } from '../../components/coach/CoachHomeView';
 import { MemberHomeView } from '../../components/member/MemberHomeView';
 
 export default function HomeScreen() {
-  const { user } = useAuth();
+  const { user, currentFacility } = useAuth();
   const isCoach = user?.role === 'COACH';
 
   if (isCoach) {
     return <CoachHomeView user={user} />;
   }
 
-  return <MemberHomeView user={user} />;
+  return <MemberHomeView user={user} facilityId={currentFacility?.id} />;
 }

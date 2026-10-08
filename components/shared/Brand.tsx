@@ -1,49 +1,58 @@
 // components/shared/Brand.tsx
-// Logo nhận diện thương hiệu dùng chung
+// Logo nhận diện thương hiệu dùng chung — giống <Brand member /> của FE web
+// (FE/src/shared/Brand.tsx + FE/public/brand/pulse-member.svg + shared/portal-theme.css)
 
 import React from 'react';
 import { View, Text } from 'react-native';
-import clsx from 'clsx';
-import { Icon } from './Icon';
+import Svg, { Rect, Path, Circle } from 'react-native-svg';
+import { Colors } from '../../constants/theme';
+
+type BrandSize = 'sm' | 'md' | 'lg';
 
 interface BrandProps {
-  size?: 'sm' | 'md' | 'lg';
+  size?: BrandSize;
   align?: 'center' | 'flex-start';
 }
 
-export function Brand({ size = 'md', align = 'center' }: BrandProps) {
-  const isSm = size === 'sm';
-  const isLg = size === 'lg';
+// md = đúng kích thước portal web (khung 42, ảnh 36, chữ 24, tagline 9)
+const SIZES: Record<BrandSize, { box: number; mark: number; title: number; tagline: number; gap: number }> = {
+  sm: { box: 34, mark: 29, title: 20, tagline: 7.5, gap: 8 },
+  md: { box: 42, mark: 36, title: 24, tagline: 9, gap: 10 },
+  lg: { box: 50, mark: 43, title: 30, tagline: 10.5, gap: 12 },
+};
 
-  const iconSize = isLg ? 28 : isSm ? 18 : 24;
+/** Biểu tượng "M + nhịp tim" — vẽ lại 1-1 từ pulse-member.svg (viewBox 40x40) */
+function PulseMark({ size }: { size: number }) {
+  const { ink, accent, pulse } = Colors.brand;
+  return (
+    <Svg width={size} height={size} viewBox="0 0 40 40" fill="none">
+      <Rect width={40} height={40} rx={10} fill={ink} />
+      <Path d="M12 26V14L20 22L28 14V26" stroke={accent} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx={20} cy={11} r={2.5} fill={accent} />
+      <Path d="M8 20L11 20M29 20L32 20" stroke={pulse} strokeWidth={2.5} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function Brand({ size = 'md', align = 'center' }: BrandProps) {
+  const s = SIZES[size];
+  const { markBg, markBorder, accent, text, tagline } = Colors.brand;
 
   return (
     <View className="justify-center" style={{ alignItems: align }}>
-      <View className="flex-row items-center gap-[10px]">
+      <View className="flex-row items-center" style={{ gap: s.gap }}>
         <View
-          className={clsx(
-            'items-center justify-center bg-primary -skew-x-6',
-            isLg ? 'w-11 h-12 rounded-md' : isSm ? 'w-[30px] h-[34px] rounded-lg' : 'w-[38px] h-[42px] rounded-lg'
-          )}
+          className="items-center justify-center rounded-md border"
+          style={{ width: s.box, height: s.box, backgroundColor: markBg, borderColor: markBorder }}
         >
-          <Icon name="show-chart" size={iconSize} color="#223528" />
+          <PulseMark size={s.mark} />
         </View>
 
         <View className="justify-center">
-          <Text
-            className={clsx(
-              'font-extrabold font-bevn-extrabold text-[#F3F7F1] -tracking-[1.5px]',
-              isLg ? 'text-[36px]' : isSm ? 'text-[22px]' : 'text-[30px]'
-            )}
-          >
-            pulse<Text className="text-primary">.</Text>
+          <Text className="font-bevn-bold" style={{ color: text, fontSize: s.title, letterSpacing: -0.8, lineHeight: s.title * 1.1 }}>
+            PULSE<Text style={{ color: accent }}>.</Text>
           </Text>
-          <Text
-            className={clsx(
-              'font-semibold font-bevn-semibold text-[#A1B0A4] mt-0.5',
-              isLg ? 'text-[8.5px] tracking-[2.8px]' : isSm ? 'text-[6.5px] tracking-[1.8px]' : 'text-[7.5px] tracking-[2.3px]'
-            )}
-          >
+          <Text className="font-bevn-medium" style={{ color: tagline, fontSize: s.tagline, letterSpacing: 1.4, marginTop: 2 }}>
             SPORTS CENTER
           </Text>
         </View>

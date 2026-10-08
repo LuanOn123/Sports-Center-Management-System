@@ -9,9 +9,7 @@ export type SubscriptionStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | 'SUSPENDED
 export type ScheduleStatus = 'SCHEDULED' | 'CANCELLED' | 'COMPLETED';
 export type EnrollmentStatus = 'BOOKED' | 'CANCELLED' | 'COMPLETED';
 export type PaymentMethod = 'CASH' | 'BANK_TRANSFER';
-export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
 export type ClassType = 'REGULAR' | 'PREMIUM';
-export type AreaType = 'BADMINTON' | 'PICKLEBALL' | 'TENNIS' | 'GYM' | 'YOGA' | 'SWIMMING' | 'FOOTBALL' | 'BASKETBALL' | 'TABLE_TENNIS' | 'OTHER' | string;
 export type MembershipTier = 'FREE' | 'MEMBERSHIP' | 'PREMIUM';
 
 
@@ -98,14 +96,42 @@ export interface MembershipStatus {
   daysRemaining?: number;
 }
 
-export interface PendingMembershipRequest {
-  planId: string;
-  planName: string;
-  tier: MembershipTier;
-  price: string | number;
-  durationDays: number;
-  paymentMethod: PaymentMethod;
-  requestedAt: string;
+// ─── SePay (VietQR) ──────────────────────────────────────────────────────────
+
+export type SepayPaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
+
+/** Đơn chuyển khoản SePay — POST /payments/sepay/checkout & GET /payments/sepay/:id */
+export interface SepayCheckout {
+  paymentId: string;
+  orderCode: string;
+  amount: number;
+  currency?: string;
+  status: SepayPaymentStatus;
+  gateway: string;
+  expiresAt: string;
+  qrUrl: string;
+  transferContent: string;
+  bank?: {
+    id: string;
+    accountNumber: string;
+    accountHolder: string;
+  };
+  plan?: Pick<MembershipPlan, 'id' | 'name' | 'tier' | 'durationDays'>;
+  paidAt?: string | null;
+  subscriptionId?: string | null;
+  /** Tiền đã về nhưng gói chưa kích hoạt được (vd. hạ hạng) — chờ trung tâm xử lý */
+  activationStatus?: string;
+  requiresReview?: boolean;
+  reviewReason?: string | null;
+}
+
+export interface SepayMockConfirmResult {
+  paymentId: string;
+  orderCode: string;
+  processed: boolean;
+  paymentStatus: SepayPaymentStatus;
+  subscriptionId?: string | null;
+  mock: boolean;
 }
 
 export interface CancelSubscriptionResult {
@@ -278,33 +304,6 @@ export interface AttendanceSummary {
   penalties: AttendancePenalty[];
 }
 
-// ─── Training Plans (Flow 4) ──────────────────────────────────────────────────
-
-export interface TrainingPlan {
-  id: string;
-  memberId: string;
-  coachId: string;
-  coach?: {
-    id: string;
-    user: Pick<User, 'id' | 'fullName'>;
-  };
-  name: string;
-  description?: string;
-  startDate: string;
-  endDate: string;
-  createdAt: string;
-  results?: TrainingResult[];
-}
-
-export interface TrainingResult {
-  id: string;
-  planId: string;
-  date: string;
-  metrics?: Record<string, unknown>;
-  coachNote?: string;
-  createdAt: string;
-}
-
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 
 export interface ChatContact {
@@ -429,113 +428,6 @@ export interface WholeCourseEnrollmentResult {
   reactivated: number;
   totalSessions: number;
   results: BulkEnrollSessionResult[];
-}
-
-// ─── Course Plan ──────────────────────────────────────────────────────────────
-
-export interface CoursePlanSlot {
-  weekday: number;
-  weekdayLabel: string;
-  startTime: string;
-  endTime: string;
-  durationMinutes: number;
-  roomId: string;
-  roomName: string;
-  sessionCount: number;
-  firstSessionStart: string;
-  lastSessionStart: string;
-  sessionIds: string[];
-}
-
-export interface CourseTimeSlot {
-  startTime: string;
-  endTime: string;
-  durationMinutes: number;
-}
-
-export interface CoursePlanSession {
-  id: string;
-  startTime: string;
-  endTime: string;
-  durationMinutes: number;
-  weekday: number;
-  weekdayLabel: string;
-  timeLabel: string;
-  status: ScheduleStatus;
-  room: Room;
-  bookedCount: number;
-  remainingSlots: number;
-  isFull: boolean;
-  isBookable: boolean;
-  canBook: boolean;
-  myEnrollmentId: string | null;
-  myEnrollmentStatus: EnrollmentStatus | null;
-  conflictWith: {
-    classId: string;
-    className: string;
-    scheduleId: string;
-    startTime: string;
-    endTime: string;
-  } | null;
-}
-
-export interface CourseRegistrationBlocker {
-  code: string;
-  message: string;
-  sessionId?: string;
-  startTime?: string;
-  endTime?: string;
-  roomId?: string;
-  roomName?: string;
-  details?: Record<string, unknown>;
-}
-
-export interface CourseRegistration {
-  eligible: boolean;
-  blockers: CourseRegistrationBlocker[];
-  subscription: {
-    tier: MembershipTier;
-    endDate: string;
-    planName: string | null;
-  } | null;
-  quota: ConcurrentClassQuota | null;
-  penalty: {
-    id: string;
-    blockedUntil: string | null;
-    attendanceRate: number;
-    sampleSize: number;
-  } | null;
-  registeredSessions: number;
-  remainingSessionsToRegister: number;
-  isFullyRegistered: boolean;
-}
-
-export interface CoursePlan {
-  course: {
-    classId: string;
-    className: string;
-    description: string | null;
-    classType: ClassType;
-    areaType: AreaType;
-    capacity: number;
-    sports: Sport[];
-    totalSessions: number;
-    firstSessionStart: string;
-    lastSessionStart: string;
-    lastSessionEnd: string;
-    weekdays: number[];
-    weekdayLabels: string[];
-    timeSlots: CourseTimeSlot[];
-    rooms: Room[];
-    slots: CoursePlanSlot[];
-    availability: {
-      minRemainingSlots: number;
-      fullSessionCount: number;
-      isFullyBookable: boolean;
-    };
-  } | null;
-  sessions: CoursePlanSession[];
-  registration: CourseRegistration | null;
 }
 
 // ─── Pagination ───────────────────────────────────────────────────────────────

@@ -6,7 +6,7 @@ import { View, Text, Modal, TouchableOpacity, TextInput, ActivityIndicator } fro
 import clsx from 'clsx';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Icon } from './Icon';
-import type { AttendanceCredential } from '../../services/memberService';
+import type { AttendanceCredential } from '../../services/attendanceService';
 import { Colors } from '../../constants/theme';
 
 import { Haptic } from '../../lib/haptics';

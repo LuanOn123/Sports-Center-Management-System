@@ -13,6 +13,7 @@ import { useClasses, useSports } from '../../hooks/shared/useClasses';
 import type { ClassFilters } from '../../services/classService';
 import { Colors } from '../../constants/theme';
 import { Haptic } from '../../lib/haptics';
+import { ROUTES } from '../../navigation/routes';
 
 const TYPE_LABEL: Record<string, string> = { REGULAR: 'Tiêu Chuẩn', PREMIUM: 'Cao Cấp' };
 
@@ -53,7 +54,7 @@ export default function ClassesScreen() {
         subtitle={isCoach ? 'Các lớp bạn đang phụ trách' : 'Tìm và đăng ký lớp tập phù hợp'}
       />
       {/* Search */}
-      <View className="px-xl mb-sm">
+      <View className="px-xl pt-xl mb-sm">
         <Pressable
           onPress={() => searchInputRef.current?.focus()}
           className="flex-row items-center bg-bg-surface rounded-lg px-md border border-border"
@@ -153,7 +154,7 @@ export default function ClassesScreen() {
               className="bg-bg-surface rounded-xl p-lg border border-border"
               onPress={() => {
                 Haptic.light();
-                router.push(`/classes/${item.id}`);
+                router.push(ROUTES.classDetail(item.id));
               }}
               activeOpacity={0.8}
             >

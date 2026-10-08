@@ -29,6 +29,7 @@ import {
 import { api } from '../../lib/api';
 import { Colors } from '../../constants/theme';
 import type { Enrollment, ClassSchedule } from '../../lib/types';
+import { ROUTES } from '../../navigation/routes';
 
 // ─── Utils ───────────────────────────────────────────────────────────────────
 
@@ -380,7 +381,9 @@ export default function EnrollmentsScreen() {
 
 
       {/* Quota chip — hiện số slot còn lại */}
-      <QuotaBanner />
+      <View className="pt-xl">
+        <QuotaBanner />
+      </View>
 
       {/* Tab switcher: 3 tabs — Sắp tới, Hoàn thành, Đã hủy */}
       <View className="flex-row px-xl gap-sm mb-md">
@@ -474,7 +477,7 @@ export default function EnrollmentsScreen() {
               {emptyInfo.showExplore && (
                 <TouchableOpacity
                   className="mt-lg flex-row items-center gap-1 bg-primary rounded-lg px-xl py-sm"
-                  onPress={() => router.push('/(tabs)/classes')}
+                  onPress={() => router.push(ROUTES.classes)}
                   activeOpacity={0.85}
                 >
                   <Icon name="explore" size={16} color={Colors.text.inverse} />

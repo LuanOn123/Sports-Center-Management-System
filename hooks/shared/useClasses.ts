@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getClasses, getSports, getCoursePlan, ClassFilters } from '../../services/classService';
-import type { CoursePlan } from '../../lib/types';
+import { getClasses, getSports, type ClassFilters } from '../../services/classService';
 
 export function useSports() {
   return useQuery({
@@ -17,14 +16,3 @@ export function useClasses(filters?: ClassFilters, options?: { enabled?: boolean
     enabled: options?.enabled ?? true,
   });
 }
-
-export function useCoursePlan(classId: string | undefined, options?: { enabled?: boolean }) {
-  return useQuery({
-    queryKey: ['course-plan', classId],
-    queryFn: () => getCoursePlan(classId!),
-    select: (res) => res.data,
-    enabled: Boolean(classId) && (options?.enabled ?? true),
-  });
-}
-
-

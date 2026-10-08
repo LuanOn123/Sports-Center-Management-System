@@ -42,6 +42,14 @@
         {
           "photosPermission": "Pulse cần quyền truy cập thư viện ảnh để bạn đổi ảnh đại diện."
         }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Pulse cần quyền truy cập thư viện ảnh để bạn đổi ảnh đại diện.",
+          "savePhotosPermission": "Pulse cần quyền lưu ảnh để bạn lưu mã QR thanh toán và quét lại trong app ngân hàng.",
+          "granularPermissions": ["photo"]
+        }
       ]
     ],
     "extra": {

@@ -8,6 +8,8 @@ import { AuthProvider, useAuth } from '../context/AuthContext';
 import { Colors } from '../constants/theme';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AlertModal, AppLoadingScreen, NoFacilityScreen } from '../components';
+import { ROUTES, canAccessRoute } from '../navigation/routes';
+import { useAppStateFocus } from '../hooks/shared/useAppStateFocus';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -18,8 +20,9 @@ const queryClient = new QueryClient({
   },
 });
 
+// Chặn route theo trạng thái đăng nhập VÀ vai trò (bảng quyền ở navigation/routes.ts)
 function AuthGuard() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -27,11 +30,13 @@ function AuthGuard() {
     if (isLoading) return;
     const inAuth = segments[0] === 'auth';
     if (!isAuthenticated && !inAuth) {
-      router.replace('/auth/login');
+      router.replace(ROUTES.login);
     } else if (isAuthenticated && inAuth) {
-      router.replace('/(tabs)');
+      router.replace(ROUTES.home);
+    } else if (isAuthenticated && !canAccessRoute(user?.role, segments)) {
+      router.replace(ROUTES.home);
     }
-  }, [isAuthenticated, isLoading, segments]);
+  }, [isAuthenticated, isLoading, user?.role, segments]);
 
   return null;
 }
@@ -57,6 +62,7 @@ function RootLayoutContent() {
         <Stack.Screen name="classes/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="schedule/[scheduleId]" options={{ headerShown: false }} />
         <Stack.Screen name="membership/plans" options={{ headerShown: false }} />
+        <Stack.Screen name="payment/[paymentId]" options={{ headerShown: false }} />
       </Stack>
     </>
   );
@@ -71,6 +77,8 @@ export default function RootLayout() {
     BeVietnamPro_600SemiBold,
     BeVietnamPro_700Bold,
   });
+  // App quay lại foreground → React Query tải lại các màn đang mở (vd. trạng thái thanh toán)
+  useAppStateFocus();
 
   if (!fontsLoaded) {
     return <AppLoadingScreen message="Đang tải giao diện..." />;

@@ -1,8 +1,10 @@
-// hooks/member/useAttendanceHistory.ts
+// hooks/member/useAttendance.ts
 // Lịch sử điểm danh + tỉ lệ chuyên cần + hình phạt của chính hội viên — React Query
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getMyAttendance, getMyAttendanceSummary, appealAttendancePenalty } from '../../services/memberService';
+import {
+  getMyAttendance, getMyAttendanceSummary, appealAttendancePenalty, scanAttendanceQr, type AttendanceCredential,
+} from '../../services/attendanceService';
 import { ApiError } from '../../lib/api';
 import { showAlert } from '../../lib/alert';
 
@@ -31,6 +33,18 @@ export function useAppealPenalty() {
     onError: (e) => {
       const msg = e instanceof ApiError ? e.message : 'Gửi khiếu nại thất bại. Vui lòng thử lại.';
       showAlert('Lỗi', msg);
+    },
+  });
+}
+
+/** Hội viên tự điểm danh bằng QR hoặc mã dự phòng — POST /attendance/scan-qr */
+export function useScanAttendance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (credential: AttendanceCredential) => scanAttendanceQr(credential),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-attendance'] });
+      queryClient.invalidateQueries({ queryKey: ['my-attendance-summary'] });
     },
   });
 }

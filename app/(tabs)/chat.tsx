@@ -12,6 +12,7 @@ import { useConversations, useContacts } from '../../hooks/shared/useChat';
 import { GENERAL_CHAT_ID } from '../../services/chatService';
 import { Colors } from '../../constants/theme';
 import type { ChatConversation } from '../../lib/types';
+import { ROUTES } from '../../navigation/routes';
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -89,7 +90,7 @@ export default function ChatTabScreen() {
 
 
       {/* Tìm kiếm theo tên/email — lọc client-side trên danh sách đã gộp */}
-      <View className="px-xl pb-sm">
+      <View className="px-xl pt-xl pb-sm">
         <Pressable
           onPress={() => searchInputRef.current?.focus()}
           className="flex-row items-center bg-bg-surface rounded-lg px-md border border-border"
@@ -117,7 +118,7 @@ export default function ChatTabScreen() {
       <View className="px-xl pb-sm">
         <TouchableOpacity
           className="flex-row items-center gap-md rounded-lg p-lg border border-[#A3E63540] bg-[#A3E63510]"
-          onPress={() => router.push({ pathname: '/chat/[userId]', params: { userId: GENERAL_CHAT_ID, name: 'Phòng chung' } } as any)}
+          onPress={() => router.push(ROUTES.chatThread(GENERAL_CHAT_ID, 'Phòng chung'))}
           activeOpacity={0.7}
         >
           <View className="w-12 h-12 rounded-full bg-[#A3E63525] justify-center items-center">
@@ -158,7 +159,7 @@ export default function ChatTabScreen() {
                 'flex-row items-center gap-md rounded-lg p-lg border mb-sm',
                 item.unreadCount > 0 ? 'border-[#A3E63550] bg-bg-elevated' : 'bg-bg-surface border-border'
               )}
-              onPress={() => router.push({ pathname: '/chat/[userId]', params: { userId: item.user.id, name: item.user.fullName } } as any)}
+              onPress={() => router.push(ROUTES.chatThread(item.user.id, item.user.fullName))}
               activeOpacity={0.7}
             >
               {/* Avatar */}

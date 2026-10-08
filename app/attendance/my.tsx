@@ -10,10 +10,11 @@ import clsx from 'clsx';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Icon } from '../../components/shared/Icon';
 import { ScreenHeader } from '../../components/shared/ScreenHeader';
-import { useMyAttendance, useMyAttendanceSummary, useAppealPenalty } from '../../hooks/member/useAttendanceHistory';
+import { useMyAttendance, useMyAttendanceSummary, useAppealPenalty } from '../../hooks/member/useAttendance';
 import { Colors } from '../../constants/theme';
 import { Haptic } from '../../lib/haptics';
 import type { AttendanceStatus, AttendanceBucketStatus, AttendancePenaltyStatus } from '../../lib/types';
+import { ROUTES } from '../../navigation/routes';
 
 const STATUS_LABEL: Record<AttendanceStatus, string> = {
   PRESENT: 'Có mặt',
@@ -75,7 +76,7 @@ export default function MyAttendanceScreen() {
 
   const handleGoBack = () => {
     if (router.canGoBack()) router.back();
-    else router.replace('/(tabs)');
+    else router.replace(ROUTES.home);
   };
 
   const onRefresh = async () => {

@@ -8,8 +8,9 @@ import { useRouter } from 'expo-router';
 import { Icon } from '../../components/shared/Icon';
 import { ScreenHeader } from '../../components/shared/ScreenHeader';
 import { useNotifications } from '../../hooks/shared/useNotifications';
-import { Colors } from '../../constants/theme';
+import { Colors, Spacing } from '../../constants/theme';
 import { Haptic } from '../../lib/haptics';
+import { resolveNotificationRoute } from '../../navigation/notificationRoute';
 import type { AppNotification, NotificationType } from '../../lib/types';
 
 const TYPE_ICON: Record<NotificationType, React.ComponentProps<typeof Icon>['name']> = {
@@ -35,47 +36,6 @@ const TYPE_ICON: Record<NotificationType, React.ComponentProps<typeof Icon>['nam
   GENERAL: 'notifications',
 };
 
-function metaString(item: AppNotification, key: string): string | undefined {
-  const v = item.metadata?.[key];
-  return typeof v === 'string' ? v : undefined;
-}
-
-/** Suy ra trang cần mở khi bấm vào 1 thông báo — tin nhắn mở đúng đoạn chat, lớp học mở đúng buổi/lớp */
-function resolveNotificationRoute(item: AppNotification): string | null {
-  switch (item.type) {
-    case 'CHAT_MESSAGE': {
-      const senderId = metaString(item, 'senderId');
-      return senderId ? `/chat/${senderId}` : null;
-    }
-    case 'UPCOMING_CLASS':
-    case 'ENROLLMENT_CONFIRMED':
-    case 'ENROLLMENT_CANCELLED':
-    case 'SCHEDULE_CANCELLED':
-    case 'SCHEDULE_UPDATED':
-    case 'SCHEDULE_ROOM_CHANGED': {
-      const scheduleId = metaString(item, 'scheduleId');
-      if (scheduleId) return `/schedule/${scheduleId}`;
-      const classId = metaString(item, 'classId');
-      return classId ? `/classes/${classId}` : null;
-    }
-    case 'NEW_CLASS':
-    case 'COACH_CHANGED': {
-      const classId = metaString(item, 'classId');
-      return classId ? `/classes/${classId}` : null;
-    }
-    // Cảnh báo/hình phạt chuyên cần — mở màn "Chuyên cần & Điểm danh" của Member
-    case 'ATTENDANCE_WARNING':
-    case 'ATTENDANCE_PENALTY':
-    case 'ATTENDANCE_PENALTY_REVOKED':
-      return '/attendance/my';
-    // Chưa có màn hình xem kế hoạch tập cho Member (tab "Tập luyện" đã bị bỏ) —
-    // chỉ đánh dấu đã đọc, không có trang nào để mở.
-    case 'TRAINING_PLAN_ASSIGNED':
-    default:
-      return null;
-  }
-}
-
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
@@ -96,7 +56,7 @@ export default function NotificationsScreen() {
     Haptic.light();
     if (!item.isRead) markRead(item.id);
     const route = resolveNotificationRoute(item);
-    if (route) router.push(route as any);
+    if (route) router.push(route);
   };
 
   const handleMarkAllRead = () => {
@@ -133,7 +93,7 @@ export default function NotificationsScreen() {
         <FlatList
           data={notifications}
           keyExtractor={(n) => n.id}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: Spacing.xl, paddingBottom: 120 }}
           refreshControl={<RefreshControl refreshing={false} onRefresh={handleRefresh} tintColor={Colors.primary} />}
           ListEmptyComponent={
             <View className="items-center mt-[60px] px-xl">
