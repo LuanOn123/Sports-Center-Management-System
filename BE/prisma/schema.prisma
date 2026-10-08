@@ -344,6 +344,7 @@ model Room {
 
   capabilities RoomCapability[]
   schedules ClassSchedule[]
+    defaultClasses Class[] @relation("ClassDefaultRoom")
 }
 
 // ─────────────────────────────────────────
@@ -351,6 +352,8 @@ model Room {
 // ─────────────────────────────────────────
 
 model Class {
+  defaultRoomId String?
+  defaultRoom Room? @relation("ClassDefaultRoom", fields: [defaultRoomId], references: [id], onDelete: SetNull)
   facilityId String @default("legacy-main")
   facility Facility @relation(fields: [facilityId], references: [id])
   id          String  @id @default(uuid())

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate.js";
-import { authorize } from "../../middlewares/authorize.js";
+import { authorize, authorizeExact } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
 import {
   CreateClassSchema,
@@ -10,8 +10,11 @@ import {
   ClassQuerySchema,
 } from "./classes.schema.js";
 import * as classesController from "./classes.controller.js";
+import { getClassRegistrations } from "./classes.service.js";
+import { sendSuccess } from "../../utils/response.js";
 
 const router = Router();
+router.get("/:id/registrations", authenticate, authorize("MANAGER", "RECEPTIONIST"), async (req, res) => sendSuccess(res, await getClassRegistrations(String(req.params.id))));
 
 /**
  * @swagger
@@ -335,7 +338,7 @@ router.delete(
 router.post(
   "/:id/coaches",
   authenticate,
-  authorize("MANAGER", "RECEPTIONIST"),
+  authorizeExact("MANAGER"),
   validate(AssignCoachSchema),
   classesController.assignCoach
 );
@@ -382,7 +385,7 @@ router.post(
 router.post(
   "/:id/coaches/support",
   authenticate,
-  authorize("MANAGER", "RECEPTIONIST"),
+  authorizeExact("MANAGER"),
   validate(AssignSupportCoachSchema),
   classesController.assignSupportCoach
 );
@@ -417,7 +420,7 @@ router.post(
 router.delete(
   "/:id/coaches/:coachId",
   authenticate,
-  authorize("MANAGER", "RECEPTIONIST"),
+  authorizeExact("MANAGER"),
   classesController.removeCoach
 );
 

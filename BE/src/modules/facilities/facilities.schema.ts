@@ -16,3 +16,8 @@ export const AssignStaffSchema = z.object({
   userId: z.string().regex(/^[a-fA-F0-9]{24}$/, "Invalid Mongo user ID"),
   role: z.enum(["MANAGER", "COACH", "RECEPTIONIST"]),
 });
+
+export const AssignManagerSchema = z.object({
+  userId: z.string().regex(/^[a-fA-F0-9]{24}$/),
+  replacedUserId: z.string().regex(/^[a-fA-F0-9]{24}$/).optional(),
+});

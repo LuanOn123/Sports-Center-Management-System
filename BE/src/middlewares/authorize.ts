@@ -14,3 +14,12 @@ export function authorize(...roles: string[]) {
     next();
   };
 }
+
+/** Roles with no implicit ADMIN inheritance, for operational duties. */
+export function authorizeExact(...roles: string[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) { sendError(res, "Unauthorized", 401); return; }
+    if (!roles.includes(req.user.role)) { sendError(res, "Forbidden: insufficient permissions", 403); return; }
+    next();
+  };
+}

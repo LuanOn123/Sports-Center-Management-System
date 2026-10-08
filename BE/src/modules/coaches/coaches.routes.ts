@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate.js";
-import { authorize } from "../../middlewares/authorize.js";
+import { authorizeExact } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
 import { CoachQuerySchema, UpdateCoachSchema } from "./coaches.schema.js";
 import * as coachController from "./coaches.controller.js";
@@ -129,7 +129,7 @@ router.get("/:id", authenticate, coachController.getCoachById);
 router.patch(
   "/:id",
   authenticate,
-  authorize("MANAGER"),
+  authorizeExact("MANAGER"),
   validate(UpdateCoachSchema),
   coachController.updateCoach
 );

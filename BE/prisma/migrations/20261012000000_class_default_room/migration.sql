@@ -1,0 +1,3 @@
+ALTER TABLE "Class" ADD COLUMN "defaultRoomId" TEXT;
+ALTER TABLE "Class" ADD CONSTRAINT "Class_defaultRoomId_fkey"
+  FOREIGN KEY ("defaultRoomId") REFERENCES "Room"("id") ON DELETE SET NULL ON UPDATE CASCADE;

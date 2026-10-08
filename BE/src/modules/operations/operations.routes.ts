@@ -4,13 +4,14 @@ import { prisma } from "../../config/prisma.js";
 import { requestContext } from "../../config/request-context.js";
 import { authenticate } from "../../middlewares/authenticate.js";
 import { checkFacilityScope } from "../../middlewares/facilityScope.js";
-import { authorize } from "../../middlewares/authorize.js";
+import { authorize, authorizeExact } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { sendSuccess } from "../../utils/response.js";
 import { expandPattern } from "./rules.js";
 import { activateSubscriptionForPayment } from "../subscriptions/subscription-purchase.service.js";
 import { validateResources } from "./scheduling.js";
+import { getAuditFeed } from "./audit-feed.service.js";
 import {
   createSchedule,
   updateSchedule,
@@ -42,21 +43,12 @@ const route = (
     async (req, res) => sendSuccess(res, await fn(req)),
   );
 };
-route("get", "/staff-candidates", [staff], (req) =>
+route("get", "/staff-candidates", [staff], (req) => requestContext.run({ ...requestContext.getStore(), ...(req.user.role === "ADMIN" ? { facilityId: undefined } : {}) }, () =>
   prisma.user.findMany({
-    where: {
-      isActive: true,
-      role: {
-        in:
-          req.user.role === "ADMIN"
-            ? ["COACH", "RECEPTIONIST", "MANAGER"]
-            : ["COACH", "RECEPTIONIST"],
-      },
-    },
-    select: { id: true, fullName: true, role: true },
-    orderBy: { fullName: "asc" },
+    where: { isActive: true, ...(req.user.role === "ADMIN" ? { role: "MANAGER", facilityStaffs: { none: { role: "MANAGER", isActive: true } } } : { role: { in: ["COACH", "RECEPTIONIST"] } }) },
+    select: { id: true, fullName: true, email: true, role: true }, orderBy: { fullName: "asc" },
   }),
-);
+));
 route("get", "/coaches/:id/specializations", [], (req) =>
   prisma.coachSpecialization.findMany({ where: { coachId: id(req) } }),
 );
@@ -153,7 +145,7 @@ route(
   "put",
   "/coaches/:id/specializations",
   [
-    authorize("ADMIN"),
+    authorizeExact("MANAGER"),
     validate(z.object({ sportIds: z.array(z.string()).min(1) })),
   ],
   (req) =>
@@ -509,13 +501,7 @@ route(
       data: { ...req.body, resolvedBy: actor() },
     }),
 );
-route("get", "/audit-logs", [staff], (req) =>
-  prisma.auditLog.findMany({
-    take: 100,
-    skip: Math.max(0, Number(req.query.skip) || 0),
-    orderBy: { createdAt: "desc" },
-  }),
-);
+route("get", "/audit-logs", [staff], (req) => getAuditFeed(req.user.role, req.query));
 route(
   "get",
   "/issues/:id",
@@ -558,7 +544,7 @@ route("delete", "/issues/:id", [authorize("MEMBER")], async (req) => {
   if (!issue) throw new AppError("Open issue not found", 404);
   return prisma.issue.delete({ where: { id: issue.id } });
 });
-const cashier = authorize("ADMIN", "MANAGER", "RECEPTIONIST");
+const cashier = authorizeExact("RECEPTIONIST");
 route("get", "/counter-orders", [cashier], () =>
   prisma.payment.findMany({
     where: { gateway: null, planId: { not: null } },
