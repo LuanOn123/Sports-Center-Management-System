@@ -26,7 +26,8 @@ export async function checkFacilityScope(
     const facility = await prisma.facility.findUnique({
       where: { id: facilityId },
     });
-    if (!facility?.isActive) throw new AppError("FORBIDDEN_SCOPE", 403);
+    const adminFacilityMaintenance = req.user.role === "ADMIN" && req.params.facilityId && ["GET", "PUT", "DELETE"].includes(req.method);
+    if (!facility || (!facility.isActive && !adminFacilityMaintenance)) throw new AppError("FORBIDDEN_SCOPE", 403);
     if (req.user.role !== "ADMIN" && req.user.role !== "MEMBER") {
       const assigned = await prisma.facilityStaff.findFirst({
         where: {

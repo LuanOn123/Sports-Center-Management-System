@@ -341,6 +341,7 @@ export async function createActivityPlan(data: any, canCreateSport: boolean) {
     const cls = await tx.class.create({
       data: {
         name: data.class.name,
+        defaultRoomId: data.roomId,
         description: data.class.description || undefined,
         capacity: data.class.capacity,
         classType: data.class.classType,

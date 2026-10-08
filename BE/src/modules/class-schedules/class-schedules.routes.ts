@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate.js";
-import { authorize } from "../../middlewares/authorize.js";
+import { authorizeExact } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
 import {
   CreateScheduleSchema,
@@ -35,7 +35,7 @@ const router = Router();
 router.post(
   "/activity-plan",
   authenticate,
-  authorize("MANAGER", "RECEPTIONIST"),
+  authorizeExact("MANAGER"),
   validate(CreateActivityPlanSchema),
   schedulesController.createActivityPlan,
 );
@@ -208,7 +208,7 @@ router.get(
 router.post(
   "/",
   authenticate,
-  authorize("MANAGER", "RECEPTIONIST"),
+  authorizeExact("MANAGER"),
   validate(CreateScheduleSchema),
   schedulesController.createSchedule
 );
@@ -261,7 +261,7 @@ router.post(
 router.patch(
   "/:id",
   authenticate,
-  authorize("MANAGER", "RECEPTIONIST"),
+  authorizeExact("MANAGER"),
   validate(ScheduleIdSchema, "params"),
   validate(UpdateScheduleSchema),
   schedulesController.updateSchedule
@@ -291,7 +291,7 @@ router.patch(
 router.delete(
   "/:id",
   authenticate,
-  authorize("MANAGER", "RECEPTIONIST"),
+  authorizeExact("MANAGER"),
   validate(ScheduleIdSchema, "params"),
   schedulesController.deleteSchedule
 );
@@ -318,7 +318,7 @@ router.delete(
 router.patch(
   "/:id/complete",
   authenticate,
-  authorize("MANAGER", "RECEPTIONIST"),
+  authorizeExact("MANAGER"),
   validate(ScheduleIdSchema, "params"),
   schedulesController.completeSchedule
 );

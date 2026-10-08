@@ -5,6 +5,7 @@ import { broadcastNotification } from "../notifications/notifications.service.js
 import { evaluateCourseEligibility } from "../enrollments/course-enrollment.service.js";
 
 const classInclude = {
+  defaultRoom: true,
   sports: true,
   coaches: {
     include: {
@@ -22,6 +23,15 @@ function assertSportsSupportAreaType(sports: { name: string; areaTypes: string[]
       throw new AppError(`Sport "${sport.name}" does not support area type "${areaType}"`, 400);
     }
   }
+}
+
+async function assertDefaultRoom(roomId: string | null | undefined, areaType: string, capacity: number) {
+  if (!roomId) return;
+  // DAL restricts this lookup to the class's current facility.
+  const room = await prisma.room.findFirst({ where: { id: roomId, isActive: true } });
+  if (!room) throw new AppError("Phòng mặc định không tồn tại hoặc không thuộc cơ sở đang chọn", 400);
+  if (room.areaType !== areaType) throw new AppError("Phòng mặc định phải cùng loại khu vực với bộ môn của lớp", 400);
+  if (room.capacity < capacity) throw new AppError(`Sức chứa lớp không được vượt quá ${room.capacity} chỗ của phòng đã chọn`, 400);
 }
 
 export async function listClasses(query: any) {
@@ -57,6 +67,7 @@ export async function createClass(data: any) {
 
   // Business rule: TẤT CẢ sport của Class đều phải support Class.areaType.
   assertSportsSupportAreaType(sports, data.areaType);
+  await assertDefaultRoom(data.defaultRoomId, data.areaType, data.capacity);
 
   const newClass = await prisma.class.create({ 
     data: {
@@ -104,6 +115,19 @@ export async function getClassById(id: string) {
   return cls;
 }
 
+export async function getClassRegistrations(id: string) {
+  if (!(await prisma.class.findUnique({ where: { id } }))) throw new AppError("Class not found", 404);
+  const enrollments = await prisma.enrollment.findMany({ where: { classId: id, status: { in: ["BOOKED", "COMPLETED"] } }, include: { member: { include: { user: { select: { fullName: true, email: true } } } }, schedule: { select: { startTime: true, endTime: true, status: true } } }, orderBy: { bookedAt: "desc" } });
+  const members = new Map<string, { memberId: string; fullName: string; email: string; bookedSessions: number; completedSessions: number }>();
+  for (const e of enrollments) {
+    const row = members.get(e.memberId) ?? { memberId: e.memberId, fullName: e.member.user.fullName, email: e.member.user.email, bookedSessions: 0, completedSessions: 0 };
+    if (e.status === "BOOKED") row.bookedSessions++; else row.completedSessions++;
+    members.set(e.memberId, row);
+  }
+  const sessions = await prisma.classSchedule.findMany({ where: { classId: id }, orderBy: { startTime: "asc" }, include: { room: { select: { name: true, capacity: true, areaType: true } }, _count: { select: { enrollments: { where: { status: { in: ["BOOKED", "COMPLETED"] } } } } } } });
+  return { totalMembers: members.size, totalEnrollments: enrollments.length, members: [...members.values()], sessions };
+}
+
 export async function updateClass(id: string, data: any) {
   const cls = await prisma.class.findUnique({ where: { id }, include: { sports: true } });
   if (!cls) throw new AppError("Class not found", 404);
@@ -138,6 +162,9 @@ export async function updateClass(id: string, data: any) {
 
   // Tính effectiveAreaType để xử lý partial update (chỉ đổi sportIds hoặc chỉ đổi areaType).
   const effectiveAreaType = data.areaType ?? cls.areaType;
+  if (data.defaultRoomId !== undefined || data.areaType !== undefined || data.capacity !== undefined) {
+    await assertDefaultRoom(data.defaultRoomId === undefined ? cls.defaultRoomId : data.defaultRoomId, effectiveAreaType, data.capacity ?? cls.capacity);
+  }
 
   let sportsToCheck = cls.sports;
   if (data.sportIds) {

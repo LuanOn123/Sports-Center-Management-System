@@ -4,9 +4,10 @@ import { authorize } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
 import { checkFacilityScope } from "../../middlewares/facilityScope.js";
 import * as Controller from "./facilities.controller.js";
-import { CreateFacilitySchema, UpdateFacilitySchema, AssignStaffSchema } from "./facilities.schema.js";
+import { CreateFacilitySchema, UpdateFacilitySchema, AssignStaffSchema, AssignManagerSchema } from "./facilities.schema.js";
 
 const router = Router();
+router.put("/:facilityId/manager", authenticate, authorize("ADMIN"), checkFacilityScope, validate(AssignManagerSchema), Controller.setFacilityManager);
 
 // Lấy danh sách facility (Dùng chung, scope lọc theo role)
 router.get("/", authenticate, Controller.getFacilities);

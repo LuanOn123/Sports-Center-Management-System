@@ -37,6 +37,7 @@ const transact = prisma.$transaction.bind(prisma);
 };
 const audited = new Set([
   "MembershipPlan",
+  "Enrollment",
   // MF-09: audit thao tác trên membership (cấp/gia hạn/tạm dừng/hủy). Ghi kèm facility context
   // hiện tại nên dòng AuditLog rơi vào nhật ký của cơ sở đang thao tác ("ai đã làm gì, ở đâu").
   // Write nằm trong transaction (mua/gia hạn/hủy) được ghi cùng transaction → rollback cùng nhau.
@@ -69,6 +70,7 @@ const json = (value: any) =>
 prisma.$use(async (params, next) => {
   const context = requestContext.getStore();
   const model = params.model || "";
+  if (model === "ClassSchedule" && writes.has(params.action) && context?.role === "ADMIN") throw new AppError("Admin chỉ được xem lịch hoạt động. Quản lý cơ sở thực hiện thay đổi lịch.", 403);
   if (context?.transaction && !params.runInTransaction && model)
     return (context.transaction as any)[
       model[0].toLowerCase() + model.slice(1)

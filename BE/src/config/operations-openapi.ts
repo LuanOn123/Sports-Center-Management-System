@@ -26,6 +26,9 @@ const quantities = object({
   },
 });
 const entries: [string, string, string, any?][] = [
+  ["get", "/classes/{id}/registrations", "Hội viên đã đăng ký khóa học (staff)"],
+  ["get", "/reports/facilities", "Tổng quan toàn hệ thống theo cơ sở (ADMIN)"],
+  ["put", "/facilities/{facilityId}/manager", "Thêm hoặc thay quản lý cơ sở (ADMIN)", object({ userId: text, replacedUserId: text }, ["userId"])],
   ["get", "/staff-candidates", "Nhân sự có thể phân công"],
   ["get", "/coaches/{id}/specializations", "Chuyên môn huấn luyện viên"],
   ["get", "/leave-requests/{id}/affected", "Buổi học cần xử lý khi nghỉ phép"],
@@ -165,7 +168,7 @@ export function addOperations(spec: any) {
           schema: text,
         })),
         ...(path === "/facilities"
-          ? []
+          ? [{ name: "includeInactive", in: "query", schema: { type: "string", enum: ["true", "false"] } }]
           : [
               {
                 name: "X-Facility-Id",
@@ -175,8 +178,9 @@ export function addOperations(spec: any) {
               },
             ]),
         ...(path === "/audit-logs"
-          ? [{ name: "skip", in: "query", schema: integer }]
+          ? [{ name: "skip", in: "query", schema: integer }, { name: "entity", in: "query", schema: text }, { name: "filterFacilityId", in: "query", schema: text }]
           : []),
+        ...(path === "/reports/facilities" ? ["startDate", "endDate"].map(name => ({ name, in: "query", required: true, schema: text })) : []),
       ],
       ...(body
         ? {
@@ -193,6 +197,10 @@ export function addOperations(spec: any) {
         "409": { description: "Business rule conflict" },
       },
     };
+  }
+  for (const method of ["post", "patch"]) {
+    const properties = spec.paths[method === "post" ? "/classes" : "/classes/{id}"]?.[method]?.requestBody?.content?.["application/json"]?.schema?.properties;
+    if (properties) properties.defaultRoomId = { type: "string", description: "Phòng mặc định cùng cơ sở, đúng khu vực và đủ sức chứa. Lịch học có thể chọn phòng phù hợp khác." };
   }
   // Subject uses the established Sport model and public API compatibility alias.
   for (const [path, operations] of Object.entries(spec.paths))

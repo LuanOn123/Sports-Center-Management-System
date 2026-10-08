@@ -9,6 +9,7 @@ import {
 import { User } from "../../models/User.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { Prisma } from "@prisma/client";
+import { assignFacilityManager } from "./facility-manager.service.js";
 
 export async function createFacility(
   req: Request,
@@ -35,6 +36,7 @@ export async function getFacilities(
   res: Response,
 ): Promise<void> {
   let where: any = { isActive: true };
+  if (req.user?.role === "ADMIN" && req.query.includeInactive === "true") where = {};
   if (!["ADMIN", "MEMBER"].includes(req.user?.role || "")) {
     where = {
       isActive: true,
@@ -47,7 +49,7 @@ export async function getFacilities(
       },
     };
   }
-  const facilities = await prisma.facility.findMany({ where });
+  const facilities = await prisma.facility.findMany({ where, ...(req.user?.role === "ADMIN" ? { include: { staffs: { where: { isActive: true, role: "MANAGER" }, include: { user: { select: { id: true, fullName: true, email: true } } } } } } : {}), orderBy: { name: "asc" } });
   sendSuccess(res, facilities);
 }
 
@@ -115,6 +117,11 @@ export async function updateFacility(
 export async function assignStaff(req: Request, res: Response): Promise<void> {
   const facilityId = req.params.facilityId as string;
   const data = AssignStaffSchema.parse(req.body);
+  if (req.user?.role === "ADMIN") {
+    if (data.role !== "MANAGER") throw new AppError("Admin chỉ phân công quản lý cơ sở", 403);
+    sendSuccess(res, await assignFacilityManager(facilityId, data.userId), "Staff assigned successfully", 201);
+    return;
+  }
 
   if (req.user?.role === "MANAGER" && data.role === "MANAGER")
     throw new AppError("Only ADMIN assigns managers", 403);
@@ -138,6 +145,10 @@ export async function assignStaff(req: Request, res: Response): Promise<void> {
   });
 
   sendSuccess(res, staff, "Staff assigned successfully", 201);
+}
+
+export async function setFacilityManager(req: Request, res: Response): Promise<void> {
+  sendSuccess(res, await assignFacilityManager(String(req.params.facilityId), req.body.userId, req.body.replacedUserId), "Đã cập nhật quản lý cơ sở");
 }
 
 export async function removeStaff(req: Request, res: Response): Promise<void> {

@@ -9,6 +9,7 @@ export const CreateClassSchema = z.object({
   capacity: z.number().int().positive().max(200),
   classType: z.enum(["REGULAR", "PREMIUM"]).default("REGULAR"),
   areaType: AreaTypeEnum,
+  defaultRoomId: z.string().min(1).optional(),
   attendancePolicy: z.enum(["FIXED", "RECURRING"]).default("RECURRING"),
   plannedSessionCount: z.number().int().positive().max(1000).optional(),
 }).superRefine((data, ctx) => {
@@ -35,6 +36,7 @@ export const UpdateClassSchema = z.object({
   capacity: z.number().int().positive().max(200).optional(),
   classType: z.enum(["REGULAR", "PREMIUM"]).optional(),
   areaType: AreaTypeEnum.optional(),
+  defaultRoomId: z.string().min(1).nullable().optional(),
   isActive: z.boolean().optional(),
   attendancePolicy: z.enum(["FIXED", "RECURRING"]).optional(),
   plannedSessionCount: z.number().int().positive().max(1000).optional(),

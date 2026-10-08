@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate.js";
-import { authorize } from "../../middlewares/authorize.js";
+import { authorize, authorizeExact } from "../../middlewares/authorize.js";
+import { getFacilityOverview } from "./facility-overview.service.js";
+import { sendSuccess } from "../../utils/response.js";
 import { validate } from "../../middlewares/validate.js";
 import { DateRangeSchema, AttendanceReportQuerySchema } from "./reports.schema.js";
 import * as reportsController from "./reports.controller.js";
@@ -8,6 +10,9 @@ import * as reportsController from "./reports.controller.js";
 const router = Router();
 
 router.use(authenticate, authorize("MANAGER"));
+router.get("/facilities", authorizeExact("ADMIN"), validate(DateRangeSchema, "query"), async (req, res) => {
+  sendSuccess(res, await getFacilityOverview(String(req.query.startDate), String(req.query.endDate)));
+});
 
 /**
  * @swagger
