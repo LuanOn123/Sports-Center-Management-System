@@ -37,6 +37,10 @@ const transact = prisma.$transaction.bind(prisma);
 };
 const audited = new Set([
   "MembershipPlan",
+  // MF-09: audit thao tác trên membership (cấp/gia hạn/tạm dừng/hủy). Ghi kèm facility context
+  // hiện tại nên dòng AuditLog rơi vào nhật ký của cơ sở đang thao tác ("ai đã làm gì, ở đâu").
+  // Write nằm trong transaction (mua/gia hạn/hủy) được ghi cùng transaction → rollback cùng nhau.
+  "MembershipSubscription",
   "ClassSchedule",
   "Room",
   "Class",

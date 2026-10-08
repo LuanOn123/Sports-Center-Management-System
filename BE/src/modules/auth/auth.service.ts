@@ -126,6 +126,23 @@ export async function login(email: string, password: string) {
     expiresAt: getRefreshTokenExpiryDate(),
   });
 
+  // MF-08: tự phục hồi gói FREE nếu đăng ký từng thất bại giữa chừng
+  // (user đã tạo nhưng FREE chưa cấp → trước đây hội viên kẹt ở "không có gói tập" tới khi backfill).
+  // Idempotent (advisory lock bên trong ensureActiveFreeSubscription) và FAIL-OPEN:
+  // lỗi cấp lại FREE không được làm hỏng luồng đăng nhập.
+  if (user.role === "MEMBER") {
+    try {
+      const profile = await prisma.memberProfile.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+      if (profile)
+        await prisma.$transaction((tx) => ensureActiveFreeSubscription(tx, profile.id));
+    } catch {
+      // Bỏ qua — lần đăng nhập sau sẽ thử lại.
+    }
+  }
+
   return { accessToken, refreshToken };
 }
 

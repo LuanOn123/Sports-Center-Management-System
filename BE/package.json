@@ -37,7 +37,12 @@
     "test:integration:audit": "tsx tests/integration-audit.ts",
     "test:integration:audit:browser": "tsx tests/integration-audit.ts --browser",
     "test:integration:room-ui": "tsx tests/browser-room-audit.ts",
-    "test:operations:cross-facility": "tsx tests/cross-facility-booking.integration.ts"
+    "test:operations:cross-facility": "tsx tests/cross-facility-booking.integration.ts",
+    "test:operations:cross-facility-cancel": "tsx tests/cross-facility-cancel.integration.ts",
+    "test:operations:cross-facility-my-schedule": "tsx tests/cross-facility-my-schedule.integration.ts",
+    "test:operations:membership-reports": "tsx tests/membership-reports.integration.ts",
+    "test:final:member-facility": "tsx tests/final-member-facility.integration.ts",
+    "test:policy-a:membership": "tsx tests/policy-a-membership.integration.ts"
   },
   "dependencies": {
     "@getbrevo/brevo": "^6.0.3",

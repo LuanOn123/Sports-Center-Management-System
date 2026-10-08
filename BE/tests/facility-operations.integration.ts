@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config({ path: ".env.test", quiet: true });
+dotenv.config({ path: ".env", quiet: true });
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import mongoose from "mongoose";
@@ -494,16 +494,18 @@ async function main() {
     );
     assert.equal(gatewayResult.subscription.facilityId, created[1]);
     assert.equal(Number(gatewayResult.subscription.priceSnapshot), 123456);
+    // GLOBAL membership: gateway activation THẤY gói member đang ACTIVE (mua tại facility khác)
+    // nên áp đúng luật 1 gói ACTIVE — kỳ cũ chuyển SUSPENDED, gói mới là ACTIVE.
     assert.equal(
       (
         await prisma.membershipSubscription.findUniqueOrThrow({
           where: { id: sub.id },
         })
       ).status,
-      "ACTIVE",
+      "SUSPENDED",
     );
     console.log(
-      "PASS gateway activation without headers uses persisted order facility and preserves other facility subscriptions",
+      "PASS gateway activation uses the persisted order facility and recognises a global membership bought at another facility",
     );
   } finally {
     const classes = await prisma.class.findMany({

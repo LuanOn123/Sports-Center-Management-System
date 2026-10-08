@@ -39,6 +39,14 @@ export async function getSubscriptionLogs(req: Request, res: Response, next: Nex
   } catch (err) { next(err); }
 }
 
+export async function getCrossFacilityUsage(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { startDate, endDate } = req.query as any;
+    const report = await reportsService.getCrossFacilityUsageReport(startDate, endDate);
+    sendSuccess(res, report, "Cross-facility usage report retrieved successfully");
+  } catch (err) { next(err); }
+}
+
 export async function getAttendanceReport(req: Request, res: Response, next: NextFunction) {
   try {
     const { rows, summary, pagination } = await reportsService.getAttendanceReport(req.query as any);

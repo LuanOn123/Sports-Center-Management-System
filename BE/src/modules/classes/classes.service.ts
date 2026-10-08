@@ -37,6 +37,7 @@ export async function listClasses(query: any) {
   if (query.coachId) {
     where.coaches = { some: { coachId: query.coachId } };
   }
+  if (query.attendancePolicy) where.attendancePolicy = query.attendancePolicy;
 
   const [total, classes] = await Promise.all([
     prisma.class.count({ where }),
@@ -169,6 +170,28 @@ export async function updateClass(id: string, data: any) {
 
   const { sportIds, ...restData } = data;
   const updateData: any = { ...restData };
+
+  // FINAL: FIXED snapshot không silent đổi. Đổi policy/tổng khi đã có enrollment
+  // là amendment nghiệp vụ — chặn ở backend, yêu cầu tạo Class/cohort mới.
+  const policyTouched =
+    data.attendancePolicy !== undefined || data.plannedSessionCount !== undefined;
+  if (policyTouched) {
+    const hasEnrollment = await prisma.enrollment.count({ where: { classId: id } });
+    if (hasEnrollment > 0) {
+      throw new AppError(
+        "Không thể đổi chính sách/tổng số buổi chuyên cần khi Class đã có người đăng ký. Hãy tạo Class/cohort mới cho amendment.",
+        400,
+        { code: "ATTENDANCE_POLICY_LOCKED" },
+      );
+    }
+    const effectivePolicy = data.attendancePolicy ?? (cls as any).attendancePolicy ?? "RECURRING";
+    const effectiveTotal =
+      data.plannedSessionCount ?? (cls as any).plannedSessionCount ?? null;
+    if (effectivePolicy === "FIXED" && !(typeof effectiveTotal === "number" && effectiveTotal > 0)) {
+      throw new AppError("FIXED class requires plannedSessionCount", 400);
+    }
+    if (effectivePolicy === "RECURRING") updateData.plannedSessionCount = null;
+  }
 
   if (sportIds) {
     updateData.sports = { set: sportIds.map((sid: string) => ({ id: sid })) };

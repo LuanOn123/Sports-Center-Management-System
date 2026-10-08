@@ -55,6 +55,9 @@ export async function deletePlan(id: string) {
   const plan = await prisma.membershipPlan.findUnique({ where: { id } });
   if (!plan) throw new AppError("Membership plan not found", 404);
 
+  // MF-12: MembershipPlan là catalog GLOBAL ⇒ guard đếm subscription ACTIVE trên TOÀN BỘ hệ thống
+  // (trước refactor chỉ đếm theo facility đang chọn). Ý đồ: không deactivate plan mà hội viên
+  // ở cơ sở nào còn đang dùng. Là thay đổi hành vi CÓ CHỦ ĐÍCH của đợt Global Membership.
   const activeSubs = await prisma.membershipSubscription.count({
     where: { planId: id, status: "ACTIVE" },
   });

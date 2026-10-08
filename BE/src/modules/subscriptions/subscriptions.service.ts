@@ -1,9 +1,11 @@
 import { prisma } from "../../config/prisma.js";
+import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { createNotification } from "../notifications/notifications.service.js";
 import { flushNotificationOutbox } from "../notifications/outbox.service.js";
 import { activateSubscriptionForPayment } from "./subscription-purchase.service.js";
+import { lockMemberSubscription } from "../../utils/dbLocks.js";
 import type {
   CreateSubscriptionInput,
   RenewSubscriptionInput,
@@ -141,25 +143,37 @@ export async function renewSubscription(
   if (!plan || !plan.isActive)
     throw new AppError("Membership plan not found or inactive", 404);
 
-  // Kỳ mới bắt đầu sau endDate hiện tại nếu gói còn ACTIVE — TRỪ gói FREE hệ thống:
-  // FREE có durationDays = 3650 (chỉ để luôn ACTIVE khi provisioning); chờ hết nghĩa là
-  // gói trả phí mới bắt đầu gần 10 năm sau ⇒ kỳ mới của FREE phải bắt đầu NGAY.
+  // FINAL Policy A: renew = REPLACEMENT — kỳ mới bắt đầu NGAY, không stack sau endDate cũ,
+  // không tạo ACTIVE tương lai; ngày dư gói cũ KHÔNG cộng dồn (chỉ audit qua remainingDays).
   const now = new Date();
-  const startsAfterCurrent =
-    existing.tier !== "FREE" &&
-    existing.status === "ACTIVE" &&
-    existing.endDate > now;
-  const startDate = startsAfterCurrent ? existing.endDate : now;
+  const startDate = now;
   const endDate = new Date(startDate);
   endDate.setDate(endDate.getDate() + plan.durationDays);
 
   return prisma.$transaction(async (tx) => {
-    // Gói FREE đang ACTIVE bị thay thế ⇒ SUSPEND (giống luồng mua gói) để không còn 2 ACTIVE.
-    if (existing.tier === "FREE" && existing.status === "ACTIVE") {
-      await tx.membershipSubscription.update({
-        where: { id: existing.id },
+    // Policy A: serialize theo member TRƯỚC mọi đọc/ghi — purchase/renew/webhook-settlement
+    // đồng thời cho cùng member chỉ một thắng (cùng key membership:member:<id>).
+    await lockMemberSubscription(tx, existing.memberId);
+
+    // Đọc lại trong tx: gói có thể đã bị thay thế/hết hạn trong lúc chờ lock.
+    // Thay thế gói ACTIVE HIỆN CÓ của member (không chỉ gói FREE, không phụ thuộc id cũ
+    // đã bị suspend) — CAS theo (id + ACTIVE) như luồng mua gói.
+    const currentActive = await tx.membershipSubscription.findFirst({
+      where: { memberId: existing.memberId, status: "ACTIVE" },
+      orderBy: { createdAt: "desc" },
+    });
+    if (currentActive) {
+      const suspended = await tx.membershipSubscription.updateMany({
+        where: { id: currentActive.id, status: "ACTIVE" },
         data: { status: "SUSPENDED", suspendedAt: now },
       });
+      if (suspended.count !== 1) {
+        throw new AppError(
+          "Gói hiện tại đã thay đổi, vui lòng thử lại.",
+          409,
+          { code: "SUBSCRIPTION_STATE_CHANGED" },
+        );
+      }
     }
     // BR-25: Get member's name for snapshot
     const memberUser = await tx.user.findFirst({
@@ -171,6 +185,9 @@ export async function renewSubscription(
       data: {
         memberId: existing.memberId,
         planId: plan.id,
+        // ORIGIN facility (báo cáo/audit) — KHÔNG giới hạn phạm vi hiệu lực của gói.
+        // Kỳ gia hạn phát hành tại cơ sở đang thao tác; fallback về origin của kỳ trước.
+        facilityId: requestContext.getStore()?.facilityId ?? existing.facilityId,
         priceSnapshot: plan.price,
         tier: plan.tier,
         startDate,
@@ -256,6 +273,12 @@ export async function getMemberSubscriptions(
   const where: any = { memberId: memberProfile.id };
   if (query.status) where.status = query.status;
 
+  // MF-05 (chính sách được xác nhận): Membership là GLOBAL nên nhân sự phục vụ hội viên PHẢI thấy
+  // được toàn bộ lịch sử thanh toán/hoá đơn của hội viên đó — kể cả phát hành ở cơ sở khác
+  // (luồng hủy+hoàn tiền liên facility ở MF-02 phụ thuộc điều này; FE nhận diện qua
+  // `GET /subscriptions/member/{id}` ở màn Reception Membership/Payments).
+  // Rào chắn giữ nguyên: role (MANAGER/RECEPTIONIST, COACH bị chặn) + kiểm tra MEMBER chỉ xem của mình.
+  // KHÔNG filter nested theo facility — filter sẽ làm Reception mất hoá đơn của hội viên đã mua ở cơ sở khác.
   const [total, subscriptions] = await Promise.all([
     prisma.membershipSubscription.count({ where }),
     prisma.membershipSubscription.findMany({
@@ -270,6 +293,11 @@ export async function getMemberSubscriptions(
   return { subscriptions, pagination: buildPaginationMeta(total, page, limit) };
 }
 
+/**
+ * Chi tiết một subscription (role MANAGER/RECEPTIONIST theo route).
+ * MF-05: nested `payments → invoice` KHÔNG filter theo facility — xem ghi chú chính sách ở
+ * `getMemberSubscriptions` (toàn bộ lịch sử thanh toán của hội viên phục vụ mục đích đối soát/hoá đơn).
+ */
 export async function getSubscriptionById(id: string) {
   const sub = await prisma.membershipSubscription.findUnique({
     where: { id },
@@ -308,12 +336,18 @@ export async function updateSubscriptionStatus(id: string, status: string) {
   });
   if (!sub) throw new AppError("Subscription not found", 404);
 
-  // BR-15: Suspension state machine
+  // BR-15: Suspension state machine — FINAL Policy A, một nghĩa duy nhất:
+  // SUSPENDED = gói CŨ bị thay thế khi gói MỚI có hiệu lực (1 member = 1 ACTIVE).
+  // KHÔNG phải freeze/bảo lưu (Freeze đã loại khỏi scope; không cộng ngày, không resume).
+  // Cấm mọi resume: SUSPENDED/EXPIRED/CANCELLED → ACTIVE đều 400.
   const updateData: any = { status };
   // A10: ghi mốc hủy để entitlement lịch sử biết quyền lợi kéo dài tới đâu.
   if (status === "CANCELLED") updateData.cancelledAt = now;
 
   if (status === "SUSPENDED" && sub.status === "ACTIVE") {
+    // Gói cũ bị thay thế: lưu mốc thay thế + ngày còn lại để audit/đối soát.
+    // remainingDays CHỈ để hiển thị/đối soát, KHÔNG cộng vào gói mới
+    // (xem subscription-purchase.service.ts: remainingDays FREE = 0, paid không cộng dồn).
     const msLeft = sub.endDate.getTime() - now.getTime();
     const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
     updateData.suspendedAt = now;
@@ -321,12 +355,29 @@ export async function updateSubscriptionStatus(id: string, status: string) {
   }
 
   if (status === "ACTIVE" && sub.status === "SUSPENDED") {
-    const daysToAdd = sub.remainingDays ?? 0;
-    const newEndDate = new Date();
-    newEndDate.setDate(now.getDate() + daysToAdd);
-    updateData.endDate = newEndDate;
-    updateData.suspendedAt = null;
-    updateData.remainingDays = null;
+    // FINAL Policy A: SUSPENDED là trạng thái cuối của gói cũ bị thay thế — KHÔNG resume.
+    // Muốn dùng tiếp phải mua/gia hạn gói MỚI (tạo subscription mới qua purchase flow).
+    throw new AppError(
+      "Suspended subscription has been replaced and cannot be reactivated. Please purchase or renew a new subscription.",
+      400,
+      { code: "SUBSCRIPTION_RESUME_FORBIDDEN" },
+    );
+  }
+
+  if (status === "ACTIVE" && sub.status === "EXPIRED") {
+    throw new AppError(
+      "Expired subscription cannot be reactivated. Please purchase or renew a new subscription.",
+      400,
+      { code: "SUBSCRIPTION_RESUME_FORBIDDEN" },
+    );
+  }
+
+  if (status === "ACTIVE" && sub.status === "CANCELLED") {
+    throw new AppError(
+      "Cancelled subscription cannot be reactivated. Please purchase or renew a new subscription.",
+      400,
+      { code: "SUBSCRIPTION_RESUME_FORBIDDEN" },
+    );
   }
 
   // ── PRORATED REFUND khi Manager hủy ──────────────────────────────────────
@@ -364,27 +415,40 @@ export async function updateSubscriptionStatus(id: string, status: string) {
         data: updateData,
       });
 
-      // 2. Tự động hủy toàn bộ lịch học tương lai của member
-      await tx.enrollment.updateMany({
-        where: {
-          memberId: sub.memberId,
-          status: "BOOKED",
-          schedule: { startTime: { gt: now } },
-        },
-        data: { status: "CANCELLED", cancelledAt: now },
-      });
+      // 2. Tự động hủy toàn bộ lịch học tương lai của member.
+      // Membership là GLOBAL ⇒ side-effect hủy booking phải chạy trên TOÀN BỘ cơ sở.
+      // Chỉ bỏ scope cho ĐÚNG câu updateMany này; where vẫn bị chặn bởi
+      // memberId + status BOOKED + buổi tương lai (không đụng member khác, không đụng lịch quá khứ).
+      await requestContext.run(
+        { ...requestContext.getStore(), facilityId: undefined },
+        () =>
+          tx.enrollment.updateMany({
+            where: {
+              memberId: sub.memberId,
+              status: "BOOKED",
+              schedule: { startTime: { gt: now } },
+            },
+            data: { status: "CANCELLED", cancelledAt: now },
+          }),
+      );
 
-      // 3. Tạo bản ghi Payment hoàn tiền nếu đủ điều kiện
+      // 3. Tạo bản ghi Payment hoàn tiền nếu đủ điều kiện.
+      // Payment VẪN facility-scoped: chạy trong đúng facility phát hành payment
+      // (originalPayment lấy từ sub.payments ⇒ thuộc membership này, đã qua check ownership).
       if (willRefund && originalPayment) {
-        await tx.payment.update({
-          where: { id: originalPayment.id },
-          data: {
-            status: "REFUNDED",
-            refundedAmount: refundAmount,
-            refundedAt: now,
-            note: `Hoàn tiền theo tỷ lệ ngày còn lại: ${daysLeft} ngày / ${originalPayment?.durationDaysSnapshot ?? Math.max(1, Math.round((sub.endDate.getTime() - sub.startDate.getTime()) / 86400000))} ngày. Số tiền hoàn: ${refundAmount.toLocaleString("vi-VN")}đ`,
-          },
-        });
+        await requestContext.run(
+          { ...requestContext.getStore(), facilityId: originalPayment.facilityId },
+          () =>
+            tx.payment.update({
+              where: { id: originalPayment.id },
+              data: {
+                status: "REFUNDED",
+                refundedAmount: refundAmount,
+                refundedAt: now,
+                note: `Hoàn tiền theo tỷ lệ ngày còn lại: ${daysLeft} ngày / ${originalPayment?.durationDaysSnapshot ?? Math.max(1, Math.round((sub.endDate.getTime() - sub.startDate.getTime()) / 86400000))} ngày. Số tiền hoàn: ${refundAmount.toLocaleString("vi-VN")}đ`,
+              },
+            }),
+        );
       }
     });
 
@@ -428,7 +492,8 @@ export async function updateSubscriptionStatus(id: string, status: string) {
   }
   // ─────────────────────────────────────────────────────────────────────────
 
-  // Các trạng thái khác (SUSPENDED, ACTIVE resume) — xử lý bình thường
+  // CANCELLED xử lý riêng ở trên; các trạng thái còn lại (SUSPENDED, EXPIRED, ACTIVE no-op)
+  // đi qua update chung — resume → ACTIVE đã bị chặn 400 (SUBSCRIPTION_RESUME_FORBIDDEN) ở trên.
   const updated = await prisma.membershipSubscription.update({
     where: { id },
     data: updateData,
@@ -508,27 +573,38 @@ export async function cancelSubscriptionBySelf(
       data: { status: "CANCELLED", cancelledAt: now },
     });
 
-    // 2. Hủy tất cả booking tương lai
-    await tx.enrollment.updateMany({
-      where: {
-        memberId: sub.memberId,
-        status: "BOOKED",
-        schedule: { startTime: { gt: now } },
-      },
-      data: { status: "CANCELLED", cancelledAt: now },
-    });
+    // 2. Hủy tất cả booking tương lai trên MỌI cơ sở (Membership là GLOBAL).
+    // Chỉ bỏ scope cho câu updateMany này; where giới hạn memberId + BOOKED + tương lai.
+    await requestContext.run(
+      { ...requestContext.getStore(), facilityId: undefined },
+      () =>
+        tx.enrollment.updateMany({
+          where: {
+            memberId: sub.memberId,
+            status: "BOOKED",
+            schedule: { startTime: { gt: now } },
+          },
+          data: { status: "CANCELLED", cancelledAt: now },
+        }),
+    );
 
-    // 3. Nếu hoàn tiền: đổi payment gốc thành REFUNDED
+    // 3. Nếu hoàn tiền: đổi payment gốc thành REFUNDED.
+    // Payment VẪN facility-scoped — chạy trong facility phát hành payment để
+    // không bị DAL chặn (FORBIDDEN_SCOPE) và không mở rộng quyền với payment khác.
     if (willRefund && originalPayment) {
-      await tx.payment.update({
-        where: { id: originalPayment.id },
-        data: {
-          status: "REFUNDED",
-          refundedAmount: refundAmount,
-          refundedAt: now,
-          note: `Hoàn 30% do hủy gói (còn ${daysLeft} ngày). Lý do: ${reason ?? "Không có"}`,
-        },
-      });
+      await requestContext.run(
+        { ...requestContext.getStore(), facilityId: originalPayment.facilityId },
+        () =>
+          tx.payment.update({
+            where: { id: originalPayment.id },
+            data: {
+              status: "REFUNDED",
+              refundedAmount: refundAmount,
+              refundedAt: now,
+              note: `Hoàn 30% do hủy gói (còn ${daysLeft} ngày). Lý do: ${reason ?? "Không có"}`,
+            },
+          }),
+      );
     }
   });
 

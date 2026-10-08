@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { DEFAULT_MAX_CONCURRENT_CLASSES, FREE_PLAN } from "../../config/membership.js";
+import { lockMemberSubscription } from "../../utils/dbLocks.js";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
@@ -60,6 +61,9 @@ async function findOrCreateFreePlan(db: DbClient) {
  * trong transaction (register/createUser/seed đều đã bọc sẵn).
  */
 export async function ensureActiveFreeSubscription(db: DbClient, memberProfileId: string) {
+  // Policy A: serialize với purchase/renew/webhook cùng member — hai luồng chạy đồng thời
+  // (đăng ký tạo FREE vs mua gói trả phí) không cùng thắng tạo 2 ACTIVE.
+  await lockMemberSubscription(db, memberProfileId);
   const existing = await db.membershipSubscription.findFirst({
     where: { memberId: memberProfileId, status: "ACTIVE" },
     orderBy: { createdAt: "desc" },
@@ -82,6 +86,8 @@ export async function ensureActiveFreeSubscription(db: DbClient, memberProfileId
     data: {
       memberId: memberProfileId,
       planId: plan.id,
+      // GLOBAL: FREE không gắn facility (không dùng 'legacy-main') — hiệu lực ở mọi cơ sở.
+      facilityId: null,
       priceSnapshot: plan.price,
       tier: plan.tier,
       startDate,

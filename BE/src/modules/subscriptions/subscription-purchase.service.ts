@@ -10,6 +10,7 @@ import { prisma } from "../../config/prisma.js";
 import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { enqueueNotification } from "../notifications/outbox.service.js";
+import { lockMemberSubscription } from "../../utils/dbLocks.js";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
@@ -124,6 +125,9 @@ export async function inspectPlanPurchase(
 /**
  * `inspectPlanPurchase` + SUSPEND gói ACTIVE cũ. BẮT BUỘC gọi trong transaction ghi
  * (thứ tự: kiểm tra luật → suspend gói cũ → tạo gói mới).
+ * FINAL Policy A: SUSPENDED = gói cũ bị thay thế (không resume, không cộng ngày vào gói mới).
+ * Ghi chú CAS: chỉ SUSPEND đúng gói ACTIVE đã đọc (id + status ACTIVE) để 2 purchase
+ * đồng thời không cùng thắng; request thua thấy gói đã SUSPENDED và fail an toàn.
  */
 export async function applyPlanSwitchRules(
   tx: Prisma.TransactionClient,
@@ -134,10 +138,20 @@ export async function applyPlanSwitchRules(
   const context = await inspectPlanPurchase(tx, memberProfileId, plan, now);
 
   if (context.currentActive) {
-    await tx.membershipSubscription.update({
-      where: { id: context.currentActive.id },
+    // Policy A atomic replacement: SUSPEND gói cũ trong CÙNG transaction tạo gói mới.
+    // CAS theo (id + status ACTIVE): purchase/renew/webhook đồng thời cho cùng member
+    // chỉ một thắng; request thua phải fail (không tạo ACTIVE thứ hai).
+    const suspended = await tx.membershipSubscription.updateMany({
+      where: { id: context.currentActive.id, status: "ACTIVE" },
       data: { status: "SUSPENDED", suspendedAt: now },
     });
+    if (suspended.count !== 1) {
+      throw new AppError(
+        "Gói hiện tại đã thay đổi, vui lòng thử lại.",
+        409,
+        { code: "SUBSCRIPTION_STATE_CHANGED" },
+      );
+    }
   }
 
   return context;
@@ -206,6 +220,10 @@ export async function activateSubscriptionForPayment(
   const { plan } = params;
   const snapshot = params.optionSnapshot ?? null;
 
+  // Policy A: serialize theo member TRƯỚC mọi đọc/ghi replacement (purchase/renew/
+  // webhook-settlement đồng thời chỉ một thắng; CAS suspend bên dưới là lớp 2).
+  await lockMemberSubscription(tx, params.memberProfileId);
+
   // A07: chốt tiền theo ĐÚNG offer đã bán lúc tạo đơn — plan có thể đã bị sửa trong lúc chờ CK.
   const purchasedPlan: MembershipPlan = {
     ...plan,
@@ -233,6 +251,8 @@ export async function activateSubscriptionForPayment(
     data: {
       memberId: params.memberProfileId,
       planId: purchasedPlan.id,
+      // ORIGIN facility = nơi thu tiền (Payment.facilityId) — chỉ dùng cho báo cáo/audit;
+      // gói vẫn hiệu lực ở mọi facility bất kể cơ sở nào phát hành.
       facilityId: soldPayment.facilityId,
       priceSnapshot: soldPayment.amount,
       tier: purchasedPlan.tier,

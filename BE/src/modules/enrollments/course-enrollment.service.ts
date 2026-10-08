@@ -98,7 +98,7 @@ const vnDateTime = (d: Date) => d.toLocaleString("vi-VN", { timeZone: "Asia/Ho_C
 export async function evaluateCourseEligibility(
   db: DbClient,
   memberProfileId: string,
-  cls: { id: string; classType: string; capacity: number },
+  cls: { id: string; classType: string; capacity: number; facilityId?: string },
   sessions: CourseSessionRef[],
   options: { now?: Date } = {}
 ): Promise<CourseEligibility> {
@@ -122,7 +122,7 @@ export async function evaluateCourseEligibility(
   const lastSession = sessions[sessions.length - 1];
   const sessionIds = sessions.map((s) => s.id);
 
-  const [activeSub, quotaUsage, penalty, bookedCounts, myEnrollments, conflicts] = await Promise.all([
+  const [activeSub, quotaUsage, penalty, bookedCounts, myEnrollments, conflicts, courseFacilityId] = await Promise.all([
     findActiveSubscription(db, memberProfileId, now),
     getMemberConcurrentClassQuota(db, memberProfileId, { now }),
     findActivePenalty(db, memberProfileId, cls.id, now),
@@ -154,11 +154,14 @@ export async function evaluateCourseEligibility(
           select: {
             startTime: true,
             endTime: true,
-            class: { select: { name: true } },
+            class: { select: { name: true, facilityId: true } },
           },
         },
       },
     })),
+    cls.facilityId
+      ? Promise.resolve(cls.facilityId)
+      : db.class.findUnique({ where: { id: cls.id }, select: { facilityId: true } }).then((row) => row?.facilityId ?? null),
   ]);
 
   const blockers: CourseEnrollmentBlocker[] = [];
@@ -228,7 +231,12 @@ export async function evaluateCourseEligibility(
     });
   }
 
-  // ── Cấp BUỔI: sức chứa + trùng giờ ───────────────────────────────────────
+  // ── Cấp BUỔI: sức chứa + trùng giờ + travel buffer ─────────────────────────
+  // FINAL: bulk đánh giá TẤT CẢ buổi candidate atomic — mỗi buổi so với booking
+  // hiện có của member (khác Class) + các buổi candidate khác trong khóa.
+  const { crossFacilityTravelBufferMinutes } = await import("../../config/membership.js");
+  const { getScheduleTravelConflictReason } = await import("./enrollments.service.js");
+  const bufferMinutes = crossFacilityTravelBufferMinutes();
   const bookedBySchedule = new Map(bookedCounts.map((row) => [row.scheduleId, row._count._all]));
   const myBySchedule = new Map(myEnrollments.map((row) => [row.scheduleId, row]));
 
@@ -297,6 +305,40 @@ export async function evaluateCourseEligibility(
         roomName: state.roomName,
         details: { ...state.conflictWith },
       });
+      continue;
+    }
+
+    // Travel buffer cho bulk: buổi candidate vs booking hiện có khác facility.
+    if (bufferMinutes > 0 && courseFacilityId) {
+      const travelReason = getScheduleTravelConflictReason(
+        { startTime: state.startTime, endTime: state.endTime, facilityId: courseFacilityId },
+        conflicts.map((c) => ({
+          startTime: c.schedule.startTime,
+          endTime: c.schedule.endTime,
+          facilityId: c.schedule.class.facilityId ?? null,
+          className: c.schedule.class.name,
+          scheduleId: c.scheduleId,
+        })),
+        bufferMinutes,
+      );
+      if (travelReason) {
+        blockers.push({
+          code: "TIME_CONFLICT",
+          message:
+            `Buổi ${vnDateTime(state.startTime)} quá sát giờ với lớp "${travelReason.className}" ở cơ sở khác ` +
+            `(cần ít nhất ${bufferMinutes} phút di chuyển).`,
+          sessionId: state.scheduleId,
+          startTime: state.startTime,
+          endTime: state.endTime,
+          roomId: state.roomId,
+          roomName: state.roomName,
+          details: {
+            className: travelReason.className,
+            overlappingScheduleId: travelReason.scheduleId,
+            travelBufferMinutes: bufferMinutes,
+          },
+        });
+      }
     }
   }
 

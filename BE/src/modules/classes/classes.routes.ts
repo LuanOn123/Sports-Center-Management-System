@@ -55,6 +55,12 @@ const router = Router();
  *           type: string
  *         description: Filter by coach (CoachProfile.id)
  *       - in: query
+ *         name: attendancePolicy
+ *         schema:
+ *           type: string
+ *           enum: [FIXED, RECURRING]
+ *         description: Filter by attendance policy (FIXED | RECURRING)
+ *       - in: query
  *         name: isActive
  *         schema:
  *           type: string
@@ -182,6 +188,15 @@ router.get("/:id/course-plan", authenticate, classesController.getClassCoursePla
  *                 enum: [POOL, INDOOR, OUTDOOR]
  *                 example: "INDOOR"
  *                 description: "Area type required by this class. Every selected sport must support it."
+ *               attendancePolicy:
+ *                 type: string
+ *                 enum: [FIXED, RECURRING]
+ *                 default: RECURRING
+ *                 description: "FIXED = khóa cố định với plannedSessionCount; RECURRING = lớp mở định kỳ."
+ *               plannedSessionCount:
+ *                 type: integer
+ *                 example: 10
+ *                 description: "Required when attendancePolicy = FIXED; forbidden when RECURRING."
  *     responses:
  *       201: { $ref: "#/components/responses/ClassCreated" }
  *       400: { $ref: "#/components/responses/BadRequest" }

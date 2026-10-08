@@ -29,6 +29,13 @@ const DAY = 24 * HOUR;
 
 let baseUrl = "";
 
+/**
+ * Fixture facility: Class/Room mặc định `facilityId = legacy-main` (schema test cô lập chạy
+ * `db push` nên không có data seed) → mọi HTTP qua `checkFacilityScope` phải mang đúng
+ * context này (header X-Facility-Id) mới không bị 400 FACILITY_CONTEXT_REQUIRED.
+ */
+const FACILITY_ID = "legacy-main";
+
 type HttpResult = { status: number; body: any };
 
 async function http(
@@ -40,6 +47,7 @@ async function http(
     method,
     headers: {
       "Content-Type": "application/json",
+      "X-Facility-Id": FACILITY_ID,
       ...(opts.token ? { Authorization: `Bearer ${opts.token}` } : {}),
     },
     body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
@@ -94,7 +102,7 @@ const created = {
 type FixtureUser = { id: string; email: string; token: string; memberProfileId: string };
 
 async function createUser(
-  role: "MEMBER" | "COACH" | "RECEPTIONIST" | "MANAGER",
+  role: "MEMBER" | "COACH" | "RECEPTIONIST" | "MANAGER" | "ADMIN",
   tag: string,
   hashedPassword: string
 ): Promise<FixtureUser> {
@@ -103,6 +111,13 @@ async function createUser(
   created.userIds.push(user.id);
   const memberProfileId = user.memberProfile?.id ?? "";
   if (memberProfileId) created.memberProfileIds.push(memberProfileId);
+  // Staff (MANAGER/COACH/RECEPTIONIST) phải được phân công vào facility fixture —
+  // checkFacilityScope trả 403 FORBIDDEN_SCOPE nếu thiếu (MEMBER/ADMIN bypass).
+  if (role !== "MEMBER") {
+    await prisma.facilityStaff.create({
+      data: { userId: user.id, facilityId: FACILITY_ID, role: role as any },
+    });
+  }
 
   const login = await http("POST", "/auth/login", { body: { email, password: PASSWORD } });
   const token = login.body?.data?.accessToken as string | undefined;
@@ -115,6 +130,12 @@ async function createUser(
 let roomId = "";
 
 async function setupRoom(): Promise<void> {
+  // db push (schema test cô lập) KHÔNG chạy data migration → seed row legacy-main chưa tồn tại.
+  await prisma.facility.upsert({
+    where: { id: FACILITY_ID },
+    update: {},
+    create: { id: FACILITY_ID, code: "legacy-main", name: "Legacy Main", address: "Seed" },
+  });
   const room = await prisma.room.create({
     data: { name: `E2E Quota Room ${RUN}`, capacity: 50, areaType: "INDOOR", location: "E2E" },
   });
@@ -272,6 +293,8 @@ const bookedCountOfClass = (memberProfileId: string, classId: string) =>
 
 // ─── Scenarios ────────────────────────────────────────────────────────────
 type Ctx = {
+  /** POST/PATCH /membership-plans là authorize("ADMIN") → plan mutation dùng admin. */
+  admin: FixtureUser;
   manager: FixtureUser;
   plans: {
     membership3: any;
@@ -321,9 +344,9 @@ async function scenarioPlanConfig(ctx: Ctx): Promise<void> {
   );
   if (seededFree) check("Seed FREE plan (plan-free-001) quota = 0", seededFree.maxConcurrentClasses === 0, seededFree);
 
-  // Manager cấu hình lại quota qua PATCH rồi đọc lại.
+  // Admin cấu hình lại quota qua PATCH rồi đọc lại (POST/PATCH /membership-plans = ADMIN).
   const patched = await http("PATCH", `/membership-plans/${ctx.plans.membership1.id}`, {
-    token: ctx.manager.token,
+    token: ctx.admin.token,
     body: { maxConcurrentClasses: 2 },
   });
   check(
@@ -334,7 +357,7 @@ async function scenarioPlanConfig(ctx: Ctx): Promise<void> {
   const detail = await http("GET", `/membership-plans/${ctx.plans.membership1.id}`);
   check("GET /membership-plans/:id trả maxConcurrentClasses = 2", detail.body?.data?.maxConcurrentClasses === 2, detail.body);
   const revert = await http("PATCH", `/membership-plans/${ctx.plans.membership1.id}`, {
-    token: ctx.manager.token,
+    token: ctx.admin.token,
     body: { maxConcurrentClasses: 1 },
   });
   check("PATCH trả quota về 1 (chuẩn bị test limit 1)", revert.body?.data?.maxConcurrentClasses === 1, revert.body);
@@ -345,14 +368,14 @@ async function scenarioPlanConfig(ctx: Ctx): Promise<void> {
     list.body?.data?.length
   );
 
-  // Validation: âm / không nguyên bị chặn.
+  // Validation: âm / không nguyên bị chặn (admin để qua authorize → 400 do validate).
   const negative = await http("POST", "/membership-plans", {
-    token: ctx.manager.token,
+    token: ctx.admin.token,
     body: { name: `E2E Invalid Negative ${RUN}`, price: 1000, durationDays: 30, tier: "MEMBERSHIP", maxConcurrentClasses: -1 },
   });
   check("POST quota = -1 → 400 validation", negative.status === 400, negative.body);
   const decimal = await http("POST", "/membership-plans", {
-    token: ctx.manager.token,
+    token: ctx.admin.token,
     body: { name: `E2E Invalid Decimal ${RUN}`, price: 1000, durationDays: 30, tier: "MEMBERSHIP", maxConcurrentClasses: 2.5 },
   });
   check("POST quota = 2.5 → 400 validation (phải là integer)", decimal.status === 400, decimal.body);
@@ -661,9 +684,9 @@ async function scenarioDowngrade(ctx: Ctx, member: FixtureUser): Promise<void> {
   check("Book G7 khi used = 2 < limit → 201", bookG7.status === 201, bookG7.body);
   expectQuota("Quota sau khi book G7", await quota(member.token), { tier: "MEMBERSHIP", limit: 3, used: 3, remaining: 0 });
 
-  // A07 hồi quy: Manager sửa quota của PLAN không làm đổi quota gói member ĐÃ MUA (snapshot thắng).
+  // A07 hồi quy: Admin sửa quota của PLAN không làm đổi quota gói member ĐÃ MUA (snapshot thắng).
   const patchedPlan = await http("PATCH", `/membership-plans/${ctx.plans.membership3.id}`, {
-    token: ctx.manager.token,
+    token: ctx.admin.token,
     body: { maxConcurrentClasses: 5 },
   });
   check("A07: PATCH quota plan membership3 → 200", patchedPlan.status === 200, patchedPlan.body);
@@ -675,7 +698,7 @@ async function scenarioDowngrade(ctx: Ctx, member: FixtureUser): Promise<void> {
   });
   // Trả plan về quota 3 để các scenario sau giữ nguyên hành vi.
   const restoredPlan = await http("PATCH", `/membership-plans/${ctx.plans.membership3.id}`, {
-    token: ctx.manager.token,
+    token: ctx.admin.token,
     body: { maxConcurrentClasses: 3 },
   });
   check("A07: khôi phục quota plan membership3 = 3", restoredPlan.status === 200, restoredPlan.body);
@@ -810,7 +833,7 @@ async function scenarioNoActiveSubscription(ctx: Ctx, member: FixtureUser): Prom
 async function scenarioPlanPatchSemantics(ctx: Ctx): Promise<void> {
   section("11) PATCH /membership-plans/:id — tier đổi nhưng maxConcurrentClasses giữ nguyên");
 
-  const plan = await createPlan(ctx.manager.token, {
+  const plan = await createPlan(ctx.admin.token, {
     name: `E2E TierPatch ${RUN}`,
     price: 300000,
     durationDays: 30,
@@ -820,7 +843,7 @@ async function scenarioPlanPatchSemantics(ctx: Ctx): Promise<void> {
   check("Tạo plan MEMBERSHIP + quota 3", plan.tier === "MEMBERSHIP" && plan.maxConcurrentClasses === 3, plan);
 
   const tierOnly = await http("PATCH", `/membership-plans/${plan.id}`, {
-    token: ctx.manager.token,
+    token: ctx.admin.token,
     body: { tier: "PREMIUM" },
   });
   check("PATCH { tier: PREMIUM } → 200", tierOnly.status === 200, tierOnly.body);
@@ -834,7 +857,7 @@ async function scenarioPlanPatchSemantics(ctx: Ctx): Promise<void> {
   check("GET lại plan: quota vẫn 3", reread.body?.data?.maxConcurrentClasses === 3, reread.body?.data);
 
   const both = await http("PATCH", `/membership-plans/${plan.id}`, {
-    token: ctx.manager.token,
+    token: ctx.admin.token,
     body: { tier: "PREMIUM", maxConcurrentClasses: 6 },
   });
   check(
@@ -844,7 +867,7 @@ async function scenarioPlanPatchSemantics(ctx: Ctx): Promise<void> {
   );
 
   const backTier = await http("PATCH", `/membership-plans/${plan.id}`, {
-    token: ctx.manager.token,
+    token: ctx.admin.token,
     body: { tier: "MEMBERSHIP" },
   });
   check(
@@ -853,7 +876,7 @@ async function scenarioPlanPatchSemantics(ctx: Ctx): Promise<void> {
     backTier.body?.data
   );
 
-  const explicit = await createPlan(ctx.manager.token, {
+  const explicit = await createPlan(ctx.admin.token, {
     name: `E2E Explicit4 ${RUN}`,
     price: 300000,
     durationDays: 30,
@@ -914,9 +937,10 @@ async function scenarioAccountProvisioning(ctx: Ctx): Promise<void> {
     (await prisma.membershipSubscription.count({ where: { memberId: newProfileId, status: "ACTIVE" } })) === 1
   );
 
-  // --- 12c) MANAGER tạo MEMBER qua POST /users cũng được auto-provision ---
+  // --- 12c) ADMIN tạo MEMBER qua POST /users cũng được auto-provision ---
+  // (router /users là authenticate + authorize("ADMIN") — manager tạo user → 403.)
   const managerMade = await http("POST", "/users", {
-    token: ctx.manager.token,
+    token: ctx.admin.token,
     body: {
       email: `e2e-quota-${RUN}-staffmade@example.com`,
       password: PASSWORD,
@@ -924,29 +948,29 @@ async function scenarioAccountProvisioning(ctx: Ctx): Promise<void> {
       role: "MEMBER",
     },
   });
-  check("MANAGER POST /users (role MEMBER) → 201", managerMade.status === 201, managerMade.body);
+  check("ADMIN POST /users (role MEMBER) → 201", managerMade.status === 201, managerMade.body);
   const { memberProfileId: managerMadeProfileId } = trackCreatedUser(managerMade);
   const sub2 = await prisma.membershipSubscription.findFirst({
     where: { memberId: managerMadeProfileId },
     include: { plan: true },
   });
   check(
-    "Member do manager tạo cũng có ACTIVE FREE subscription (quota 0)",
+    "Member do admin tạo cũng có ACTIVE FREE subscription (quota 0)",
     sub2?.status === "ACTIVE" && sub2?.plan?.tier === "FREE" && sub2?.plan?.maxConcurrentClasses === 0,
     sub2
   );
 
   // --- 12d) COACH / RECEPTIONIST / MANAGER KHÔNG được cấp subscription ---
   const coachCreated = await http("POST", "/users", {
-    token: ctx.manager.token,
+    token: ctx.admin.token,
     body: { email: `e2e-quota-${RUN}-newcoach@example.com`, password: PASSWORD, fullName: `E2E NewCoach ${RUN}`, role: "COACH" },
   });
   const staffCreated = await http("POST", "/users", {
-    token: ctx.manager.token,
+    token: ctx.admin.token,
     body: { email: `e2e-quota-${RUN}-newstaff@example.com`, password: PASSWORD, fullName: `E2E NewStaff ${RUN}`, role: "RECEPTIONIST" },
   });
   const managerCreated = await http("POST", "/users", {
-    token: ctx.manager.token,
+    token: ctx.admin.token,
     body: { email: `e2e-quota-${RUN}-newmanager@example.com`, password: PASSWORD, fullName: `E2E NewManager ${RUN}`, role: "MANAGER" },
   });
   const coachTracked = trackCreatedUser(coachCreated);
@@ -1020,6 +1044,9 @@ async function scenarioMembershipStatusConsistency(ctx: Ctx): Promise<void> {
   // --- B) KHÔNG có ACTIVE subscription (fixture tạo qua Prisma, không provisioning) ---
   const hashed = await hashPassword(PASSWORD);
   const noSub = await createUser("MEMBER", "statusnosub", hashed);
+  // MF-08: login tự phục hồi gói FREE → xoá để kiểm chứng nhánh "KHÔNG có gói" thật
+  // (auto-repair chỉ chạy ở login/register nên xoá giữa suite là an toàn).
+  await prisma.membershipSubscription.deleteMany({ where: { memberId: noSub.memberProfileId } });
   const noSubStatus = await statusOf(noSub.memberProfileId);
   check(
     'B) Không có gói ACTIVE → effectiveTier = null (KHÔNG phải "FREE")',
@@ -1042,7 +1069,7 @@ async function scenarioMembershipStatusConsistency(ctx: Ctx): Promise<void> {
   });
 
   // --- C) ACTIVE MEMBERSHIP ---
-  const membershipPlan = await createPlan(ctx.manager.token, {
+  const membershipPlan = await createPlan(ctx.admin.token, {
     name: `E2E StatusMembership ${RUN}`,
     price: 300000,
     durationDays: 30,
@@ -1067,7 +1094,7 @@ async function scenarioMembershipStatusConsistency(ctx: Ctx): Promise<void> {
   );
 
   // --- D) ACTIVE PREMIUM ---
-  const premiumPlan = await createPlan(ctx.manager.token, {
+  const premiumPlan = await createPlan(ctx.admin.token, {
     name: `E2E StatusPremium ${RUN}`,
     price: 600000,
     durationDays: 30,
@@ -1121,6 +1148,13 @@ async function cleanup(): Promise<void> {
   }
 
 async function main(): Promise<void> {
+  // SAFETY: E2E này TẠO dữ liệu qua HTTP + Prisma — chỉ được chạy trên schema test cô lập.
+  const guardSchema = new URL(process.env.DATABASE_URL!).searchParams.get("schema") ?? "";
+  if (!guardSchema.startsWith("scms_verify_")) {
+    throw new Error(
+      `SAFETY GUARD: DATABASE_URL schema "${guardSchema || "(default)"}" is not scms_verify_* — refusing to run write-capable E2E against a business/production database.`,
+    );
+  }
   await connectTestMongo();
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));
@@ -1131,21 +1165,23 @@ async function main(): Promise<void> {
   const hashed = await hashPassword(PASSWORD);
   try {
     await setupRoom();
+    // POST/PATCH /membership-plans là authorize("ADMIN") → cần fixture ADMIN riêng.
+    const admin = await createUser("ADMIN", "admin", hashed);
     const manager = await createUser("MANAGER", "manager", hashed);
     const coach = await createUser("COACH", "coach", hashed);
     const staff = await createUser("RECEPTIONIST", "staff", hashed);
     const members: FixtureUser[] = [];
     for (let i = 1; i <= 10; i++) members.push(await createUser("MEMBER", `member${i}`, hashed));
 
-    const membership3 = await createPlan(manager.token, { name: `E2E Membership 3 ${RUN}`, price: 300000, durationDays: 30, tier: "MEMBERSHIP", maxConcurrentClasses: 3 });
-    const membership2 = await createPlan(manager.token, { name: `E2E Membership 2 ${RUN}`, price: 300000, durationDays: 30, tier: "MEMBERSHIP", maxConcurrentClasses: 2 });
-    const membership1 = await createPlan(manager.token, { name: `E2E Membership 1 ${RUN}`, price: 300000, durationDays: 30, tier: "MEMBERSHIP", maxConcurrentClasses: 1 });
-    const premium6 = await createPlan(manager.token, { name: `E2E Premium 6 ${RUN}`, price: 600000, durationDays: 30, tier: "PREMIUM", maxConcurrentClasses: 6 });
-    const long180 = await createPlan(manager.token, { name: `E2E Membership 180d ${RUN}`, price: 900000, durationDays: 180, tier: "MEMBERSHIP", maxConcurrentClasses: 3 });
-    const membershipDefault = await createPlan(manager.token, { name: `E2E Membership Default ${RUN}`, price: 300000, durationDays: 30, tier: "MEMBERSHIP" });
+    const membership3 = await createPlan(admin.token, { name: `E2E Membership 3 ${RUN}`, price: 300000, durationDays: 30, tier: "MEMBERSHIP", maxConcurrentClasses: 3 });
+    const membership2 = await createPlan(admin.token, { name: `E2E Membership 2 ${RUN}`, price: 300000, durationDays: 30, tier: "MEMBERSHIP", maxConcurrentClasses: 2 });
+    const membership1 = await createPlan(admin.token, { name: `E2E Membership 1 ${RUN}`, price: 300000, durationDays: 30, tier: "MEMBERSHIP", maxConcurrentClasses: 1 });
+    const premium6 = await createPlan(admin.token, { name: `E2E Premium 6 ${RUN}`, price: 600000, durationDays: 30, tier: "PREMIUM", maxConcurrentClasses: 6 });
+    const long180 = await createPlan(admin.token, { name: `E2E Membership 180d ${RUN}`, price: 900000, durationDays: 180, tier: "MEMBERSHIP", maxConcurrentClasses: 3 });
+    const membershipDefault = await createPlan(admin.token, { name: `E2E Membership Default ${RUN}`, price: 300000, durationDays: 30, tier: "MEMBERSHIP" });
     check("Plan tạo không nhập quota → default theo tier = 3", membershipDefault.maxConcurrentClasses === 3, membershipDefault);
 
-    const ctx: Ctx = { manager, plans: { membership3, membership2, membership1, premium6, long180 } };
+    const ctx: Ctx = { admin, manager, plans: { membership3, membership2, membership1, premium6, long180 } };
 
     await scenarioPlanConfig(ctx);
     await scenarioPlanPatchSemantics(ctx);

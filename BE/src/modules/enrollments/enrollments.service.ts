@@ -12,12 +12,55 @@ import {
   findActiveSubscription,
 } from "./enrollment-quota.service.js";
 
-type BookableSchedule = {
+export type BookableSchedule = {
   id: string;
   startTime: Date;
   endTime: Date;
-  class: { id: string; classType: string; capacity: number };
+  class: { id: string; classType: string; capacity: number; facilityId?: string };
 };
+
+export type ScheduleConflictNeighbor = {
+  startTime: Date;
+  endTime: Date;
+  facilityId: string | null;
+  className: string;
+  scheduleId?: string;
+};
+
+/**
+ * FINAL: Travel Buffer là luật giữa các SCHEDULE, không phải thuộc tính của Class.
+ * - Cùng facility: giữ nguyên time-conflict (chạm biên cho phép), KHÔNG áp buffer.
+ * - Khác facility: gap < buffer → xung đột (409 TIME_CONFLICT). gap == buffer → cho qua.
+ * - Helper tập trung DUY NHẤT cho: đặt đơn, bulk cả khóa, transfer, waitlist promotion.
+ */
+export function getScheduleTravelConflictReason(
+  target: { startTime: Date; endTime: Date; facilityId: string | null },
+  neighbors: ScheduleConflictNeighbor[],
+  bufferMinutes: number,
+): { className: string; scheduleId?: string; gapMinutes: number } | null {
+  if (bufferMinutes <= 0 || !target.facilityId) return null;
+  const bufferMs = bufferMinutes * 60 * 1000;
+  const targetStart = new Date(target.startTime).getTime();
+  const targetEnd = new Date(target.endTime).getTime();
+  for (const row of neighbors) {
+    if (!row.facilityId || row.facilityId === target.facilityId) continue;
+    const otherStart = new Date(row.startTime).getTime();
+    const otherEnd = new Date(row.endTime).getTime();
+    if (otherStart < targetEnd && otherEnd > targetStart) continue;
+    const gap = Math.min(
+      Math.abs(targetStart - otherEnd),
+      Math.abs(otherStart - targetEnd),
+    );
+    if (gap < bufferMs) {
+      return {
+        className: row.className,
+        scheduleId: row.scheduleId,
+        gapMinutes: Math.floor(gap / 60000),
+      };
+    }
+  }
+  return null;
+}
 
 /**
  * Bộ luật đặt chỗ dùng chung cho bookClass và transferEnrollment:
@@ -26,8 +69,9 @@ type BookableSchedule = {
  * `excludeEnrollmentId`: dùng khi transfer — chỗ cũ sắp được nhả nên không tính là trùng giờ.
  * `quotaExemptClassId`: dùng khi transfer — vì BR-08 giữ nguyên Class nên không tiêu quota mới (§9).
  * Trả về enrollment cũ (đang CANCELLED) nếu có, để caller kích hoạt lại theo BR-07.
+ * Export để Phase 2 (waitlist promotion) tái dùng — KHÔNG duplicate luật đặt chỗ.
  */
-async function assertCanBook(
+export async function assertCanBook(
   tx: Prisma.TransactionClient,
   memberProfileId: string,
   schedule: BookableSchedule,
@@ -86,7 +130,9 @@ async function assertCanBook(
   if (existing && (existing.status === "BOOKED" || existing.status === "COMPLETED"))
     throw new AppError("You are already enrolled in this class", 409);
 
-  // Time conflict check với các buổi khác của cùng hội viên.
+  // Time conflict check với các buổi khác của cùng hội viên (GLOBAL mọi cơ sở).
+  // FINAL: cùng facility giữ nguyên luật (chạm biên cho phép); khác facility
+  // áp thêm travel buffer tập trung qua getScheduleTravelConflictReason.
   const conflict = await requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, () => tx.enrollment.findFirst({
     where: {
       memberId: memberProfileId,
@@ -105,6 +151,56 @@ async function assertCanBook(
       `You have a conflicting class "${conflict.schedule.class.name}" at this time`,
       409
     );
+
+  const { crossFacilityTravelBufferMinutes } = await import("../../config/membership.js");
+  const bufferMinutes = crossFacilityTravelBufferMinutes();
+  if (bufferMinutes > 0) {
+    const targetFacilityId =
+      schedule.class.facilityId ??
+      (await tx.class.findUnique({
+        where: { id: schedule.class.id },
+        select: { facilityId: true },
+      }))?.facilityId ??
+      null;
+    if (targetFacilityId) {
+      const neighbors = await requestContext.run(
+        { ...requestContext.getStore(), facilityId: undefined },
+        () =>
+          tx.enrollment.findMany({
+            where: {
+              memberId: memberProfileId,
+              status: { in: ["BOOKED", "COMPLETED"] },
+              id: options.excludeEnrollmentId
+                ? { not: options.excludeEnrollmentId }
+                : undefined,
+              schedule: { status: "SCHEDULED" },
+            },
+            include: { schedule: { include: { class: true } } },
+          }),
+      );
+      const reason = getScheduleTravelConflictReason(
+        {
+          startTime: new Date(schedule.startTime),
+          endTime: new Date(schedule.endTime),
+          facilityId: targetFacilityId,
+        },
+        neighbors.map((row) => ({
+          startTime: row.schedule.startTime,
+          endTime: row.schedule.endTime,
+          facilityId: row.schedule.class.facilityId ?? null,
+          className: row.schedule.class.name,
+          scheduleId: row.scheduleId,
+        })),
+        bufferMinutes,
+      );
+      if (reason)
+        throw new AppError(
+          `You need at least ${bufferMinutes} minutes to travel between facilities: "${reason.className}" is too close to this class`,
+          409,
+          { code: "TIME_CONFLICT", travelBufferMinutes: bufferMinutes },
+        );
+    }
+  }
 
   return existing;
 }
@@ -234,13 +330,53 @@ export async function cancelEnrollment(
   if (enrollment.schedule.startTime <= new Date())
     throw new AppError("Cannot cancel enrollment for a past or ongoing class", 400);
 
-  const cancelled = await prisma.enrollment.update({
-    where: { id: enrollmentId },
-    data: { status: "CANCELLED", cancelledAt: new Date() },
-    include: { member: { select: { id: true, userId: true } }, schedule: { include: { class: true } } },
+  // Phase 2: cancel + promotion trong CÙNG transaction. Lock theo thứ tự chuẩn
+  // memberQuota -> memberClass -> schedule (giống booking) để 2 cancel đồng thời
+  // không promote 2 lần cho 1 slot; CAS trên WaitlistEntry chặn đôn trùng.
+  const result = await prisma.$transaction(async (tx) => {
+    await lockMemberQuota(tx, enrollment.memberId);
+    await lockMemberClass(tx, enrollment.memberId, enrollment.classId);
+    await lockSchedule(tx, enrollment.scheduleId);
+
+    const claimed = await tx.enrollment.updateMany({
+      where: { id: enrollmentId, memberId: enrollment.memberId, status: "BOOKED" },
+      data: { status: "CANCELLED", cancelledAt: new Date() },
+    });
+    if (claimed.count !== 1)
+      throw new AppError("Enrollment is no longer BOOKED (it may have been cancelled already)", 409);
+
+    let promoted: { enrollment: { id: string } } | null = null;
+    try {
+      const { promoteNextEligible, flushWaitlistNotifications } = await import(
+        "../waitlist/waitlist.promotion.js"
+      );
+      const fresh = await tx.classSchedule.findUnique({
+        where: { id: enrollment.scheduleId },
+        include: { class: true },
+      });
+      if (fresh && fresh.status === "SCHEDULED" && fresh.startTime > new Date()) {
+        promoted = await promoteNextEligible(tx, enrollment.scheduleId, fresh as any);
+      }
+      if (promoted) await flushWaitlistNotifications();
+    } catch {
+      promoted = null;
+    }
+
+    const cancelledRow = await tx.enrollment.findUnique({
+      where: { id: enrollmentId },
+      include: {
+        member: { select: { id: true, userId: true } },
+        schedule: { include: { class: true } },
+      },
+    });
+    return {
+      cancelled: cancelledRow,
+      promotedEnrollmentId: promoted?.enrollment.id ?? null,
+    };
   });
 
   // Notify member — fire-and-forget
+  const cancelled = result.cancelled as any;
   const startStr = cancelled.schedule.startTime.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
   createNotification(
     cancelled.member.userId,
@@ -250,7 +386,9 @@ export async function cancelEnrollment(
     { metadata: { enrollmentId, scheduleId: cancelled.scheduleId } }
   ).catch(() => {});
 
-  return cancelled;
+  return result.promotedEnrollmentId
+    ? { ...cancelled, promotedEnrollmentId: result.promotedEnrollmentId }
+    : cancelled;
 }
 
 export async function getMyEnrollments(userId: string, query: any) {
@@ -260,21 +398,39 @@ export async function getMyEnrollments(userId: string, query: any) {
   const page = Math.max(1, parseInt(query.page ?? "1") || 1);
   const limit = Math.min(100, Math.max(1, parseInt(query.limit ?? "10") || 10));
   const skip = (page - 1) * limit;
+  // MF-03: "Lịch của tôi" là dữ liệu CÁ NHÂN của hội viên ⇒ GLOBAL như Membership/Quota.
+  // `where` vẫn khóa memberId của CHÍNH hội viên vừa authenticate ⇒ không mở sang member khác.
   const where: any = { memberId: memberProfile.id };
   if (query.status) where.status = query.status;
 
-  const [total, enrollments] = await Promise.all([
-    prisma.enrollment.count({ where }),
-    prisma.enrollment.findMany({
-      where, skip, take: limit,
-      include: {
-        schedule: {
-          include: { class: { include: { sports: true } }, room: true },
-        },
-      },
-      orderBy: { bookedAt: "desc" },
-    }),
-  ]);
+  // Narrow exception: chỉ bỏ scope facility cho ĐÚNG 2 câu đọc của "my schedule"
+  // (cùng pattern quota/conflict). Các endpoint enrollments khác vẫn facility-scoped
+  // qua parents (Enrollment → Class) và KHÔNG đi qua nhánh này.
+  const [total, enrollments] = await requestContext.run(
+    { ...requestContext.getStore(), facilityId: undefined },
+    async () =>
+      Promise.all([
+        prisma.enrollment.count({ where }),
+        prisma.enrollment.findMany({
+          where, skip, take: limit,
+          include: {
+            schedule: {
+              include: {
+                class: {
+                  include: {
+                    sports: true,
+                    // Danh tính cơ sở THẬT của chỗ đặt (không giả facility đang chọn vào bản ghi chéo cơ sở).
+                    facility: { select: { id: true, name: true, code: true } },
+                  },
+                },
+                room: true,
+              },
+            },
+          },
+          orderBy: { bookedAt: "desc" },
+        }),
+      ]),
+  );
   return { enrollments, pagination: buildPaginationMeta(total, page, limit) };
 }
 

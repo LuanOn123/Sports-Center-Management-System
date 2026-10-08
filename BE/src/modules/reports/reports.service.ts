@@ -1,4 +1,6 @@
 import { prisma } from "../../config/prisma.js";
+import { requestContext } from "../../config/request-context.js";
+import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { computeAttendanceBuckets } from "../attendance/attendance-analytics.service.js";
 import { expireStalePenalties } from "../attendance/attendance-penalties.service.js";
@@ -102,8 +104,17 @@ export async function getMemberReport(startDate: string, endDate: string) {
         user: { role: "MEMBER", isActive: true },
       },
     }),
+    // MF-04: đếm PEOPLE — phải dùng CÙNG cohort với totalMembers/newMembers.
+    // MemberProfile KHÔNG có facilityId nên không thể scope theo cơ sở; lọc theo ORIGIN ở đây
+    // từng làm `expiredMembers = totalMembers - activeCount` sai lệch (trộn 2 cohort).
+    // Báo cáo theo DOANH THU / gói phát hành tách riêng ở /reports/memberships và
+    // /reports/subscription-logs (vẫn ORIGIN-scoped).
     prisma.membershipSubscription.findMany({
-      where: { status: "ACTIVE", startDate: { lte: now }, endDate: { gte: now } },
+      where: {
+        status: "ACTIVE",
+        startDate: { lte: now },
+        endDate: { gte: now },
+      },
       select: { memberId: true, tier: true },
     }),
   ]);
@@ -203,18 +214,31 @@ export async function getMembershipReport(startDate: string, endDate: string) {
   const end = new Date(`${endDate}T23:59:59.999+07:00`);
   const now = new Date();
   const dateFilter = { createdAt: { gte: start, lte: end } };
+  // Báo cáo theo CƠ SỞ: chỉ đếm gói có ORIGIN facility = facility đang chọn (giữ nguyên
+  // ngữ cảnh cũ khi MembershipSubscription còn bị DAL tự lọc). Doanh thu tính theo Payment
+  // vẫn facility-scoped nên số liệu counts/revenue cùng một cohort.
+  // MF-07: fail-fast — thiếu facility context phải lỗi thay vì âm thầm biến thành báo cáo GLOBAL
+  // (Prisma hiểu `facilityId: undefined` là "không lọc").
+  const originFacilityId = requestContext.getStore()?.facilityId;
+  if (!originFacilityId) throw new AppError("FACILITY_CONTEXT_REQUIRED", 400);
 
   const [totalSubs, newSubs, byStatus, byTier, revenueAgg] = await Promise.all([
-    prisma.membershipSubscription.count(),
-    prisma.membershipSubscription.count({ where: dateFilter }),
+    prisma.membershipSubscription.count({ where: { facilityId: originFacilityId } }),
+    prisma.membershipSubscription.count({ where: { ...dateFilter, facilityId: originFacilityId } }),
     prisma.membershipSubscription.groupBy({
       by: ["status"],
+      where: { facilityId: originFacilityId },
       _count: true,
     }),
     // BR-19: Count subscriptions currently effective (not just in date range) by tier
     prisma.membershipSubscription.groupBy({
       by: ["tier"],
-      where: { status: "ACTIVE", startDate: { lte: now }, endDate: { gte: now } },
+      where: {
+        status: "ACTIVE",
+        startDate: { lte: now },
+        endDate: { gte: now },
+        facilityId: originFacilityId,
+      },
       _count: true,
     }),
     // BR-20: Use paidAt for revenue
@@ -237,7 +261,10 @@ export async function getMembershipReport(startDate: string, endDate: string) {
   return {
     totalSubscriptions: totalSubs,
     newSubscriptions: newSubs,
-    activeSubscriptions: statusMap["ACTIVE"] ?? 0,
+    // MF-06: "đang hiệu lực" phải dùng CÙNG định nghĩa với subscriptionsByTier
+    // (status ACTIVE + startDate <= now <= endDate). Đếm theo `status` thuần túy từng tính cả
+    // gói renewed chưa tới startDate (stacking) và gói quá hạn nhưng chưa được job chuyển EXPIRED.
+    activeSubscriptions: byTier.reduce((sum, t) => sum + t._count, 0),
     expiredSubscriptions: statusMap["EXPIRED"] ?? 0,
     cancelledSubscriptions: statusMap["CANCELLED"] ?? 0,
     suspendedSubscriptions: statusMap["SUSPENDED"] ?? 0,
@@ -251,7 +278,11 @@ export async function getSubscriptionLogs(startDate?: string, endDate?: string, 
   const limit = Math.min(100, Math.max(1, parseInt(limitStr ?? "20") || 20));
   const skip = (page - 1) * limit;
 
-  const where: any = {};
+  // Danh sách subscription-logs chứa PII (tên/email hội viên) → vẫn scope theo ORIGIN facility.
+  // MF-07: fail-fast khi thiếu facility context (không âm thầm thành danh sách GLOBAL).
+  const originFacilityId = requestContext.getStore()?.facilityId;
+  if (!originFacilityId) throw new AppError("FACILITY_CONTEXT_REQUIRED", 400);
+  const where: any = { facilityId: originFacilityId };
   if (startDate && endDate) {
     const start = new Date(`${startDate}T00:00:00+07:00`);
     const end = new Date(`${endDate}T23:59:59.999+07:00`);
@@ -299,9 +330,100 @@ export async function getSubscriptionLogs(startDate?: string, endDate?: string, 
 }
 
 /**
- * §6: Báo cáo chuyên cần theo (member × class) cho Manager review trước khi áp dụng hình phạt.
- * Cửa sổ tính cố định: tối đa 10 buổi đã kết thúc gần nhất (không dùng date range).
- * status: OK | WARN | RELEASE; kèm penalty đang hiệu lực (nếu có).
+ * Phase 3 — origin-vs-usage: "Member mua gói ở A đang dùng ở đâu?"
+ * - originFacility = MembershipSubscription.facilityId (nơi phát hành gói).
+ * - usageFacility = Class.facilityId của Enrollment / Facility.facilityId của Visit.
+ * - Không đổi model subscription, không tạo bảng usage mới: dùng Enrollment +
+ *   FacilityVisit hiện có. Báo cáo doanh thu hiện hữu KHÔNG bị sửa.
+ */
+export async function getCrossFacilityUsageReport(startDate: string, endDate: string) {
+  const start = new Date(`${startDate}T00:00:00+07:00`);
+  const end = new Date(`${endDate}T23:59:59.999+07:00`);
+  const originFacilityId = requestContext.getStore()?.facilityId;
+  if (!originFacilityId) throw new AppError("FACILITY_CONTEXT_REQUIRED", 400);
+
+  const [enrollmentRows, visitRows, facilities] = await Promise.all([
+    requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, () =>
+      prisma.enrollment.findMany({
+        where: {
+          bookedAt: { gte: start, lte: end },
+          status: { in: ["BOOKED", "COMPLETED"] },
+          member: { subscriptions: { some: { facilityId: originFacilityId } } },
+        },
+        select: {
+          memberId: true,
+          schedule: { select: { class: { select: { facilityId: true } } } },
+        },
+      }),
+    ),
+    requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, () =>
+      prisma.facilityVisit.findMany({
+        where: {
+          checkInAt: { gte: start, lte: end },
+          member: { subscriptions: { some: { facilityId: originFacilityId } } },
+        },
+        select: { memberId: true, facilityId: true },
+      }),
+    ),
+    prisma.facility.findMany({ select: { id: true, name: true, code: true } }),
+  ]);
+
+  const facilityMap = Object.fromEntries(facilities.map((f) => [f.id, f]));
+  const buckets = new Map<string, { bookings: number; visits: number; members: Set<string> }>();
+  const touch = (usageFacilityId: string) => {
+    let bucket = buckets.get(usageFacilityId);
+    if (!bucket) {
+      bucket = { bookings: 0, visits: 0, members: new Set<string>() };
+      buckets.set(usageFacilityId, bucket);
+    }
+    return bucket;
+  };
+
+  for (const row of enrollmentRows) {
+    const bucket = touch(row.schedule.class.facilityId);
+    bucket.bookings += 1;
+    bucket.members.add(row.memberId);
+  }
+  for (const row of visitRows) {
+    const bucket = touch(row.facilityId);
+    bucket.visits += 1;
+    bucket.members.add(row.memberId);
+  }
+
+  const usage = [...buckets.entries()]
+    .map(([usageFacilityId, bucket]) => ({
+      usageFacilityId,
+      usageFacilityName: facilityMap[usageFacilityId]?.name ?? usageFacilityId,
+      usageFacilityCode: facilityMap[usageFacilityId]?.code ?? null,
+      bookings: bucket.bookings,
+      visits: bucket.visits,
+      uniqueMembers: bucket.members.size,
+    }))
+    .sort((a, b) => b.bookings + b.visits - (a.bookings + a.visits));
+
+  const allMembers = new Set<string>();
+  for (const bucket of buckets.values()) for (const m of bucket.members) allMembers.add(m);
+
+  return {
+    originFacilityId,
+    originFacilityName: facilityMap[originFacilityId]?.name ?? originFacilityId,
+    originFacilityCode: facilityMap[originFacilityId]?.code ?? null,
+    startDate,
+    endDate,
+    totalBookings: enrollmentRows.length,
+    totalVisits: visitRows.length,
+    totalUniqueMembers: allMembers.size,
+    usage,
+  };
+}
+
+/**
+ * §6: Báo cáo chuyên cần theo (member × class) cho Manager review.
+ * FINAL:
+ * - FIXED (có totalPlannedSessions): allowance = floor(total × 20%);
+ *   < allowance NORMAL; == allowance NOTICE; > allowance WARNING.
+ * - RECURRING: fallback rolling, >= 80% NORMAL; 70–<80% NOTICE; < 70% WARNING.
+ * - Advisory only + penalty thủ công riêng; sort WARNING vượt allowance trước.
  */
 export async function getAttendanceReport(query: {
   status?: string;
@@ -343,17 +465,22 @@ export async function getAttendanceReport(query: {
 
   const summary = {
     total: rows.length,
-    ok: rows.filter((r) => r.status === "OK").length,
-    warn: rows.filter((r) => r.status === "WARN").length,
-    release: rows.filter((r) => r.status === "RELEASE").length,
+    normal: rows.filter((r) => r.status === "NORMAL").length,
+    notice: rows.filter((r) => r.status === "NOTICE").length,
+    warning: rows.filter((r) => r.status === "WARNING").length,
   };
 
   if (query.status) rows = rows.filter((r) => r.status === query.status);
   if (query.classId) rows = rows.filter((r) => r.classId === query.classId);
   if (query.memberId) rows = rows.filter((r) => r.memberId === query.memberId);
 
-  // Ưu tiên rủi ro cao trước: rate thấp nhất, rồi tới mẫu lớn hơn.
-  rows.sort((a, b) => a.attendanceRate - b.attendanceRate || b.sampleSize - a.sampleSize);
+  // Ưu tiên rủi ro cao trước: FIXED vượt allowance nhiều nhất, rồi tới rate thấp nhất.
+  rows.sort(
+    (a, b) =>
+      (b.currentAbsences - b.allowedAbsences) - (a.currentAbsences - a.allowedAbsences) ||
+      a.attendanceRate - b.attendanceRate ||
+      b.sampleSize - a.sampleSize,
+  );
 
   const page = Math.max(1, parseInt(query.page ?? "1") || 1);
   const limit = Math.min(100, Math.max(1, parseInt(query.limit ?? "20") || 20));

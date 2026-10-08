@@ -1252,9 +1252,9 @@
     "path": "/reports/attendance",
     "roles": "MANAGER, ADMIN",
     "consumers": [],
-    "backend": "BE/src/modules/reports/reports.routes.ts:191",
+    "backend": "BE/src/modules/reports/reports.routes.ts:204",
     "handler": "reportsController.getAttendanceReport",
-    "status": "MATCH",
+    "status": "MISMATCH",
     "request": null,
     "query": [
       {
@@ -1263,9 +1263,9 @@
         "schema": {
           "type": "string",
           "enum": [
-            "OK",
-            "WARN",
-            "RELEASE"
+            "NORMAL",
+            "NOTICE",
+            "WARNING"
           ]
         }
       },

@@ -4,7 +4,8 @@ const list = (items: any) => ({ type: "array", items });
 const object = (properties: any, required = Object.keys(properties)) => ({
   type: "object",
   properties,
-  required,
+  // OpenAPI cấm `required: []` (phải ≥1 phần tử) — bỏ hẳn khi rỗng.
+  ...(required.length ? { required } : {}),
 });
 const enumOf = (...values: string[]) => ({ type: "string", enum: values });
 const time = { type: "string", format: "date-time" };

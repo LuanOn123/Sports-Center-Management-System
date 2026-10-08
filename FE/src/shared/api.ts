@@ -140,6 +140,15 @@ async function transport(
       terminalSessionError(String(payload.message || "")),
       rawErrors,
     );
+    // MF-10: cơ sở đang chọn đã bị tắt / cache stale → báo FacilityBoundary refetch danh sách
+    // cơ sở để tự chọn cơ sở active, thay vì để người dùng kẹt ở lỗi 403 FORBIDDEN_SCOPE.
+    if (
+      res.status === 403 &&
+      String(payload.message || "").includes("FORBIDDEN_SCOPE") &&
+      typeof window !== "undefined"
+    ) {
+      window.dispatchEvent(new CustomEvent("facility-scope-invalid"));
+    }
     throw error;
   }
   return payload;

@@ -9,6 +9,23 @@ export const CreateClassSchema = z.object({
   capacity: z.number().int().positive().max(200),
   classType: z.enum(["REGULAR", "PREMIUM"]).default("REGULAR"),
   areaType: AreaTypeEnum,
+  attendancePolicy: z.enum(["FIXED", "RECURRING"]).default("RECURRING"),
+  plannedSessionCount: z.number().int().positive().max(1000).optional(),
+}).superRefine((data, ctx) => {
+  if (data.attendancePolicy === "FIXED" && data.plannedSessionCount == null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["plannedSessionCount"],
+      message: "FIXED class requires plannedSessionCount",
+    });
+  }
+  if (data.attendancePolicy === "RECURRING" && data.plannedSessionCount != null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["plannedSessionCount"],
+      message: "RECURRING class must not set plannedSessionCount",
+    });
+  }
 });
 
 export const UpdateClassSchema = z.object({
@@ -19,6 +36,16 @@ export const UpdateClassSchema = z.object({
   classType: z.enum(["REGULAR", "PREMIUM"]).optional(),
   areaType: AreaTypeEnum.optional(),
   isActive: z.boolean().optional(),
+  attendancePolicy: z.enum(["FIXED", "RECURRING"]).optional(),
+  plannedSessionCount: z.number().int().positive().max(1000).optional(),
+}).superRefine((data, ctx) => {
+  if (data.attendancePolicy === "FIXED" && data.plannedSessionCount == null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["plannedSessionCount"],
+      message: "FIXED class requires plannedSessionCount",
+    });
+  }
 });
 
 export const AssignCoachSchema = z.object({
@@ -41,4 +68,5 @@ export const ClassQuerySchema = z.object({
   areaType: AreaTypeEnum.optional(),
   isActive: z.string().optional(),
   coachId: z.string().optional(),
+  attendancePolicy: z.enum(["FIXED", "RECURRING"]).optional(),
 });

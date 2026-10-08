@@ -2,9 +2,12 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import {
   ATTENDANCE,
+  absenceAllowance,
   classifyAttendance,
+  classifyFixedAbsence,
   isSystemNoShow,
   type AttendanceBucketStatus,
+  type AttendancePolicyKind,
 } from "../../config/attendance.js";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
@@ -15,7 +18,8 @@ export type MembershipCoverageInterval = { from: Date; to: Date };
 /**
  * A10 — Dựng khoảng quyền lợi từ danh sách subscription (mọi trạng thái):
  * - to = min(endDate, cancelledAt) — hủy sớm thì quyền lợi dừng ở mốc hủy.
- * - Gói đang SUSPENDED: to = min(to, suspendedAt) — giai đoạn bảo lưu KHÔNG tính.
+ * - FINAL: gói SUSPENDED = gói cũ bị thay thế tại suspendedAt — quyền lợi dừng ở
+ *   mốc thay thế, KHÔNG phải bảo lưu/freeze (Freeze đã loại khỏi scope).
  * Trạng thái hiện tại không bao giờ xóa lịch sử đã học trước đó.
  */
 export function buildCoverageIntervals(
@@ -78,23 +82,38 @@ export type AttendanceBucket = {
   excusedCount: number;
   attendanceRate: number;
   status: AttendanceBucketStatus;
+  /** FIXED: lớp có tổng số buổi kế hoạch hữu hạn; RECURRING: fallback rolling. */
+  policy: AttendancePolicyKind;
+  /** FIXED: tổng số buổi kế hoạch của Class (mọi trạng thái, trừ CANCELLED của trung tâm). */
+  totalPlannedSessions: number | null;
+  /** FIXED: số buổi đã chốt kết quả (đã kết thúc + trong coverage). */
+  completedSessions: number;
+  /** FIXED: ABSENT + NO_SHOW đã chốt (EXCUSED/cancelled/tương lai/chưa chốt loại). */
+  currentAbsences: number;
+  /** FIXED: floor(total × 20%). */
+  allowedAbsences: number;
+  /** FIXED: max(allowed − current, 0); WARNING → 0. */
+  remainingAbsences: number;
 };
 
 /**
  * Chỉ số chuyên cần theo (memberId × classId) — KHÔNG theo schedule.
  * Nhờ vậy member đổi buổi trong cùng Class (transfer) không reset lịch sử.
  *
- * Mẫu = tối đa ATTENDANCE.SAMPLE_WINDOW schedule ĐÃ KẾT THÚC gần nhất mà member thực sự giữ chỗ
- * (Enrollment BOOKED/COMPLETED), loại trừ:
+ * Hai chính sách (phân biệt bằng snapshot Class, KHÔNG suy từ COUNT schedule):
+ * - FIXED: Class.attendancePolicy = "FIXED" VÀ plannedSessionCount > 0.
+ *   allowance = floor(plannedSessionCount × 20%); currentAbsences = ABSENT + NO_SHOW đã chốt;
+ *   < allowance -> NORMAL; == allowance -> NOTICE; > allowance -> WARNING.
+ *   Đánh giá sớm sau mỗi buổi chốt, KHÔNG chờ học hết khóa, KHÔNG yêu cầu mẫu 5.
+ *   Thêm schedule sau này KHÔNG làm tăng plannedSessionCount.
+ * - RECURRING: mọi trường hợp còn lại — fallback rolling tối đa SAMPLE_WINDOW buổi gần nhất.
+ *
+ * Loại trừ chung (cả hai chính sách):
  * - schedule CANCELLED (trung tâm hủy)
- * - schedule chưa kết thúc
+ * - schedule chưa kết thúc / chưa chốt kết quả
  * - schedule nằm NGOÀI khoảng quyền lợi thực tế của member (A10).
  *
- * A10 — quyền lợi tính theo LỊCH SỬ, không theo trạng thái hiện tại của gói:
- * - Mọi subscription đều đóng góp khoảng [startDate, min(endDate, cancelledAt)] — gói đã hủy/hết hạn
- *   vẫn giữ nguyên lịch sử trước đó; đổi status hôm nay KHÔNG làm thay đổi tỷ lệ của các buổi đã học.
- * - Gói đang SUSPENDED: khoảng dừng tại `suspendedAt` (giai đoạn bảo lưu không tính chuyên cần;
- *   các buổi TRƯỚC lúc bảo lưu vẫn được tính).
+ * A10 — quyền lợi tính theo LỊCH SỬ, không theo trạng thái hiện tại của gói.
  *
  * rate = (PRESENT + LATE) / (PRESENT + LATE + ABSENT + NO_SHOW); EXCUSED không vào tử/mẫu.
  * ABSENT do hệ thống tự tạo (note = SYSTEM_NO_SHOW) được đếm riêng là noShow.
@@ -121,7 +140,29 @@ export async function computeAttendanceBuckets(
   });
   if (enrollments.length === 0) return [];
 
-  // Gom theo (member × class), giữ tối đa SAMPLE_WINDOW buổi gần nhất.
+  // FINAL: đọc snapshot Class.attendancePolicy/plannedSessionCount.
+  // FIXED = policy FIXED và plannedSessionCount > 0 (con số cố định, không COUNT schedule).
+  // Thêm schedule sau này KHÔNG làm tăng snapshot → allowance không tự đổi ngược.
+  const classIdsForPolicy = [...new Set(enrollments.map((e) => e.classId))];
+  const policyRows = await db.class.findMany({
+    where: { id: { in: classIdsForPolicy } },
+    select: { id: true, attendancePolicy: true, plannedSessionCount: true },
+  });
+  const policyByClass = new Map(
+    policyRows.map((c) => [
+      c.id,
+      {
+        isFixed:
+          c.attendancePolicy === "FIXED" &&
+          typeof c.plannedSessionCount === "number" &&
+          c.plannedSessionCount > 0,
+        total: c.plannedSessionCount ?? 0,
+      },
+    ]),
+  );
+
+  // Gom theo (member × class). RECURRING giữ tối đa SAMPLE_WINDOW buổi gần nhất;
+  // FIXED giữ TOÀN BỘ buổi đã chốt trong coverage (không cắt rolling).
   const grouped = new Map<
     string,
     { memberId: string; classId: string; schedules: { id: string; startTime: Date }[] }
@@ -129,7 +170,10 @@ export async function computeAttendanceBuckets(
   for (const e of enrollments) {
     const key = `${e.memberId}|${e.classId}`;
     const entry = grouped.get(key) ?? { memberId: e.memberId, classId: e.classId, schedules: [] };
-    if (entry.schedules.length < ATTENDANCE.SAMPLE_WINDOW) entry.schedules.push(e.schedule);
+    const isFixed = policyByClass.get(e.classId)?.isFixed ?? false;
+    // FIXED: giữ toàn bộ để currentAbsences phản ánh cả khóa.
+    // RECURRING: fallback rolling 10.
+    if (isFixed || entry.schedules.length < ATTENDANCE.SAMPLE_WINDOW) entry.schedules.push(e.schedule);
     grouped.set(key, entry);
   }
 
@@ -201,6 +245,17 @@ export async function computeAttendanceBuckets(
     const attendanceRate =
       sampleSize === 0 ? 100 : Math.round(((presentCount + lateCount) / sampleSize) * 1000) / 10;
 
+    // FINAL: tổng kế hoạch là snapshot Class.plannedSessionCount (không COUNT schedule).
+    // completedSessions = số buổi đã chốt kết quả trong coverage (tử + mẫu + EXCUSED).
+    // currentAbsences = ABSENT + NO_SHOW đã chốt; allowance = floor(snapshot × 20%).
+    const policy = policyByClass.get(entry.classId);
+    const totalPlanned = policy?.total ?? 0;
+    const completedSessions = sampleSize + excusedCount;
+    const currentAbsences = absentCount + noShowCount;
+    const isFixed = policy?.isFixed ?? false;
+    const allowedAbsences = isFixed ? absenceAllowance(totalPlanned) : 0;
+    const remainingAbsences = isFixed ? Math.max(allowedAbsences - currentAbsences, 0) : 0;
+
     buckets.push({
       memberId: entry.memberId,
       memberName: memberMap.get(entry.memberId)?.user.fullName ?? "Hội viên",
@@ -214,15 +269,31 @@ export async function computeAttendanceBuckets(
       noShowCount,
       excusedCount,
       attendanceRate,
-      status: classifyAttendance(attendanceRate, sampleSize),
+      status: isFixed
+        ? classifyFixedAbsence(currentAbsences, allowedAbsences)
+        : classifyAttendance(attendanceRate, sampleSize),
+      policy: isFixed ? "FIXED" : "RECURRING",
+      totalPlannedSessions: isFixed ? totalPlanned : null,
+      completedSessions,
+      currentAbsences,
+      allowedAbsences,
+      remainingAbsences,
     });
   }
 
   return buckets;
 }
 
-/** Câu giải thích đủ rõ cho Manager hiểu vì sao hệ thống đề xuất hình phạt. */
+/** Câu giải thích cho Manager: FIXED nêu allowance, RECURRING nêu ngưỡng rolling. */
 export function buildPenaltyReason(bucket: AttendanceBucket): string {
+  if (bucket.policy === "FIXED" && bucket.totalPlannedSessions != null) {
+    return (
+      `Chuyên cần ${bucket.attendanceRate}% (khóa ${bucket.totalPlannedSessions} buổi: ` +
+      `${bucket.presentCount} có mặt, ${bucket.lateCount} đi muộn, ${bucket.absentCount} vắng, ` +
+      `${bucket.noShowCount} không điểm danh; đã vắng ${bucket.currentAbsences}/${bucket.allowedAbsences} buổi cho phép). ` +
+      `Hãy review thủ công trước khi phạt.`
+    );
+  }
   return (
     `Chuyên cần ${bucket.attendanceRate}% (${bucket.sampleSize} buổi được tính: ` +
     `${bucket.presentCount} có mặt, ${bucket.lateCount} đi muộn, ${bucket.absentCount} vắng, ` +

@@ -32,6 +32,8 @@ import notificationRoutes from "./modules/notifications/notifications.routes.js"
 import feedbackRoutes from "./modules/feedbacks/feedbacks.routes.js";
 import aiRoutes from "./modules/ai/ai.routes.js";
 import facilityRoutes from "./modules/facilities/facilities.route.js";
+import facilityVisitRoutes from "./modules/facility-visits/facility-visits.routes.js";
+import waitlistRoutes from "./modules/waitlist/waitlist.routes.js";
 
 const app = express();
 
@@ -112,6 +114,8 @@ app.use(v1, (req, res, next) => {
       "membership-plans",
       "sports",
       "subjects",
+      "facility-visits",
+      "waitlist",
     ].includes(root) ||
     req.path === "/payments/sepay/webhook"
   )
@@ -141,6 +145,8 @@ app.use(`${v1}/notifications`, notificationRoutes);
 app.use(`${v1}/feedbacks`, feedbackRoutes);
 app.use(`${v1}/ai`, aiRoutes);
 app.use(`${v1}/facilities`, facilityRoutes);
+app.use(`${v1}/facility-visits`, facilityVisitRoutes);
+app.use(`${v1}/waitlist`, waitlistRoutes);
 
 app.use(v1, operationsRoutes);
 

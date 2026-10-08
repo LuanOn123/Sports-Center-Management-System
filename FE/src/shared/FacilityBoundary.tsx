@@ -30,6 +30,9 @@ const FacilityContext = createContext<{
 export function FacilityPicker() {
   const context = useContext(FacilityContext);
   if (!context) return null;
+  // MF-11: nhãn "Cơ sở đang làm việc" nghĩa là cơ sở ĐANG thao tác/tập HIỆN TẠI —
+  // KHÔNG phải cơ sở "sở hữu" gói (Membership là global). Giữ nguyên aria-label để
+  // không làm hỏng các browser test đang tham chiếu nó.
   return (
     <label className="facility-switch">
       Cơ sở
@@ -73,6 +76,16 @@ export function FacilityBoundary({
     queryFn: ({ signal }) => api<Facility[]>("GET /facilities", { signal }),
   });
   const valid = q.data?.data.some((f) => f.id === selected);
+  const refetchFacilities = q.refetch;
+  // MF-10: nhận tín hiệu 403 FORBIDDEN_SCOPE từ api.ts → refetch danh sách cơ sở NGAY;
+  // effect bên dưới sẽ tự chọn cơ sở active đầu tiên khi `valid` thành false.
+  useEffect(() => {
+    const onInvalid = () => {
+      void refetchFacilities();
+    };
+    window.addEventListener("facility-scope-invalid", onInvalid);
+    return () => window.removeEventListener("facility-scope-invalid", onInvalid);
+  }, [refetchFacilities]);
   useEffect(() => {
     if (q.data && !valid) {
       const first = q.data.data[0]?.id || "";

@@ -50,6 +50,13 @@ const EXPIRED_CODE = runCode("E");
 
 let baseUrl = "";
 
+/**
+ * Fixture facility: Room/Class mặc định `facilityId = legacy-main` (schema test cô lập chạy
+ * `db push` nên không có data seed) → toàn bộ HTTP đi qua `checkFacilityScope` phải mang
+ * đúng context này (header X-Facility-Id) mới không bị 400 FACILITY_CONTEXT_REQUIRED.
+ */
+const FACILITY_ID = "legacy-main";
+
 type HttpResult = { status: number; body: any };
 
 async function http(
@@ -61,6 +68,7 @@ async function http(
     method,
     headers: {
       "Content-Type": "application/json",
+      "X-Facility-Id": FACILITY_ID,
       ...(opts.token ? { Authorization: `Bearer ${opts.token}` } : {}),
     },
     body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
@@ -121,7 +129,7 @@ type FixtureUser = {
 };
 
 async function createUser(
-  role: "MEMBER" | "COACH" | "RECEPTIONIST" | "MANAGER",
+  role: "MEMBER" | "COACH" | "RECEPTIONIST" | "MANAGER" | "ADMIN",
   tag: string,
   hashedPassword: string
 ): Promise<FixtureUser> {
@@ -130,6 +138,13 @@ async function createUser(
   created.userIds.push(user.id);
   const memberProfileId = user.memberProfile?.id ?? "";
   if (memberProfileId) created.memberProfileIds.push(memberProfileId);
+  // Staff (MANAGER/COACH/RECEPTIONIST) phải được phân công vào facility fixture —
+  // checkFacilityScope trả 403 FORBIDDEN_SCOPE nếu thiếu (MEMBER/ADMIN bypass).
+  if (role !== "MEMBER") {
+    await prisma.facilityStaff.create({
+      data: { userId: user.id, facilityId: FACILITY_ID, role: role as any },
+    });
+  }
 
   const login = await http("POST", "/auth/login", { body: { email, password: PASSWORD } });
   const token = login.body?.data?.accessToken as string | undefined;
@@ -148,6 +163,13 @@ async function createUser(
 let roomId = "";
 
 async function setupRoom(): Promise<void> {
+  // db push (schema test cô lập) KHÔNG chạy data migration → seed row legacy-main chưa tồn tại.
+  // Same approach as policy-a-membership.integration.ts.
+  await prisma.facility.upsert({
+    where: { id: "legacy-main" },
+    update: {},
+    create: { id: "legacy-main", code: "legacy-main", name: "Legacy Main", address: "Seed" },
+  });
   const room = await prisma.room.create({
     data: { name: `E2E Attendance Room ${RUN}`, capacity: 50, areaType: "INDOOR", location: "E2E" },
   });
@@ -163,9 +185,15 @@ async function setupRoom(): Promise<void> {
 const FUTURE_BASE = new Date(Date.now() + 60 * 1000);
 let slotCursor = 0;
 
+/**
+ * Slot dài 4 phút, cách nhau 5 phút → các buổi KHÔNG chồng nhau.
+ * Prisma middleware re-validate xung đột Room/Coach của Class khi PATCH facility-scoped;
+ * slot 1 giờ cách nhau 5 phút sẽ làm chính class fixture tự conflict (409) ở A11.
+ * Vẫn nằm trong cửa sổ điểm danh [start − 30', end + 30'] tại thời điểm chạy suite.
+ */
 function nextSlot(): { start: Date; end: Date } {
   const start = new Date(FUTURE_BASE.getTime() + slotCursor++ * 5 * 60 * 1000);
-  return { start, end: new Date(start.getTime() + HOUR) };
+  return { start, end: new Date(start.getTime() + 4 * 60 * 1000) };
 }
 
 async function createClass(
@@ -248,7 +276,10 @@ async function failureCount(memberProfileId: string): Promise<number> {
 
 type Ctx = {
   manager: FixtureUser;
+  admin: FixtureUser;
   coach: FixtureUser;
+  /** HLV PHỤ (không phụ trách classA) — gán cho clsD để dời lịch không dính conflict của classA. */
+  coach2: FixtureUser;
   staff: FixtureUser;
   planId: string;
   classA: { classId: string; scheduleIds: string[] };
@@ -600,28 +631,16 @@ function containsKeyDeep(value: unknown, keys: string[]): boolean {
 /**
  * 7) Privacy & scope (regression P0):
  * - GET /attendance không được trả password/hash của user trong bất kỳ nested object nào.
- * - MEMBER chỉ đọc được training plan của chính mình (đổi memberId → 403).
- * - COACH chỉ thấy plan do mình phụ trách + chỉ xem enrollment của lớp mình dạy.
- * - MANAGER/RECEPTIONIST giữ nguyên quyền xem.
+ * - COACH chỉ xem enrollment của lớp mình dạy; MANAGER/RECEPTIONIST giữ nguyên quyền xem.
+ * - (Lưu ý: check đọc chéo `/training-plans` đã gỡ — BE đã xoá module TrainingPlan
+ *   và route /training-plans, FE contract test cũng assert không còn endpoint này.)
  */
 async function scenarioPrivacyAndScope(
   ctx: Ctx,
   member: FixtureUser,
   otherMember: FixtureUser
 ): Promise<void> {
-  section("7) Privacy & scope: không lộ password; member/coach chỉ thấy dữ liệu của mình");
-
-  const planId = `plan-e2e-privacy-${RUN}`;
-  await prisma.trainingPlan.create({
-    data: {
-      id: planId,
-      memberId: member.memberProfileId,
-      coachId: ctx.coach.coachProfileId,
-      name: `E2E Privacy Plan ${RUN}`,
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 30 * DAY),
-    },
-  });
+  section("7) Privacy & scope: không lộ password; coach/staff scope theo lớp");
 
   const sA1 = ctx.classA.scheduleIds[0];
   const sB1 = ctx.classB.scheduleIds[0];
@@ -638,61 +657,6 @@ async function scenarioPrivacyAndScope(
     "MANAGER GET /attendance → 200, không lộ password/hash",
     managerRoster.status === 200 && !containsKeyDeep(managerRoster.body, SECRET_KEYS),
     { status: managerRoster.status, leak: containsKeyDeep(managerRoster.body, SECRET_KEYS) }
-  );
-
-  const memberCross = await http(
-    "GET",
-    `/training-plans?memberId=${otherMember.memberProfileId}`,
-    { token: member.token }
-  );
-  check("MEMBER đổi memberId sang người khác → 403", memberCross.status === 403, memberCross.body);
-
-  const memberOwn = await http("GET", "/training-plans", { token: member.token });
-  const ownPlans: any[] = memberOwn.body?.data ?? [];
-  check(
-    "MEMBER GET /training-plans (không query) chỉ trả plan của chính mình, không lộ password",
-    memberOwn.status === 200 &&
-      ownPlans.length >= 1 &&
-      ownPlans.every((p) => p.memberId === member.memberProfileId) &&
-      !containsKeyDeep(memberOwn.body, SECRET_KEYS),
-    { status: memberOwn.status, count: ownPlans.length, leak: containsKeyDeep(memberOwn.body, SECRET_KEYS) }
-  );
-
-  const memberOwnQuery = await http(
-    "GET",
-    `/training-plans?memberId=${member.memberProfileId}`,
-    { token: member.token }
-  );
-  check(
-    "MEMBER truyền đúng memberId của mình → 200",
-    memberOwnQuery.status === 200 &&
-      (memberOwnQuery.body?.data ?? []).every((p: any) => p.memberId === member.memberProfileId),
-    memberOwnQuery.body
-  );
-
-  const coachPlans = await http("GET", "/training-plans", { token: ctx.coach.token });
-  const coachPlanRows: any[] = coachPlans.body?.data ?? [];
-  check(
-    "COACH GET /training-plans chỉ trả plan do mình phụ trách, không lộ password",
-    coachPlans.status === 200 &&
-      coachPlanRows.length >= 1 &&
-      coachPlanRows.every((p) => p.coachId === ctx.coach.coachProfileId) &&
-      !containsKeyDeep(coachPlans.body, SECRET_KEYS),
-    { status: coachPlans.status, count: coachPlanRows.length, leak: containsKeyDeep(coachPlans.body, SECRET_KEYS) }
-  );
-
-  const managerPlans = await http(
-    "GET",
-    `/training-plans?memberId=${member.memberProfileId}`,
-    { token: ctx.manager.token }
-  );
-  const managerRows: any[] = managerPlans.body?.data ?? [];
-  check(
-    "MANAGER GET /training-plans vẫn thấy plan của member, không lộ password",
-    managerPlans.status === 200 &&
-      managerRows.some((p) => p.id === planId) &&
-      !containsKeyDeep(managerPlans.body, SECRET_KEYS),
-    { status: managerPlans.status, hasPlan: managerRows.some((p) => p.id === planId) }
   );
 
   const coachOtherEnrollments = await http("GET", `/enrollments/schedule/${sB1}`, {
@@ -812,7 +776,7 @@ async function scenarioHistoricalEntitlementAndScheduleGuards(
     });
   }
 
-  const historyPlan = await createPlan(ctx.manager.token, {
+  const historyPlan = await createPlan(ctx.admin.token, {
     name: `E2E Attendance History Plan ${RUN}`,
     price: 100000,
     durationDays: 30,
@@ -851,14 +815,14 @@ async function scenarioHistoricalEntitlementAndScheduleGuards(
     { status: expire.status, bucket: afterExpire }
   );
 
-  // Bảo lưu: quyền lợi dừng tại thời điểm suspend ⇒ chỉ các buổi TRƯỚC mốc đó còn được tính.
+  // SUSPENDED = gói cũ bị thay thế: quyền lợi dừng tại mốc thay thế ⇒ chỉ các buổi TRƯỚC mốc đó còn được tính.
   await prisma.membershipSubscription.update({
     where: { id: historySubId },
     data: { status: "SUSPENDED", suspendedAt: new Date(Date.now() - 5.5 * HOUR) },
   });
   const afterSuspend = await bucketOf(historyMember.token);
   check(
-    "A10: gói SUSPENDED (freeze từ -5.5h) → buổi trong giai đoạn bảo lưu bị loại, lịch sử cũ giữ nguyên",
+    "A10: gói SUSPENDED (thay thế từ -5.5h) → buổi sau mốc thay thế bị loại, lịch sử cũ giữ nguyên",
     afterSuspend?.sampleSize === 4 && afterSuspend?.attendanceRate === 0,
     afterSuspend
   );
@@ -906,7 +870,14 @@ async function scenarioHistoricalEntitlementAndScheduleGuards(
   });
   created.roomIds.push(room2.id);
   const clsD = await prisma.class.create({
-    data: { name: `E2E Attendance Move ${RUN}`, areaType: "INDOOR", capacity: 20 },
+    data: {
+      name: `E2E Attendance Move ${RUN}`,
+      areaType: "INDOOR",
+      capacity: 20,
+      // Class cần ít nhất 1 HLV — validateResources trả COACH_REQUIRED trước khi
+      // assertScheduleMoveKeepsBookingsValid kiểm tra chỗ đã giữ (SCHEDULE_MOVE_IMPACT).
+      coaches: { create: [{ coachId: ctx.coach2.coachProfileId, isPrimary: true }] },
+    },
   });
   created.classIds.push(clsD.id);
   const d1 = await prisma.classSchedule.create({
@@ -1008,6 +979,13 @@ async function cleanup(): Promise<void> {
   }
 
 async function main(): Promise<void> {
+  // SAFETY: E2E này TẠO dữ liệu qua HTTP + Prisma — chỉ được chạy trên schema test cô lập.
+  const guardSchema = new URL(process.env.DATABASE_URL!).searchParams.get("schema") ?? "";
+  if (!guardSchema.startsWith("scms_verify_")) {
+    throw new Error(
+      `SAFETY GUARD: DATABASE_URL schema "${guardSchema || "(default)"}" is not scms_verify_* — refusing to run write-capable E2E against a business/production database.`,
+    );
+  }
   await connectTestMongo();
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));
@@ -1018,16 +996,25 @@ async function main(): Promise<void> {
   const hashed = await hashPassword(PASSWORD);
   try {
     await setupRoom();
+    // POST /membership-plans là authorize("ADMIN") — manager fixture chỉ dùng cho các
+    // endpoint MANAGER/RECEPTIONIST (subscribe, PATCH schedule/class/room...).
+    const admin = await createUser("ADMIN", "admin", hashed);
     const manager = await createUser("MANAGER", "manager", hashed);
     const coach = await createUser("COACH", "coach", hashed);
+    const coach2 = await createUser("COACH", "coach2", hashed);
     const staff = await createUser("RECEPTIONIST", "staff", hashed);
     const members: FixtureUser[] = [];
     for (let i = 1; i <= 6; i++) members.push(await createUser("MEMBER", `member${i}`, hashed));
+    // MF-08: login tự phục hồi gói FREE → member6 (fixture "KHÔNG có gói") đã bị cấp FREE.
+    // Xoá để chốt chặn 2 của scanQr (subscription ACTIVE tại thời điểm điểm danh) kiểm tra thật.
+    await prisma.membershipSubscription.deleteMany({
+      where: { memberId: members[5].memberProfileId },
+    });
 
     const classA = await createClass("A", 4, { coachProfileId: coach.coachProfileId });
     const classB = await createClass("B", 1);
 
-    const plan = await createPlan(manager.token, {
+    const plan = await createPlan(admin.token, {
       name: `E2E Attendance Plan ${RUN}`,
       price: 300000,
       durationDays: 30,
@@ -1046,7 +1033,7 @@ async function main(): Promise<void> {
     await enroll(members[4].memberProfileId, classA.classId, classA.scheduleIds[0]);
     await enroll(members[5].memberProfileId, classA.classId, classA.scheduleIds[3]);
 
-    const ctx: Ctx = { manager, coach, staff, planId: plan.id, classA, classB };
+    const ctx: Ctx = { manager, admin, coach, coach2, staff, planId: plan.id, classA, classB };
 
     await scenarioQrRegression(ctx, members[0]);
     await scenarioManualCode(ctx, members[1]);

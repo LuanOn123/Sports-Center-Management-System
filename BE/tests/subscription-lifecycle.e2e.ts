@@ -27,6 +27,13 @@ const DAY = 24 * 60 * 60 * 1000;
 
 let baseUrl = "";
 
+/**
+ * Fixture facility: Subscription/Payment mặc định `facilityId = legacy-main` (schema test cô
+ * lập chạy `db push` nên không có data seed) → mọi HTTP qua `checkFacilityScope` phải mang
+ * đúng context này (header X-Facility-Id) mới không bị 400 FACILITY_CONTEXT_REQUIRED.
+ */
+const FACILITY_ID = "legacy-main";
+
 type HttpResult = { status: number; body: any; text: string };
 
 async function http(
@@ -37,6 +44,7 @@ async function http(
   const res = await fetch(`${baseUrl}/api/v1${urlPath}`, {
     method,
     headers: {
+      "X-Facility-Id": FACILITY_ID,
       ...(opts.token ? { Authorization: `Bearer ${opts.token}` } : {}),
       ...(opts.body === undefined ? {} : { "Content-Type": "application/json" }),
     },
@@ -93,7 +101,7 @@ const created = {
 type FixtureUser = { id: string; email: string; token: string };
 
 async function createUser(
-  role: "MEMBER" | "MANAGER",
+  role: "MEMBER" | "MANAGER" | "ADMIN",
   tag: string,
   hashedPassword: string
 ): Promise<FixtureUser> {
@@ -101,6 +109,13 @@ async function createUser(
   const user = await createIdentity({ email, password: hashedPassword, fullName: `E2E Life ${tag} ${RUN}`, role });
   created.userIds.push(user.id);
   if (user.memberProfile) created.memberProfileIds.push(user.memberProfile.id);
+  // Staff (MANAGER) phải được phân công vào facility fixture —
+  // checkFacilityScope trả 403 FORBIDDEN_SCOPE nếu thiếu (MEMBER/ADMIN bypass).
+  if (role !== "MEMBER") {
+    await prisma.facilityStaff.create({
+      data: { userId: user.id, facilityId: FACILITY_ID, role: role as any },
+    });
+  }
   const login = await http("POST", "/auth/login", { body: { email, password: PASSWORD } });
   const token = login.body?.data?.accessToken as string | undefined;
   if (login.status !== 200 || !token) {
@@ -301,6 +316,10 @@ async function scenarioRevenueReport(manager: FixtureUser) {
       status: "REFUNDED",
       paidAt: new Date(),
       createdAt: new Date(),
+      // C11: refund được tính theo refundedAt/refundedAmount (flow thật set 2 field này
+      // khi chuyển status → REFUNDED — payments.service.ts).
+      refundedAmount: 200000,
+      refundedAt: new Date(),
       note: `E2E C11 refunded ${RUN}`,
     },
   });
@@ -308,24 +327,26 @@ async function scenarioRevenueReport(manager: FixtureUser) {
   const after = await report();
   const delta = (key: string) => Number(after[key] ?? 0) - Number(before[key] ?? 0);
 
+  // C11: gross = tiền THỰC THU theo paidAt — gồm payment SUCCESS lẫn REFUNDED (tiền đã thu
+  // trước khi hoàn); refund tách theo refundedAt; net = gross − refunded.
   check(
-    "C11: totalRevenue (gross, cohort paidAt) tăng đúng 300.000",
-    delta("totalRevenue") === 300000,
+    "C11: totalRevenue (gross, cohort paidAt) tăng đúng 500.000 (300k SUCCESS + 200k REFUNDED)",
+    delta("totalRevenue") === 500000,
     delta("totalRevenue")
   );
   check(
-    "C11: refundedAmount tăng đúng 200.000 (không còn bị bỏ qua)",
+    "C11: refundedAmount tăng đúng 200.000 (theo refundedAt)",
     delta("refundedAmount") === 200000,
     delta("refundedAmount")
   );
   check(
-    "C11: netRevenue = gross − refunded (+100.000)",
-    delta("netRevenue") === 100000,
+    "C11: netRevenue = gross − refunded (+300.000)",
+    delta("netRevenue") === 300000,
     delta("netRevenue")
   );
   check(
-    "C11: successPayments/refundedPayments +1 (cùng cohort paidAt)",
-    delta("successPayments") === 1 && delta("refundedPayments") === 1,
+    "C11: successPayments +2 (cohort paidAt gồm SUCCESS/REFUNDED) / refundedPayments +1 (cohort refundedAt)",
+    delta("successPayments") === 2 && delta("refundedPayments") === 1,
     { success: delta("successPayments"), refunded: delta("refundedPayments") }
   );
   check(
@@ -342,15 +363,22 @@ async function scenarioRevenueReport(manager: FixtureUser) {
     recent.map((p) => ({ id: p.id, status: p.status, paidAt: p.paidAt }))
   );
   check(
-    "C11: note mô tả gross/refunded/net + giới hạn refund ledger",
-    String(after.note ?? "").includes("netRevenue") &&
-      String(after.note ?? "").includes("REFUNDED"),
+    "C11: note mô tả 2 cohort (paidAt / refundedAt)",
+    String(after.note ?? "").includes("paidAt") &&
+      String(after.note ?? "").includes("refundedAt"),
     after.note
   );
 }
 
 // ─── Runner ───────────────────────────────────────────────────────────────
 async function main(): Promise<void> {
+  // SAFETY: E2E này TẠO dữ liệu qua HTTP + Prisma — chỉ được chạy trên schema test cô lập.
+  const guardSchema = new URL(process.env.DATABASE_URL!).searchParams.get("schema") ?? "";
+  if (!guardSchema.startsWith("scms_verify_")) {
+    throw new Error(
+      `SAFETY GUARD: DATABASE_URL schema "${guardSchema || "(default)"}" is not scms_verify_* — refusing to run write-capable E2E against a business/production database.`,
+    );
+  }
   await connectTestMongo();
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));
@@ -360,9 +388,17 @@ async function main(): Promise<void> {
 
   const hashed = await hashPassword(PASSWORD);
   try {
+    // db push (schema test cô lập) KHÔNG chạy data migration → seed row legacy-main chưa tồn tại.
+    await prisma.facility.upsert({
+      where: { id: FACILITY_ID },
+      update: {},
+      create: { id: FACILITY_ID, code: "legacy-main", name: "Legacy Main", address: "Seed" },
+    });
+    // POST /membership-plans là authorize("ADMIN") → cần fixture ADMIN riêng.
+    const admin = await createUser("ADMIN", "admin", hashed);
     const manager = await createUser("MANAGER", "manager", hashed);
     const member = await createUser("MEMBER", "member", hashed);
-    const plan = await createPlan(manager.token, {
+    const plan = await createPlan(admin.token, {
       name: `E2E Lifecycle Plan ${RUN}`,
       price: 100000,
       durationDays: 30,

@@ -43,6 +43,14 @@ const E2E_SEPAY = {
 
 let baseUrl = "";
 
+/**
+ * Fixture facility: Payment/Subscription mặc định `facilityId = legacy-main` (schema test cô
+ * lập chạy `db push` nên không có data seed) → mọi HTTP qua `checkFacilityScope` phải mang
+ * đúng context này (header X-Facility-Id) mới không bị 400 FACILITY_CONTEXT_REQUIRED.
+ * (Webhook SePay được miễn scope ở app.ts — header vẫn vô hại.)
+ */
+const FACILITY_ID = "legacy-main";
+
 type HttpResult = { status: number; body: any; text: string };
 
 async function http(
@@ -54,6 +62,7 @@ async function http(
     method,
     headers: {
       "Content-Type": "application/json",
+      "X-Facility-Id": FACILITY_ID,
       ...(opts.token ? { Authorization: `Bearer ${opts.token}` } : {}),
       ...(opts.headers ?? {}),
     },
@@ -154,7 +163,7 @@ const created = {
 type FixtureUser = { id: string; email: string; token: string; memberProfileId: string };
 
 async function createUser(
-  role: "MEMBER" | "COACH" | "RECEPTIONIST" | "MANAGER",
+  role: "MEMBER" | "COACH" | "RECEPTIONIST" | "MANAGER" | "ADMIN",
   tag: string,
   hashedPassword: string
 ): Promise<FixtureUser> {
@@ -163,6 +172,13 @@ async function createUser(
   created.userIds.push(user.id);
   const memberProfileId = user.memberProfile?.id ?? "";
   if (memberProfileId) created.memberProfileIds.push(memberProfileId);
+  // Staff (MANAGER/COACH/RECEPTIONIST) phải được phân công vào facility fixture —
+  // checkFacilityScope trả 403 FORBIDDEN_SCOPE nếu thiếu (MEMBER/ADMIN bypass).
+  if (role !== "MEMBER") {
+    await prisma.facilityStaff.create({
+      data: { userId: user.id, facilityId: FACILITY_ID, role: role as any },
+    });
+  }
 
   const login = await http("POST", "/auth/login", { body: { email, password: PASSWORD } });
   const token = login.body?.data?.accessToken as string | undefined;
@@ -264,6 +280,8 @@ const sepayEvent = (sepayId: number) =>
   prisma.sepayWebhookEvent.findUnique({ where: { sepayId } });
 
 type Ctx = {
+  /** POST/PATCH /membership-plans là authorize("ADMIN") → plan mutation dùng admin. */
+  admin: FixtureUser;
   manager: FixtureUser;
   plans: { membership30: any; membership7: any; premium90: any };
 };
@@ -658,6 +676,10 @@ async function scenarioMockMode(
 async function scenarioExpiredPendingAndLate(member: FixtureUser, plan: any): Promise<void> {
   section("D) Đơn hết hạn (TTL) + tiền về MUỘN không kích hoạt gói");
 
+  // MF-08: login tự phục hồi gói FREE → xoá để check "0 gói ACTIVE" đo đúng việc
+  // webhook muộn KHÔNG kích hoạt gói (không phải gói FREE sẵn có của login).
+  await prisma.membershipSubscription.deleteMany({ where: { memberId: member.memberProfileId } });
+
   setSepayEnv({ ttlMinutes: 15 });
   const first = await checkout(member.token, plan.id);
   check("checkout → 201", first.status === 201, first.body);
@@ -720,13 +742,13 @@ async function scenarioExpiredPendingAndLate(member: FixtureUser, plan: any): Pr
   );
 }
 
-/** E) Chặn gói FREE / hạ hạng + nâng cấp PREMIUM (cộng ngày dư của gói cũ). */
+/** E) Chặn gói FREE / hạ hạng + nâng cấp PREMIUM (FINAL Policy A: KHÔNG cộng ngày dư). */
 async function scenarioGuardsAndUpgrade(
   ctx: Ctx,
   member: FixtureUser,
   freePlanId: string
 ): Promise<void> {
-  section("E) Chặn gói FREE / hạ hạng + nâng cấp PREMIUM (cộng ngày dư)");
+  section("E) Chặn gói FREE / hạ hạng + nâng cấp PREMIUM (Policy A: không cộng ngày dư)");
   setSepayEnv({});
 
   const free = await checkout(member.token, freePlanId);
@@ -773,9 +795,12 @@ async function scenarioGuardsAndUpgrade(
   const remaining = activeBefore[0]
     ? Math.ceil((activeBefore[0].endDate.getTime() - Date.now()) / DAY)
     : 0;
+  // FINAL Policy A (subscription-purchase.service.ts): gói mới CHỈ tính durationDays,
+  // ngày dư gói cũ KHÔNG cộng (chỉ dùng cho thông tin/hoàn tiền) — đối chiếu với
+  // policy-a-membership.integration.ts ("paid replaced by paid … no carry-over").
   check(
-    `Thời hạn gói mới = 90 ngày + ngày dư (${upDays} ngày, dư ≈ ${remaining})`,
-    upDays >= 90 && Math.abs(upDays - (90 + remaining)) <= 1,
+    `Thời hạn gói mới = đúng 90 ngày, ngày dư ≈ ${remaining} KHÔNG được cộng (Policy A)`,
+    upDays >= 90 && upDays <= 91,
     { upDays, remaining }
   );
   await sleep(200);
@@ -804,6 +829,9 @@ async function scenarioFreePlanNoCarryOver(
     Math.round((end.getTime() - start.getTime()) / DAY);
 
   // Mô phỏng provisioning lúc register: member mới nhận subscription FREE ACTIVE (~3650 ngày).
+  // MF-08: login fixture đã tự cấp FREE → xoá trước để exercise lại đúng nhánh provision MỚI
+  // (created = true) thay vì trả về row sẵn có.
+  await prisma.membershipSubscription.deleteMany({ where: { memberId: sepayMember.memberProfileId } });
   const provision = await prisma.$transaction((tx) =>
     ensureActiveFreeSubscription(tx, sepayMember.memberProfileId)
   );
@@ -884,6 +912,8 @@ async function scenarioFreePlanNoCarryOver(
   check("Quầy: gói FREE cũ SUSPENDED", counterFree?.status === "SUSPENDED", counterFree?.status);
 
   // ── Kênh 3: GIA HẠN (renew) từ gói FREE đang ACTIVE ─────────────────────
+  // MF-08: login fixture đã tự cấp FREE → xoá trước để provision tạo MỚI (created = true).
+  await prisma.membershipSubscription.deleteMany({ where: { memberId: renewMember.memberProfileId } });
   const renewProvision = await prisma.$transaction((tx) =>
     ensureActiveFreeSubscription(tx, renewMember.memberProfileId)
   );
@@ -1290,8 +1320,8 @@ async function scenarioOfferSnapshotAndReview(
   section("K) A07 snapshot offer + A06 REQUIRES_REVIEW & retry-activation");
   setSepayEnv({});
 
-  // ── A07: Manager sửa giá/duration/quota khi QR đang chờ → chốt theo ĐÚNG offer lúc tạo đơn ──
-  const snapPlan = await createPlan(ctx.manager.token, {
+  // ── A07: Admin sửa giá/duration/quota khi QR đang chờ → chốt theo ĐÚNG offer lúc tạo đơn ──
+  const snapPlan = await createPlan(ctx.admin.token, {
     name: `E2E SEPAY SNAP ${RUN}`,
     price: 123000,
     durationDays: 30,
@@ -1302,7 +1332,7 @@ async function scenarioOfferSnapshotAndReview(
   check("A07: checkout plan snapshot → 201", co.status === 201, co.body);
 
   const edited = await http("PATCH", `/membership-plans/${snapPlan.id}`, {
-    token: ctx.manager.token,
+    token: ctx.admin.token,
     body: {
       name: `E2E SEPAY SNAP EDITED ${RUN}`,
       price: 999999,
@@ -1311,7 +1341,7 @@ async function scenarioOfferSnapshotAndReview(
     },
   });
   check(
-    "A07: manager sửa plan (999999 / 60 ngày / quota 1) → 200",
+    "A07: admin sửa plan (999999 / 60 ngày / quota 1) → 200",
     edited.status === 200,
     edited.body
   );
@@ -1635,6 +1665,13 @@ async function cleanup(): Promise<void> {
   }
 
 async function main(): Promise<void> {
+  // SAFETY: E2E này TẠO dữ liệu qua HTTP + Prisma — chỉ được chạy trên schema test cô lập.
+  const guardSchema = new URL(process.env.DATABASE_URL!).searchParams.get("schema") ?? "";
+  if (!guardSchema.startsWith("scms_verify_")) {
+    throw new Error(
+      `SAFETY GUARD: DATABASE_URL schema "${guardSchema || "(default)"}" is not scms_verify_* — refusing to run write-capable E2E against a business/production database.`,
+    );
+  }
   await connectTestMongo();
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));
@@ -1645,27 +1682,35 @@ async function main(): Promise<void> {
   const hashed = await hashPassword(PASSWORD);
 
   try {
+    // db push (schema test cô lập) KHÔNG chạy data migration → seed row legacy-main chưa tồn tại.
+    await prisma.facility.upsert({
+      where: { id: FACILITY_ID },
+      update: {},
+      create: { id: FACILITY_ID, code: "legacy-main", name: "Legacy Main", address: "Seed" },
+    });
+    // POST /membership-plans là authorize("ADMIN") → cần fixture ADMIN riêng.
+    const admin = await createUser("ADMIN", "admin", hashed);
     const manager = await createUser("MANAGER", "manager", hashed);
     const coach = await createUser("COACH", "coach", hashed);
     const staff = await createUser("RECEPTIONIST", "staff", hashed);
     const members: FixtureUser[] = [];
     for (let i = 1; i <= 12; i++) members.push(await createUser("MEMBER", `member${i}`, hashed));
 
-    const membership30 = await createPlan(manager.token, {
+    const membership30 = await createPlan(admin.token, {
       name: `E2E SEPAY M30 ${RUN}`,
       price: 300000,
       durationDays: 30,
       tier: "MEMBERSHIP",
       maxConcurrentClasses: 3,
     });
-    const membership7 = await createPlan(manager.token, {
+    const membership7 = await createPlan(admin.token, {
       name: `E2E SEPAY M7 ${RUN}`,
       price: 100000,
       durationDays: 7,
       tier: "MEMBERSHIP",
       maxConcurrentClasses: 3,
     });
-    const premium90 = await createPlan(manager.token, {
+    const premium90 = await createPlan(admin.token, {
       name: `E2E SEPAY P90 ${RUN}`,
       price: 900000,
       durationDays: 90,
@@ -1679,7 +1724,7 @@ async function main(): Promise<void> {
     });
     if (!freePlan) throw new Error("Không tìm thấy FREE plan trong DB");
 
-    const ctx: Ctx = { manager, plans: { membership30, membership7, premium90 } };
+    const ctx: Ctx = { admin, manager, plans: { membership30, membership7, premium90 } };
 
     await scenarioNotConfigured(members[3], membership30);
     await scenarioCheckoutAndWebhookCore(ctx, members[0], members[1], coach, membership30);

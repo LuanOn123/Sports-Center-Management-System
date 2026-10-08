@@ -33,15 +33,17 @@ export async function findActivePenalty(
 
 /**
  * PREVIEW: chỉ đọc, không mutate DB / không notification.
- * Trả về các (member × class) đủ điều kiện RELEASE + số chỗ sắp bị thu hồi.
+ * FINAL: penalty thủ công của Manager KHÔNG tự trigger từ ngưỡng advisory.
+ * Preview trả về các (member × class) WARNING tư vấn + số chỗ tương lai để
+ * Manager review thủ công; quyết định phạt là hành động riêng của con người.
  */
 export async function previewPenalties() {
   const now = new Date();
   const buckets = await computeAttendanceBuckets(prisma, { now });
-  const release = buckets.filter((b) => b.status === "RELEASE");
-  if (release.length === 0) return { items: [], totalPreviewed: 0, thresholds: { ...ATTENDANCE } };
+  const advisory = buckets.filter((b) => b.status === "WARNING");
+  if (advisory.length === 0) return { items: [], totalPreviewed: 0, thresholds: { ...ATTENDANCE } };
 
-  const pairs = release.map((b) => ({ memberId: b.memberId, classId: b.classId }));
+  const pairs = advisory.map((b) => ({ memberId: b.memberId, classId: b.classId }));
   const [activePenalties, futureCounts] = await Promise.all([
     prisma.attendancePenalty.findMany({
       // Read-only: coi penalty đã hết hạn chặn (blockedUntil <= now) như KHÔNG còn hiệu lực,
@@ -68,7 +70,7 @@ export async function previewPenalties() {
   const blockedPair = new Set(activePenalties.map((p) => `${p.memberId}|${p.classId}`));
   const futureMap = new Map(futureCounts.map((f) => [`${f.memberId}|${f.classId}`, f._count._all]));
 
-  const items = release
+  const items = advisory
     .filter((b) => !blockedPair.has(`${b.memberId}|${b.classId}`))
     .map((b) => ({
       memberId: b.memberId,
@@ -91,10 +93,9 @@ export async function previewPenalties() {
 }
 
 /**
- * APPLY: một transaction atomic — tạo AttendancePenalty + thu hồi toàn bộ slot tương lai
- * của (member × class). Cùng commit hoặc cùng rollback.
- * Lock theo lock order chung: memberQuota -> (memberId, classId) giống bookClass/transferEnrollment
- * để penalty và booking không chen nhau (thu hồi chỗ làm giảm quota `used`).
+ * APPLY thủ công bởi Manager — KHÔNG tự trigger từ ngưỡng advisory.
+ * FINAL: ngưỡng NOTICE/WARNING chỉ gửi thông báo tham khảo; Manager muốn phạt
+ * phải gọi API này với lý do rõ ràng (hành động con người, có audit decidedBy).
  */
 export async function applyPenalty(input: {
   memberId: string;
@@ -122,10 +123,16 @@ export async function applyPenalty(input: {
     if (!bucket) {
       throw new AppError("Không tìm thấy dữ liệu chuyên cần cho hội viên và lớp này", 404);
     }
-    if (bucket.status !== "RELEASE") {
+    // FINAL theo duyệt: FIXED penalty cần min(5, totalPlannedSessions) mẫu đã chốt
+    // (2 buổi → 2 mẫu; 3 → 3; 4 → 4; 5+ → 5). RECURRING giữ MIN_SAMPLE = 5.
+    const requiredSamples =
+      bucket.policy === "FIXED" && typeof bucket.totalPlannedSessions === "number"
+        ? Math.min(ATTENDANCE.MIN_SAMPLE, bucket.totalPlannedSessions)
+        : ATTENDANCE.MIN_SAMPLE;
+    if (bucket.sampleSize < requiredSamples) {
       throw new AppError(
-        `Chỉ áp dụng hình phạt khi chuyên cần < ${ATTENDANCE.RELEASE_THRESHOLD}% và có tối thiểu ${ATTENDANCE.MIN_SAMPLE} buổi được tính ` +
-          `(hiện tại: ${bucket.attendanceRate}% / ${bucket.sampleSize} buổi -> ${bucket.status})`,
+        `Chưa đủ ${requiredSamples} buổi được tính để áp dụng hình phạt ` +
+          `(hiện tại: ${bucket.sampleSize} buổi)`,
         400
       );
     }

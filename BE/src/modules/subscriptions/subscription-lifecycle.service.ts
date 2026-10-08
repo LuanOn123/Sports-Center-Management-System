@@ -9,7 +9,11 @@ export const LIFECYCLE_INTERVAL_MS = 15 * 60 * 1000;
 /**
  * B07 — Đồng bộ stored-state: gói `ACTIVE`/`SUSPENDED` đã quá `endDate` ⇒ `EXPIRED`.
  *
- * - CAS theo `endDate < now` để không "hết hạn nhầm" gói vừa được resume (resume đẩy endDate lên).
+ * FINAL Policy A: SUSPENDED là terminal (gói cũ bị thay thế), KHÔNG resume.
+ * Job chỉ chuyển quá hạn sang EXPIRED; không kích hoạt lại SUSPENDED/FREE cũ,
+ * không tạo fallback subscription.
+ *
+ * - CAS theo `endDate < now` để không "hết hạn nhầm" gói vừa được gia hạn.
  * - Gửi thông báo SUBSCRIPTION_EXPIRED qua outbox (gửi sau commit, có retry).
  * - Idempotent: chạy lại không tạo thêm thông báo (không còn status ACTIVE/SUSPENDED để khớp).
  */
@@ -32,7 +36,7 @@ export async function expireStaleSubscriptions(now: Date = new Date()): Promise<
       where: { id: sub.id, status: { in: ["ACTIVE", "SUSPENDED"] }, endDate: { lt: now } },
       data: { status: "EXPIRED", suspendedAt: null, remainingDays: null },
     });
-    if (updated.count === 0) continue; // resume/gia hạn xen vào — bỏ qua
+    if (updated.count === 0) continue; // purchase/gia hạn xen vào — bỏ qua
     expired += 1;
     await enqueueNotification(prisma, {
       userId: sub.member.userId,

@@ -312,8 +312,9 @@ router.get(
  *   get:
  *     summary: Attendance rate per class for the current member + own penalties
  *     description: |
- *       Trả về bucket theo (member × class): sampleSize, present/late/absent/noShow/excused,
- *       attendanceRate, status (OK | WARN | RELEASE) cùng danh sách hình phạt của chính member
+ *       FINAL advisory — bucket theo (member × class): sampleSize, present/late/absent/noShow/excused,
+ *       attendanceRate, status (NORMAL >= 80% | NOTICE 70–<80% | WARNING <70%) cùng danh sách hình phạt
+ *       thủ công của chính member (luồng riêng, không tự trigger từ ngưỡng).
  *       (kèm `canAppeal` để FE bật nút khiếu nại trong cửa sổ 72 giờ).
  *     tags: [Attendance]
  *     security:
@@ -342,7 +343,7 @@ router.get(
  *                     noShowCount: 2
  *                     excusedCount: 0
  *                     attendanceRate: 60
- *                     status: RELEASE
+ *                     status: WARNING
  *                 penalties:
  *                   - id: "penalty-uuid"
  *                     classId: "class-uuid"
@@ -365,10 +366,10 @@ router.get("/my/summary", authorize("MEMBER"), controller.getMyAttendanceSummary
  * @swagger
  * /attendance/warnings/scan:
  *   post:
- *     summary: Scan attendance and send WARN notifications (Manager only)
+ *     summary: Scan attendance and send advisory notifications (Manager only)
  *     description: |
- *       Gửi `ATTENDANCE_WARNING` cho các (member × class) có 70% <= rate < 80%.
- *       Không gửi trùng khi cùng rate (dedupe theo classId + attendanceRate).
+ *       FINAL advisory — gửi `ATTENDANCE_WARNING` cho NOTICE (70–<80%) và WARNING (<70%).
+ *       Không phạt/khóa/hủy/thu hồi chỗ. Dedupe theo state transition (classId + state).
  *     tags: [Attendance]
  *     security:
  *       - BearerAuth: []
@@ -381,7 +382,7 @@ router.get("/my/summary", authorize("MEMBER"), controller.getMyAttendanceSummary
  *             properties:
  *               classId: { type: string, description: "Chỉ quét một lớp (bỏ trống = tất cả)" }
  *     responses:
- *       200: { description: "Scan result: { checked, warnBuckets, sent, skippedDuplicate }" }
+ *       200: { description: "Scan result: { checked, advisoryBuckets, sent, skippedDuplicate }" }
  *       400: { $ref: "#/components/responses/BadRequest" }
  *       401: { $ref: "#/components/responses/Unauthorized" }
  *       403: { $ref: "#/components/responses/Forbidden" }

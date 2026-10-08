@@ -1311,6 +1311,8 @@ const options: swaggerJSDoc.Options = {
       { name: "Training", description: "Personalized training plans and results" },
       { name: "Notifications", description: "Manage user notifications" },
       { name: "Feedbacks", description: "Member đánh giá HLV sau buổi học" },
+      { name: "Facility Visits", description: "Check-in vào cơ sở & lượt vào cửa" },
+      { name: "Waitlist", description: "Hàng chờ khi buổi học đã đầy" },
     ],
   },
   apis: ["./src/modules/**/*.routes.ts", "./src/modules/**/*.routes.js"],
@@ -1318,3 +1320,101 @@ const options: swaggerJSDoc.Options = {
 
 export const swaggerSpec = swaggerJSDoc(options);
 addOperations(swaggerSpec);
+
+// ---------------------------------------------------------------------------
+// Header `X-Facility-Id` cho các endpoint FACILITY-scope.
+//
+// `app.ts` chạy `authenticate + checkFacilityScope` cho request có root nằm
+// trong danh sách dưới đây (trừ GET /membership-plans|sports|subjects và
+// POST /payments/sepay/webhook) — request PHẢI mang facility context: header
+// `X-Facility-Id`, hoặc `facilityId` ở path/query/body (nhiều nơi phải trùng
+// nhau → 400 CONFLICTING_FACILITY_CONTEXT; thiếu → 400 FACILITY_CONTEXT_REQUIRED).
+// ⚠️ GIỮ ĐỒNG BỘ với mảng root trong `app.ts` khi thay đổi danh sách scope.
+const FACILITY_SCOPE_ROOTS = new Set([
+  "rooms",
+  "classes",
+  "class-schedules",
+  "enrollments",
+  "subscriptions",
+  "payments",
+  "invoices",
+  "reports",
+  "attendance",
+  "feedbacks",
+  "operations",
+  "members",
+  "coaches",
+  "issues",
+  "leave-requests",
+  "audit-logs",
+  "slots",
+  "schedule-patterns",
+  "counter-orders",
+  "membership-plans",
+  "sports",
+  "subjects",
+  "facility-visits",
+  "waitlist",
+]);
+// GET các root này là PUBLIC — app.ts bỏ qua cả authenticate + scope.
+const PUBLIC_SCOPE_GET_ROOTS = new Set([
+  "membership-plans",
+  "sports",
+  "subjects",
+]);
+const HTTP_METHODS = new Set([
+  "get",
+  "post",
+  "put",
+  "patch",
+  "delete",
+  "head",
+  "options",
+]);
+
+/** Endpoint đã nhận facility context ở path/query/body chưa? (best-effort) */
+function hasFacilityContextElsewhere(op: any, path: string): boolean {
+  if (path.includes("{facilityId}")) return true;
+  const params: any[] = Array.isArray(op?.parameters) ? op.parameters : [];
+  if (params.some((p) => p?.name === "facilityId")) return true;
+  const schema = op?.requestBody?.content?.["application/json"]?.schema;
+  if (schema?.properties?.facilityId) return true;
+  for (const key of ["allOf", "anyOf", "oneOf"]) {
+    if (
+      Array.isArray(schema?.[key]) &&
+      schema[key].some((s: any) => s?.properties?.facilityId)
+    )
+      return true;
+  }
+  return false;
+}
+
+/** Bơm parameter `X-Facility-Id` vào mọi operation FACILITY-scope còn thiếu. */
+function injectFacilityHeader(spec: any): void {
+  for (const [path, ops] of Object.entries<Record<string, any>>(
+    spec.paths ?? {},
+  )) {
+    const root = path.split("/")[1];
+    if (!FACILITY_SCOPE_ROOTS.has(root)) continue;
+    if (path === "/payments/sepay/webhook") continue; // EXEMPT (app.ts)
+    for (const [method, op] of Object.entries<Record<string, any>>(ops ?? {})) {
+      if (!HTTP_METHODS.has(method) || !op || typeof op !== "object") continue;
+      if (method === "get" && PUBLIC_SCOPE_GET_ROOTS.has(root)) continue;
+      if (!Array.isArray(op.parameters)) op.parameters = [];
+      // Đã khai báo sẵn trong JSDoc / addOperations → giữ nguyên.
+      if (op.parameters.some((p: any) => p?.name === "X-Facility-Id")) continue;
+      const optional = hasFacilityContextElsewhere(op, path);
+      op.parameters.push({
+        name: "X-Facility-Id",
+        in: "header",
+        required: !optional,
+        schema: { type: "string" },
+        description: optional
+          ? "Facility context — endpoint này đã nhận facilityId ở path/query/body; header chỉ cần khi không gửi ở đó (nếu có ở nhiều nơi phải TRÙNG nhau → 400 CONFLICTING_FACILITY_CONTEXT)."
+          : "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED).",
+      });
+    }
+  }
+}
+
+injectFacilityHeader(swaggerSpec);
