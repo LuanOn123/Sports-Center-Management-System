@@ -2,7 +2,7 @@
 
 Source: BE/src/config/swagger.ts + BE/src/modules/**/*.routes.ts (local checkout)
 
-Snapshot: 2026-10-08. Production base: https://sports-center-management-system.onrender.com/api/v1
+Snapshot: 2026-10-09. Production base: https://sports-center-management-system.onrender.com/api/v1
 
 Response examples are documentation only, never application data. The client sends the documented HTTP Bearer token.
 
@@ -17,11 +17,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -143,11 +143,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -253,11 +253,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -370,11 +370,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -517,7 +517,7 @@ Responses/status codes:
 ```json
 {
   "200": {
-    "description": "Paginated list of users (compact example)",
+    "description": "Paginated users. Staff rows additionally include actual facilityAssignments, assignmentStatus and facilityName; unassigned staff never inherit the selected workspace.",
     "content": {
       "application/json": {
         "schema": {
@@ -816,7 +816,7 @@ Responses/status codes:
 ```json
 {
   "200": {
-    "description": "Single user",
+    "description": "Single user. Staff additionally include facilityAssignments [{facility: {id, name}, role}], assignmentStatus (ASSIGNED or UNASSIGNED) and facilityName.",
     "content": {
       "application/json": {
         "schema": {
@@ -986,7 +986,7 @@ Responses/status codes:
 ```json
 {
   "200": {
-    "description": "Single user",
+    "description": "Single user. Staff additionally include facilityAssignments [{facility: {id, name}, role}], assignmentStatus (ASSIGNED or UNASSIGNED) and facilityName.",
     "content": {
       "application/json": {
         "schema": {
@@ -1120,7 +1120,7 @@ Responses/status codes:
 ```json
 {
   "200": {
-    "description": "Single user",
+    "description": "Single user. Staff additionally include facilityAssignments [{facility: {id, name}, role}], assignmentStatus (ASSIGNED or UNASSIGNED) and facilityName.",
     "content": {
       "application/json": {
         "schema": {
@@ -1239,11 +1239,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -1427,11 +1427,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -1621,11 +1621,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -1762,11 +1762,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -1908,11 +1908,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -2078,11 +2078,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -2364,11 +2364,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -2631,11 +2631,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -2793,11 +2793,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -2969,11 +2969,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -3076,11 +3076,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -3240,11 +3240,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -3361,11 +3361,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -3521,11 +3521,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -3657,11 +3657,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -3800,11 +3800,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -3966,11 +3966,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -4117,11 +4117,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -4249,11 +4249,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -4385,11 +4385,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -4533,11 +4533,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -4702,11 +4702,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -4857,11 +4857,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -4951,11 +4951,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -5170,11 +5170,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -5307,11 +5307,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -5454,11 +5454,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -5617,11 +5617,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -5770,11 +5770,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -6108,11 +6108,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -6245,11 +6245,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -6836,11 +6836,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -7105,11 +7105,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -7269,11 +7269,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -7430,11 +7430,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -7577,11 +7577,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -7706,11 +7706,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -7893,11 +7893,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -8069,11 +8069,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -8207,11 +8207,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -8359,11 +8359,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -8501,11 +8501,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -8682,11 +8682,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -8806,11 +8806,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -8911,11 +8911,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -9021,11 +9021,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -9122,11 +9122,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -9245,11 +9245,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -9410,11 +9410,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -9531,11 +9531,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -9625,11 +9625,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -9839,11 +9839,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -9969,11 +9969,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -10093,11 +10093,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -10314,11 +10314,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -10452,11 +10452,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -10600,11 +10600,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -10797,11 +10797,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -10931,11 +10931,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -11073,11 +11073,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -11338,11 +11338,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -11465,11 +11465,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -11669,11 +11669,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -11806,11 +11806,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -12011,11 +12011,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -12163,11 +12163,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -12281,11 +12281,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -12449,11 +12449,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -12635,11 +12635,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -12778,11 +12778,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -13011,11 +13011,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -13132,11 +13132,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -13313,11 +13313,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -13449,11 +13449,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -13641,11 +13641,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -13791,11 +13791,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -14786,7 +14786,7 @@ Responses/status codes:
 ```json
 {
   "200": {
-    "description": "Current user profile (with role-specific profile)",
+    "description": "Current user profile. Staff also receive facilityAssignments [{facility: {id, name}, role}], assignmentStatus (ASSIGNED or UNASSIGNED) and facilityName, resolved from current active DB assignments. An unassigned Coach can authenticate; no facility is inferred from the JWT or selected workspace.",
     "content": {
       "application/json": {
         "schema": {
@@ -14920,7 +14920,7 @@ Responses/status codes:
 ```json
 {
   "200": {
-    "description": "Current user profile (with role-specific profile)",
+    "description": "Current user profile. Staff also receive facilityAssignments [{facility: {id, name}, role}], assignmentStatus (ASSIGNED or UNASSIGNED) and facilityName, resolved from current active DB assignments. An unassigned Coach can authenticate; no facility is inferred from the JWT or selected workspace.",
     "content": {
       "application/json": {
         "schema": {
@@ -15034,7 +15034,7 @@ Responses/status codes:
 ```json
 {
   "200": {
-    "description": "Current user profile (with role-specific profile)",
+    "description": "Current user profile. Staff also receive facilityAssignments [{facility: {id, name}, role}], assignmentStatus (ASSIGNED or UNASSIGNED) and facilityName, resolved from current active DB assignments. An unassigned Coach can authenticate; no facility is inferred from the JWT or selected workspace.",
     "content": {
       "application/json": {
         "schema": {
@@ -15434,11 +15434,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -15542,11 +15542,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -15610,11 +15610,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -15659,11 +15659,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -15795,11 +15795,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -16009,11 +16009,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -16129,11 +16129,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -16265,11 +16265,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -16410,11 +16410,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -16484,11 +16484,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -16581,11 +16581,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -16731,11 +16731,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -16873,11 +16873,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -17093,6 +17093,339 @@ Responses/status codes:
 }
 ```
 
+## GET /attendance/monitoring
+Chuyên cần hội viên theo lớp trong cơ sở (Reception/Manager)
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "memberId",
+    "in": "query",
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "classId",
+    "in": "query",
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "search",
+    "in": "query",
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "status",
+    "in": "query",
+    "schema": {
+      "type": "string",
+      "enum": [
+        "NORMAL",
+        "WARNING",
+        "VIOLATION"
+      ]
+    }
+  },
+  {
+    "name": "page",
+    "in": "query",
+    "schema": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  {
+    "name": "limit",
+    "in": "query",
+    "schema": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /attendance/monitoring/detail
+Lịch sử chuyên cần của hội viên trong lớp đã đăng ký
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "memberId",
+    "in": "query",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "classId",
+    "in": "query",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## POST /attendance/warnings/send
+Gửi cảnh báo chuyên cần, chống gửi trùng
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "memberId": {
+      "type": "string"
+    },
+    "classId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "memberId",
+    "classId"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## POST /attendance/reports
+Lễ tân báo cáo vi phạm từ 30%
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "memberId": {
+      "type": "string"
+    },
+    "classId": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 1000
+    }
+  },
+  "required": [
+    "memberId",
+    "classId",
+    "reason"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## POST /attendance/reports/{id}/review
+Manager duyệt báo cáo chuyên cần
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "decision": {
+      "type": "string",
+      "enum": [
+        "APPROVE_REMOVAL",
+        "REJECT"
+      ]
+    },
+    "response": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 1000
+    }
+  },
+  "required": [
+    "decision",
+    "response"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
 ## GET /classes/{id}/registrations
 Hội viên đã đăng ký khóa học (staff)
 
@@ -17112,7 +17445,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -17152,7 +17486,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -17217,6 +17552,7 @@ Parameters:
     "name": "X-Facility-Id",
     "in": "header",
     "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -17259,7 +17595,7 @@ Responses/status codes:
 ```
 
 ## GET /staff-candidates
-Nhân sự có thể phân công
+Ứng viên chưa phân công: Coach cho MANAGER, Manager cho ADMIN
 
 Authentication: [{"BearerAuth":[]}]
 
@@ -17269,7 +17605,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -17317,7 +17654,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -17365,7 +17703,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -17426,7 +17765,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -17586,6 +17926,7 @@ Parameters:
     "name": "X-Facility-Id",
     "in": "header",
     "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -17634,6 +17975,7 @@ Parameters:
     "name": "X-Facility-Id",
     "in": "header",
     "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -17705,6 +18047,7 @@ Parameters:
     "name": "X-Facility-Id",
     "in": "header",
     "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -17788,6 +18131,7 @@ Parameters:
     "name": "X-Facility-Id",
     "in": "header",
     "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -17835,7 +18179,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -17904,7 +18249,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -17965,7 +18311,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -18005,7 +18352,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -18063,7 +18411,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -18103,7 +18452,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -18178,7 +18528,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -18218,7 +18569,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -18286,7 +18638,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -18382,7 +18735,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -18422,7 +18776,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -18484,7 +18839,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -18532,7 +18888,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -18594,7 +18951,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -18642,7 +19000,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -18702,7 +19061,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -18763,7 +19123,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -18803,7 +19164,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -18876,7 +19238,8 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
     "schema": {
       "type": "string"
     }
@@ -19063,11 +19426,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -19330,11 +19693,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```
@@ -19492,11 +19855,11 @@ Parameters:
   {
     "name": "X-Facility-Id",
     "in": "header",
-    "required": true,
+    "required": false,
     "schema": {
       "type": "string"
     },
-    "description": "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+    "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
   }
 ]
 ```

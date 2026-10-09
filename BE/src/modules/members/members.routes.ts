@@ -2,10 +2,17 @@ import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate.js";
 import { authorize } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
-import { UpdateMemberSchema, MemberQuerySchema } from "./members.schema.js";
+import { UpdateMemberSchema, MemberQuerySchema, CreateMemberSchema } from "./members.schema.js";
 import * as membersController from "./members.controller.js";
 
 const router = Router();
+
+router.post(
+  "/",
+  authenticate, authorize("MANAGER", "RECEPTIONIST"),
+  validate(CreateMemberSchema),
+  membersController.createMember
+);
 
 /**
  * @swagger

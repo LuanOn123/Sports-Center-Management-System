@@ -16,6 +16,12 @@ import {
   createSchedule,
   updateSchedule,
 } from "../class-schedules/class-schedules.service.js";
+import {
+  createStaffLeave,
+  issueOwner,
+  withRequesters,
+} from "./requesters.service.js";
+import { readAttendanceReport } from "../attendance/reception-attendance.service.js";
 const router = Router();
 const staff = authorize("ADMIN", "MANAGER");
 const quantities = z.object({
@@ -27,6 +33,19 @@ const quantities = z.object({
 const id = (req: any, name = "id") => String(req.params[name]);
 const facility = () => requestContext.getStore()!.facilityId!;
 const actor = () => requestContext.getStore()!.actorId!;
+async function assertCoachFacility(coachId: string) {
+  if (requestContext.getStore()?.role !== "MANAGER") return;
+  const coach = await prisma.coachProfile.findUnique({
+    where: { id: coachId },
+  });
+  if (
+    !coach ||
+    !(await prisma.facilityStaff.findFirst({
+      where: { userId: coach.userId, role: "COACH", isActive: true },
+    }))
+  )
+    throw new AppError("FORBIDDEN_SCOPE", 403);
+}
 export const operationHandlers: Record<string, (req: any) => any> = {};
 const route = (
   method: "get" | "post" | "put" | "patch" | "delete",
@@ -43,20 +62,39 @@ const route = (
     async (req, res) => sendSuccess(res, await fn(req)),
   );
 };
-route("get", "/staff-candidates", [staff], (req) => requestContext.run({ ...requestContext.getStore(), ...(req.user.role === "ADMIN" ? { facilityId: undefined } : {}) }, () =>
-  prisma.user.findMany({
-    where: { isActive: true, ...(req.user.role === "ADMIN" ? { role: "MANAGER", facilityStaffs: { none: { role: "MANAGER", isActive: true } } } : { role: { in: ["COACH", "RECEPTIONIST"] } }) },
-    select: { id: true, fullName: true, email: true, role: true }, orderBy: { fullName: "asc" },
-  }),
-));
-route("get", "/coaches/:id/specializations", [], (req) =>
-  prisma.coachSpecialization.findMany({ where: { coachId: id(req) } }),
+route("get", "/staff-candidates", [staff], (req) =>
+  requestContext.run(
+    {
+      ...requestContext.getStore(),
+      ...(req.user.role === "ADMIN" ? { facilityId: undefined } : {}),
+    },
+    () =>
+      prisma.user.findMany({
+        where: {
+          isActive: true,
+          ...(req.user.role === "ADMIN"
+            ? {
+                role: "MANAGER",
+                facilityStaffs: { none: { role: "MANAGER", isActive: true } },
+              }
+            : { role: "COACH", facilityStaffs: { none: { isActive: true } } }),
+        },
+        select: { id: true, fullName: true, email: true, role: true },
+        orderBy: { fullName: "asc" },
+      }),
+  ),
 );
+route("get", "/coaches/:id/specializations", [], async (req) => {
+  await assertCoachFacility(id(req));
+  return prisma.coachSpecialization.findMany({ where: { coachId: id(req) } });
+});
 route("get", "/leave-requests/:id/affected", [staff], async (req) => {
   const leave = await prisma.leaveRequest.findUnique({
     where: { id: id(req) },
   });
   if (!leave) throw new AppError("Leave not found", 404);
+  const coachId = leave.coachId;
+  if (!coachId) return [];
   return requestContext.run(
     {
       ...requestContext.getStore(),
@@ -69,10 +107,10 @@ route("get", "/leave-requests/:id/affected", [staff], async (req) => {
           startTime: { lt: leave.endTime },
           endTime: { gt: leave.startTime },
           OR: [
-            { coachId: leave.coachId },
+            { coachId: coachId },
             {
               coachId: null,
-              class: { coaches: { some: { coachId: leave.coachId } } },
+              class: { coaches: { some: { coachId: coachId } } },
             },
           ],
         },
@@ -152,6 +190,7 @@ route(
     prisma.$transaction(async (tx) => {
       if (!(await tx.coachProfile.findUnique({ where: { id: id(req) } })))
         throw new AppError("Coach not found", 404);
+      await assertCoachFacility(id(req));
       await tx.coachSpecialization.deleteMany({ where: { coachId: id(req) } });
       await tx.coachSpecialization.createMany({
         data: [...new Set<string>(req.body.sportIds)].map((sportId) => ({
@@ -279,7 +318,7 @@ const interval = z
 route(
   "get",
   "/leave-requests",
-  [authorize("ADMIN", "MANAGER", "COACH")],
+  [authorize("ADMIN", "MANAGER", "COACH", "RECEPTIONIST")],
   async (req) => {
     const coach =
       req.user.role === "COACH"
@@ -289,31 +328,22 @@ route(
         : null;
     if (req.user.role === "COACH" && !coach)
       throw new AppError("Coach not found", 404);
-    return prisma.leaveRequest.findMany({
-      where: coach ? { coachId: coach.id } : {},
+    const requests = await prisma.leaveRequest.findMany({
+      where: coach
+        ? { coachId: coach.id }
+        : req.user.role === "RECEPTIONIST"
+          ? { requesterId: req.user.id }
+          : {},
       orderBy: { createdAt: "desc" },
     });
+    return withRequesters(requests);
   },
 );
 route(
   "post",
   "/leave-requests",
-  [authorize("COACH"), validate(interval)],
-  async (req) => {
-    const coach = await prisma.coachProfile.findUnique({
-      where: { userId: req.user.id },
-    });
-    if (!coach) throw new AppError("Coach not found", 404);
-    return prisma.leaveRequest.create({
-      data: {
-        ...req.body,
-        coachId: coach.id,
-        facilityId: facility(),
-        startTime: new Date(req.body.startTime),
-        endTime: new Date(req.body.endTime),
-      },
-    });
-  },
+  [authorizeExact("COACH", "RECEPTIONIST"), validate(interval)],
+  (req) => createStaffLeave(req.user, req.body),
 );
 const decision = z.object({
   status: z.enum(["APPROVED", "REJECTED"]),
@@ -340,7 +370,13 @@ route("patch", "/leave-requests/:id", [staff, validate(decision)], (req) =>
       });
       if (!leave || leave.status !== "PENDING")
         throw new AppError("Pending leave not found", 409);
-      if (req.body.status === "APPROVED") {
+      const coachId = leave.coachId;
+      if (!coachId && req.body.resolutions.length)
+        throw new AppError(
+          "Non-coach leave cannot change class schedules",
+          400,
+        );
+      if (req.body.status === "APPROVED" && coachId) {
         const loadAffected = () =>
           requestContext.run(
             { ...requestContext.getStore(), facilityId: undefined },
@@ -351,10 +387,10 @@ route("patch", "/leave-requests/:id", [staff, validate(decision)], (req) =>
                   startTime: { lt: leave.endTime },
                   endTime: { gt: leave.startTime },
                   OR: [
-                    { coachId: leave.coachId },
+                    { coachId: coachId },
                     {
                       coachId: null,
-                      class: { coaches: { some: { coachId: leave.coachId } } },
+                      class: { coaches: { some: { coachId: coachId } } },
                     },
                   ],
                 },
@@ -382,7 +418,7 @@ route("patch", "/leave-requests/:id", [staff, validate(decision)], (req) =>
           await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('schedule:room:' || ${roomId}::text))`;
         const coaches = [
           ...new Set([
-            leave.coachId,
+            coachId,
             ...initial.flatMap((s) => s.class.coaches.map((c) => c.coachId)),
             ...req.body.resolutions.map((r: any) => r.coachId).filter(Boolean),
           ]),
@@ -409,7 +445,7 @@ route("patch", "/leave-requests/:id", [staff, validate(decision)], (req) =>
             { ...requestContext.getStore(), facilityId: sessionFacility },
             async () => {
               if (r.action === "REPLACE") {
-                if (!r.coachId || r.coachId === leave.coachId)
+                if (!r.coachId || r.coachId === coachId)
                   throw new AppError("Replacement coach required", 400);
                 await updateSchedule(r.scheduleId, {
                   coachId: r.coachId,
@@ -458,19 +494,21 @@ route("patch", "/leave-requests/:id", [staff, validate(decision)], (req) =>
 route(
   "get",
   "/issues",
-  [authorize("MEMBER", "MANAGER", "RECEPTIONIST", "ADMIN")],
-  (req) =>
-    prisma.issue.findMany({
-      where: req.user.role === "MEMBER" ? { memberId: actor() } : {},
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
+  [authorize("MEMBER", "COACH", "MANAGER", "RECEPTIONIST", "ADMIN")],
+  async (req) =>
+    withRequesters(
+      await prisma.issue.findMany({
+        where: issueOwner(req.user),
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+    ),
 );
 route(
   "post",
   "/issues",
   [
-    authorize("MEMBER"),
+    authorize("MEMBER", "COACH", "RECEPTIONIST", "MANAGER"),
     validate(
       z.object({
         title: z.string().min(3).max(120),
@@ -478,10 +516,19 @@ route(
       }),
     ),
   ],
-  (req) =>
-    prisma.issue.create({
-      data: { ...req.body, memberId: actor(), facilityId: facility() },
-    }),
+  (req) => {
+    if (readAttendanceReport(req.body.description)) throw new AppError("Báo cáo chuyên cần phải được tạo qua luồng chuyên cần", 400);
+    return prisma.issue.create({
+      data: {
+        title: req.body.title,
+        description: req.body.description,
+        memberId: req.user.role === "MEMBER" ? actor() : null,
+        requesterId: actor(),
+        requesterRole: req.user.role,
+        facilityId: facility(),
+      },
+    });
+  },
 );
 route(
   "patch",
@@ -495,22 +542,24 @@ route(
       }),
     ),
   ],
-  (req) =>
-    prisma.issue.update({
-      where: { id: id(req) },
-      data: { ...req.body, resolvedBy: actor() },
-    }),
+  async (req) => {
+    const issue = await prisma.issue.findUnique({ where: { id: id(req) } });
+    if (issue && readAttendanceReport(issue.description)) throw new AppError("Báo cáo chuyên cần phải được quản lý duyệt qua luồng chuyên cần", 403);
+    return prisma.issue.update({ where: { id: id(req) }, data: { ...req.body, resolvedBy: actor() } });
+  },
 );
-route("get", "/audit-logs", [staff], (req) => getAuditFeed(req.user.role, req.query));
+route("get", "/audit-logs", [staff], (req) =>
+  getAuditFeed(req.user.role, req.query),
+);
 route(
   "get",
   "/issues/:id",
-  [authorize("MEMBER", "MANAGER", "RECEPTIONIST", "ADMIN")],
+  [authorize("MEMBER", "COACH", "MANAGER", "RECEPTIONIST", "ADMIN")],
   async (req) => {
     const issue = await prisma.issue.findFirst({
       where: {
         id: id(req),
-        ...(req.user.role === "MEMBER" ? { memberId: actor() } : {}),
+        ...issueOwner(req.user),
       },
     });
     if (!issue) throw new AppError("Issue not found", 404);
@@ -534,6 +583,7 @@ route(
       where: { id: id(req), memberId: actor(), status: "OPEN" },
     });
     if (!issue) throw new AppError("Open issue not found", 404);
+    if (readAttendanceReport(issue.description) || readAttendanceReport(req.body.description)) throw new AppError("Không được sửa báo cáo chuyên cần qua yêu cầu hỗ trợ", 403);
     return prisma.issue.update({ where: { id: issue.id }, data: req.body });
   },
 );
@@ -542,6 +592,7 @@ route("delete", "/issues/:id", [authorize("MEMBER")], async (req) => {
     where: { id: id(req), memberId: actor(), status: "OPEN" },
   });
   if (!issue) throw new AppError("Open issue not found", 404);
+  if (readAttendanceReport(issue.description)) throw new AppError("Không được xóa báo cáo chuyên cần", 403);
   return prisma.issue.delete({ where: { id: issue.id } });
 });
 const cashier = authorizeExact("RECEPTIONIST");

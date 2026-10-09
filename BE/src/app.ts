@@ -9,7 +9,7 @@ import morgan from "morgan";
 import swaggerUi from "swagger-ui-express";
 
 import { swaggerSpec } from "./config/swagger.js";
-import { errorHandler } from "./middlewares/errorHandler.js";
+import { AppError, errorHandler } from "./middlewares/errorHandler.js";
 
 // Routes
 import authRoutes from "./modules/auth/auth.routes.js";
@@ -120,9 +120,14 @@ app.use(v1, (req, res, next) => {
     req.path === "/payments/sepay/webhook"
   )
     return next();
-  authenticate(req, res, (error) =>
-    error ? next(error) : checkFacilityScope(req, res, next),
-  );
+  authenticate(req, res, (error) => {
+    if (error) return next(error);
+    // Global membership/account management is outside a facility Manager's remit.
+    // Class rosters remain available through the scoped class/enrollment endpoints.
+    if (req.user?.role === "MANAGER" && ["members", "subscriptions", "invoices"].includes(root))
+      return next(new AppError("Chức năng này không thuộc quyền quản lý cơ sở", 403));
+    return checkFacilityScope(req, res, next);
+  });
 });
 app.use(`${v1}/auth`, authRoutes);
 app.use(`${v1}/users`, userRoutes);

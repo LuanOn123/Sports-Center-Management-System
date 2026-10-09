@@ -6,6 +6,7 @@ import { allPages as fetchPages } from "../../shared/pagedApi";
 import { Empty, ErrorState, Loading, Modal, SchemaForm } from "../../shared/ui";
 import { at, display } from "../../shared/config";
 import "./operations.css";
+import { attendanceReportData, AttendanceReportReview } from "./AttendanceReportReview";
 type Kind =
   | "facilities"
   | "staff"
@@ -39,6 +40,15 @@ const titleOf = (row: RecordData) =>
       row.entity ||
       "Bản ghi",
   );
+const requestStatusText = (value: unknown) =>
+  (
+    ({
+      OPEN: "Mới tiếp nhận",
+      IN_PROGRESS: "Đang xử lý",
+      RESOLVED: "Đã giải quyết",
+      CLOSED: "Đã đóng",
+    }) as Record<string, string>
+  )[String(value)] || display(value);
 export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
   const cache = useQueryClient();
   const [modal, setModal] = useState<{
@@ -49,6 +59,11 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
   const [decision, setDecision] = useState<RecordData>();
   const [error, setError] = useState<unknown>();
   const [moreAudit, setMoreAudit] = useState(0);
+  const [requestStatus, setRequestStatus] = useState("");
+  const [requestRole, setRequestRole] = useState("");
+  const reviewRequests =
+    role === "MANAGER" && (kind === "leave" || kind === "issues");
+  const RequestHeading = reviewRequests ? "h2" : "h3";
   const [title, path] = sections[kind];
   const facilityId = getFacilityId();
   const q = useQuery({
@@ -65,6 +80,16 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
     : kind === "staff"
       ? (q.data?.data?.staffs as RecordData[]) || []
       : [];
+  const visibleRows = reviewRequests
+    ? rows.filter(
+        (row) =>
+          (!requestStatus || row.status === requestStatus) &&
+          (!requestRole ||
+            (at(row, "requester.role") ||
+              row.requesterRole ||
+              (row.coachId ? "COACH" : "MEMBER")) === requestRole),
+      )
+    : rows;
   const admin = role === "ADMIN",
     manager = admin || role === "MANAGER",
     member = role === "MEMBER";
@@ -103,7 +128,11 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
         <div>
           <div className="eyebrow">VẬN HÀNH CƠ SỞ</div>
           <h1>{title}</h1>
-          <p>Dữ liệu của cơ sở đang chọn.</p>
+          <p>
+            {role === "MANAGER"
+              ? "Dữ liệu của cơ sở bạn quản lý."
+              : "Dữ liệu của cơ sở đang chọn."}
+          </p>
         </div>
         {create && (
           <button
@@ -117,20 +146,89 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
         )}
       </div>
       {kind === "patterns" && manager && <PatternForm onSuccess={done} />}
+      {reviewRequests && (
+        <div className="panel manager-request-filters">
+          <label>
+            Trạng thái
+            <select
+              value={requestStatus}
+              onChange={(e) => setRequestStatus(e.target.value)}
+            >
+              <option value="">Tất cả trạng thái</option>
+              {(kind === "leave"
+                ? ["PENDING", "APPROVED", "REJECTED"]
+                : ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"]
+              ).map((value) => (
+                <option key={value} value={value}>
+                  {requestStatusText(value)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Vai trò người gửi
+            <select
+              value={requestRole}
+              onChange={(e) => setRequestRole(e.target.value)}
+            >
+              <option value="">Tất cả vai trò</option>
+              {(kind === "leave"
+                ? ["COACH", "RECEPTIONIST"]
+                : ["MEMBER", "COACH", "RECEPTIONIST", "MANAGER"]
+              ).map((value) => (
+                <option key={value} value={value}>
+                  {display(value)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p aria-live="polite">{visibleRows.length} yêu cầu</p>
+        </div>
+      )}
       {error != null && <ErrorState error={error} />}
       {q.isPending ? (
         <Loading />
       ) : q.error ? (
         <ErrorState error={q.error} retry={() => q.refetch()} />
-      ) : !rows.length ? (
-        <Empty text="Chưa có dữ liệu." />
+      ) : !visibleRows.length ? (
+        <Empty
+          text={
+            rows.length
+              ? "Không có yêu cầu phù hợp với bộ lọc."
+              : "Chưa có dữ liệu."
+          }
+        />
       ) : (
         <div className="operations-list">
-          {rows.map((row) => (
+          {visibleRows.map((row) => (
             <article className="panel" key={String(row.id)}>
-              <h3>{titleOf(row)}</h3>
-              <p>{display(row.status || row.role || row.action || row.code)}</p>
-              {row.description != null && <p>{String(row.description)}</p>}
+              <RequestHeading>{titleOf(row)}</RequestHeading>
+              {reviewRequests && (
+                <p>
+                  Người gửi:{" "}
+                  {String(
+                    at(row, "requester.fullName") ||
+                      at(row, "user.fullName") ||
+                      "Chưa có thông tin",
+                  )}{" "}
+                  ·{" "}
+                  {display(
+                    at(row, "requester.role") ||
+                      row.requesterRole ||
+                      (row.coachId ? "COACH" : "MEMBER"),
+                  )}
+                </p>
+              )}
+              {reviewRequests && row.decisionReason != null && (
+                <p>Lý do quyết định: {String(row.decisionReason)}</p>
+              )}
+              <p>
+                {reviewRequests && row.status
+                  ? requestStatusText(row.status)
+                  : display(row.status || row.role || row.action || row.code)}
+              </p>
+              {row.description != null && !attendanceReportData(row.description) && <p>{String(row.description)}</p>}
+              {kind === "issues" && attendanceReportData(row.description) && <AttendanceReportReview issue={row} manager={role === "MANAGER"} onSuccess={done} />}
               {row.reason != null && <p>{String(row.reason)}</p>}
               {row.response != null && <p>Phản hồi: {String(row.response)}</p>}
               {row.startTime != null && (
@@ -204,7 +302,7 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
                     Xử lý đơn nghỉ
                   </button>
                 )}
-                {kind === "issues" && !member && (
+                {kind === "issues" && !member && !attendanceReportData(row.description) && (
                   <button
                     className="button"
                     onClick={() =>
@@ -536,8 +634,8 @@ function LeaveDecision({
         api<RecordData[]>("GET /leave-requests/{id}/affected", {
           params: { id: String(leave.id) },
         }),
-        allPages("GET /coaches"),
-        allPages("GET /rooms"),
+        leave.coachId ? allPages("GET /coaches") : [],
+        leave.coachId ? allPages("GET /rooms") : [],
       ]);
       return { sessions: sessions.data, coaches, rooms };
     },
@@ -687,7 +785,11 @@ function LeaveDecision({
             );
           })}
         <button className="button primary">
-          {busy ? "Đang lưu…" : "Lưu quyết định và xử lý lịch"}
+          {busy
+            ? "Đang lưu…"
+            : leave.coachId
+              ? "Lưu quyết định và xử lý lịch"
+              : "Lưu quyết định"}
         </button>
       </fieldset>
       {error != null && <ErrorState error={error} />}
@@ -810,7 +912,9 @@ function RequirementsPage({
                   <option value="sports">Yêu cầu bộ môn</option>
                 </>
               )}
-              {manager && <option value="coaches">Chuyên môn huấn luyện viên</option>}
+              {manager && (
+                <option value="coaches">Chuyên môn huấn luyện viên</option>
+              )}
             </select>
           </label>
           {q.isPending ? (

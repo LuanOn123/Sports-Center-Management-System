@@ -3,6 +3,9 @@ import { labels } from "./config";
 type FieldError = { field: string; message: string };
 
 const messages: Record<string, string> = {
+  "receptionist_facility_required": "Tài khoản lễ tân cần được phân công đúng một cơ sở đang hoạt động. Liên hệ Admin để kiểm tra phân công.",
+  "manager_facility_required": "Tài khoản quản lý cần được phân công đúng một cơ sở đang hoạt động. Liên hệ Admin để kiểm tra phân công.",
+  "coach_not_assigned": "Coach chưa được phân công vào cơ sở này. Kiểm tra mục Người dùng trước khi xếp lớp.",
   "user not found": "Không tìm thấy tài khoản.",
   "user not found or inactive":
     "Tài khoản không tồn tại hoặc đã ngừng hoạt động.",

@@ -1,77 +1,65 @@
-import { AuditLogPage } from "./AuditLogPage";
-import { OperationsPage } from "../operations/OperationsPage";
 import { Link, Navigate, Route, Routes } from "react-router-dom";
 import {
-  ArrowRight,
   CalendarDays,
   ChartNoAxesCombined,
-  CreditCard,
-  Dumbbell,
   LayoutDashboard,
-  Layers,
-  Receipt,
-  ShieldCheck,
-  Trophy,
-  UserRound,
   Users,
-  Volleyball,
   Warehouse,
+  Trophy,
   ClipboardList,
-  ContactRound,
-  BookOpen,
-  Activity,
-  WandSparkles,
 } from "lucide-react";
 import type { ProfileOk } from "../../shared/generated";
-import { PortalLayout } from "../../shared/PortalLayout";
-import type { NavigationGroup } from "../../shared/PortalLayout";
-import { resources } from "./config";
-import { Dashboard } from "./Dashboard";
-import { ResourcePage } from "./ResourcePage";
+import { PortalLayout, type NavigationGroup } from "../../shared/PortalLayout";
 import { Profile } from "../../shared/Profile";
-import { MembershipPage } from "../reception/membership/MembershipPage";
-import { PaymentsPage } from "../reception/payments/PaymentsPage";
-import { ClassesPage } from "../reception/classes/ClassesPage";
-import { AttendancePenalties } from "./AttendancePenalties";
-import { ActivityPlanner } from "./ActivityPlanner";
-import { FacilityVisits } from "../../shared/FacilityVisits";
-const navGroups: NavigationGroup[] = [
+import { OperationsPage } from "../operations/OperationsPage";
+import { resources } from "./config";
+import { ResourcePage } from "./ResourcePage";
+import { ManagerUsers } from "./ManagerUsers";
+import { ManagerRooms } from "./ManagerRooms";
+import { ManagerOverview } from "./ManagerOverview";
+import "./manager.css";
+
+const groups: NavigationGroup[] = [
   { title: "TỔNG QUAN", items: [["dashboard", "Tổng quan", LayoutDashboard]] },
   {
-    title: "CON NGƯỜI",
+    title: "QUẢN LÝ CƠ SỞ",
     items: [
       ["users", "Người dùng", Users],
-      ["members", "Hội viên", ContactRound],
-      ["coaches", "Huấn luyện viên", Dumbbell],
-      ["staff", "Đội ngũ lễ tân", UserRound],
-    ],
-  },
-  {
-    title: "VẬN HÀNH",
-    items: [
-      ["membership-plans", "Gói thành viên", CreditCard],
-      ["sports", "Bộ môn", Volleyball],
       ["rooms", "Phòng tập", Warehouse],
       ["classes", "Lớp học", Trophy],
       ["schedules", "Lịch hoạt động", CalendarDays],
-      ["activity-planner", "Tạo lịch nhanh", WandSparkles],
-      ["membership", "Đăng ký & gia hạn gói", Layers],
-      ["payments", "Thanh toán & hóa đơn", Receipt],
-      ["bookings", "Đăng ký lớp", BookOpen],
-      ["attendance-rules", "Chuyên cần", Activity],
-      ["checkin", "Check-in cơ sở", ContactRound],
     ],
   },
   {
-    title: "QUẢN TRỊ",
+    title: "ĐIỀU PHỐI",
     items: [
-      ["reports", "Báo cáo & phân tích", ChartNoAxesCombined],
-      ["roles", "Vai trò & quyền hạn", ShieldCheck],
-      ["audit-logs", "Nhật ký hoạt động", ClipboardList],
+      ["leave", "Nghỉ phép", CalendarDays],
+      ["issues", "Yêu cầu hỗ trợ", ClipboardList],
     ],
   },
+  {
+    title: "TÀI CHÍNH",
+    items: [["reports", "Báo cáo doanh thu", ChartNoAxesCombined]],
+  },
 ];
-
+const redirects: Record<string, string> = {
+  members: "users",
+  coaches: "users",
+  staff: "users",
+  sports: "classes",
+  bookings: "classes",
+  checkin: "dashboard",
+  "audit-logs": "dashboard",
+  requirements: "rooms",
+  slots: "schedules",
+  patterns: "schedules",
+  roles: "users",
+  "membership-plans": "reports",
+  membership: "reports",
+  payments: "reports",
+  "activity-planner": "schedules",
+  "attendance-rules": "classes",
+};
 export function ManagerLayout({
   user,
   onLogout,
@@ -83,57 +71,52 @@ export function ManagerLayout({
     <PortalLayout
       user={user}
       onLogout={onLogout}
-      title="Quản lý trung tâm"
+      title="Quản lý cơ sở"
       base="/manager"
       items={[]}
-      groups={navGroups.map(g => ({ ...g, items: g.items.filter(([slug]) => !["users", "roles"].includes(slug)) })).concat([{ title: "ĐIỀU PHỐI", items: [["requirements", "Điều kiện giảng dạy", Warehouse], ["slots", "Khung giờ", CalendarDays], ["patterns", "Sinh lịch định kỳ", CalendarDays], ["leave", "Nghỉ phép", CalendarDays], ["issues", "Yêu cầu hỗ trợ", ClipboardList]] }])}
+      groups={groups}
     >
       <Routes>
-        {(["requirements", "slots", "patterns", "leave", "issues"] as const).map(kind => <Route key={kind} path={"/manager/" + kind} element={<OperationsPage kind={kind} role="MANAGER" />} />)}
-        <Route path="/manager/staff" element={<OperationsPage kind="staff" role="MANAGER" />} />
-        <Route path="/manager/dashboard" element={<Dashboard />} />
-        <Route path="/manager/reports" element={<Dashboard reports />} />
-        <Route path="/manager/checkin" element={<FacilityVisits staff />} />
+        <Route path="/manager/dashboard" element={<ManagerOverview />} />
+        <Route path="/manager/reports" element={<ManagerOverview reports />} />
+        <Route path="/manager/users" element={<ManagerUsers />} />
         <Route
-          path="/manager/membership"
-          element={<MembershipPage role="MANAGER" />}
+          path="/manager/rooms"
+          element={<ManagerRooms userId={user.id} />}
         />
-        <Route
-          path="/manager/payments"
-          element={<PaymentsPage role="MANAGER" />}
-        />
-        <Route path="/manager/bookings" element={<ClassesPage />} />
-        <Route
-          path="/manager/activity-planner"
-          element={<ActivityPlanner role="MANAGER" />}
-        />
-        <Route
-          path="/manager/attendance-rules"
-          element={<AttendancePenalties />}
-        />
-        {resources.filter(r => !["users", "staff"].includes(r.slug)).map((r) => (
+        {resources
+          .filter((r) => ["classes", "schedules"].includes(r.slug))
+          .map((r) => (
+            <Route
+              key={r.slug}
+              path={`/manager/${r.slug}`}
+              element={
+                <ResourcePage resource={r} userId={user.id} role="MANAGER" />
+              }
+            />
+          ))}
+        {(["leave", "issues"] as const).map((kind) => (
           <Route
-            key={r.slug}
-            path={"/manager/" + r.slug}
-            element={
-              <ResourcePage key={r.slug} resource={r} userId={user.id} />
-            }
+            key={kind}
+            path={`/manager/${kind}`}
+            element={<OperationsPage key={kind} kind={kind} role="MANAGER" />}
           />
         ))}
         <Route path="/manager/profile" element={<Profile user={user} />} />
-        <Route path="/manager/roles" element={<Unavailable type="roles" />} />
-        <Route
-          path="/manager/audit-logs"
-          element={<AuditLogPage role="MANAGER" />}
-        />
-        <Route
-          path="/"
-          element={<Navigate replace to="/manager/dashboard" />}
-        />
-        <Route
-          path="/login"
-          element={<Navigate replace to="/manager/dashboard" />}
-        />
+        {Object.entries(redirects).map(([old, target]) => (
+          <Route
+            key={old}
+            path={`/manager/${old}/*`}
+            element={<Navigate replace to={`/manager/${target}`} />}
+          />
+        ))}
+        {["/", "/manager", "/login"].map((path) => (
+          <Route
+            key={path}
+            path={path}
+            element={<Navigate replace to="/manager/dashboard" />}
+          />
+        ))}
         <Route
           path="*"
           element={
@@ -147,63 +130,5 @@ export function ManagerLayout({
         />
       </Routes>
     </PortalLayout>
-  );
-}
-function Unavailable({ type }: { type: "roles" | "audit" }) {
-  return (
-    <>
-      <div className="page-heading">
-        <div>
-          <div className="eyebrow">QUẢN TRỊ HỆ THỐNG</div>
-          <h1>
-            {type === "roles" ? "Vai trò & quyền hạn" : "Nhật ký hoạt động"}
-          </h1>
-          <p>
-            {type === "roles"
-              ? "Quyền truy cập gắn với vai trò của từng tài khoản."
-              : "Theo dõi các thay đổi quan trọng tại trung tâm."}
-          </p>
-        </div>
-      </div>
-      {type === "roles" && (
-        <div className="role-grid">
-          {[
-            ["ADMIN", "Quản trị hệ thống"],
-            ["MANAGER", "Quản lý trung tâm"],
-            ["COACH", "Huấn luyện viên"],
-            ["MEMBER", "Hội viên"],
-            ["RECEPTIONIST", "Lễ tân"],
-          ].map(([key, name]) => (
-            <section className="panel role-card" key={key}>
-              <ShieldCheck />
-              <h3>{name}</h3>
-              <code>{key}</code>
-            </section>
-          ))}
-        </div>
-      )}
-      <section className="panel unavailable">
-        <span className="unavailable-icon">
-          <ShieldCheck size={30} />
-        </span>
-        <h2>
-          {type === "roles"
-            ? "Chưa hỗ trợ tùy chỉnh quyền"
-            : "Nhật ký chưa khả dụng"}
-        </h2>
-        <p>
-          {type === "roles"
-            ? "Hệ thống có năm vai trò cố định. Hiện chưa hỗ trợ thay đổi quyền chi tiết cho từng vai trò."
-            : "Nhật ký hoạt động hiện chưa khả dụng. Bạn có thể quay lại Tổng quan để tiếp tục công việc."}
-        </p>
-        <Link
-          className="button"
-          to="/manager/dashboard"
-        >
-          Về tổng quan
-          <ArrowRight size={17} />
-        </Link>
-      </section>
-    </>
   );
 }

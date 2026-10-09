@@ -173,24 +173,14 @@ test("attendance uses new advisory states and fixed absence allowance", async ({
   ).toBeVisible();
 });
 
-test("manager penalty requires review and sends an explicit reason only after confirmation", async ({
+test("obsolete Manager penalty screen redirects without applying penalties", async ({
   page,
 }) => {
   const calls = await flowFixture(page, "MANAGER");
   await page.goto("/manager/attendance-rules");
-  await page.getByRole("button", { name: "Xem trước các cảnh báo" }).click();
-  await page.getByRole("button", { name: /Xem xét · thu hồi 2 chỗ/ }).click();
+  await expect(page).toHaveURL(/\/manager\/classes$/);
+  await expect(page.getByRole("heading", { name: "Lớp học", exact: true })).toBeVisible();
   expect(calls.filter((call) => call.path.endsWith("/apply"))).toHaveLength(0);
-  await page
-    .getByLabel("Lý do quyết định")
-    .fill("Đã đối chiếu và trao đổi với hội viên");
-  await page.getByRole("button", { name: "Xác nhận áp dụng" }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  expect(calls.find((call) => call.path.endsWith("/apply"))?.body).toEqual({
-    memberId: "m1",
-    classId: "c1",
-    reason: "Đã đối chiếu và trao đổi với hội viên",
-  });
 });
 
 test("full future session offers schedule-specific waitlist registration", async ({
@@ -257,7 +247,7 @@ test("full future session offers schedule-specific waitlist registration", async
   expect(submitted).toEqual([{ scheduleId: "s1" }]);
 });
 
-test("manager report uses origin facility header and preserves summary before filtering attendance", async ({
+test("Manager revenue page does not query cross-facility usage or attendance reports", async ({
   page,
 }) => {
   await setup(page, "MANAGER");
@@ -314,14 +304,9 @@ test("manager report uses origin facility header and preserves summary before fi
   );
   await page.goto("/manager/reports");
   await expect(
-    page.getByRole("heading", { name: "Sử dụng liên cơ sở" }),
+    page.getByRole("heading", { name: "Báo cáo doanh thu", exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByText("4 lượt đặt · 2 lượt vào cửa · 3 hội viên", { exact: true }),
-  ).toBeVisible();
-  await page.getByLabel("Trạng thái chuyên cần").selectOption("WARNING");
-  await expect(page.getByText(/Tổng trước lọc: 3/)).toBeVisible();
-  await expect(page.getByText(/Đã vắng 3\/2 buổi cho phép/)).toBeVisible();
-  expect(origins.length).toBeGreaterThan(0);
-  expect(origins.every(origin => origin === "facility-a")).toBe(true);
+  await expect(page.getByRole("heading", { name: "Sử dụng liên cơ sở" })).toHaveCount(0);
+  await expect(page.getByLabel("Trạng thái chuyên cần")).toHaveCount(0);
+  expect(origins).toEqual([]);
 });
