@@ -269,7 +269,7 @@ test("overview compares all facilities and simplified navigation", async ({
   ])
     await expect(page.getByRole("heading", { name: title })).toBeVisible();
   await expect(
-    page.locator(".admin-chart").first().getByText("Cơ sở B", { exact: true }),
+    page.locator(".analytics-card").first().getByText("Cơ sở B", { exact: true }),
   ).toBeVisible();
   for (const title of [
     "Bán gói tại quầy",

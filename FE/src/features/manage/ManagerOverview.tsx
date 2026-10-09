@@ -1,3 +1,4 @@
+import { ManagerAnalytics } from "./ManagerAnalytics";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -20,6 +21,10 @@ type Revenue = {
   note?: string;
 };
 export function ManagerOverview({ reports = false }: { reports?: boolean }) {
+  return reports ? <ManagerRevenue /> : <ManagerAnalytics />;
+}
+function ManagerRevenue() {
+  const reports = true;
   const today = new Date().toLocaleDateString("en-CA", {
     timeZone: "Asia/Ho_Chi_Minh",
   });

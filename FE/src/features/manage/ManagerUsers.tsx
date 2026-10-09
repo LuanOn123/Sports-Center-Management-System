@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type RecordData } from "../../shared/api";
 import { getFacilityId } from "../../shared/facility";
 import { allPages } from "../../shared/pagedApi";
+import { classSports } from "../../shared/sports";
+import { canTeach } from "../../shared/coachEligibility";
 import { Empty, ErrorState, Loading, Modal, SchemaForm } from "../../shared/ui";
 
 type Staff = { id: string; fullName: string; email: string; role: string };
@@ -276,28 +278,44 @@ function CoachSports({
   const query = useQuery({
     queryKey: ["manager-coach-sports", getFacilityId(), id],
     queryFn: async ({ signal }) => {
-      const [sports, assigned] = await Promise.all([
+      const [sports, assigned, classes] = await Promise.all([
         allPages<{ id: string; name: string }>("GET /sports", { signal }),
         api<{ sportId: string }[]>("GET /coaches/{id}/specializations", {
           params: { id },
+          signal,
+        }),
+        allPages<RecordData>("GET /classes", {
+          query: { coachId: id },
           signal,
         }),
       ]);
       return {
         sports: sports.data,
         assigned: assigned.data.map((row) => row.sportId),
+        requiredSports: classes.data
+          .filter((row) => row.isActive !== false)
+          .flatMap(classSports)
+          .map((sport) => sport.id),
       };
     },
   });
   const [selection, setSelection] = useState<string[]>();
   const cache = useQueryClient();
   const selected = selection ?? query.data?.assigned ?? [];
+  const coversClasses =
+    !query.data?.requiredSports.length ||
+    canTeach(query.data.requiredSports, selected);
   const save = useMutation({
-    mutationFn: () =>
-      api("PUT /coaches/{id}/specializations", {
+    mutationFn: () => {
+      if (!coversClasses)
+        throw new Error(
+          "Không thể gỡ bộ môn của lớp HLV đang phụ trách. Hãy điều chỉnh phân công lớp trước.",
+        );
+      return api("PUT /coaches/{id}/specializations", {
         params: { id },
         body: { sportIds: selected },
-      }),
+      });
+    },
     onMutate: () => onBusy(true),
     onSettled: () => onBusy(false),
     onSuccess: async () => {
@@ -313,12 +331,13 @@ function CoachSports({
       className="manager-config-form"
       onSubmit={(e) => {
         e.preventDefault();
-        if (selected.length) save.mutate();
+        if (selected.length && coversClasses) save.mutate();
       }}
     >
       <p>
-        Chọn bộ môn Coach đủ điều kiện giảng dạy. Các lịch học đã xếp sẽ được
-        kiểm tra trước khi lưu.
+        Chọn một hoặc nhiều bộ môn HLV đủ điều kiện giảng dạy. HLV chỉ được phân
+        công lớp và dạy thay trong các bộ môn này. Thông tin chuyên môn dạng mô
+        tả không cấp quyền giảng dạy.
       </p>
       <fieldset disabled={save.isPending}>
         <legend>Bộ môn giảng dạy</legend>
@@ -339,13 +358,19 @@ function CoachSports({
           </label>
         ))}
         {!query.data?.sports.length && <Empty text="Chưa có bộ môn" />}
+        {!coversClasses && (
+          <p role="alert">
+            Không thể gỡ bộ môn của lớp HLV đang phụ trách. Điều chỉnh phân công
+            lớp trước khi bỏ bộ môn.
+          </p>
+        )}
         <div className="modal-footer">
           <button type="button" className="button" onClick={onClose}>
             Hủy
           </button>
           <button
             className="button primary"
-            disabled={!selected.length || save.isPending}
+            disabled={!selected.length || !coversClasses || save.isPending}
           >
             Lưu bộ môn
           </button>

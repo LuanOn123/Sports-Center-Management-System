@@ -2,11 +2,20 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type RecordData } from "../../shared/api";
 import { getFacilityId } from "../../shared/facility";
+import {
+  assertCoachCanTeach,
+  canTeach,
+  classSportIds,
+  loadQualifiedCoaches,
+} from "../../shared/coachEligibility";
 import { allPages as fetchPages } from "../../shared/pagedApi";
 import { Empty, ErrorState, Loading, Modal, SchemaForm } from "../../shared/ui";
 import { at, display } from "../../shared/config";
 import "./operations.css";
-import { attendanceReportData, AttendanceReportReview } from "./AttendanceReportReview";
+import {
+  attendanceReportData,
+  AttendanceReportReview,
+} from "./AttendanceReportReview";
 type Kind =
   | "facilities"
   | "staff"
@@ -227,8 +236,17 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
                   ? requestStatusText(row.status)
                   : display(row.status || row.role || row.action || row.code)}
               </p>
-              {row.description != null && !attendanceReportData(row.description) && <p>{String(row.description)}</p>}
-              {kind === "issues" && attendanceReportData(row.description) && <AttendanceReportReview issue={row} manager={role === "MANAGER"} onSuccess={done} />}
+              {row.description != null &&
+                !attendanceReportData(row.description) && (
+                  <p>{String(row.description)}</p>
+                )}
+              {kind === "issues" && attendanceReportData(row.description) && (
+                <AttendanceReportReview
+                  issue={row}
+                  manager={role === "MANAGER"}
+                  onSuccess={done}
+                />
+              )}
               {row.reason != null && <p>{String(row.reason)}</p>}
               {row.response != null && <p>Phản hồi: {String(row.response)}</p>}
               {row.startTime != null && (
@@ -302,20 +320,22 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
                     Xử lý đơn nghỉ
                   </button>
                 )}
-                {kind === "issues" && !member && !attendanceReportData(row.description) && (
-                  <button
-                    className="button"
-                    onClick={() =>
-                      setModal({
-                        operation: "PATCH /issues/{id}",
-                        params: { id: String(row.id) },
-                        initial: row,
-                      })
-                    }
-                  >
-                    Phản hồi
-                  </button>
-                )}
+                {kind === "issues" &&
+                  !member &&
+                  !attendanceReportData(row.description) && (
+                    <button
+                      className="button"
+                      onClick={() =>
+                        setModal({
+                          operation: "PATCH /issues/{id}",
+                          params: { id: String(row.id) },
+                          initial: row,
+                        })
+                      }
+                    >
+                      Phản hồi
+                    </button>
+                  )}
                 {kind === "issues" && member && row.status === "OPEN" && (
                   <>
                     <button
@@ -628,16 +648,32 @@ function LeaveDecision({
     [error, setError] = useState<unknown>(),
     [busy, setBusy] = useState(false);
   const q = useQuery({
-    queryKey: ["leave-affected", leave.id],
-    queryFn: async () => {
+    queryKey: ["leave-affected", getFacilityId(), leave.id],
+    queryFn: async ({ signal }) => {
       const [sessions, coaches, rooms] = await Promise.all([
         api<RecordData[]>("GET /leave-requests/{id}/affected", {
           params: { id: String(leave.id) },
         }),
-        leave.coachId ? allPages("GET /coaches") : [],
+        leave.coachId ? loadQualifiedCoaches(signal) : [],
         leave.coachId ? allPages("GET /rooms") : [],
       ]);
-      return { sessions: sessions.data, coaches, rooms };
+      const sportEntries = leave.coachId
+        ? await Promise.all(
+            [
+              ...new Set(
+                sessions.data.map((session) =>
+                  String(session.classId || at(session, "class.id") || ""),
+                ),
+              ),
+            ].map(async (id) => [id, await classSportIds(id, signal)] as const),
+          )
+        : [];
+      return {
+        sessions: sessions.data,
+        coaches,
+        rooms,
+        sports: Object.fromEntries(sportEntries),
+      };
     },
   });
   if (q.isPending) return <Loading />;
@@ -651,6 +687,21 @@ function LeaveDecision({
         e.preventDefault();
         setBusy(true);
         try {
+          if (status === "APPROVED") {
+            for (const session of q.data.sessions) {
+              const resolution = resolutions[String(session.id)];
+              if (resolution?.action === "REPLACE") {
+                if (resolution.coachId === leave.coachId)
+                  throw new Error("Không thể chọn HLV đang nghỉ để dạy thay.");
+                await assertCoachCanTeach(
+                  String(resolution.coachId || ""),
+                  await classSportIds(
+                    String(session.classId || at(session, "class.id") || ""),
+                  ),
+                );
+              }
+            }
+          }
           const payload = q.data.sessions.map((s) => {
             const r = resolutions[String(s.id)] || { action: "CANCEL" };
             return {
@@ -735,14 +786,18 @@ function LeaveDecision({
                       <option value="">Chọn huấn luyện viên</option>
                       {q.data.coaches
                         .filter(
-                          (c) => at(c, "coachProfile.id") !== leave.coachId,
+                          (c) =>
+                            c.id !== leave.coachId &&
+                            canTeach(
+                              q.data.sports[
+                                String(s.classId || at(s, "class.id") || "")
+                              ] || [],
+                              c.sportIds,
+                            ),
                         )
                         .map((c) => (
-                          <option
-                            key={String(c.id)}
-                            value={String(at(c, "coachProfile.id"))}
-                          >
-                            {titleOf(c)}
+                          <option key={String(c.id)} value={c.id}>
+                            {c.name}
                           </option>
                         ))}
                     </select>
