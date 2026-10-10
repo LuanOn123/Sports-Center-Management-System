@@ -64,7 +64,7 @@ test("login enforces Turnstile before credentials and JWT issuance", async (t) =
   });
   const app = express();
   app.use(express.json());
-  app.use("/api/v1/auth", authRoutes);
+  app.use("/api/v1/auth", authRoutes as any);
   app.use(errorHandler);
   const server = app.listen(0, "127.0.0.1");
   await new Promise<void>((resolve) => server.once("listening", resolve));

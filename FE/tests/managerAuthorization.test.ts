@@ -3,7 +3,6 @@ const db = vi.hoisted(() => ({ facilityStaff: { findMany: vi.fn() } }));
 vi.mock("../../BE/src/config/prisma.js", () => ({ prisma: db }));
 import { checkFacilityScope } from "../../BE/src/middlewares/facilityScope";
 import { requestContext } from "../../BE/src/config/request-context";
-import type { Request, Response } from "express";
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -28,8 +27,8 @@ async function check(
       query: input.query ?? {},
       body: input.body,
       get: () => input.header,
-    } as unknown as Request,
-    {} as Response,
+    } as any,
+    {} as any,
     next,
   );
   return next.mock.results[0].value;
