@@ -10,6 +10,7 @@ import { createNotification } from "../notifications/notifications.service.js";
 import { computeAttendanceBuckets } from "./attendance-analytics.service.js";
 import { expireStalePenalties } from "./attendance-penalties.service.js";
 
+
 /** §5: MEMBER không có quyền ghi attendance; COACH không được tự set EXCUSED — chỉ MANAGER. */
 function assertCanSetExcused(status: unknown, user: any) {
   if (status === "EXCUSED" && !["MANAGER", "ADMIN"].includes(user?.role)) {
@@ -538,3 +539,5 @@ export async function scanAttendanceWarnings(classId?: string, now = new Date())
 
   return { checked: buckets.length, advisoryBuckets: advisoryBuckets.length, sent, skippedDuplicate };
 }
+
+export { classifyReceptionAttendance, getReceptionAttendanceMonitoring, getReceptionAttendanceDetail, sendReceptionAttendanceWarning, submitAttendanceViolationReport, reviewAttendanceViolationReport } from "./reception-attendance.service.js";

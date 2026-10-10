@@ -14,6 +14,16 @@ export async function assignFacilityManager(
   if (replacedUserId === userId)
     throw new AppError("Hãy chọn quản lý mới khác người đang phụ trách", 400);
   return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"manager-facility:" + facilityId}))`;
+    const incumbent = await requestContext.run(
+      { ...requestContext.getStore(), facilityId: undefined },
+      () =>
+        tx.facilityStaff.findFirst({
+          where: { facilityId, role: "MANAGER", isActive: true },
+        }),
+    );
+    if (incumbent && incumbent.userId !== replacedUserId)
+      throw new AppError("Cơ sở đã có quản lý đang được phân công", 409);
     for (const lockedId of [
       ...new Set(
         [userId, replacedUserId].filter((id): id is string => Boolean(id)),

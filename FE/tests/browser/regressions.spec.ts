@@ -42,7 +42,7 @@ for (const width of [320, 375, 430, 768, 1024, 1280, 1440, 1920])
       ),
     ).toBe(true);
     await page
-      .getByRole("button", { name: "Đăng ký cho hội viên đã chọn" })
+      .getByRole("button", { name: /^Đăng ký cho / })
       .click();
     await expect(page.getByRole("dialog")).toBeVisible();
     expect(

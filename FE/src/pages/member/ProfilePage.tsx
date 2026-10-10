@@ -1,3 +1,4 @@
+import { AvatarUploader } from "../../shared/Avatar";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useAuth } from "../../context/AuthContext";
@@ -146,6 +147,8 @@ export function ProfilePage() {
           mật khẩu
         </p>
       </div>
+
+      {user && <AvatarUploader user={user} />}
 
       {/* EDIT PROFILE FORM */}
       <div

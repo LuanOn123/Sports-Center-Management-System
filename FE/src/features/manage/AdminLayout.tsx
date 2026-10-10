@@ -1,28 +1,23 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import type { PortalProps } from "../../app/RoleRouter";
 import { PortalLayout } from "../../shared/PortalLayout";
 import { Profile } from "../../shared/Profile";
 import { OperationsPage } from "../operations/OperationsPage";
 import { ResourcePage } from "./ResourcePage";
 import { resources } from "./config";
-import { Dashboard } from "./Dashboard";
+import { AdminDashboard } from "./AdminDashboard";
+import { AdminFacilities } from "./AdminFacilities";
+import { AuditLogPage } from "./AuditLogPage";
 const items = [
   ["dashboard", "Tổng quan"],
   ["facilities", "Cơ sở"],
-  ["staff", "Phân công nhân sự"],
-  ["users", "Tài khoản"],
-  ["members", "Hội viên"],
+  ["users", "Người dùng"],
   ["membership-plans", "Gói thành viên"],
   ["sports", "Bộ môn"],
-  ["coaches", "Huấn luyện viên"],
   ["rooms", "Phòng tập"],
   ["classes", "Lớp học"],
-  ["schedules", "Lịch học"],
-  ["requirements", "Điều kiện giảng dạy"],
-  ["slots", "Khung giờ"],
-  ["patterns", "Sinh lịch định kỳ"],
+  ["schedules", "Lịch hoạt động"],
   ["leave", "Nghỉ phép"],
-  ["orders", "Bán gói tại quầy"],
   ["issues", "Yêu cầu hỗ trợ"],
   ["audit", "Nhật ký hoạt động"],
   ["profile", "Tài khoản của tôi"],
@@ -36,20 +31,10 @@ export function AdminLayout(props: PortalProps) {
       items={items}
     >
       <Routes>
-        <Route path="/admin/dashboard" element={<Dashboard base="/admin" />} />
-        {(
-          [
-            "facilities",
-            "staff",
-            "requirements",
-            "slots",
-            "patterns",
-            "leave",
-            "orders",
-            "issues",
-            "audit",
-          ] as const
-        ).map((kind) => (
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/facilities" element={<AdminFacilities />} />
+        <Route path="/admin/audit" element={<AuditLogPage />} />
+        {(["leave", "issues"] as const).map((kind) => (
           <Route
             key={kind}
             path={"/admin/" + kind}
@@ -57,13 +42,23 @@ export function AdminLayout(props: PortalProps) {
           />
         ))}
         {resources
-          .filter((r) => r.slug !== "staff")
+          .filter((r) =>
+            [
+              "users",
+              "membership-plans",
+              "sports",
+              "rooms",
+              "classes",
+              "schedules",
+            ].includes(r.slug),
+          )
           .map((r) => (
             <Route
               key={r.slug}
               path={"/admin/" + r.slug}
               element={
                 <ResourcePage
+                  key={r.slug}
                   resource={r}
                   role="ADMIN"
                   userId={props.user.id}
@@ -72,6 +67,24 @@ export function AdminLayout(props: PortalProps) {
             />
           ))}
         <Route path="/admin/profile" element={<Profile user={props.user} />} />
+        <Route
+          path="/admin/staff"
+          element={<Navigate replace to="/admin/facilities" />}
+        />
+        <Route
+          path="/admin/members"
+          element={<Navigate replace to="/admin/users?role=MEMBER" />}
+        />
+        {["coaches", "requirements", "slots", "patterns", "orders"].map(
+          (slug) => (
+            <Route
+              key={slug}
+              path={"/admin/" + slug}
+              element={<Navigate replace to="/admin/dashboard" />}
+            />
+          ),
+        )}
+        <Route path="*" element={<Navigate replace to="/admin/dashboard" />} />
       </Routes>
     </PortalLayout>
   );

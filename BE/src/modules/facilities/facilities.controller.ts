@@ -10,6 +10,7 @@ import { User } from "../../models/User.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { Prisma } from "@prisma/client";
 import { assignFacilityManager } from "./facility-manager.service.js";
+import { requestContext } from "../../config/request-context.js";
 
 export async function createFacility(
   req: Request,
@@ -69,6 +70,7 @@ export async function getFacilityById(
     where: { id: facilityId },
     include: {
       staffs: {
+        ...(req.user?.role === "MANAGER" ? { where: { isActive: true } } : {}),
         include: {
           user: {
             select: { id: true, fullName: true, email: true, role: true },
@@ -115,7 +117,9 @@ export async function updateFacility(
 }
 
 export async function assignStaff(req: Request, res: Response): Promise<void> {
-  const facilityId = req.params.facilityId as string;
+  const facilityId = req.user?.role === "MANAGER"
+    ? requestContext.getStore()!.facilityId!
+    : String(req.params.facilityId);
   const data = AssignStaffSchema.parse(req.body);
   if (req.user?.role === "ADMIN") {
     if (data.role !== "MANAGER") throw new AppError("Admin chỉ phân công quản lý cơ sở", 403);
@@ -128,20 +132,24 @@ export async function assignStaff(req: Request, res: Response): Promise<void> {
   const user = await User.findById(data.userId).lean();
   if (!user || !user.isActive || user.role !== data.role)
     throw new AppError("Staff role must match an active user", 400);
-  const staff = await prisma.facilityStaff.upsert({
-    where: {
-      userId_facilityId_role: {
-        userId: data.userId,
-        facilityId,
-        role: data.role as any,
+  const staff = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"staff-assignment:" + data.userId}))`;
+    const existing = await requestContext.run(
+      { ...requestContext.getStore(), facilityId: undefined },
+      () => tx.facilityStaff.findFirst({ where: { userId: data.userId, isActive: true } }),
+    );
+    if (existing) throw new AppError("Nhân sự đã được phân công vào một cơ sở", 409);
+    return tx.facilityStaff.upsert({
+      where: {
+        userId_facilityId_role: {
+          userId: data.userId,
+          facilityId,
+          role: data.role,
+        },
       },
-    },
-    update: { isActive: true },
-    create: {
-      userId: data.userId,
-      facilityId,
-      role: data.role as any,
-    },
+      update: { isActive: true },
+      create: { userId: data.userId, facilityId, role: data.role },
+    });
   });
 
   sendSuccess(res, staff, "Staff assigned successfully", 201);

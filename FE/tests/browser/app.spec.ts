@@ -9,6 +9,7 @@ async function fixtureApi(page: any, role = "MANAGER") {
       const url = new URL(route.request().url());
       const path = url.pathname.replace("/api/v1", "");
     if (path === "/facilities") return route.fulfill({ json: { success: true, data: [{ id: "facility-a", code: "A", name: "Cơ sở A", isActive: true }] } });
+    if (path === "/facilities/facility-a") return route.fulfill({ json: { success: true, data: { name: "Cơ sở A", staffs: [] } } });
       const method = route.request().method().toLowerCase();
       const operation = doc.paths[path]?.[method];
       if (!operation) {
@@ -87,7 +88,7 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
   await page.getByPlaceholder("Nhập mật khẩu").fill("test-only-password");
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Tổng quan trung tâm." }),
+    page.getByRole("heading", { name: "Tổng quan cơ sở" }),
   ).toBeVisible();
   await expect(
     page.getByText("900.000", { exact: false }).first(),
@@ -126,24 +127,8 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
     await expect(page.getByText("Không tìm thấy trang")).toHaveCount(0);
   }
   await page.goto("/manager/activity-planner");
-  await expect(
-    page.getByRole("heading", { name: "Tạo lịch hoạt động nhanh" }),
-  ).toBeVisible();
-  await expect(page.getByText(/Học vào các thứ/)).toBeVisible();
-  await page.getByRole("button", { name: "Thêm slot giờ" }).click();
-  await expect(page.getByLabel("Slot 2 bắt đầu")).toBeVisible();
-  await page.getByLabel("Tên lớp").fill("Yoga buổi tối");
-  await page
-    .getByRole("button", { name: "Tạo toàn bộ lịch hoạt động" })
-    .click();
-  const plannerError = page.getByRole("dialog");
-  await expect(plannerError).toBeVisible();
-  await expect(plannerError).toContainText("Chưa chọn bộ môn");
-  await expect(plannerError).toContainText("Chưa chọn huấn luyện viên chính");
-  await plannerError
-    .getByRole("button", { name: "Quay lại chỉnh sửa" })
-    .click();
-  await expect(page.getByLabel("Tên lớp")).toHaveValue("Yoga buổi tối");
+  await expect(page).toHaveURL(/\/manager\/schedules$/);
+  await expect(page.getByRole("heading", { name: "Lịch hoạt động", exact: true })).toBeVisible();
   await page.goto("/manager/rooms");
   await page
     .getByRole("button", { name: "Thêm phòng tập", exact: true })
@@ -200,7 +185,7 @@ test("API errors are visible and retry restores the list", async ({ page }) => {
       sessionStorage.setItem("pulse.access", "test-only"));
   });
   let fail = true;
-  await page.route("**/api/v1/sports?**", async (route) => {
+  await page.route("**/api/v1/rooms?**", async (route) => {
     if (fail)
       await route.fulfill({
         status: 500,
@@ -208,11 +193,11 @@ test("API errors are visible and retry restores the list", async ({ page }) => {
       });
     else await route.fallback();
   });
-  await page.goto("/manager/sports");
+  await page.goto("/manager/rooms");
   await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "Test server error",
   );
   fail = false;
   await page.getByRole("button", { name: "Thử lại" }).click();
-  await expect(page.getByText("Yoga", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Xem chi tiết", exact: true }).first()).toBeVisible();
 });

@@ -278,6 +278,8 @@ async function findAssignableCoach(coachId: string) {
   if (!coach || !coach.user.isActive || coach.user.role !== "COACH") {
     throw new AppError("Active coach not found", 404);
   }
+  if (!(await prisma.facilityStaff.findFirst({ where: { userId: coach.userId, role: "COACH", isActive: true } })))
+    throw new AppError("COACH_NOT_ASSIGNED", 403);
   return coach;
 }
 

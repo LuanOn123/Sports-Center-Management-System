@@ -3,6 +3,7 @@ import { CancelSubscription } from "../../shared/CancelSubscription";
 import "./membership.css";
 import {
   effectiveSubscription,
+  downgradeReason,
   isEffectiveSubscription,
 } from "../../shared/businessRules";
 import { formatMemberDate } from "../../shared/memberFormat";
@@ -252,7 +253,7 @@ export function MembershipPage() {
                       color: "var(--member-text, #ffffff)",
                     }}
                   >
-                    {activeSub.plan?.name}
+                    {activeSub.planNameSnapshot ?? activeSub.plan?.name}
                   </h2>
                   <p
                     style={{
@@ -262,7 +263,9 @@ export function MembershipPage() {
                     }}
                   >
                     {activeSub.plan?.description ||
-                      "Toàn quyền sử dụng trang thiết bị và đăng ký các lớp học tiêu chuẩn."}
+                      (activeSub.tier === "FREE"
+                        ? "Có thể check-in vào cơ sở; gói FREE không cấp quyền đặt lớp."
+                        : "Quyền lợi có hiệu lực tại mọi cơ sở. Quota lớp được tính chung trên toàn hệ thống.")}
                   </p>
                 </div>
 
@@ -438,7 +441,8 @@ export function MembershipPage() {
                           color: "var(--member-text, #203d31)",
                         }}
                       >
-                        {sub.plan?.name || "Gói tập"} ({sub.tier})
+                        {sub.planNameSnapshot ?? sub.plan?.name ?? "Gói tập"} (
+                        {sub.tier})
                       </div>
                       <div
                         style={{
@@ -508,6 +512,7 @@ export function MembershipPage() {
               }}
             >
               {plans.map((p) => {
+                const blockedReason = downgradeReason(activeSub, p);
                 const isPremium = p.tier === "PREMIUM";
                 const registered = subscriptions.find(
                   (s) => s.planId === p.id && isEffectiveSubscription(s),
@@ -664,7 +669,15 @@ export function MembershipPage() {
                           />
                           <span>
                             Quyền đặt lịch lớp học:{" "}
-                            <strong>Không giới hạn</strong>
+                            <strong>
+                              {p.maxConcurrentClasses ??
+                                (p.tier === "FREE"
+                                  ? 0
+                                  : p.tier === "PREMIUM"
+                                    ? 6
+                                    : 3)}{" "}
+                              lớp song song trên mọi cơ sở
+                            </strong>
                           </span>
                         </div>
                         {isPremium && (
@@ -715,7 +728,11 @@ export function MembershipPage() {
                         className="button primary"
                         style={{ width: "100%", justifyContent: "center" }}
                         disabled={
-                          Number(p.price) <= 0 || createCheckout.isPending
+                          subLoading ||
+                          Boolean(subError) ||
+                          Boolean(blockedReason) ||
+                          Number(p.price) <= 0 ||
+                          createCheckout.isPending
                         }
                         onClick={() => startCheckout(p)}
                       >
@@ -726,6 +743,9 @@ export function MembershipPage() {
                             ? "Gia hạn qua VietQR"
                             : "Chuyển khoản VietQR"}
                       </button>
+                      {blockedReason && (
+                        <p className="field-note">{blockedReason}</p>
+                      )}
                       <p
                         style={{
                           textAlign: "center",
@@ -737,6 +757,8 @@ export function MembershipPage() {
                       >
                         Quét mã bằng ứng dụng ngân hàng. Sau khi nhận tiền, hệ
                         thống sẽ kích hoạt gói hoặc thông báo nếu cần đối soát.
+                        Gói mới thay thế gói hiện tại, bắt đầu khi kích hoạt và
+                        không cộng ngày dư.
                       </p>
                     </div>
                   </div>

@@ -72,6 +72,8 @@ async function workflow(page: Page, role = "MEMBER") {
           },
         },
       ];
+    else if (path === "/attendance/my") data = [{ id: "a1", memberId: "member-1", scheduleId: "s1", status: "ABSENT", note: "Nghỉ học", schedule: { startTime: "2026-09-10T02:00:00Z", class: { name: "Yoga" } } }];
+    else if (path === "/attendance/my/summary") data = { thresholds: {}, buckets: [], penalties: [] };
     else if (path === "/attendance")
       data = [
         {
@@ -204,18 +206,18 @@ test("dynamic role changes expire session without refreshing obsolete permission
   ).toBeNull();
 });
 
-test("manager gains finance screens while staff has no refund action", async ({
+test("manager has revenue reports only while staff has no refund action", async ({
   page,
 }) => {
   await setup(page, "MANAGER");
   await page.goto("/manager/payments");
   await expect(
-    page.getByRole("heading", { name: "Thanh toán & hóa đơn", exact: true }),
+    page.getByRole("heading", { name: "Báo cáo doanh thu", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Chọn", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/manager\/reports$/);
   await expect(
     page.getByRole("button", { name: "Hoàn tiền", exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await setup(page, "RECEPTIONIST");
   await page.goto("/receptionist/payments");
   await page.getByRole("button", { name: "Chọn", exact: true }).first().click();
@@ -224,7 +226,7 @@ test("manager gains finance screens while staff has no refund action", async ({
   ).toHaveCount(0);
 });
 
-test("staff completes only ended sessions through dedicated API and cannot mark attendance", async ({
+test("reception views ended sessions without managing schedule or attendance", async ({
   page,
 }) => {
   await setup(page, "RECEPTIONIST");
@@ -286,19 +288,11 @@ test("staff completes only ended sessions through dedicated API and cannot mark 
   await page.getByRole("button", { name: /Buổi chưa kết thúc/ }).click();
   await expect(
     page.getByRole("dialog").getByRole("button", { name: "Hoàn tất" }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: /Buổi đã kết thúc/ }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Hoàn tất" })
-    .click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Xác nhận", exact: true })
-    .click();
-  expect(mutations).toEqual(["PATCH /class-schedules/ended/complete"]);
-  await page.getByRole("button", { name: /Buổi đã kết thúc/ }).click();
+  for (const name of ["Hoàn tất", "Chỉnh sửa", "Hủy lịch"]) await expect(page.getByRole("dialog").getByRole("button", { name, exact: true })).toHaveCount(0);
+  expect(mutations).toEqual([]);
   await page.getByRole("button", { name: "Học viên & điểm danh" }).click();
   await expect(
     page.locator("summary").filter({ hasText: "Chưa điểm danh" }),

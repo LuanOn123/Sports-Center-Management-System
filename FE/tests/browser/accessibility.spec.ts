@@ -3,17 +3,13 @@ import AxeBuilder from "@axe-core/playwright";
 import { setup } from "./fixtures";
 const screens = [
   ...[
-    "members",
-    "coaches",
-    "staff",
-    "membership-plans",
-    "sports",
+    "users",
     "rooms",
     "classes",
     "schedules",
     "reports",
-    "roles",
-    "audit-logs",
+    "leave",
+    "issues",
   ].map((path) => ["MANAGER", "/manager/" + path] as const),
   ...["dashboard", "members", "checkin", "support", "profile"].map(
     (path) => ["RECEPTIONIST", "/receptionist/" + path] as const,
@@ -71,7 +67,7 @@ for (const width of [375, 1440])
         );
       };
       await scan();
-      if (path.endsWith("/users")) {
+      if (role === "ADMIN" && path.endsWith("/users")) {
         await page
           .getByRole("button", { name: "Xem chi tiết", exact: true })
           .first()

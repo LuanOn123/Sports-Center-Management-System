@@ -125,6 +125,14 @@ export function FacilityBoundary({
     return (
       <div className="fullscreen">
         <h1>{admin ? "Thêm cơ sở đầu tiên" : "Chưa được phân công cơ sở"}</h1>
+        {!admin && (
+          <>
+            <p>Tài khoản đã được tạo nhưng chưa được phân công vào cơ sở. Liên hệ quản lý; sau khi được phân công, kiểm tra lại để tiếp tục.</p>
+            <button className="button primary" disabled={q.isFetching} onClick={() => void q.refetch()}>
+              Kiểm tra phân công
+            </button>
+          </>
+        )}
         {admin && (
           <form
             onSubmit={async (e) => {

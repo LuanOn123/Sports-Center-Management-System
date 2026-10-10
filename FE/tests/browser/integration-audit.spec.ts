@@ -20,6 +20,7 @@ test("MANAGER edits coach profile using User.id and cannot create accounts", asy
   let updated = false;
   let payload: unknown;
   const coach = () => ({ id: userId, fullName: "Audit Coach", email: "audit@test.invalid", isActive: true, coachProfile: { id: profileId, specialization: "Yoga", experienceYears: updated ? 4 : 1 } });
+  await page.route("**/api/v1/facilities/facility-a", route => route.fulfill({ json: { success: true, data: { name: "Cơ sở A", staffs: [{ userId, role: "COACH", isActive: true, user: coach() }] } } }));
   await page.route("**/api/v1/coaches**", async route => {
     const path = new URL(route.request().url()).pathname;
     if (route.request().method() === "PATCH") {
@@ -31,9 +32,10 @@ test("MANAGER edits coach profile using User.id and cannot create accounts", asy
     return route.fulfill({ json: { success: true, data: path.endsWith(userId) ? coach() : [coach()] } });
   });
   await page.goto("/manager/coaches");
-  await expect(page.getByRole("button", { name: "Chỉnh sửa", exact: true }).first()).toBeVisible();
+  await expect(page).toHaveURL(/\/manager\/users$/);
+  await expect(page.getByRole("button", { name: "Hồ sơ Coach", exact: true }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: /Thêm huấn luyện viên/ })).toHaveCount(0);
-  await page.getByRole("button", { name: "Chỉnh sửa", exact: true }).first().click();
+  await page.getByRole("button", { name: "Hồ sơ Coach", exact: true }).first().click();
   await expect(page.getByRole("dialog").getByLabel("Họ và tên")).toHaveValue("Audit Coach");
   await page.getByRole("dialog").getByLabel("Số năm kinh nghiệm").fill("4");
   await page.getByRole("dialog").getByRole("button", { name: /Lưu thay đổi/ }).click();
@@ -42,7 +44,7 @@ test("MANAGER edits coach profile using User.id and cannot create accounts", asy
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
-test("MANAGER keeps member registration through the current public auth contract", async ({ page }) => {
+test("MANAGER no longer exposes member registration through obsolete URLs", async ({ page }) => {
   await setup(page, "MANAGER");
   let body: Record<string, unknown> | undefined;
   await page.route("**/api/v1/auth/register", async route => {
@@ -50,15 +52,10 @@ test("MANAGER keeps member registration through the current public auth contract
     return route.fulfill({ status: 201, json: { success: true, data: { id: "670123abc456def789012345", ...body } } });
   });
   await page.goto("/manager/members");
-  await page.getByRole("button", { name: "Thêm hội viên", exact: true }).click();
-  const form = page.getByRole("dialog");
-  await form.getByLabel("Họ và tên").fill("Audit Member");
-  await form.getByLabel(/^Email/).fill("member@test.invalid");
-  await form.getByLabel(/^Mật khẩu/).fill("Password!2026");
-  await form.getByRole("button", { name: "Lưu thay đổi" }).click();
-  await expect.poll(() => body).toMatchObject({ fullName: "Audit Member", email: "member@test.invalid", password: "Password!2026" });
-  expect(body).not.toHaveProperty("role");
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/manager\/users$/);
+  await expect(page.getByRole("heading", { name: "Nhân sự cơ sở" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Thêm hội viên", exact: true })).toHaveCount(0);
+  expect(body).toBeUndefined();
 });
 
 test("COACH manual attendance offers allowed statuses and sends Mongo profile ID", async ({ page }) => {

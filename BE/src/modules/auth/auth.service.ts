@@ -1,5 +1,6 @@
 import { User } from "../../models/User.js";
 import { synchronizeUserProjection } from "../users/user-projection.service.js";
+import { staffAssignmentView } from "../facilities/staff-assignment-view.js";
 import { MemberProfile } from "../../models/MemberProfile.js";
 import { CoachProfile } from "../../models/CoachProfile.js";
 import { ManagerProfile } from "../../models/ManagerProfile.js";
@@ -194,6 +195,7 @@ export async function getMe(userId: string) {
 
   return {
     id: uid,
+    ...(await staffAssignmentView(uid, user.role)),
     email: user.email,
     fullName: user.fullName,
     phone: user.phone,

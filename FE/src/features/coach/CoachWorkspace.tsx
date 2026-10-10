@@ -1,3 +1,4 @@
+import { ScheduleAnalytics } from "../../shared/analytics/ScheduleAnalytics";
 import { StatusBadge as Badge } from "../../shared/StatusBadge";
 import { sportNames } from "../../shared/sports";
 import { Attendance } from "../../shared/Attendance";
@@ -7,12 +8,10 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   ArrowRight,
-  CalendarDays,
   Clock3,
   MapPin,
   Users,
   BookOpen,
-  CheckCircle2,
 } from "lucide-react";
 import { api } from "../../shared/api";
 import { Empty, ErrorState, Loading, Modal } from "../../shared/ui";
@@ -117,49 +116,22 @@ export function CoachWorkspace({
         <>
           {mode === "dashboard" && (
             <>
-              <section className="coach-welcome">
-                <div>
-                  <span className="eyebrow">MỖI BUỔI TẬP, MỘT BƯỚC TIẾN</span>
-                  <h2>Sẵn sàng cho buổi dạy tiếp theo.</h2>
-                  <p>
-                    Xem lịch, hiểu mục tiêu học viên và chuẩn bị cho từng buổi
-                    tập.
-                  </p>
-                  <Link className="button primary" to="/coach/schedule">
-                    Mở lịch dạy <ArrowRight size={16} />
-                  </Link>
-                </div>
-                <CalendarDays size={84} aria-hidden="true" />
-              </section>
-              <div className="coach-stats">
-                <Stat
-                  icon={<BookOpen />}
-                  title="Lớp phụ trách"
-                  value={classes.data.length}
-                />
-                <Stat
-                  icon={<CalendarDays />}
-                  title="Buổi trong tuần"
-                  value={
-                    schedules.isPending
-                      ? "…"
-                      : schedules.error
-                        ? "—"
-                        : list.filter((s) => s.status !== "CANCELLED").length
-                  }
-                />
-                <Stat
-                  icon={<CheckCircle2 />}
-                  title="Đã hoàn thành trong tuần"
-                  value={
-                    schedules.isPending
-                      ? "…"
-                      : schedules.error
-                        ? "—"
-                        : list.filter((s) => s.status === "COMPLETED").length
-                  }
-                />
+              <div className="analytics-shortcuts">
+                <span>{classes.data.length} lớp phụ trách</span>
+                <Link className="button" to="/coach/schedule">
+                  Mở lịch dạy <ArrowRight size={16} />
+                </Link>
               </div>
+              {schedules.isPending ? (
+                <Loading variant="chart" />
+              ) : schedules.error ? (
+                <ErrorState
+                  error={schedules.error}
+                  retry={() => schedules.refetch()}
+                />
+              ) : (
+                <ScheduleAnalytics rows={list} start={start} end={end} coach />
+              )}
             </>
           )}
           {mode === "classes" ? (
@@ -448,23 +420,6 @@ export function CoachWorkspace({
         </Modal>
       )}
     </div>
-  );
-}
-function Stat({
-  title,
-  value,
-  icon,
-}: {
-  title: string;
-  value: string | number;
-  icon: React.ReactNode;
-}) {
-  return (
-    <article className="panel coach-stat">
-      {icon}
-      <span>{title}</span>
-      <strong>{value}</strong>
-    </article>
   );
 }
 

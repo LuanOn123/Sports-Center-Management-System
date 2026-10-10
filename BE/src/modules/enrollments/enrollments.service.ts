@@ -1,3 +1,4 @@
+import { readAttendanceReport } from "../attendance/reception-attendance.service.js";
 import { requestContext } from "../../config/request-context.js";
 import { prisma } from "../../config/prisma.js";
 import { Prisma } from "@prisma/client";
@@ -99,6 +100,10 @@ export async function assertCanBook(
 
   if (schedule.class.classType === "PREMIUM" && activeSub.tier !== "PREMIUM")
     throw new AppError("Premium membership required to book this class.", 403);
+
+  const removals = await tx.issue.findMany({ where: { facilityId: schedule.class.facilityId, requesterRole: "RECEPTIONIST", status: "RESOLVED", description: { contains: '"type":"ATTENDANCE_VIOLATION"' } }, select: { description: true } });
+  if (removals.some(issue => { const report = readAttendanceReport(issue.description); return report?.memberId === memberProfileId && report.classId === schedule.class.id; }))
+    throw new AppError("Đăng ký lớp đã bị quản lý hủy do chuyên cần. Vui lòng liên hệ quản lý cơ sở.", 403);
 
   // §12: hình phạt chuyên cần đang hiệu lực chỉ chặn đúng Class đó (không chặn Class khác).
   const penalty = await findActivePenalty(tx, memberProfileId, schedule.class.id);

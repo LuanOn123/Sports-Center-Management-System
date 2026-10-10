@@ -11,9 +11,11 @@ import {
 } from "../../../shared/ui";
 import { Heading, MemberPicker } from "../components";
 import { useReceptionDetail } from "../api";
+import { MemberAttendanceModal } from "../attendance/AttendancePage";
 export function MembersPage() {
   const [edit, setEdit] = useState(false),
     [busy, setBusy] = useState(false);
+  const [attendance, setAttendance] = useState(false);
   const cache = useQueryClient();
   const [member, setMember] = useState<RecordData | null>(null);
   const detail = useReceptionDetail(
@@ -28,7 +30,13 @@ export function MembersPage() {
           Đăng ký hội viên mới
         </Link>
       </Heading>
-      <MemberPicker value={member} onChange={setMember} />
+      <MemberPicker
+        value={member}
+        onChange={(row) => {
+          setMember(row);
+          setAttendance(false);
+        }}
+      />
       {member && (
         <section className="panel reception-section">
           <h2>Thông tin hội viên</h2>
@@ -39,6 +47,9 @@ export function MembersPage() {
           ) : (
             <>
               <Details value={detail.data.data} />
+              <button className="button" onClick={() => setAttendance(true)}>
+                Xem điểm danh
+              </button>
               <button className="button" onClick={() => setEdit(true)}>
                 Chỉnh sửa hội viên
               </button>
@@ -54,6 +65,12 @@ export function MembersPage() {
             Kiểm tra / đăng ký gói
           </Link>
         </section>
+      )}
+      {attendance && member && (
+        <MemberAttendanceModal
+          member={member}
+          onClose={() => setAttendance(false)}
+        />
       )}
       {edit && member && detail.data && (
         <Modal

@@ -1,3 +1,4 @@
+import { Avatar } from "./Avatar";
 import type { ReactNode } from "react";
 import type { RecordData } from "./api";
 import { at, display, money } from "./config";
@@ -59,9 +60,23 @@ export function Table({
                     <StatusBadge value={at(row, key)} />
                   ) : key.endsWith("fullName") ? (
                     <div className="name-cell">
-                      <span className="avatar" aria-hidden="true">
-                        {String(at(row, key) || "?").slice(0, 1)}
-                      </span>
+                      <Avatar
+                        user={{
+                          fullName: String(at(row, key) || "?"),
+                          avatarUrl:
+                            typeof at(
+                              row,
+                              key.replace(/fullName$/, "avatarUrl"),
+                            ) === "string"
+                              ? String(
+                                  at(
+                                    row,
+                                    key.replace(/fullName$/, "avatarUrl"),
+                                  ),
+                                )
+                              : undefined,
+                        }}
+                      />
                       <strong>{display(at(row, key))}</strong>
                     </div>
                   ) : (

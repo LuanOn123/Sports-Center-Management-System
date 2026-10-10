@@ -1,3 +1,4 @@
+import { Avatar } from "./Avatar";
 import { ProtectedAttachment } from "./ProtectedAttachment";
 import {
   useEffect,
@@ -428,7 +429,13 @@ function NotificationBody({ text }: { text: string }) {
   );
 }
 
-type Contact = { id: string; fullName: string; role: string; email?: string };
+type Contact = {
+  id: string;
+  fullName: string;
+  role: string;
+  email?: string;
+  avatarUrl?: string | null;
+};
 type Message = {
   id: string;
   senderId: string;
@@ -699,25 +706,28 @@ export function Chat({
             {orderedContacts.map((contact) => {
               const item = conversationById.get(contact.id);
               return (
-                <button
+                <div
                   className={`chat-contact ${target === contact.id ? "active" : ""}`}
                   key={contact.id}
-                  onClick={() => setTarget(contact.id)}
                 >
                   <span className="chat-avatar">
-                    {contact.fullName.slice(0, 2).toUpperCase()}
+                    <Avatar user={contact} />
                     <i className={online.has(contact.id) ? "online" : ""} />
                   </span>
-                  <span>
+                  <button
+                    type="button"
+                    className="chat-contact-select"
+                    onClick={() => setTarget(contact.id)}
+                  >
                     <strong>{contact.fullName}</strong>
                     <small>
                       {item?.latestMessage?.content || display(contact.role)}
                     </small>
-                  </span>
+                  </button>
                   {item?.unreadCount ? (
                     <b className="chat-unread">{item.unreadCount}</b>
                   ) : null}
-                </button>
+                </div>
               );
             })}
           </aside>
@@ -860,7 +870,11 @@ function Conversation({
       <header className="chat-conversation-head">
         <span className={`chat-avatar ${target ? "" : "group"}`}>
           {target ? (
-            contact?.fullName.slice(0, 2).toUpperCase()
+            contact ? (
+              <Avatar user={contact} />
+            ) : (
+              "?"
+            )
           ) : (
             <Users size={18} />
           )}

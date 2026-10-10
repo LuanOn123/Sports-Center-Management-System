@@ -4,11 +4,47 @@ import { MemberProfile } from "../../models/MemberProfile.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { prisma } from "../../config/prisma.js";
-import type { UpdateMemberInput, MemberQueryInput } from "./members.schema.js";
+import { hashPassword } from "../../utils/bcrypt.js";
+import { ensureActiveFreeSubscription } from "../subscriptions/free-subscription.service.js";
+import { createNotification } from "../notifications/notifications.service.js";
+import { getStaffFacilityId } from "../../middlewares/facilityScope.js";
+import mongoose from "mongoose";
+import type { UpdateMemberInput, MemberQueryInput, CreateMemberInput } from "./members.schema.js";
 
 function transformProfile(doc: any) {
   if (!doc) return null;
   return { ...doc, id: doc._id?.toString(), _id: undefined, __v: undefined };
+}
+
+export async function assertMemberFacilityAccess(memberProfileId: string, user?: { id: string; role: string }) {
+  if (!user || user.role === "ADMIN") return;
+  if (user.role === "RECEPTIONIST" || user.role === "MANAGER") {
+    const facilityId = await getStaffFacilityId(user.id, user.role);
+    const [hasSystemRelation, hasThisFacilityRelation] = await Promise.all([
+      (async () => {
+        const e = await prisma.enrollment.findFirst({ where: { memberId: memberProfileId } });
+        if (e) return true;
+        const v = await prisma.facilityVisit.findFirst({ where: { memberId: memberProfileId } });
+        if (v) return true;
+        const p = await prisma.payment.findFirst({ where: { memberId: memberProfileId } });
+        return Boolean(p);
+      })(),
+      (async () => {
+        const e = await prisma.enrollment.findFirst({ where: { memberId: memberProfileId, class: { facilityId } } });
+        if (e) return true;
+        const v = await prisma.facilityVisit.findFirst({ where: { memberId: memberProfileId, facilityId } });
+        if (v) return true;
+        const p = await prisma.payment.findFirst({ where: { memberId: memberProfileId, facilityId } });
+        if (p) return true;
+        const s = await prisma.membershipSubscription.findFirst({ where: { memberId: memberProfileId, facilityId } });
+        return Boolean(s);
+      })(),
+    ]);
+
+    if (hasSystemRelation && !hasThisFacilityRelation) {
+      throw new AppError("Member not found", 404);
+    }
+  }
 }
 
 export async function listMembers(query: MemberQueryInput) {
@@ -82,7 +118,7 @@ export async function listMembers(query: MemberQueryInput) {
   return { members, pagination: buildPaginationMeta(total, page, limit) };
 }
 
-export async function getMemberById(id: string) {
+export async function getMemberById(id: string, requestUser?: { id: string; role: string }) {
   // Tìm bằng profileId hoặc userId
   let memberProfile = await MemberProfile.findById(id).lean();
   if (!memberProfile) {
@@ -94,6 +130,8 @@ export async function getMemberById(id: string) {
   if (!user || user.role !== "MEMBER") throw new AppError("Member not found", 404);
 
   const memberProfileId = (memberProfile._id as any).toString();
+  await assertMemberFacilityAccess(memberProfileId, requestUser);
+
   const subscriptions = await prisma.membershipSubscription.findMany({
     where: {
       memberId: memberProfileId,
@@ -123,6 +161,89 @@ export async function getMemberById(id: string) {
     subscriptions,
   };
 }
+
+export async function createMember(data: CreateMemberInput, creatorUser?: { id: string; role: string }) {
+  const existing = await User.findOne({ email: data.email });
+  if (existing) throw new AppError("Email is already in use", 409);
+  if (data.phone) {
+    const existingPhone = await User.findOne({ phone: data.phone });
+    if (existingPhone) throw new AppError("Phone number is already in use", 409);
+  }
+
+  const rawPassword = data.password || "Member@123456";
+  const hashed = await hashPassword(rawPassword);
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const user = new User({
+      email: data.email,
+      password: hashed,
+      fullName: data.fullName,
+      phone: data.phone || null,
+      gender: data.gender || null,
+      dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+      role: "MEMBER", // ALWAYS strictly MEMBER!
+    });
+    await user.save({ session });
+    const userId = user._id.toString();
+
+    const memberProfile = new MemberProfile({
+      userId,
+      fitnessGoal: data.fitnessGoal || null,
+      trainingLevel: data.trainingLevel || null,
+      trainingPreference: data.trainingPreference || null,
+    });
+    await memberProfile.save({ session });
+
+    await session.commitTransaction();
+
+    const memberProfileId = memberProfile._id.toString();
+
+    // DUAL-WRITE: PostgreSQL
+    await prisma.user.create({
+      data: {
+        id: userId,
+        email: user.email,
+        password: user.password,
+        fullName: user.fullName,
+        phone: user.phone,
+        gender: user.gender as any,
+        dateOfBirth: user.dateOfBirth,
+        role: "MEMBER",
+      },
+    });
+
+    await prisma.memberProfile.create({
+      data: {
+        id: memberProfileId,
+        userId,
+        fitnessGoal: data.fitnessGoal || null,
+        trainingLevel: (data.trainingLevel as any) || null,
+        trainingPreference: data.trainingPreference || null,
+      },
+    });
+
+    await prisma.$transaction((tx) =>
+      ensureActiveFreeSubscription(tx, memberProfileId)
+    );
+
+    createNotification(
+      userId,
+      "MEMBER_REGISTERED",
+      "Chào mừng đến với Trung tâm Thể thao!",
+      `Xin chào ${user.fullName}! Tài khoản hội viên của bạn đã được tạo thành công tại quầy lễ tân.`
+    ).catch(() => {});
+
+    return getMemberById(memberProfileId);
+  } catch (err) {
+    if (session.inTransaction()) await session.abortTransaction();
+    throw err;
+  } finally {
+    session.endSession();
+  }
+}
+
 
 export async function updateMember(id: string, data: UpdateMemberInput) {
   let memberProfile = await MemberProfile.findById(id);

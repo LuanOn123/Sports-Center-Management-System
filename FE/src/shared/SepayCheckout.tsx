@@ -93,7 +93,9 @@ export function SepayCheckoutModal({
         ? "Đã nhận thanh toán — đang đối soát. Vui lòng giữ biên lai và chờ trung tâm xử lý."
         : current.status === "SUCCESS"
           ? "Thanh toán thành công. Gói hội viên đã được kích hoạt."
-          : "Thanh toán thất bại. Vui lòng tạo đơn mới.",
+          : current.status === "REFUNDED"
+            ? "Giao dịch đã được ghi nhận hoàn tiền."
+            : "Thanh toán thất bại. Vui lòng tạo đơn mới.",
       state,
     );
   }, [current?.paymentId, current?.status, requiresReview]);
@@ -108,6 +110,8 @@ export function SepayCheckoutModal({
     queryClient.invalidateQueries({ queryKey: ["current-membership"] });
     queryClient.invalidateQueries({ queryKey: ["member-invoices"] });
     queryClient.invalidateQueries({ queryKey: ["membership-plans"] });
+    queryClient.invalidateQueries({ queryKey: ["my-enrollment-quota"] });
+    queryClient.invalidateQueries({ queryKey: ["course-plan"] });
   }, [current?.status, current?.paymentId, requiresReview, queryClient]);
 
   const copyTransferContent = async () => {
@@ -377,6 +381,7 @@ export function SepayCheckoutModal({
                 message="Bạn có thể tạo đơn mới để nhận mã VietQR còn hiệu lực."
               />
             )}
+            {current.status === "REFUNDED" && <AlertBanner type="info" title="Giao dịch đã hoàn tiền" message="Vui lòng xem lịch sử thanh toán hoặc liên hệ trung tâm để biết chi tiết." />}
             {current.status === "FAILED" && (
               <AlertBanner
                 type="error"

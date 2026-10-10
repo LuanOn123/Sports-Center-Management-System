@@ -1,4 +1,5 @@
 import { synchronizeUserProjection } from "./user-projection.service.js";
+import { staffAssignmentView } from "../facilities/staff-assignment-view.js";
 import { User } from "../../models/User.js";
 import { MemberProfile } from "../../models/MemberProfile.js";
 import { CoachProfile } from "../../models/CoachProfile.js";
@@ -27,6 +28,7 @@ async function buildUserResponse(userId: string) {
 
   return {
     id: uid,
+    ...(await staffAssignmentView(uid, user.role)),
     email: user.email,
     fullName: user.fullName,
     phone: user.phone,
@@ -71,6 +73,7 @@ export async function listUsers(query: UserQueryInput) {
       const managerProfile = await ManagerProfile.findOne({ userId: uid }).lean();
       return {
         id: uid,
+        ...(await staffAssignmentView(uid, u.role)),
         email: u.email,
         fullName: u.fullName,
         phone: u.phone,

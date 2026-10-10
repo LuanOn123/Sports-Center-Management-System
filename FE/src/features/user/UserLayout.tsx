@@ -20,6 +20,8 @@ import { Loading } from "../../shared/feedback";
 import { MemberSessionProvider } from "../../context/AuthContext";
 import type { User } from "../../types/member";
 import { MemberPaymentsPage } from "../../pages/member/PaymentsPage";
+import { FacilityVisits } from "../../shared/FacilityVisits";
+import { Waitlist } from "../../shared/Waitlist";
 const Dashboard = lazy(() =>
   import("../../pages/member/DashboardPage").then((m) => ({
     default: m.DashboardPage,
@@ -73,6 +75,8 @@ const items = [
   ["my-classes", "Lớp của tôi", BookOpen],
   ["schedule", "Lịch tập", CalendarDays],
   ["attendance", "Điểm danh", CircleCheck],
+  ["checkin", "Check-in cơ sở", CircleCheck],
+  ["waitlist", "Danh sách chờ", BookOpen],
   ["notifications", "Thông báo", Bell],
   ["support", "Yêu cầu hỗ trợ", Bell],
   ["profile", "Tài khoản", UserRound],
@@ -108,6 +112,8 @@ export function UserLayout(props: PortalProps) {
                 <Route path="/member/my-classes" element={<MyClasses />} />
                 <Route path="/member/schedule" element={<Schedule />} />
                 <Route path="/member/attendance" element={<Attendance />} />
+                <Route path="/member/checkin" element={<FacilityVisits />} />
+                <Route path="/member/waitlist" element={<Waitlist />} />
                 <Route
                   path="/member/notifications"
                   element={<Notifications />}

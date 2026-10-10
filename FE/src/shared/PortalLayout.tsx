@@ -1,3 +1,4 @@
+import { Avatar } from "./Avatar";
 import { useEffect, useId, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
@@ -210,17 +211,18 @@ export function PortalLayout({
             <FacilityPicker />
             <HelpPanel role={user.role} base={base} />
             <NotificationBell base={base} />
-            <Link
-              className="profile-link"
-              to={base + "/profile"}
-              aria-label={`Tài khoản của ${user.fullName}`}
-            >
-              <div>
-                <strong>{user.fullName}</strong>
-                <small>{title}</small>
-              </div>
-              <span className="avatar">{user.fullName.slice(0, 1)}</span>
-            </Link>
+            <div className="profile-link">
+              <Link
+                to={base + "/profile"}
+                aria-label={`Tài khoản của ${user.fullName}`}
+              >
+                <div>
+                  <strong>{user.fullName}</strong>
+                  <small>{title}</small>
+                </div>
+              </Link>
+              <Avatar user={user} />
+            </div>
           </div>
         </header>
         <main id="main-content" tabIndex={-1}>

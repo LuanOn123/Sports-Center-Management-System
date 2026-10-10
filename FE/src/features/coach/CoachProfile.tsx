@@ -1,10 +1,14 @@
+import { AvatarUploader } from "../../shared/Avatar";
 import { useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../../shared/api";
 import type { PortalProps } from "../../app/RoleRouter";
 import { ErrorState } from "../../shared/ui";
 import { Heading } from "./CoachWorkspace";
 import { dateKey, obj, str, type Row } from "./data";
+import { getFacilityId } from "../../shared/facility";
+import { allPages } from "../../shared/pagedApi";
+import type { CoachSpecialization } from "../../shared/coachEligibility";
 
 export function validateCoachProfile(body: Row) {
   const errors: Record<string, string> = {};
@@ -52,6 +56,24 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
     },
   });
   const coach = obj((user as unknown as Row).coachProfile);
+  const assignedSports = useQuery({
+    queryKey: ["coach-assigned-sports", getFacilityId(), coach.id],
+    enabled: !!coach.id,
+    queryFn: async ({ signal }) => {
+      const [assigned, sports] = await Promise.all([
+        api<CoachSpecialization[]>("GET /coaches/{id}/specializations", {
+          params: { id: String(coach.id) },
+          signal,
+        }),
+        allPages<{ id: string; name: string }>("GET /sports", { signal }),
+      ]);
+      return assigned.data.map(
+        (item) =>
+          sports.data.find((sport) => sport.id === item.sportId)?.name ||
+          "Bộ môn chưa xác định",
+      );
+    },
+  });
   return (
     <div className="coach-workspace">
       <Heading
@@ -60,12 +82,21 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
       />
       <div className="coach-profile-grid">
         <aside className="panel coach-profile-summary">
-          <span className="avatar">{user.fullName.slice(0, 1)}</span>
+          <AvatarUploader user={user} />
           <h2>{user.fullName}</h2>
           <p>{user.email}</p>
           <span className="badge badge-neutral">Huấn luyện viên</span>
           <dl>
-            <dt>Chuyên môn</dt>
+            <dt>Bộ môn được phép giảng dạy</dt>
+            <dd>
+              {assignedSports.isFetching
+                ? "Đang tải…"
+                : assignedSports.error
+                  ? "Chưa tải được bộ môn"
+                  : assignedSports.data?.join(" · ") ||
+                    "Chưa được phân công bộ môn"}
+            </dd>
+            <dt>Mô tả chuyên môn</dt>
             <dd>{str(coach.specialization)}</dd>
             <dt>Kinh nghiệm</dt>
             <dd>
@@ -74,6 +105,12 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
                 : "Chưa cập nhật"}
             </dd>
           </dl>
+          {assignedSports.error && (
+            <ErrorState
+              error={assignedSports.error}
+              retry={() => assignedSports.refetch()}
+            />
+          )}
           <p>
             {str(
               coach.bio,

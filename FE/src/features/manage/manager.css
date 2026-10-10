@@ -1,0 +1,53 @@
+.manager-config-form {
+  padding: var(--space-6);
+}
+.manager-revenue-body {
+  padding: var(--space-6);
+}
+.manager-config-form fieldset {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: var(--space-4) 0 0;
+  display: grid;
+  gap: var(--space-4);
+}
+.manager-config-form legend {
+  font-weight: 600;
+  margin-bottom: var(--space-4);
+}
+.manager-config-form input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin-inline-end: var(--space-2);
+  vertical-align: middle;
+}
+.manager-config-form label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .manager-config-form,
+  .manager-revenue-body {
+    padding: var(--space-4);
+  }
+}
+
+.manager-request-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+.manager-request-filters label {
+  display: grid;
+  gap: 8px;
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.manager-request-filters select {
+  width: 100%;
+  min-height: 44px;
+}
