@@ -1,5 +1,7 @@
 import { User } from "../../models/User.js";
+import { verifyTurnstile } from "./turnstile.service.js";
 import { synchronizeUserProjection } from "../users/user-projection.service.js";
+import { staffAssignmentView } from "../facilities/staff-assignment-view.js";
 import { MemberProfile } from "../../models/MemberProfile.js";
 import { CoachProfile } from "../../models/CoachProfile.js";
 import { ManagerProfile } from "../../models/ManagerProfile.js";
@@ -107,7 +109,8 @@ export async function register(data: RegisterInput) {
 }
 
 
-export async function login(email: string, password: string) {
+export async function login(email: string, password: string, turnstileToken: string) {
+  await verifyTurnstile(turnstileToken);
   const user = await User.findOne({ email }).select("+password");
   if (!user) throw new AppError("Invalid email or password", 401);
   if (!user.isActive) throw new AppError("Your account has been deactivated", 403);
@@ -194,6 +197,7 @@ export async function getMe(userId: string) {
 
   return {
     id: uid,
+    ...(await staffAssignmentView(uid, user.role)),
     email: user.email,
     fullName: user.fullName,
     phone: user.phone,

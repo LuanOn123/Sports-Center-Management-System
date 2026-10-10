@@ -4,6 +4,7 @@ import { Check, Search, X, MapPin, Users } from "lucide-react";
 import { api, type RecordData } from "../../shared/api";
 import { allPages } from "../../shared/pagedApi";
 import { classSports } from "../../shared/sports";
+import { assertCoachCanTeach } from "../../shared/coachEligibility";
 import { display, at } from "../../shared/config";
 import { ErrorState, Loading } from "../../shared/ui";
 import "./admin.css";
@@ -74,11 +75,35 @@ export function ClassForm({
     ) ?? [];
   const room = eligibleRooms.find((r) => r.id === roomId);
   const save = useMutation({
-    mutationFn: (body: RecordData) =>
-      api(initial.id ? "PATCH /classes/{id}" : "POST /classes", {
+    mutationFn: async (body: RecordData) => {
+      const previous = classSports(initial).map((sport) => sport.id);
+      if (
+        initial.id &&
+        (previous.length !== sportIds.length ||
+          sportIds.some((id) => !previous.includes(id)))
+      ) {
+        const current = await api<RecordData>("GET /classes/{id}", {
+          params: { id: String(initial.id) },
+        });
+        const assignments = Array.isArray(current.data.coaches)
+          ? current.data.coaches
+          : [];
+        for (const assignment of assignments) {
+          const coachId = String(
+            at(assignment, "coach.id") || at(assignment, "coachId") || "",
+          );
+          if (!coachId)
+            throw new Error(
+              "Không xác định được HLV đang phụ trách lớp. Hãy kiểm tra phân công trước khi đổi bộ môn.",
+            );
+          await assertCoachCanTeach(coachId, sportIds);
+        }
+      }
+      return api(initial.id ? "PATCH /classes/{id}" : "POST /classes", {
         params: initial.id ? { id: String(initial.id) } : {},
         body,
-      }),
+      });
+    },
     onSuccess,
     onSettled: () => onBusyChange?.(false),
   });

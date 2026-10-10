@@ -1,0 +1,113 @@
+.reception-attendance {
+  min-width: 0;
+  display: grid;
+  gap: 24px;
+}
+dialog:has(> .reception-attendance) {
+  width: min(1100px, calc(100vw - 32px));
+}
+dialog > .reception-attendance {
+  padding: 24px;
+}
+.reception-attendance > .field-note {
+  margin: 0;
+}
+.attendance-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 24px;
+}
+.attendance-filters label {
+  flex: 1 1 180px;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+.attendance-filters input,
+.attendance-filters select {
+  width: 100%;
+  min-height: 44px;
+}
+.reception-attendance table {
+  min-width: 720px;
+}
+.reception-attendance td small,
+.reception-attendance th small {
+  display: block;
+  font-weight: 400;
+  color: var(--color-text-muted);
+  margin-top: 8px;
+}
+.attendance-status {
+  display: inline-flex;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.attendance-normal {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+.attendance-warning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+.attendance-violation {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+.attendance-action,
+.attendance-detail {
+  padding: 24px;
+  min-width: 0;
+}
+.attendance-detail h2,
+.attendance-detail p,
+.attendance-action p {
+  overflow-wrap: anywhere;
+}
+.attendance-action label {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+}
+.attendance-action textarea {
+  width: 100%;
+  min-height: 100px;
+}
+.attendance-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+.attendance-summary div {
+  padding: 16px;
+  background: var(--color-background);
+  border-radius: 12px;
+}
+.attendance-summary dt {
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+.attendance-summary dd {
+  margin: 8px 0 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+@media (max-width: 430px) {
+  dialog > .reception-attendance {
+    padding: 16px;
+  }
+  .attendance-filters,
+  .attendance-detail,
+  .attendance-action {
+    padding: 16px;
+  }
+  .reception-attendance .pagination {
+    flex-wrap: wrap;
+  }
+}

@@ -279,8 +279,18 @@ body:has(.portal-theme) {
   color: var(--member-text);
   border: 1px solid #303d51;
 }
-.portal-theme :is(.button:hover, .member-button:hover) {
-  filter: brightness(1.12);
+.portal-theme :is(.button, .member-button) {
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.portal-theme .button:hover:not(:disabled),
+.portal-theme .member-button:hover:not(:disabled) {
+  background-color: #243247;
+  border-color: #42516a;
+  color: var(--member-text);
   transform: none;
 }
 .portal-theme :is(.button.primary, .button.lime, .member-button-primary) {
@@ -289,10 +299,25 @@ body:has(.portal-theme) {
   color: #101609 !important;
   font-weight: 700;
 }
+.portal-theme :is(.button.primary, .button.lime, .member-button-primary):hover:not(:disabled) {
+  background-color: #c5ed00 !important;
+  border-color: #c5ed00 !important;
+  color: #101609 !important;
+}
 .portal-theme .button.danger {
   background: #502330;
   border-color: #8d3e51;
   color: #ffb5be;
+}
+.portal-theme .button.danger:hover:not(:disabled) {
+  background-color: #653040;
+  border-color: #a54a61;
+  color: #ffe1e5;
+}
+.portal-theme .button.ghost:hover:not(:disabled) {
+  background-color: var(--member-accent-soft);
+  border-color: var(--member-accent-border);
+  color: var(--member-accent);
 }
 .portal-theme .button.danger-text {
   color: var(--member-danger);

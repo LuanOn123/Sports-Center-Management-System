@@ -29,6 +29,8 @@
     "predev": "npm run db:generate",
     "prebuild": "npm run db:generate",
     "test:operations": "tsx tests/facility-operations.integration.ts",
+    "test:manager:isolation": "node tests/run-manager-isolation.mjs",
+    "test:reception:isolation": "node tests/run-manager-isolation.mjs reception",
     "db:migrate:roles": "tsx src/scripts/migrate-staff-role.ts",
     "db:deploy": "prisma migrate deploy",
     "db:migrate:identities": "tsx src/scripts/migrate-identity-projections.ts",
@@ -42,7 +44,8 @@
     "test:operations:cross-facility-my-schedule": "tsx tests/cross-facility-my-schedule.integration.ts",
     "test:operations:membership-reports": "tsx tests/membership-reports.integration.ts",
     "test:final:member-facility": "tsx tests/final-member-facility.integration.ts",
-    "test:policy-a:membership": "tsx tests/policy-a-membership.integration.ts"
+    "test:policy-a:membership": "tsx tests/policy-a-membership.integration.ts",
+    "test:captcha": "tsx --test tests/turnstile.integration.test.ts"
   },
   "dependencies": {
     "@getbrevo/brevo": "^6.0.3",

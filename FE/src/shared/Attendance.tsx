@@ -44,18 +44,21 @@ export function Attendance({
     Date.now() <= Date.parse(String(schedule.endTime));
   return (
     <section className="workflow-page">
-      <h3>Điểm danh buổi học</h3>
+      <h3>{role === "RECEPTIONIST" ? "Chuyên cần buổi học" : "Điểm danh buổi học"}</h3>
       {["ADMIN", "MANAGER", "COACH"].includes(role) &&
         schedule.status === "SCHEDULED" && (
           <AttendanceQr scheduleId={id} schedule={schedule} />
         )}
-      <p>
-        Hoàn tất lịch học sẽ ghi vắng cho hội viên chưa điểm danh. Mỗi học viên có mặt cần được ghi nhận trước khi hoàn tất buổi.
-      </p>
-      {!canWrite && (
+      {role !== "RECEPTIONIST" && (
         <p>
-          Chỉ quản lý hoặc huấn luyện viên phụ trách được điểm danh khi buổi học
-          đã bắt đầu.
+          Hoàn tất lịch học sẽ ghi vắng cho hội viên chưa điểm danh. Mỗi học viên có mặt cần được ghi nhận trước khi hoàn tất buổi.
+        </p>
+      )}
+      {!canWrite && (
+        <p className="field-note">
+          {role === "RECEPTIONIST"
+            ? "Lễ tân chỉ có quyền xem trạng thái chuyên cần (điểm danh do Huấn luyện viên hoặc Quản lý thực hiện)."
+            : "Chỉ quản lý hoặc huấn luyện viên phụ trách được điểm danh khi buổi học đã bắt đầu."}
         </p>
       )}
       {q.isPending ? (

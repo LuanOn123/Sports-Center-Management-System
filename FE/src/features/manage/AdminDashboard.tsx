@@ -1,13 +1,14 @@
+import {
+  Card,
+  Columns,
+  Gauge,
+  Kpi,
+  Ranking,
+} from "../../shared/analytics/Charts";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Building2,
-  Users,
-  TrendingUp,
-  CalendarCheck,
-  RefreshCw,
-} from "lucide-react";
+import { Building2, RefreshCw } from "lucide-react";
 import { api } from "../../shared/api";
 import { money } from "../../shared/config";
 import { Empty, ErrorState, Loading } from "../../shared/ui";
@@ -43,47 +44,6 @@ function today() {
     day: "2-digit",
   }).format(new Date());
 }
-function Chart({
-  rows,
-  metric,
-  title,
-  note,
-  currency = false,
-}: {
-  rows: FacilityMetric[];
-  metric: "netRevenue" | "members" | "bookings";
-  title: string;
-  note: string;
-  currency?: boolean;
-}) {
-  const max = Math.max(1, ...rows.map((r) => Math.abs(r[metric])));
-  return (
-    <section className="panel admin-chart">
-      <div className="panel-heading">
-        <div>
-          <h2>{title}</h2>
-          <p>{note}</p>
-        </div>
-      </div>
-      {rows.map((r) => (
-        <div className="admin-bar-row" key={r.id}>
-          <div>
-            <strong>{r.name}</strong>
-            <span>
-              {currency ? money(r[metric]) : r[metric].toLocaleString("vi-VN")}
-            </span>
-          </div>
-          <div className="admin-bar-track">
-            <div
-              className={r[metric] < 0 ? "negative" : ""}
-              style={{ width: `${(Math.abs(r[metric]) / max) * 100}%` }}
-            />
-          </div>
-        </div>
-      ))}
-    </section>
-  );
-}
 export function AdminDashboard() {
   const [range, setRange] = useState(() => ({
     startDate: today().slice(0, 7) + "-01",
@@ -99,8 +59,34 @@ export function AdminDashboard() {
     enabled: valid,
   });
   const data = q.data?.data;
+  const kpis = data && (
+    <div className="analytics-kpis">
+      <Kpi
+        title="Doanh thu sau hoàn tiền"
+        value={money(data.netRevenue)}
+        note={`Đã thu ${money(data.totalRevenue)} · Hoàn ${money(data.refundedAmount)}`}
+      />
+      <Kpi
+        title="Cơ sở hoạt động"
+        value={data.facilities.filter((f) => f.isActive).length}
+        note={`${data.facilities.length} cơ sở trong hệ thống`}
+        part={data.facilities.filter((f) => f.isActive).length}
+        total={data.facilities.length}
+      />
+      <Kpi
+        title="Hội viên đã mua gói"
+        value={data.totalMembers}
+        note="Đếm một lần toàn hệ thống"
+      />
+      <Kpi
+        title="Lượt đăng ký"
+        value={data.totalBookings}
+        note="Đang giữ chỗ và hoàn tất trong kỳ"
+      />
+    </div>
+  );
   return (
-    <div className="workflow-page admin-workspace">
+    <div className="workflow-page admin-workspace analytics-dashboard">
       <section className="admin-overview-hero">
         <div>
           <div className="eyebrow">TOÀN HỆ THỐNG</div>
@@ -160,68 +146,101 @@ export function AdminDashboard() {
       ) : (
         data && (
           <>
-            <div className="admin-stat-grid">
-              {[
-                [
-                  TrendingUp,
-                  "Doanh thu sau hoàn tiền",
-                  money(data.netRevenue),
-                  `Đã thu ${money(data.totalRevenue)} · Hoàn ${money(data.refundedAmount)}`,
-                ],
-                [
-                  Building2,
-                  "Cơ sở hoạt động",
-                  data.facilities.filter((f) => f.isActive).length,
-                  `${data.facilities.length} cơ sở trong hệ thống`,
-                ],
-                [
-                  Users,
-                  "Hội viên đã mua gói",
-                  data.totalMembers,
-                  "Hội viên đang hoạt động, đếm một lần toàn hệ thống",
-                ],
-                [
-                  CalendarCheck,
-                  "Lượt đăng ký",
-                  data.totalBookings,
-                  "Đang giữ chỗ và hoàn tất trong khoảng ngày",
-                ],
-              ].map(([Icon, title, value, note]) => {
-                const Glyph = Icon as typeof Users;
-                return (
-                  <article className="panel admin-stat" key={String(title)}>
-                    <Glyph size={22} />
-                    <span>{String(title)}</span>
-                    <strong>{String(value)}</strong>
-                    <small>{String(note)}</small>
-                  </article>
-                );
-              })}
-            </div>
+            {!data.facilities.length && kpis}
             {!data.facilities.length ? (
               <Empty text="Chưa có dữ liệu cơ sở" />
             ) : (
               <>
-                <div className="admin-chart-grid">
-                  <Chart
-                    rows={data.facilities}
-                    metric="netRevenue"
-                    title="Doanh thu theo cơ sở"
-                    note="Khoản thu trong kỳ trừ tiền hoàn trong kỳ (VNĐ)."
-                    currency
-                  />
-                  <Chart
-                    rows={data.facilities}
-                    metric="members"
-                    title="Hội viên theo cơ sở"
-                    note="Hội viên hoạt động đã mua gói tại cơ sở, tính mọi thời điểm."
-                  />
-                  <Chart
-                    rows={data.facilities}
-                    metric="bookings"
-                    title="Lượt đăng ký theo cơ sở"
-                    note="Theo ngày đăng ký trong kỳ, không gồm lượt đã hủy."
-                  />
+                <div className="analytics-layout">
+                  <div className="analytics-main">
+                    {kpis}
+                    <Card
+                      title="Doanh thu theo cơ sở"
+                      note="Khoản thu trong kỳ trừ tiền hoàn trong kỳ (VNĐ). Báo cáo hiện chưa có chuỗi doanh thu theo ngày."
+                    >
+                      <Ranking
+                        data={data.facilities.map((f) => ({
+                          label: f.name,
+                          value: f.netRevenue,
+                        }))}
+                        format={money}
+                      />
+                    </Card>
+                    <div className="analytics-analysts">
+                      <Card
+                        title="Hội viên theo cơ sở"
+                        note="Hội viên hoạt động đã mua gói tại cơ sở, tính mọi thời điểm."
+                      >
+                        <Ranking
+                          data={data.facilities.map((f) => ({
+                            label: f.name,
+                            value: f.members,
+                          }))}
+                        />
+                      </Card>
+                      <Card
+                        title="Lượt đăng ký theo cơ sở"
+                        note="Theo ngày đăng ký trong kỳ, không gồm lượt đã hủy."
+                      >
+                        <Ranking
+                          data={data.facilities.map((f) => ({
+                            label: f.name,
+                            value: f.bookings,
+                          }))}
+                        />
+                      </Card>
+                    </div>
+                  </div>
+                  <aside className="analytics-side">
+                    <Card
+                      title="Đăng ký và hủy"
+                      note="Tối đa 5 cơ sở có nhiều đăng ký nhất trong kỳ."
+                    >
+                      <Columns
+                        data={data.facilities
+                          .slice()
+                          .sort((a, b) => b.bookings - a.bookings)
+                          .slice(0, 5)
+                          .map((f) => ({
+                            label: f.name,
+                            value: f.bookings,
+                            secondary: f.cancelledBookings,
+                          }))}
+                        primary="Đăng ký"
+                        secondary="Đã hủy"
+                        variant="lollipop"
+                      />
+                    </Card>
+                    <Card title="Trạng thái cơ sở">
+                      <Gauge
+                        part={data.facilities.filter((f) => f.isActive).length}
+                        total={data.facilities.length}
+                        label="Cơ sở đang hoạt động"
+                      />
+                    </Card>
+                    <Card title="Tóm tắt hệ thống">
+                      <dl className="analytics-summary">
+                        <div>
+                          <dt>Buổi học trong kỳ</dt>
+                          <dd>
+                            {data.facilities.reduce(
+                              (sum, f) => sum + f.sessions,
+                              0,
+                            )}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Lượt đã hủy</dt>
+                          <dd>
+                            {data.facilities.reduce(
+                              (sum, f) => sum + f.cancelledBookings,
+                              0,
+                            )}
+                          </dd>
+                        </div>
+                      </dl>
+                    </Card>
+                  </aside>
                 </div>
                 <p className="field-note">
                   Một hội viên có thể mua gói tại nhiều cơ sở nên tổng các cột

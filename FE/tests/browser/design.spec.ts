@@ -87,7 +87,7 @@ test("booking date filter uses documented query and preserves member selection",
   ).toBeVisible();
   await page.getByRole("button", { name: "Xem đăng ký" }).first().click();
   await expect(
-    page.getByRole("button", { name: "Đăng ký cho hội viên đã chọn" }),
+    page.getByRole("button", { name: "Đăng ký cho John Doe", exact: true }),
   ).toBeEnabled();
   await page.screenshot({
     path: "artifacts/redesign/booking.png",

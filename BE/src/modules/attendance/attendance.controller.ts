@@ -113,3 +113,42 @@ export const revokePenalty = async (req: Request, res: Response, next: NextFunct
     sendSuccess(res, result, "Attendance penalty revoked");
   } catch (error) { next(error); }
 };
+
+// ─── RECEPTIONIST ATTENDANCE MONITORING & WORKFLOWS ────────────────────────
+export const getReceptionMonitoring = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await service.getReceptionAttendanceMonitoring(req.user!, req.query);
+    sendSuccess(res, result.items, "Reception attendance monitoring retrieved", 200, result.pagination);
+  } catch (error) { next(error); }
+};
+
+export const getReceptionDetail = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await service.getReceptionAttendanceDetail(req.user!, {
+      memberId: req.query.memberId as string,
+      classId: req.query.classId as string,
+    });
+    sendSuccess(res, result, "Reception attendance detail retrieved");
+  } catch (error) { next(error); }
+};
+
+export const sendReceptionWarning = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await service.sendReceptionAttendanceWarning(req.user!, req.body);
+    sendSuccess(res, result, result.message, 200);
+  } catch (error) { next(error); }
+};
+
+export const submitViolationReport = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await service.submitAttendanceViolationReport(req.user!, req.body);
+    sendSuccess(res, result, result.message, 201);
+  } catch (error) { next(error); }
+};
+
+export const reviewViolationReport = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await service.reviewAttendanceViolationReport(req.user!, req.params.id as string, req.body);
+    sendSuccess(res, result, "Xử lý báo cáo vi phạm chuyên cần thành công", 200);
+  } catch (error) { next(error); }
+};

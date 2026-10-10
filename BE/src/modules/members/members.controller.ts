@@ -11,10 +11,18 @@ export async function listMembers(req: Request, res: Response, next: NextFunctio
 
 export async function getMemberById(req: Request, res: Response, next: NextFunction) {
   try {
-    const member = await membersService.getMemberById(req.params.id as string);
+    const member = await membersService.getMemberById(req.params.id as string, req.user);
     sendSuccess(res, member, "Member retrieved successfully");
   } catch (err) { next(err); }
 }
+
+export async function createMember(req: Request, res: Response, next: NextFunction) {
+  try {
+    const member = await membersService.createMember(req.body, req.user);
+    sendSuccess(res, member, "Member created successfully", 201);
+  } catch (err) { next(err); }
+}
+
 
 export async function updateMember(req: Request, res: Response, next: NextFunction) {
   try {

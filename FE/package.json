@@ -10,6 +10,7 @@
     "generate:api": "node scripts/generate-api.mjs",
     "test": "vitest run",
     "test:ui": "playwright test",
+    "test:captcha": "playwright test --config playwright.turnstile.config.ts",
     "typecheck": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
     "test:a11y": "playwright test accessibility.spec.ts",
     "check:conflicts": "node scripts/check-conflicts.mjs",
