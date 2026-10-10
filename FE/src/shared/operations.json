@@ -5071,7 +5071,8 @@
       "type": "object",
       "required": [
         "email",
-        "password"
+        "password",
+        "turnstileToken"
       ],
       "properties": {
         "email": {
@@ -5080,6 +5081,12 @@
         },
         "password": {
           "type": "string"
+        },
+        "turnstileToken": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "description": "Single-use Turnstile token with action login"
         }
       }
     },
@@ -5087,7 +5094,8 @@
       "200",
       "400",
       "401",
-      "500"
+      "500",
+      "503"
     ]
   },
   "POST /auth/logout": {

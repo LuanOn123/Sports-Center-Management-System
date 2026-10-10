@@ -8656,7 +8656,8 @@
                 "type": "object",
                 "required": [
                   "email",
-                  "password"
+                  "password",
+                  "turnstileToken"
                 ],
                 "properties": {
                   "email": {
@@ -8665,6 +8666,12 @@
                   },
                   "password": {
                     "type": "string"
+                  },
+                  "turnstileToken": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048,
+                    "description": "Single-use Turnstile token with action login"
                   }
                 }
               }
@@ -8683,6 +8690,9 @@
           },
           "500": {
             "$ref": "#/components/responses/ServerError"
+          },
+          "503": {
+            "description": "Security verification unavailable or not configured"
           }
         }
       }

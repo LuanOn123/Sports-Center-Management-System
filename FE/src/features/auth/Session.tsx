@@ -49,11 +49,19 @@ export function Session() {
       window.removeEventListener("schedule-state-changed", refreshSchedules);
     };
   }, [cache, navigate]);
-  async function login(email: string, password: string) {
+  async function login(
+    email: string,
+    password: string,
+    turnstileToken: string,
+  ) {
     setLoginBusy(true);
     setError(undefined);
     try {
-      const profile = await authService.login({ email, password });
+      const profile = await authService.login({
+        email,
+        password,
+        turnstileToken,
+      });
       await cache.cancelQueries();
       cache.clear();
       cache.setQueryData(["me"], profile);
@@ -86,14 +94,18 @@ export function Session() {
   if (pathname === "/" && !session) return <Landing signedIn={false} />;
   if (!session && pathname === "/register") return <Register />;
   if (!session && pathname === "/forgot-password")
-    return <ForgotPassword onComplete={async () => {
-      await cache.cancelQueries();
-      clearSession();
-      cache.clear();
-      setError(undefined);
-      setSession(false);
-      navigate("/login", { replace: true });
-    }} />;
+    return (
+      <ForgotPassword
+        onComplete={async () => {
+          await cache.cancelQueries();
+          clearSession();
+          cache.clear();
+          setError(undefined);
+          setSession(false);
+          navigate("/login", { replace: true });
+        }}
+      />
+    );
   if (!session) return <Login onLogin={login} busy={loginBusy} error={error} />;
   if (q.isPending)
     return (
@@ -122,5 +134,9 @@ export function Session() {
         </button>
       </div>
     );
-  return <FacilityBoundary admin={q.data.data.role === "ADMIN"} onLogout={logout}><RoleRouter user={q.data.data} onLogout={logout} /></FacilityBoundary>;
+  return (
+    <FacilityBoundary admin={q.data.data.role === "ADMIN"} onLogout={logout}>
+      <RoleRouter user={q.data.data} onLogout={logout} />
+    </FacilityBoundary>
+  );
 }

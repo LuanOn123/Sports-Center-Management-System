@@ -1,0 +1,15 @@
+.login-captcha {
+  min-width: 0;
+  margin: 16px 0;
+}
+.login-captcha > div:first-child {
+  min-height: 65px;
+}
+.login-captcha p {
+  margin: 8px 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.login-captcha button {
+  margin-top: 8px;
+}

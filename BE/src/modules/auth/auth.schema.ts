@@ -17,6 +17,8 @@ export const RegisterSchema = z.object({
 });
 
 export const LoginSchema = z.object({
+  turnstileToken: z.string({ required_error: "Vui lòng xác minh CAPTCHA." })
+    .trim().min(1, "Vui lòng xác minh CAPTCHA.").max(2048, "CAPTCHA không hợp lệ."),
   email: z.string().email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
 });
