@@ -221,6 +221,28 @@ export async function updateClass(id: string, data: any) {
   }
 
   if (sportIds) {
+    const assignedMembers = await prisma.classMember.findMany({
+      where: { classId: id },
+      include: {
+        coach: {
+          include: {
+            user: { select: { fullName: true } },
+            specializations: true,
+          },
+        },
+      },
+    });
+    for (const cm of assignedMembers) {
+      const coachSportIds = new Set(cm.coach.specializations.map((s) => s.sportId));
+      const missing = sportIds.filter((sid: string) => !coachSportIds.has(sid));
+      if (missing.length > 0) {
+        throw new AppError(
+          `COACH_SPECIALIZATION_REQUIRED: HLV ${cm.coach.user.fullName} đang phụ trách lớp không có đủ các bộ môn mới`,
+          409,
+          { code: "COACH_SPECIALIZATION_REQUIRED", coachId: cm.coachId, missingSportIds: missing }
+        );
+      }
+    }
     updateData.sports = { set: sportIds.map((sid: string) => ({ id: sid })) };
   }
 
@@ -269,18 +291,47 @@ async function notifyCoachChange(
   }
 }
 
-/** HLV hợp lệ để phân công: tồn tại, đúng role COACH và đang hoạt động. */
-async function findAssignableCoach(coachId: string) {
+/** HLV hợp lệ để phân công: tồn tại, đúng role COACH, đang hoạt động và có gán cơ sở. */
+async function findAssignableCoach(coachId: string, facilityId?: string) {
   const coach = await prisma.coachProfile.findUnique({
     where: { id: coachId },
-    include: { user: { select: { id: true, fullName: true, isActive: true, role: true } } },
+    include: {
+      user: { select: { id: true, fullName: true, isActive: true, role: true } },
+      specializations: true,
+    },
   });
   if (!coach || !coach.user.isActive || coach.user.role !== "COACH") {
     throw new AppError("Active coach not found", 404);
   }
-  if (!(await prisma.facilityStaff.findFirst({ where: { userId: coach.userId, role: "COACH", isActive: true } })))
-    throw new AppError("COACH_NOT_ASSIGNED", 403);
+  const staff = await prisma.facilityStaff.findFirst({
+    where: {
+      userId: coach.userId,
+      role: "COACH",
+      isActive: true,
+      ...(facilityId ? { facilityId } : {}),
+    },
+  });
+  if (!staff) {
+    throw new AppError("COACH_NOT_ASSIGNED", 409);
+  }
   return coach;
+}
+
+/** Chặn phân công nếu HLV thiếu bất kỳ bộ môn nào của lớp học. */
+function assertCoachHasClassSports(
+  coach: { specializations: { sportId: string }[] },
+  classSports: { id: string; name?: string }[]
+) {
+  const coachSportIds = new Set(coach.specializations.map((s) => s.sportId));
+  const missingSports = classSports.filter((s) => !coachSportIds.has(s.id));
+  if (missingSports.length > 0) {
+    const missingNames = missingSports.map((s) => s.name || s.id).join(", ");
+    throw new AppError(
+      `COACH_SPECIALIZATION_REQUIRED: HLV thiếu chuyên môn cho bộ môn: ${missingNames}`,
+      409,
+      { code: "COACH_SPECIALIZATION_REQUIRED", missingSportIds: missingSports.map((s) => s.id) }
+    );
+  }
 }
 
 /** Chặn phân công nếu coach bị trùng lịch với các buổi SCHEDULED sắp tới của Class. */
@@ -309,10 +360,15 @@ async function assertNoUpcomingScheduleConflict(classId: string, coachId: string
 }
 
 export async function assignCoach(classId: string, coachId: string, isPrimary: boolean) {
-  const cls = await prisma.class.findUnique({ where: { id: classId } });
+  const cls = await prisma.class.findUnique({
+    where: { id: classId },
+    include: { sports: true },
+  });
   if (!cls) throw new AppError("Class not found", 404);
+  if (!cls.isActive) throw new AppError("Class is inactive", 400);
 
-  const coach = await findAssignableCoach(coachId);
+  const coach = await findAssignableCoach(coachId, cls.facilityId);
+  assertCoachHasClassSports(coach, cls.sports);
   await assertNoUpcomingScheduleConflict(classId, coachId);
 
   // Check if coach is already assigned to determine if we should send ASSIGNED notification
@@ -348,15 +404,19 @@ export async function assignCoach(classId: string, coachId: string, isPrimary: b
  * Quy ước: mỗi Class chỉ có duy nhất 1 HLV chính (isPrimary = true), HLV hỗ trợ lưu isPrimary = false.
  * - 400: Class đã ngừng hoạt động.
  * - 404: Class hoặc HLV đang hoạt động không tồn tại.
- * - 409: HLV đang là HLV chính của Class, hoặc trùng lịch với buổi SCHEDULED sắp tới.
+ * - 409: HLV đang là HLV chính của Class, hoặc trùng lịch với buổi SCHEDULED sắp tới, hoặc thiếu bộ môn / chưa gán cơ sở.
  * Idempotent: HLV đã là HLV hỗ trợ thì trả về chi tiết Class và không gửi lại thông báo.
  */
 export async function assignSupportCoach(classId: string, coachId: string) {
-  const cls = await prisma.class.findUnique({ where: { id: classId } });
+  const cls = await prisma.class.findUnique({
+    where: { id: classId },
+    include: { sports: true },
+  });
   if (!cls) throw new AppError("Class not found", 404);
   if (!cls.isActive) throw new AppError("Class is inactive", 400);
 
-  const coach = await findAssignableCoach(coachId);
+  const coach = await findAssignableCoach(coachId, cls.facilityId);
+  assertCoachHasClassSports(coach, cls.sports);
 
   const existingAssignment = await prisma.classMember.findUnique({
     where: { classId_coachId: { classId, coachId } },

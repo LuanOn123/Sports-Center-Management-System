@@ -33,18 +33,33 @@ const quantities = z.object({
 const id = (req: any, name = "id") => String(req.params[name]);
 const facility = () => requestContext.getStore()!.facilityId!;
 const actor = () => requestContext.getStore()!.actorId!;
-async function assertCoachFacility(coachId: string) {
-  if (requestContext.getStore()?.role !== "MANAGER") return;
-  const coach = await prisma.coachProfile.findUnique({
-    where: { id: coachId },
+async function resolveCoachProfile(paramId: string) {
+  let coach = await prisma.coachProfile.findUnique({
+    where: { id: paramId },
   });
-  if (
-    !coach ||
-    !(await prisma.facilityStaff.findFirst({
-      where: { userId: coach.userId, role: "COACH", isActive: true },
-    }))
-  )
-    throw new AppError("FORBIDDEN_SCOPE", 403);
+  if (!coach) {
+    coach = await prisma.coachProfile.findUnique({
+      where: { userId: paramId },
+    });
+  }
+  return coach;
+}
+
+async function assertCoachFacility(coachIdentifier: string) {
+  const coach = await resolveCoachProfile(coachIdentifier);
+  if (!coach) throw new AppError("Coach not found", 404);
+  if (requestContext.getStore()?.role !== "MANAGER") return coach;
+  const facilityId = requestContext.getStore()?.facilityId;
+  const staff = await prisma.facilityStaff.findFirst({
+    where: {
+      userId: coach.userId,
+      role: "COACH",
+      isActive: true,
+      ...(facilityId ? { facilityId } : {}),
+    },
+  });
+  if (!staff) throw new AppError("FORBIDDEN_SCOPE", 403);
+  return coach;
 }
 export const operationHandlers: Record<string, (req: any) => any> = {};
 const route = (
@@ -85,8 +100,8 @@ route("get", "/staff-candidates", [staff], (req) =>
   ),
 );
 route("get", "/coaches/:id/specializations", [], async (req) => {
-  await assertCoachFacility(id(req));
-  return prisma.coachSpecialization.findMany({ where: { coachId: id(req) } });
+  const coach = await assertCoachFacility(id(req));
+  return prisma.coachSpecialization.findMany({ where: { coachId: coach.id } });
 });
 route("get", "/leave-requests/:id/affected", [staff], async (req) => {
   const leave = await prisma.leaveRequest.findUnique({
@@ -184,17 +199,60 @@ route(
   "/coaches/:id/specializations",
   [
     authorizeExact("MANAGER"),
-    validate(z.object({ sportIds: z.array(z.string()).min(1) })),
+    validate(z.object({ sportIds: z.array(z.string().trim().min(1)).min(1) })),
   ],
   (req) =>
     prisma.$transaction(async (tx) => {
-      if (!(await tx.coachProfile.findUnique({ where: { id: id(req) } })))
-        throw new AppError("Coach not found", 404);
-      await assertCoachFacility(id(req));
-      await tx.coachSpecialization.deleteMany({ where: { coachId: id(req) } });
+      const coach = await assertCoachFacility(id(req));
+      const coachId = coach.id;
+      const targetSportIds = [...new Set<string>(req.body.sportIds)];
+
+      const activeSports = await tx.sport.findMany({
+        where: { id: { in: targetSportIds }, isActive: true },
+      });
+      if (activeSports.length !== targetSportIds.length) {
+        throw new AppError("Một hoặc nhiều bộ môn không tồn tại hoặc đã ngừng hoạt động", 400);
+      }
+
+      const assignedActiveClasses = await tx.class.findMany({
+        where: {
+          isActive: true,
+          coaches: { some: { coachId } },
+        },
+        include: { sports: true },
+      });
+      for (const cls of assignedActiveClasses) {
+        const missing = cls.sports.filter((s) => !targetSportIds.includes(s.id));
+        if (missing.length > 0) {
+          throw new AppError(
+            `Không thể gỡ bộ môn "${missing.map((s) => s.name).join(", ")}" vì HLV đang phụ trách lớp "${cls.name}". Hãy điều chỉnh phân công lớp trước.`,
+            409,
+          );
+        }
+      }
+
+      const upcomingSessions = await tx.classSchedule.findMany({
+        where: {
+          status: "SCHEDULED",
+          endTime: { gt: new Date() },
+          coachId,
+        },
+        include: { class: { include: { sports: true } } },
+      });
+      for (const session of upcomingSessions) {
+        const missing = session.class.sports.filter((s) => !targetSportIds.includes(s.id));
+        if (missing.length > 0) {
+          throw new AppError(
+            `Không thể gỡ bộ môn "${missing.map((s) => s.name).join(", ")}" vì HLV có buổi dạy sắp tới của lớp "${session.class.name}". Hãy phân công HLV thay thế trước.`,
+            409,
+          );
+        }
+      }
+
+      await tx.coachSpecialization.deleteMany({ where: { coachId } });
       await tx.coachSpecialization.createMany({
-        data: [...new Set<string>(req.body.sportIds)].map((sportId) => ({
-          coachId: id(req),
+        data: targetSportIds.map((sportId) => ({
+          coachId,
           sportId,
         })),
       });
@@ -206,10 +264,10 @@ route(
               status: "SCHEDULED",
               endTime: { gt: new Date() },
               OR: [
-                { coachId: id(req) },
+                { coachId },
                 {
                   coachId: null,
-                  class: { coaches: { some: { coachId: id(req) } } },
+                  class: { coaches: { some: { coachId } } },
                 },
               ],
             },
@@ -225,7 +283,7 @@ route(
             );
         },
       );
-      return tx.coachSpecialization.findMany({ where: { coachId: id(req) } });
+      return tx.coachSpecialization.findMany({ where: { coachId } });
     }),
 );
 const slotSchema = z
