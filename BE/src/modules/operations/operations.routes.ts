@@ -81,7 +81,7 @@ route("get", "/staff-candidates", [staff], (req) =>
   requestContext.run(
     {
       ...requestContext.getStore(),
-      ...(req.user.role === "ADMIN" ? { facilityId: undefined } : {}),
+      facilityId: undefined,
     },
     () =>
       prisma.user.findMany({
@@ -94,7 +94,27 @@ route("get", "/staff-candidates", [staff], (req) =>
               }
             : { role: "COACH", facilityStaffs: { none: { isActive: true } } }),
         },
-        select: { id: true, fullName: true, email: true, role: true },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          phone: true,
+          avatarUrl: true,
+          coachProfile: {
+            select: {
+              id: true,
+              specialization: true,
+              experienceYears: true,
+              bio: true,
+              specializations: {
+                select: {
+                  sport: { select: { id: true, name: true } },
+                },
+              },
+            },
+          },
+        },
         orderBy: { fullName: "asc" },
       }),
   ),

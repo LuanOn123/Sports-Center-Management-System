@@ -12,12 +12,16 @@ type CoachSpecializationItem = {
 };
 type CoachProfileInfo = {
   id: string;
+  specialization?: string | null;
+  experienceYears?: number | null;
+  bio?: string | null;
   specializations?: CoachSpecializationItem[];
 };
 type Staff = {
   id: string;
   fullName: string;
   email: string;
+  phone?: string | null;
   role: string;
   coachProfile?: CoachProfileInfo | null;
 };
@@ -27,12 +31,13 @@ type Assignment = {
   isActive: boolean;
   user: Staff;
 };
-export function ManagerUsers() {
+export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
+  const isCoachOnly = initialRole === "COACH";
   const facilityId = getFacilityId();
   const cache = useQueryClient();
   const [view, setView] = useState("assigned");
   const [search, setSearch] = useState("");
-  const [role, setRole] = useState("");
+  const [role, setRole] = useState(isCoachOnly ? "COACH" : "");
   const [target, setTarget] = useState<Staff>();
   const [coach, setCoach] = useState<string>();
   const [showCreateCoach, setShowCreateCoach] = useState(false);
@@ -75,7 +80,7 @@ export function ManagerUsers() {
   const visible = rows.filter(
     (s) =>
       (!role || s.role === role) &&
-      `${s.fullName} ${s.email}`
+      `${s.fullName} ${s.email} ${s.phone || ""}`
         .toLocaleLowerCase("vi")
         .includes(search.toLocaleLowerCase("vi")),
   );
@@ -84,24 +89,39 @@ export function ManagerUsers() {
       <div className="page-heading">
         <div>
           <span className="eyebrow">QUẢN LÝ CƠ SỞ</span>
-          <h1>Nhân sự cơ sở</h1>
+          <h1>{isCoachOnly ? "Huấn luyện viên" : "Nhân sự cơ sở"}</h1>
           <p>
-            {assigned.data?.data.name} · Phân công Coach và theo dõi nhân sự tại
-            cơ sở bạn quản lý.
+            {assigned.data?.data.name} ·{" "}
+            {isCoachOnly
+              ? "Quản lý đội ngũ Huấn luyện viên, lấy HLV từ Admin hoặc tạo mới cho cơ sở."
+              : "Phân công Coach và theo dõi nhân sự tại cơ sở bạn quản lý."}
           </p>
         </div>
-        <button
-          className="button primary"
-          onClick={() => setShowCreateCoach(true)}
-        >
-          + Tạo Huấn luyện viên
-        </button>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          {view === "assigned" && (
+            <button
+              className="button"
+              onClick={() => {
+                setView("COACH");
+                setRole("");
+              }}
+            >
+              + Thêm HLV từ hệ thống (Admin)
+            </button>
+          )}
+          <button
+            className="button primary"
+            onClick={() => setShowCreateCoach(true)}
+          >
+            + Tạo Huấn luyện viên
+          </button>
+        </div>
       </div>
       <section className="panel">
         <div className="tabs">
           {[
-            ["assigned", "Nhân sự cơ sở"],
-            ["COACH", "Coach chưa phân công"],
+            ["assigned", isCoachOnly ? "HLV tại cơ sở" : "Nhân sự cơ sở"],
+            ["COACH", isCoachOnly ? "HLV từ Admin (Chưa phân công)" : "Coach chưa phân công (Admin)"],
           ].map(([key, text]) => (
             <button
               key={key}
@@ -109,23 +129,38 @@ export function ManagerUsers() {
               aria-pressed={view === key}
               onClick={() => {
                 setView(key);
-                setRole("");
+                setRole(view === "assigned" && isCoachOnly ? "" : isCoachOnly ? "COACH" : "");
               }}
             >
               {text}
             </button>
           ))}
         </div>
+        {view === "COACH" && (
+          <div
+            style={{
+              margin: "12px 0 16px",
+              padding: "12px 16px",
+              background: "rgba(59, 130, 246, 0.08)",
+              border: "1px solid rgba(59, 130, 246, 0.2)",
+              borderRadius: "8px",
+              fontSize: "14px",
+              color: "inherit",
+            }}
+          >
+            <strong>Danh sách Huấn luyện viên hệ thống (Admin):</strong> Đây là các tài khoản đã được Admin cấp quyền Huấn luyện viên nhưng chưa thuộc cơ sở nào. Bấm <em>"Phân công vào cơ sở"</em> để thêm HLV vào chi nhánh của bạn.
+          </div>
+        )}
         <div className="filters">
           <label>
-            Tìm nhân sự
+            Tìm kiếm
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Họ tên hoặc email"
+              placeholder="Họ tên, email hoặc SĐT"
             />
           </label>
-          {view === "assigned" && (
+          {view === "assigned" && !isCoachOnly && (
             <label>
               Vai trò
               <select value={role} onChange={(e) => setRole(e.target.value)}>
@@ -141,7 +176,15 @@ export function ManagerUsers() {
         ) : source.error ? (
           <ErrorState error={source.error} retry={() => source.refetch()} />
         ) : !visible.length ? (
-          <Empty text="Không có nhân sự phù hợp" />
+          <Empty
+            text={
+              view === "COACH"
+                ? "Không có Huấn luyện viên nào đang chờ phân công từ hệ thống."
+                : isCoachOnly
+                  ? "Chưa có Huấn luyện viên nào tại cơ sở này. Hãy bấm \"+ Thêm HLV từ hệ thống (Admin)\" hoặc \"+ Tạo Huấn luyện viên\" để thêm."
+                  : "Không có nhân sự phù hợp"
+            }
+          />
         ) : (
           <div className="table-scroll" tabIndex={0}>
             <table>
@@ -157,7 +200,14 @@ export function ManagerUsers() {
               <tbody>
                 {visible.map((s) => (
                   <tr key={s.id}>
-                    <td>{s.fullName}</td>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{s.fullName}</div>
+                      {s.phone && (
+                        <div style={{ fontSize: "12px", opacity: 0.7 }}>
+                          {s.phone}
+                        </div>
+                      )}
+                    </td>
                     <td>{s.email}</td>
                     <td>{s.role === "COACH" ? "Coach" : "Lễ tân"}</td>
                     <td>
@@ -170,6 +220,8 @@ export function ManagerUsers() {
                               </span>
                             ))}
                           </div>
+                        ) : s.coachProfile?.specialization ? (
+                          <span className="badge">{s.coachProfile.specialization}</span>
                         ) : (
                           <span className="badge" style={{ opacity: 0.6 }}>Chưa có môn</span>
                         )
