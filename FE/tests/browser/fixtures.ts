@@ -1,7 +1,38 @@
 import type { Page } from "@playwright/test";
 import fs from "node:fs";
 const doc = JSON.parse(fs.readFileSync("docs/openapi.json", "utf8"));
+
+export async function mockTurnstile(page: Page, autoVerify = true) {
+  const sdk = `
+window.__captchaRenders = 0;
+window.turnstile = {
+  ready: (callback) => callback(),
+  render: (container, options) => {
+    window.__captchaOptions = options;
+    window.__captchaRenders++;
+    const button = document.createElement('button');
+    button.type = 'button'; button.textContent = 'Xác nhận thử nghiệm';
+    button.onclick = () => options.callback('fixture-turnstile-token');
+    const widget = document.createElement('div');
+    widget.style.width = options.size === 'compact' ? '150px' : '100%';
+    widget.style.minWidth = options.size === 'compact' ? '150px' : '300px';
+    widget.style.height = options.size === 'compact' ? '140px' : '65px';
+    widget.append(button); container.append(widget);
+    ${autoVerify ? `setTimeout(() => { if (options.callback) options.callback('fixture-turnstile-token'); }, 10);` : ""}
+    return 'widget-' + window.__captchaRenders;
+  },
+  remove: () => { document.querySelector('[aria-label="Xác minh bảo mật Cloudflare"]')?.replaceChildren(); }
+};`;
+  await page.route(
+    "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit",
+    async (route) => {
+      await route.fulfill({ contentType: "application/javascript", body: sdk });
+    },
+  );
+}
+
 export async function setup(page: Page, role = "RECEPTIONIST", longText = false) {
+  await mockTurnstile(page, true);
   await page.addInitScript(
     () => (
       sessionStorage.setItem("pulse.identity-version", "mongo-identities-v1"),

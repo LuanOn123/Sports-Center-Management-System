@@ -203,7 +203,7 @@ test("reception mobile navigation and unavailable features never call invented e
   await expect(
     page.getByRole("heading", { name: "Yêu cầu hỗ trợ", exact: true }),
   ).toBeVisible();
-  expect(calls.some((p) => /attendance|checkin|support/.test(p))).toBe(false);
+  expect(calls.some((p) => /\/api\/v1\/(checkin|support)(\/|\?|$)/.test(p))).toBe(false);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

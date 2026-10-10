@@ -63,7 +63,7 @@
 }
 @media (max-width: 700px) {
   .facility-switch {
-    max-width: 130px;
+    max-width: 100px;
   }
   .operations-actions {
     align-items: stretch;

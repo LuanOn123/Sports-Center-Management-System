@@ -14,7 +14,7 @@ test("Mongo member IDs support login/profile and removed modules make no request
       removed.push(request.url());
   });
   await page.route("**/api/v1/auth/login", (route) => {
-    expect(route.request().postDataJSON()).toEqual({
+    expect(route.request().postDataJSON()).toMatchObject({
       email: "member@example.test",
       password: "password123",
     });

@@ -1,8 +1,10 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
+import { mockTurnstile } from "./fixtures";
 const doc = JSON.parse(fs.readFileSync("docs/openapi.json", "utf8"));
 // Fixtures exist only inside tests; production never loads Swagger example data.
 async function fixtureApi(page: any, role = "MANAGER") {
+  await mockTurnstile(page, true);
   await page.route(
     "https://sports-center-management-system.onrender.com/api/v1/**",
     async (route: any) => {
