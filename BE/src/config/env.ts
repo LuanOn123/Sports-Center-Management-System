@@ -14,4 +14,6 @@ export const env = {
   JWT_REFRESH_SECRET: required("JWT_REFRESH_SECRET"),
   JWT_ACCESS_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN ?? "15m",
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN ?? "7d",
+  // Missing configuration blocks login with 503; never disables CAPTCHA.
+  CLOUDFLARE_TURNSTILE_SECRET_KEY: process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY?.trim() ?? "",
 };

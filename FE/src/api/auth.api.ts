@@ -1,9 +1,11 @@
 import { apiClient, clearTokens, getRefreshToken, setTokens } from "./client";
 import type { User } from "../types/member";
+import { requireLoginCaptcha } from "../shared/turnstileConfig";
 
 export interface LoginPayload {
   email: string;
   password: string;
+  turnstileToken: string;
 }
 
 export interface RegisterPayload {
@@ -32,6 +34,7 @@ export interface ChangePasswordPayload {
 
 export const authApi = {
   async login(credentials: LoginPayload): Promise<{ user: User; accessToken: string }> {
+    requireLoginCaptcha(credentials.turnstileToken);
     const data = await apiClient.post<{
       accessToken: string;
       refreshToken: string;

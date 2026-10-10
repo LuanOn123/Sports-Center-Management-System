@@ -1,29 +1,44 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { ArrowUpRight, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { AuthLink as Link } from "./AuthLink";
 import { ErrorState } from "../../shared/ui";
 import { AuthLayout } from "./AuthLayout";
 
+const Turnstile = lazy(() =>
+  import("./Turnstile").then((module) => ({ default: module.Turnstile })),
+);
+
 export function Login({
   onLogin,
   busy,
   error,
 }: {
-  onLogin: (e: string, p: string) => Promise<void>;
+  onLogin: (e: string, p: string, turnstileToken: string) => Promise<void>;
   busy: boolean;
   error: unknown;
 }) {
   const [show, setShow] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaAttempt, setCaptchaAttempt] = useState(0);
   useEffect(() => {
     document.title = "Đăng nhập · Pulse Sports Center";
   }, []);
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
-    if (busy) return;
-    void onLogin(email.trim().toLowerCase(), password);
+    if (busy || !captchaToken) return;
+    try {
+      await onLogin(
+        email.trim().toLowerCase(),
+        password,
+        captchaToken,
+      );
+    } finally {
+      setCaptchaToken("");
+      setCaptchaAttempt((value) => value + 1);
+    }
   }
   return (
     <AuthLayout>
@@ -82,7 +97,13 @@ export function Login({
           <Link to="/forgot-password">Quên mật khẩu?</Link>
         </div>
         {error != null && <ErrorState error={error} />}
-        <button className="auth-submit" disabled={busy}>
+        <Suspense fallback={<p role="status">Đang tải xác minh bảo mật…</p>}>
+          <Turnstile key={captchaAttempt} onChange={setCaptchaToken} />
+        </Suspense>
+        <button
+          className="auth-submit"
+          disabled={busy || !captchaToken}
+        >
           {busy ? (
             <>
               <LoaderCircle size={18} className="auth-spinner" /> Đang đăng

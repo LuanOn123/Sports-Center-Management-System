@@ -86,7 +86,12 @@ async function manager(page: Page) {
       if (req.method() === "PUT")
         writes.push({ path, body: req.postDataJSON() });
       data = [{ sportId: "yoga" }];
-    } else if (path === "/sports") data = [{ id: "yoga", name: "Yoga" }];
+    } else if (
+      path === "/classes" &&
+      new URL(req.url()).searchParams.has("coachId")
+    )
+      data = [];
+    else if (path === "/sports") data = [{ id: "yoga", name: "Yoga" }];
     else return route.fallback();
     return route.fulfill({ json: { success: true, data } });
   });

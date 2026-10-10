@@ -14484,7 +14484,8 @@ Request body:
   "type": "object",
   "required": [
     "email",
-    "password"
+    "password",
+    "turnstileToken"
   ],
   "properties": {
     "email": {
@@ -14493,6 +14494,12 @@ Request body:
     },
     "password": {
       "type": "string"
+    },
+    "turnstileToken": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048,
+      "description": "Single-use Turnstile token with action login"
     }
   }
 }
@@ -14565,6 +14572,9 @@ Responses/status codes:
         }
       }
     }
+  },
+  "503": {
+    "description": "Security verification unavailable or not configured"
   }
 }
 ```

@@ -13,6 +13,7 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env", quiet: true });
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { mock } from "node:test";
 import { requestContext } from "../src/config/request-context.js";
 
 const DAY = 86400000;
@@ -27,6 +28,27 @@ async function main() {
     "../src/modules/reports/reports.service.js"
   );
   const { login } = await import("../src/modules/auth/auth.service.js");
+  // Only this isolated regression fixture mocks Cloudflare; production login still verifies.
+  const { env } = await import("../src/config/env.js");
+  const fixtureLogin = async (email: string, password: string) => {
+    const originalFetch = globalThis.fetch;
+    const originalSecret = env.CLOUDFLARE_TURNSTILE_SECRET_KEY;
+    const token = randomUUID();
+    env.CLOUDFLARE_TURNSTILE_SECRET_KEY = randomUUID();
+    const upstream = mock.method(globalThis, "fetch", async (
+      url: Parameters<typeof fetch>[0], options?: Parameters<typeof fetch>[1],
+    ) => {
+      if (String(url) !== "https://challenges.cloudflare.com/turnstile/v0/siteverify")
+        return originalFetch(url, options);
+      assert.equal(new URLSearchParams(String(options?.body)).get("response"), token);
+      return Response.json({ success: true, action: "login" });
+    });
+    try { return await login(email, password, token); }
+    finally {
+      upstream.mock.restore();
+      env.CLOUDFLARE_TURNSTILE_SECRET_KEY = originalSecret;
+    }
+  };
 
   const run = randomUUID();
   const START = "2020-01-01";
@@ -206,7 +228,7 @@ async function main() {
         before,
       );
 
-      await login(email, plain);
+      await fixtureLogin(email, plain);
       const after = await prisma.membershipSubscription.findMany({ where: { memberId } });
       check(
         "MF-08: sau login → đúng 1 gói FREE ACTIVE, facilityId NULL",
@@ -215,7 +237,7 @@ async function main() {
         after.map((s) => `${s.tier}/${s.status}/${String(s.facilityId)}`),
       );
 
-      await login(email, plain);
+      await fixtureLogin(email, plain);
       const again = await prisma.membershipSubscription.count({ where: { memberId } });
       check("MF-08: login lần 2 vẫn idempotent (không tạo trùng)", again === 1, again);
 

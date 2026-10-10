@@ -44,7 +44,8 @@
     "test:operations:cross-facility-my-schedule": "tsx tests/cross-facility-my-schedule.integration.ts",
     "test:operations:membership-reports": "tsx tests/membership-reports.integration.ts",
     "test:final:member-facility": "tsx tests/final-member-facility.integration.ts",
-    "test:policy-a:membership": "tsx tests/policy-a-membership.integration.ts"
+    "test:policy-a:membership": "tsx tests/policy-a-membership.integration.ts",
+    "test:captcha": "tsx --test tests/turnstile.integration.test.ts"
   },
   "dependencies": {
     "@getbrevo/brevo": "^6.0.3",

@@ -62,14 +62,16 @@ router.post("/register", validate(RegisterSchema), authController.register);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [email, password]
+ *             required: [email, password, turnstileToken]
  *             properties:
  *               email: { type: string, format: email }
  *               password: { type: string }
+ *               turnstileToken: { type: string, minLength: 1, maxLength: 2048, description: "Single-use Turnstile token with action login" }
  *     responses:
  *       200: { $ref: "#/components/responses/LoginOk" }
  *       400: { $ref: "#/components/responses/BadRequest" }
  *       401: { $ref: "#/components/responses/Unauthorized" }
+ *       503: { description: "Security verification unavailable or not configured" }
  *       500: { $ref: "#/components/responses/ServerError" }
  */
 router.post("/login", validate(LoginSchema), authController.login);

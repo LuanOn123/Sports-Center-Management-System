@@ -306,10 +306,21 @@ function CoachSports({
     !query.data?.requiredSports.length ||
     canTeach(query.data.requiredSports, selected);
   const save = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (!coversClasses)
         throw new Error(
           "Không thể gỡ bộ môn của lớp HLV đang phụ trách. Hãy điều chỉnh phân công lớp trước.",
+        );
+      const currentClasses = await allPages<RecordData>("GET /classes", {
+        query: { coachId: id },
+      });
+      const required = currentClasses.data
+        .filter((row) => row.isActive !== false)
+        .flatMap(classSports)
+        .map((sport) => sport.id);
+      if (required.length && !canTeach(required, selected))
+        throw new Error(
+          "Phân công lớp của HLV vừa thay đổi. Hãy tải lại và giữ các bộ môn của lớp đang phụ trách.",
         );
       return api("PUT /coaches/{id}/specializations", {
         params: { id },
