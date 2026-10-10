@@ -42,7 +42,7 @@ test("manager cannot edit plan prices", async ({ page }) => {
   await setup(page, "MANAGER");
   await page.goto("/manager/membership-plans");
   await expect(
-    page.getByRole("heading", { name: "Gói thành viên", exact: true }),
+    page.getByRole("heading", { name: "Báo cáo doanh thu", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Chỉnh sửa" })).toHaveCount(0);
 });
@@ -76,19 +76,24 @@ test("room configuration loads existing quantities and blocks saving after faile
     });
   });
   await page.goto("/manager/requirements");
+  await expect(page).toHaveURL(/\/manager\/rooms$/);
+  await page.getByRole("button", { name: "Sử dụng & cấu hình phòng" }).click();
   await page
     .getByRole("combobox", { name: "Phòng tập", exact: true })
     .selectOption("known");
+  await page.getByRole("button", { name: "Cấu hình phòng", exact: true }).click();
   await expect(page.locator('input[value="mats"]')).toBeVisible();
   const save = page.getByRole("button", { name: "Lưu cấu hình" });
   await expect(save).toBeEnabled();
+  await page.getByRole("dialog").getByRole("button", { name: "Hủy", exact: true }).click();
   await page
     .getByRole("combobox", { name: "Phòng tập", exact: true })
     .selectOption("missing");
+  await page.getByRole("button", { name: "Cấu hình phòng", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText(
     "Không tìm thấy phòng tập",
   );
-  await expect(save).toBeDisabled();
+  await expect(save).toHaveCount(0);
 });
 
 for (const width of [375, 1440])
@@ -96,6 +101,7 @@ for (const width of [375, 1440])
     page,
   }) => {
     test.setTimeout(120000);
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await setup(page, "ADMIN");
     await page.setViewportSize({ width, height: 960 });
     for (const path of [

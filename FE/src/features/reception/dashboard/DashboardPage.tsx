@@ -1,3 +1,4 @@
+import { ReceptionAnalytics } from "./ReceptionAnalytics";
 import { Link } from "react-router-dom";
 import {
   ArrowUpRight,
@@ -5,7 +6,6 @@ import {
   CreditCard,
   CalendarDays,
   Receipt,
-  Users,
 } from "lucide-react";
 import { Heading, ListState, Table } from "../components";
 import { useReceptionList } from "../api";
@@ -60,24 +60,7 @@ export function DashboardPage() {
           })}
         </span>
       </Heading>
-      <section className="operations-welcome">
-        <div>
-          <span className="eyebrow">PULSE / FRONT DESK</span>
-          <h2>
-            Một khởi đầu tốt.
-            <br />
-            <em>Một trải nghiệm trọn vẹn.</em>
-          </h2>
-          <p>
-            Sẵn sàng đón hội viên. Mọi công việc tại quầy, trong một không gian.
-          </p>
-        </div>
-        <Link className="button lime" to="/receptionist/members">
-          <Users size={18} />
-          Tra cứu hội viên
-          <ArrowUpRight size={18} />
-        </Link>
-      </section>
+      <ReceptionAnalytics />
       <div className="shortcut-grid">
         {shortcuts.map(({ path, title, description, icon: Icon }) => (
           <Link

@@ -17,6 +17,7 @@ export const resources: Resource[] = [
       ["fullName", "Họ và tên"],
       ["email", "Email"],
       ["role", "Vai trò"],
+      ["facilityName", "Phân công cơ sở"],
       ["isActive", "Trạng thái"],
     ],
   },

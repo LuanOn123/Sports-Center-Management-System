@@ -206,18 +206,18 @@ test("dynamic role changes expire session without refreshing obsolete permission
   ).toBeNull();
 });
 
-test("manager gains finance screens while staff has no refund action", async ({
+test("manager has revenue reports only while staff has no refund action", async ({
   page,
 }) => {
   await setup(page, "MANAGER");
   await page.goto("/manager/payments");
   await expect(
-    page.getByRole("heading", { name: "Thanh toán & hóa đơn", exact: true }),
+    page.getByRole("heading", { name: "Báo cáo doanh thu", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Chọn", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/manager\/reports$/);
   await expect(
     page.getByRole("button", { name: "Hoàn tiền", exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await setup(page, "RECEPTIONIST");
   await page.goto("/receptionist/payments");
   await page.getByRole("button", { name: "Chọn", exact: true }).first().click();

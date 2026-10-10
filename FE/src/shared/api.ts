@@ -4,6 +4,7 @@ import operations from "./operations.json";
 import { toast } from "./toast";
 import { localizeApiError } from "./apiErrors";
 import { terminalSessionError } from "./businessRules";
+import { requireLoginCaptcha } from "./turnstileConfig";
 import type { LoginOk, ProfileOk, PostAuthLoginRequest } from "./generated";
 export type RecordData = { [key: string]: unknown };
 export interface Envelope<T> {
@@ -379,6 +380,7 @@ export const authService = {
   resetPassword: (body: { email: string; otp: string; newPassword: string }) =>
     api<null>("POST /auth/reset-password", { body }),
   async login(body: PostAuthLoginRequest) {
+    requireLoginCaptcha(body.turnstileToken);
     const r = await api<LoginOk["data"]>("POST /auth/login", { body });
     saveTokens(r.data);
     return authService.me();

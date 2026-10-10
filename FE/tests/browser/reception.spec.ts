@@ -106,31 +106,29 @@ test("booking uses member profile and schedule; cancellation requires confirmati
   await page.goto("/receptionist/classes");
   await chooseMember(page);
   await page.getByRole("button", { name: "Xem đăng ký" }).first().click();
-  await page
-    .getByRole("button", { name: "Đăng ký cho hội viên đã chọn" })
-    .click();
+  await page.getByRole("button", { name: /^Đăng ký cho / }).click();
   const booking = page.waitForRequest(
     (r) => r.method() === "POST" && r.url().endsWith("/enrollments"),
   );
-  await page.getByRole("button", { name: "Lưu thay đổi" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Xác nhận đăng ký", exact: true })
+    .click();
   expect((await booking).postDataJSON()).toMatchObject({
     memberId,
     scheduleId: expect.any(String),
   });
-  await expect(page.getByRole("dialog").getByRole("status")).toBeVisible();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
   await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Đóng", exact: true })
-    .last()
-    .click();
-  await page
-    .getByRole("button", { name: /Hủy đăng ký của/ })
+    .getByRole("button", { name: "Hủy đăng ký", exact: true })
     .first()
     .click();
   const cancel = page.waitForRequest(
     (r) => r.method() === "DELETE" && r.url().includes("/enrollments/"),
   );
-  await page.getByRole("button", { name: "Xác nhận", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Xác nhận hủy đăng ký", exact: true })
+    .click();
   expect((await cancel).url()).toContain(
     "6b6b6b6b-0000-4000-8000-000000000201",
   );
@@ -197,9 +195,7 @@ test("reception mobile navigation and unavailable features never call invented e
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/receptionist/dashboard");
   await page.getByRole("button", { name: "Mở menu" }).click();
-  await page
-    .getByRole("link", { name: "Lịch & điểm danh", exact: true })
-    .click();
+  await page.getByRole("link", { name: "Lịch lớp học", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Lịch hoạt động", exact: true }),
   ).toBeVisible();
@@ -207,7 +203,7 @@ test("reception mobile navigation and unavailable features never call invented e
   await expect(
     page.getByRole("heading", { name: "Yêu cầu hỗ trợ", exact: true }),
   ).toBeVisible();
-  expect(calls.some((p) => /attendance|checkin|support/.test(p))).toBe(false);
+  expect(calls.some((p) => /\/api\/v1\/(checkin|support)(\/|\?|$)/.test(p))).toBe(false);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

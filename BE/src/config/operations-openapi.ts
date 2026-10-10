@@ -22,14 +22,65 @@ const facility = object(
 const quantities = object({
   values: {
     type: "object",
-      additionalProperties: { oneOf: [{ type: "integer", minimum: 0 }, { type: "boolean" }] },
+    additionalProperties: {
+      oneOf: [{ type: "integer", minimum: 0 }, { type: "boolean" }],
+    },
   },
 });
 const entries: [string, string, string, any?][] = [
-  ["get", "/classes/{id}/registrations", "Hội viên đã đăng ký khóa học (staff)"],
+  [
+    "get",
+    "/attendance/monitoring",
+    "Chuyên cần hội viên theo lớp trong cơ sở (Reception/Manager)",
+  ],
+  [
+    "get",
+    "/attendance/monitoring/detail",
+    "Lịch sử chuyên cần của hội viên trong lớp đã đăng ký",
+  ],
+  [
+    "post",
+    "/attendance/warnings/send",
+    "Gửi cảnh báo chuyên cần, chống gửi trùng",
+    object({ memberId: text, classId: text }),
+  ],
+  [
+    "post",
+    "/attendance/reports",
+    "Lễ tân báo cáo vi phạm từ 30%",
+    object({
+      memberId: text,
+      classId: text,
+      reason: { ...text, minLength: 5, maxLength: 1000 },
+    }),
+  ],
+  [
+    "post",
+    "/attendance/reports/{id}/review",
+    "Manager duyệt báo cáo chuyên cần",
+    object({
+      decision: enumOf("APPROVE_REMOVAL", "REJECT"),
+      response: { ...text, minLength: 5, maxLength: 1000 },
+    }),
+  ],
+
+  [
+    "get",
+    "/classes/{id}/registrations",
+    "Hội viên đã đăng ký khóa học (staff)",
+  ],
   ["get", "/reports/facilities", "Tổng quan toàn hệ thống theo cơ sở (ADMIN)"],
-  ["put", "/facilities/{facilityId}/manager", "Thêm hoặc thay quản lý cơ sở (ADMIN)", object({ userId: text, replacedUserId: text }, ["userId"])],
-  ["get", "/staff-candidates", "Nhân sự có thể phân công"],
+  [
+    "put",
+    "/facilities/{facilityId}/manager",
+    "Thêm hoặc thay quản lý cơ sở (ADMIN)",
+    object({ userId: text, replacedUserId: text }, ["userId"]),
+  ],
+  [
+    "get",
+    "/staff-candidates",
+    "Ứng viên chưa phân công: Coach cho MANAGER, Manager cho ADMIN",
+  ],
   ["get", "/coaches/{id}/specializations", "Chuyên môn huấn luyện viên"],
   ["get", "/leave-requests/{id}/affected", "Buổi học cần xử lý khi nghỉ phép"],
   ["get", "/facilities", "Danh sách cơ sở"],
@@ -46,6 +97,26 @@ const entries: [string, string, string, any?][] = [
     "/facilities/{facilityId}/staff",
     "Phân công nhân sự",
     object({ userId: text, role: enumOf("MANAGER", "COACH", "RECEPTIONIST") }),
+  ],
+  [
+    "post",
+    "/facilities/{facilityId}/coaches",
+    "Manager tạo tài khoản HLV kèm bộ môn",
+    object(
+      {
+        email: text,
+        fullName: text,
+        password: text,
+        phone: text,
+        gender: enumOf("MALE", "FEMALE", "OTHER"),
+        dateOfBirth: text,
+        experienceYears: integer,
+        specialization: text,
+        bio: text,
+        sportIds: list(text),
+      },
+      ["email", "fullName", "sportIds"],
+    ),
   ],
   ["delete", "/facilities/{facilityId}/staff/{userId}/{role}", "Gỡ phân công"],
   ["put", "/rooms/{id}/capabilities", "Thiết bị và khả năng phòng", quantities],
@@ -158,9 +229,43 @@ export function addOperations(spec: any) {
     spec.paths[path] ||= {};
     spec.paths[path][method] = {
       summary,
+      description:
+        (path.startsWith("/leave-requests")
+          ? "Coach và Receptionist gửi/đọc đơn của chính mình; Manager/Admin duyệt trong phạm vi được phép. requesterId/requesterRole lấy từ tài khoản đăng nhập. coachId nullable cho lễ tân; affected trả [] và không nhận resolutions cho đơn này. Danh sách bổ sung requester {id, fullName, role}. "
+          : path.startsWith("/issues")
+            ? "Member, Coach, Receptionist và Manager có thể gửi yêu cầu; người gửi do server xác định. Member/Coach chỉ đọc yêu cầu của mình; Manager/Receptionist xử lý trong cơ sở. Danh sách bổ sung requester {id, fullName, role}; giữ memberId cho yêu cầu Member cũ. "
+            : "") +
+        "MANAGER: cơ sở được xác định từ phân công đang hoạt động trong DB; facilityId/header khác cơ sở đó bị từ chối 403. Phân công Coach đã có cơ sở hoặc thêm Manager thứ hai vào cơ sở trả 409.",
       tags: ["Facility Operations"],
       security: [{ BearerAuth: [] }],
       parameters: [
+        ...(path === "/attendance/monitoring"
+          ? [
+              ...["memberId", "classId", "search"].map((name) => ({
+                name,
+                in: "query",
+                schema: text,
+              })),
+              {
+                name: "status",
+                in: "query",
+                schema: enumOf("NORMAL", "WARNING", "VIOLATION"),
+              },
+              { name: "page", in: "query", schema: { ...integer, minimum: 1 } },
+              {
+                name: "limit",
+                in: "query",
+                schema: { ...integer, minimum: 1, maximum: 100 },
+              },
+            ]
+          : path === "/attendance/monitoring/detail"
+            ? ["memberId", "classId"].map((name) => ({
+                name,
+                in: "query",
+                required: true,
+                schema: text,
+              }))
+            : []),
         ...Array.from(path.matchAll(/\{(\w+)\}/g), (match) => ({
           name: match[1],
           in: "path",
@@ -168,19 +273,38 @@ export function addOperations(spec: any) {
           schema: text,
         })),
         ...(path === "/facilities"
-          ? [{ name: "includeInactive", in: "query", schema: { type: "string", enum: ["true", "false"] } }]
+          ? [
+              {
+                name: "includeInactive",
+                in: "query",
+                schema: { type: "string", enum: ["true", "false"] },
+              },
+            ]
           : [
               {
                 name: "X-Facility-Id",
                 in: "header",
-                required: !path.startsWith("/facilities/"),
+                required: false,
+                description:
+                  "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
                 schema: text,
               },
             ]),
         ...(path === "/audit-logs"
-          ? [{ name: "skip", in: "query", schema: integer }, { name: "entity", in: "query", schema: text }, { name: "filterFacilityId", in: "query", schema: text }]
+          ? [
+              { name: "skip", in: "query", schema: integer },
+              { name: "entity", in: "query", schema: text },
+              { name: "filterFacilityId", in: "query", schema: text },
+            ]
           : []),
-        ...(path === "/reports/facilities" ? ["startDate", "endDate"].map(name => ({ name, in: "query", required: true, schema: text })) : []),
+        ...(path === "/reports/facilities"
+          ? ["startDate", "endDate"].map((name) => ({
+              name,
+              in: "query",
+              required: true,
+              schema: text,
+            }))
+          : []),
       ],
       ...(body
         ? {
@@ -199,8 +323,15 @@ export function addOperations(spec: any) {
     };
   }
   for (const method of ["post", "patch"]) {
-    const properties = spec.paths[method === "post" ? "/classes" : "/classes/{id}"]?.[method]?.requestBody?.content?.["application/json"]?.schema?.properties;
-    if (properties) properties.defaultRoomId = { type: "string", description: "Phòng mặc định cùng cơ sở, đúng khu vực và đủ sức chứa. Lịch học có thể chọn phòng phù hợp khác." };
+    const properties =
+      spec.paths[method === "post" ? "/classes" : "/classes/{id}"]?.[method]
+        ?.requestBody?.content?.["application/json"]?.schema?.properties;
+    if (properties)
+      properties.defaultRoomId = {
+        type: "string",
+        description:
+          "Phòng mặc định cùng cơ sở, đúng khu vực và đủ sức chứa. Lịch học có thể chọn phòng phù hợp khác.",
+      };
   }
   // Subject uses the established Sport model and public API compatibility alias.
   for (const [path, operations] of Object.entries(spec.paths))

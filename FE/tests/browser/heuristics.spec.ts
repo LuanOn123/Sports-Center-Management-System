@@ -155,7 +155,7 @@ test("manager clears filters and sees browser offline state", async ({
   context,
 }) => {
   await setup(page, "MANAGER");
-  await page.goto("/manager/members");
+  await page.goto("/manager/classes");
   await page.getByLabel("Tìm kiếm", { exact: true }).fill("test");
   await page.getByRole("button", { name: "Xóa bộ lọc" }).click();
   await expect(page.getByLabel("Tìm kiếm", { exact: true })).toHaveValue("");

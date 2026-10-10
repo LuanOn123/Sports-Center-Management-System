@@ -1,5 +1,6 @@
 import { StatusBadge } from "../../shared/StatusBadge";
 import { ClassForm } from "./ClassForm";
+import { CoachAssignmentForm } from "./CoachAssignmentForm";
 import { ClassRegistrations, MemberProfile } from "./UserCourseDetails";
 import { ResourceCollection } from "../../shared/ResourceCollection";
 import { CoachFeedback } from "../../shared/CoachFeedback";
@@ -65,7 +66,12 @@ export function ResourcePage({
     cardView || r.slug === "schedules" ? "visual" : "table",
   );
   const [searchParams] = useSearchParams();
-  const [query, setQuery] = useState<Record<string, string>>((): Record<string, string> => r.slug === "users" && searchParams.get("role") === "MEMBER" ? { role: "MEMBER" } : {});
+  const [query, setQuery] = useState<Record<string, string>>(
+    (): Record<string, string> =>
+      r.slug === "users" && searchParams.get("role") === "MEMBER"
+        ? { role: "MEMBER" }
+        : {},
+  );
   const [page, setPage] = useState(1);
   const search = useDebouncedValue(query.search);
   const [modal, setModal] = useState<{ kind: string; row?: RecordData } | null>(
@@ -121,10 +127,17 @@ export function ResourcePage({
         ? allPages<RecordData>(listKey, { query: requestQuery, signal })
         : api<RecordData[]>(listKey, { query: requestQuery, signal }),
   });
-  const readOnly = ["ADMIN", "RECEPTIONIST"].includes(role) && r.slug === "schedules" || role !== "ADMIN" && (["users", "staff", "membership-plans", "sports"].includes(r.slug)) || role === "RECEPTIONIST" && ["coaches", "rooms"].includes(r.slug);
-  const create = r.slug === "members" && role === "MANAGER"
-    ? "POST /auth/register"
-    : readOnly || role !== "ADMIN" && !!r.create ? "" : "POST " + (r.create || r.path);
+  const readOnly =
+    (["ADMIN", "RECEPTIONIST"].includes(role) && r.slug === "schedules") ||
+    (role !== "ADMIN" &&
+      ["users", "staff", "membership-plans", "sports"].includes(r.slug)) ||
+    (role === "RECEPTIONIST" && ["coaches", "rooms"].includes(r.slug));
+  const create =
+    r.slug === "members" && role === "MANAGER"
+      ? "POST /auth/register"
+      : readOnly || (role !== "ADMIN" && !!r.create)
+        ? ""
+        : "POST " + (r.create || r.path);
   const update = readOnly ? "" : "PATCH " + r.path + "/{id}";
   const remove = readOnly ? "" : "DELETE " + r.path + "/{id}";
   const detailKey = "GET " + r.path + "/{id}";
@@ -207,18 +220,20 @@ export function ResourcePage({
           <UsersRound size={17} />
         </button>
       )}
-      {r.slug === "schedules" && !readOnly && ["MANAGER", "RECEPTIONIST"].includes(role) && (
-        <button
-          className="button small"
-          disabled={!canCompleteSchedule(row)}
-          onClick={() => {
-            setBError(undefined);
-            setModal({ kind: "complete", row });
-          }}
-        >
-          Hoàn tất
-        </button>
-      )}
+      {r.slug === "schedules" &&
+        !readOnly &&
+        ["MANAGER", "RECEPTIONIST"].includes(role) && (
+          <button
+            className="button small"
+            disabled={!canCompleteSchedule(row)}
+            onClick={() => {
+              setBError(undefined);
+              setModal({ kind: "complete", row });
+            }}
+          >
+            Hoàn tất
+          </button>
+        )}
       {r.slug === "rooms" && row.isActive !== false && (
         <button
           aria-label="Chuyển lịch sang phòng khác"
@@ -517,7 +532,12 @@ export function ResourcePage({
           }}
         >
           {r.slug === "classes" && ["create", "edit"].includes(modal.kind) ? (
-            <ClassForm initial={modal.kind === "edit" ? modal.row : {}} onSuccess={done} onCancel={() => setModal(null)} onBusyChange={setBusy} />
+            <ClassForm
+              initial={modal.kind === "edit" ? modal.row : {}}
+              onSuccess={done}
+              onCancel={() => setModal(null)}
+              onBusyChange={setBusy}
+            />
           ) : modal.kind === "transferRoom" ? (
             <RoomScheduleTransfer
               source={modal.row!}
@@ -525,24 +545,25 @@ export function ResourcePage({
               onCancel={() => setModal(null)}
               onBusyChange={setBusy}
             />
-          ) : ["create", "edit", "assign", "assignSupport"].includes(
-              modal.kind,
-            ) ? (
+          ) : ["assign", "assignSupport"].includes(modal.kind) ? (
+            <CoachAssignmentForm
+              classId={String(modal.row?.id)}
+              support={modal.kind === "assignSupport"}
+              onSuccess={done}
+              onCancel={() => setModal(null)}
+              onBusyChange={setBusy}
+            />
+          ) : ["create", "edit"].includes(modal.kind) ? (
             <SchemaForm
-              operation={
-                modal.kind === "create"
-                  ? create
-                  : modal.kind === "assign"
-                    ? "POST /classes/{id}/coaches"
-                    : modal.kind === "assignSupport"
-                      ? "POST /classes/{id}/coaches/support"
-                      : update
-              }
+              operation={modal.kind === "create" ? create : update}
               params={{ id: String(modal.row?.id) }}
               initial={
                 modal.kind === "edit"
                   ? r.slug === "coaches"
-                    ? { ...modal.row, ...(modal.row?.coachProfile as RecordData) }
+                    ? {
+                        ...modal.row,
+                        ...(modal.row?.coachProfile as RecordData),
+                      }
                     : r.slug === "members"
                       ? { ...modal.row, ...(modal.row?.user as RecordData) }
                       : modal.row
@@ -608,7 +629,8 @@ export function ResourcePage({
             <>
               {(["members", "schedules", "classes", "coaches"].includes(
                 r.slug,
-              ) || r.slug === "users" && modal.row?.role === "MEMBER") && (
+              ) ||
+                (r.slug === "users" && modal.row?.role === "MEMBER")) && (
                 <div
                   className="detail-tabs"
                   role="group"
@@ -632,43 +654,47 @@ export function ResourcePage({
                         ? "Học viên & điểm danh"
                         : r.slug === "coaches"
                           ? "Đánh giá"
-                          : role !== "MANAGER" ? "Khóa học & đăng ký" : "Phân công HLV"}
+                          : role !== "MANAGER"
+                            ? "Khóa học & đăng ký"
+                            : "Phân công HLV"}
                   </button>
                 </div>
               )}
               {detailTab === "overview" && <Details value={detail.data.data} />}
-              {detailTab === "overview" && r.slug === "schedules" && !readOnly && (
-                <div className="modal-footer schedule-detail-actions">
-                  <button
-                    className="button"
-                    disabled={modal.row?.status !== "SCHEDULED"}
-                    onClick={() => setModal({ kind: "edit", row: modal.row })}
-                  >
-                    <Pencil size={16} /> Chỉnh sửa
-                  </button>
-                  <button
-                    className="button"
-                    disabled={!canCompleteSchedule(modal.row || {})}
-                    onClick={() => {
-                      setBError(undefined);
-                      setModal({ kind: "complete", row: modal.row });
-                    }}
-                  >
-                    Hoàn tất
-                  </button>
-                  <button
-                    className="button danger"
-                    disabled={modal.row?.status !== "SCHEDULED"}
-                    onClick={() => {
-                      setBError(undefined);
-                      setCancelReason("");
-                      setModal({ kind: "delete", row: modal.row });
-                    }}
-                  >
-                    <Trash2 size={16} /> Hủy lịch
-                  </button>
-                </div>
-              )}
+              {detailTab === "overview" &&
+                r.slug === "schedules" &&
+                !readOnly && (
+                  <div className="modal-footer schedule-detail-actions">
+                    <button
+                      className="button"
+                      disabled={modal.row?.status !== "SCHEDULED"}
+                      onClick={() => setModal({ kind: "edit", row: modal.row })}
+                    >
+                      <Pencil size={16} /> Chỉnh sửa
+                    </button>
+                    <button
+                      className="button"
+                      disabled={!canCompleteSchedule(modal.row || {})}
+                      onClick={() => {
+                        setBError(undefined);
+                        setModal({ kind: "complete", row: modal.row });
+                      }}
+                    >
+                      Hoàn tất
+                    </button>
+                    <button
+                      className="button danger"
+                      disabled={modal.row?.status !== "SCHEDULED"}
+                      onClick={() => {
+                        setBError(undefined);
+                        setCancelReason("");
+                        setModal({ kind: "delete", row: modal.row });
+                      }}
+                    >
+                      <Trash2 size={16} /> Hủy lịch
+                    </button>
+                  </div>
+                )}
               {detailTab === "related" &&
                 r.slug === "coaches" &&
                 Boolean(at(detail.data.data, "coachProfile.id")) && (
@@ -684,7 +710,14 @@ export function ResourcePage({
                   <MemberStatus id={String(modal.row?.id)} />
                 </>
               )}
-              {detailTab === "related" && r.slug === "users" && modal.row?.role === "MEMBER" && <><MemberProfile id={String(modal.row.id)} /><MemberStatus id={String(modal.row.id)} /></>}
+              {detailTab === "related" &&
+                r.slug === "users" &&
+                modal.row?.role === "MEMBER" && (
+                  <>
+                    <MemberProfile id={String(modal.row.id)} />
+                    <MemberStatus id={String(modal.row.id)} />
+                  </>
+                )}
               {detailTab === "related" && r.slug === "schedules" && (
                 <Enrollments
                   id={String(modal.row?.id)}
@@ -692,17 +725,23 @@ export function ResourcePage({
                   role={role === "ADMIN" ? "VIEWER" : role}
                 />
               )}
-              {detailTab === "related" && r.slug === "classes" && role !== "MANAGER" && <ClassRegistrations id={String(modal.row?.id)} />}
-              {detailTab === "related" && r.slug === "classes" && role === "MANAGER" && (
-                <CoachAssignments
-                  id={String(modal.row?.id)}
-                  data={detail.data.data}
-                  onUpdate={() => {
-                    void detail.refetch();
-                    void client.invalidateQueries({ queryKey: ["resource"] });
-                  }}
-                />
-              )}
+              {detailTab === "related" &&
+                r.slug === "classes" &&
+                role !== "MANAGER" && (
+                  <ClassRegistrations id={String(modal.row?.id)} />
+                )}
+              {detailTab === "related" &&
+                r.slug === "classes" &&
+                role === "MANAGER" && (
+                  <CoachAssignments
+                    id={String(modal.row?.id)}
+                    data={detail.data.data}
+                    onUpdate={() => {
+                      void detail.refetch();
+                      void client.invalidateQueries({ queryKey: ["resource"] });
+                    }}
+                  />
+                )}
             </>
           )}
         </Modal>

@@ -49,6 +49,8 @@ router.get("/", validate(UserQuerySchema, "query"), usersController.listUsers);
  *       Với `role = MEMBER`, backend tạo MemberProfile + **auto-provision một MembershipSubscription ACTIVE
  *       với gói FREE** (`maxConcurrentClasses = 0`) trong cùng transaction. COACH/RECEPTIONIST/MANAGER KHÔNG được cấp
  *       subscription. Idempotent theo member: nếu member đã có subscription ACTIVE thì không tạo thêm.
+ *       COACH mới không có FacilityStaff; response có assignmentStatus UNASSIGNED và facilityAssignments rỗng.
+ *       Manager phân công Coach bằng API facilities/{facilityId}/staff; backend kiểm tra cơ sở theo Manager đăng nhập.
  *     tags: [Users]
  *     requestBody:
  *       required: true

@@ -183,7 +183,7 @@ const options: swaggerJSDoc.Options = {
           },
         },
         ProfileOk: {
-          description: "Current user profile (with role-specific profile)",
+          description: "Current user profile. Staff also receive facilityAssignments [{facility: {id, name}, role}], assignmentStatus (ASSIGNED or UNASSIGNED) and facilityName, resolved from current active DB assignments. An unassigned Coach can authenticate; no facility is inferred from the JWT or selected workspace.",
           content: {
             "application/json": {
               schema: {
@@ -217,7 +217,7 @@ const options: swaggerJSDoc.Options = {
         },
         // -- Users --
         UserListOk: {
-          description: "Paginated list of users (compact example)",
+          description: "Paginated users. Staff rows additionally include actual facilityAssignments, assignmentStatus and facilityName; unassigned staff never inherit the selected workspace.",
           content: {
             "application/json": {
               schema: {
@@ -277,7 +277,7 @@ const options: swaggerJSDoc.Options = {
           },
         },
         UserOk: {
-          description: "Single user",
+          description: "Single user. Staff additionally include facilityAssignments [{facility: {id, name}, role}], assignmentStatus (ASSIGNED or UNASSIGNED) and facilityName.",
           content: {
             "application/json": {
               schema: {
@@ -1407,11 +1407,11 @@ function injectFacilityHeader(spec: any): void {
       op.parameters.push({
         name: "X-Facility-Id",
         in: "header",
-        required: !optional,
+        required: false,
         schema: { type: "string" },
-        description: optional
+        description: "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: " + (optional
           ? "Facility context — endpoint này đã nhận facilityId ở path/query/body; header chỉ cần khi không gửi ở đó (nếu có ở nhiều nơi phải TRÙNG nhau → 400 CONFLICTING_FACILITY_CONTEXT)."
-          : "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED).",
+          : "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."),
       });
     }
   }

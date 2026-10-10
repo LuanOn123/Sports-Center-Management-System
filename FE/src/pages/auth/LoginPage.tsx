@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Activity, Eye, EyeOff, Lock, Mail, ArrowRight } from "lucide-react";
 import { AlertBanner } from "../../components/common";
+import { Turnstile } from "../../features/auth/Turnstile";
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -12,6 +13,8 @@ export function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaAttempt, setCaptchaAttempt] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,11 +23,12 @@ export function LoginPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (loading || !captchaToken) return;
     setError(null);
     setLoading(true);
 
     try {
-      const user = await login({ email, password });
+      const user = await login({ email, password, turnstileToken: captchaToken });
       if (from) {
         navigate(from, { replace: true });
       } else if (user.role === "MANAGER") {
@@ -40,6 +44,7 @@ export function LoginPage() {
       }
     } finally {
       setLoading(false);
+      setCaptchaToken(""); setCaptchaAttempt((value) => value + 1);
     }
   };
 
@@ -172,9 +177,10 @@ export function LoginPage() {
             </div>
           </div>
 
+          <Turnstile key={captchaAttempt} onChange={setCaptchaToken} theme="light" />
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !captchaToken}
             style={{
               marginTop: 6,
               padding: "13px 20px",

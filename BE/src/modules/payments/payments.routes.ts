@@ -6,6 +6,13 @@ import { CreatePaymentSchema, UpdatePaymentStatusSchema, PaymentQuerySchema, Sep
 import * as paymentsController from "./payments.controller.js";
 
 const router = Router();
+router.use((req, res, next) => {
+  if (req.user?.role === "MANAGER") {
+    res.status(403).json({ success: false, message: "Manager chỉ được xem báo cáo doanh thu" });
+    return;
+  }
+  next();
+});
 
 /**
  * @swagger

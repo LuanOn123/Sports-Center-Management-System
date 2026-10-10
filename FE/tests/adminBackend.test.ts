@@ -48,9 +48,9 @@ beforeEach(() => {
 
 describe("facility manager assignment", () => {
   it("rejects an already assigned manager across facilities before removing the old one", async () => {
-    mocks.db.facilityStaff.findFirst.mockImplementation(async () => {
+    mocks.db.facilityStaff.findFirst.mockImplementation(async (args) => {
       expect(requestContext.getStore()?.facilityId).toBeUndefined();
-      return { facilityId: "a" };
+      return args.where.userId ? { facilityId: "a" } : { userId: "old", facilityId: "b" };
     });
     await expect(
       requestContext.run({ facilityId: "b", role: "ADMIN" }, () =>
@@ -68,6 +68,7 @@ describe("facility manager assignment", () => {
     expect(mocks.db.facilityStaff.upsert).not.toHaveBeenCalled();
   });
   it("assigns a manager within the target scope and locks both identities", async () => {
+    mocks.db.facilityStaff.findFirst.mockImplementation(async (args) => args.where.facilityId ? { userId: "old", facilityId: "b" } : null);
     mocks.db.facilityStaff.upsert.mockImplementation(async (args) => {
       expect(requestContext.getStore()?.facilityId).toBe("b");
       expect(args.create.role).toBe("MANAGER");
@@ -76,7 +77,14 @@ describe("facility manager assignment", () => {
     await expect(assignFacilityManager("b", "new", "old")).resolves.toEqual({
       id: "assigned",
     });
-    expect(mocks.db.$executeRaw).toHaveBeenCalledTimes(2);
+    expect(mocks.db.$executeRaw).toHaveBeenCalledTimes(3);
+    expect(mocks.db.$executeRaw.mock.calls[0][1]).toBe("manager-facility:b");
+  });
+  it("rejects a second active manager at the same facility", async () => {
+    mocks.db.facilityStaff.findFirst.mockResolvedValue({ userId: "incumbent", facilityId: "b" });
+    await expect(assignFacilityManager("b", "new")).rejects.toMatchObject({ statusCode: 409 });
+    expect(mocks.db.facilityStaff.upsert).not.toHaveBeenCalled();
+    expect(mocks.db.facilityStaff.updateMany).not.toHaveBeenCalled();
   });
   it("rejects receptionist and inactive accounts", async () => {
     for (const user of [

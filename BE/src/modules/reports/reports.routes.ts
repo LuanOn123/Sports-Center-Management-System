@@ -10,6 +10,13 @@ import * as reportsController from "./reports.controller.js";
 const router = Router();
 
 router.use(authenticate, authorize("MANAGER"));
+router.use((req, res, next) => {
+  if (req.user?.role === "MANAGER" && req.path !== "/revenue") {
+    res.status(403).json({ success: false, message: "Manager chỉ được xem báo cáo doanh thu cơ sở" });
+    return;
+  }
+  next();
+});
 router.get("/facilities", authorizeExact("ADMIN"), validate(DateRangeSchema, "query"), async (req, res) => {
   sendSuccess(res, await getFacilityOverview(String(req.query.startDate), String(req.query.endDate)));
 });

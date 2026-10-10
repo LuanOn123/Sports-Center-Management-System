@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate.js";
-import { authorize } from "../../middlewares/authorize.js";
+import { authorize, authorizeExact } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
 import * as controller from "./attendance.controller.js";
 import {
@@ -584,6 +584,37 @@ router.post(
   authorize("MANAGER"),
   validate(PenaltyRevokeSchema),
   controller.revokePenalty
+);
+
+// ─── RECEPTIONIST ATTENDANCE MONITORING & WORKFLOWS ────────────────────────
+router.get(
+  "/monitoring",
+  authorizeExact("RECEPTIONIST", "MANAGER"),
+  controller.getReceptionMonitoring
+);
+
+router.get(
+  "/monitoring/detail",
+  authorizeExact("RECEPTIONIST", "MANAGER"),
+  controller.getReceptionDetail
+);
+
+router.post(
+  "/warnings/send",
+  authorizeExact("RECEPTIONIST", "MANAGER"),
+  controller.sendReceptionWarning
+);
+
+router.post(
+  "/reports",
+  authorizeExact("RECEPTIONIST"),
+  controller.submitViolationReport
+);
+
+router.post(
+  "/reports/:id/review",
+  authorizeExact("MANAGER"),
+  controller.reviewViolationReport
 );
 
 export default router;

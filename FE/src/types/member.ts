@@ -1,4 +1,4 @@
-export type UserRole = "MEMBER" | "COACH" | "RECEPTIONIST" | "RECEPTIONIST" | "MANAGER";
+export type UserRole = "ADMIN" | "MANAGER" | "COACH" | "RECEPTIONIST" | "STAFF" | "MEMBER";
 export type Gender = "MALE" | "FEMALE" | "OTHER";
 export type MemberTier = "FREE" | "MEMBERSHIP" | "PREMIUM";
 export type MembershipStatus = "ACTIVE" | "EXPIRED" | "CANCELLED" | "SUSPENDED";
@@ -24,6 +24,7 @@ export interface User {
   id: string;
   email: string;
   fullName: string;
+  avatarUrl?: string | null;
   phone?: string | null;
   gender?: Gender | null;
   dateOfBirth?: string | null;

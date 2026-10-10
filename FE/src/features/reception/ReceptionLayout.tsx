@@ -1,3 +1,4 @@
+import { AttendancePage } from "./attendance/AttendancePage";
 import { OperationsPage } from "../operations/OperationsPage";
 import { Navigate, Routes, Route } from "react-router-dom";
 import type { PortalProps } from "../../app/RoleRouter";
@@ -11,26 +12,30 @@ import { ClassesPage } from "./classes/ClassesPage";
 import { PaymentsPage } from "./payments/PaymentsPage";
 import { resources } from "../manage/config";
 import { ResourcePage } from "../manage/ResourcePage";
-import { FacilityVisits } from "../../shared/FacilityVisits";
+
 const items = [
   ["dashboard", "Tổng quan"],
   ["members", "Hội viên"],
-  ["checkin", "Check-in cơ sở"],
+  ["attendance", "Chuyên cần"],
   ["membership", "Gói thành viên"],
   ["orders", "Bán gói tại quầy"],
   ["classes", "Đăng ký lớp"],
-  ["catalogue", "Quản lý lớp học"],
-  ["schedules", "Lịch & điểm danh"],
-  ["sports", "Bộ môn"],
-  ["rooms", "Phòng tập"],
+  ["schedules", "Lịch lớp học"],
   ["payments", "Thanh toán & hóa đơn"],
   ["support", "Yêu cầu hỗ trợ"],
 ] as const;
+
 export function ReceptionLayout(props: PortalProps) {
+  const schedulesResource = resources.find((r) => r.slug === "schedules")!;
+
   return (
     <PortalLayout {...props} title="Lễ tân" base="/receptionist" items={items}>
       <Routes>
-        <Route path="/receptionist/orders" element={<OperationsPage kind="orders" role="RECEPTIONIST" />} />
+        <Route path="/receptionist/attendance" element={<AttendancePage />} />
+        <Route
+          path="/receptionist/orders"
+          element={<OperationsPage kind="orders" role="RECEPTIONIST" />}
+        />
         <Route path="/receptionist/dashboard" element={<DashboardPage />} />
         <Route path="/receptionist/members" element={<MembersPage />} />
         <Route
@@ -43,36 +48,39 @@ export function ReceptionLayout(props: PortalProps) {
           path="/receptionist/activity-planner"
           element={<Navigate replace to="/receptionist/schedules" />}
         />
-        <Route path="/receptionist/payments" element={<PaymentsPage />} />
-        {resources
-          .filter((r) =>
-            ["sports", "rooms", "classes", "schedules"].includes(r.slug),
-          )
-          .map((r) => (
-            <Route
-              key={r.slug}
-              path={`/receptionist/${r.slug === "classes" ? "catalogue" : r.slug}`}
-              element={
-                <ResourcePage
-                  key={r.slug}
-                  resource={r}
-                  role="RECEPTIONIST"
-                  userId={props.user.id}
-                />
-              }
-            />
-          ))}
         <Route
-          path="/receptionist/checkin"
+          path="/receptionist/schedules"
           element={
-            <FacilityVisits staff />
+            <ResourcePage
+              resource={schedulesResource}
+              role="RECEPTIONIST"
+              userId={props.user.id}
+            />
           }
         />
+        <Route path="/receptionist/payments" element={<PaymentsPage />} />
+
+        {/* Redirects for removed sections */}
+        <Route
+          path="/receptionist/checkin"
+          element={<Navigate replace to="/receptionist/dashboard" />}
+        />
+        <Route
+          path="/receptionist/catalogue"
+          element={<Navigate replace to="/receptionist/classes" />}
+        />
+        <Route
+          path="/receptionist/sports"
+          element={<Navigate replace to="/receptionist/dashboard" />}
+        />
+        <Route
+          path="/receptionist/rooms"
+          element={<Navigate replace to="/receptionist/dashboard" />}
+        />
+
         <Route
           path="/receptionist/support"
-          element={
-            <OperationsPage kind="issues" role="RECEPTIONIST" />
-          }
+          element={<OperationsPage kind="issues" role="RECEPTIONIST" />}
         />
         <Route
           path="/receptionist/profile"

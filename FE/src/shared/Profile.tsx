@@ -1,3 +1,4 @@
+import { AvatarUploader } from "./Avatar";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { SchemaForm } from "./ui";
@@ -40,6 +41,7 @@ export function Profile({ user }: { user: ProfileOk["data"] }) {
           Đổi mật khẩu
         </button>
       </div>
+      {tab === "profile" && <AvatarUploader user={user} />}
       <section className="panel profile-panel">
         {success && (
           <div className="success" role="status">

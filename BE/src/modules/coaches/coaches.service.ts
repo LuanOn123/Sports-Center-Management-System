@@ -3,8 +3,19 @@ import { CoachProfile } from "../../models/CoachProfile.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { prisma } from "../../config/prisma.js";
+import { requestContext } from "../../config/request-context.js";
 import { synchronizeUserProjection } from "../users/user-projection.service.js";
 import type { CoachQueryInput, UpdateCoachInput } from "./coaches.schema.js";
+
+async function managerCoachIds() {
+  if (requestContext.getStore()?.role !== "MANAGER") return undefined;
+  const rows = await prisma.facilityStaff.findMany({ where: { role: "COACH", isActive: true }, select: { userId: true } });
+  return rows.map(row => row.userId);
+}
+async function assertManagerCoach(id: string) {
+  const ids = await managerCoachIds();
+  if (ids && !ids.includes(id)) throw new AppError("FORBIDDEN_SCOPE", 403);
+}
 
 export async function listCoaches(query: CoachQueryInput) {
   const { search, specialization } = query;
@@ -14,6 +25,8 @@ export async function listCoaches(query: CoachQueryInput) {
 
   // Tìm user COACH active
   const userFilter: any = { role: "COACH", isActive: true };
+  const assignedIds = await managerCoachIds();
+  if (assignedIds) userFilter._id = { $in: assignedIds };
   if (search) {
     userFilter.$or = [
       { fullName: { $regex: search, $options: "i" } },
@@ -62,6 +75,7 @@ export async function listCoaches(query: CoachQueryInput) {
 }
 
 export async function getCoachById(id: string) {
+  await assertManagerCoach(id);
   const user = await User.findOne({ _id: id, role: "COACH" }).lean();
   if (!user) throw new AppError("Coach not found", 404);
 
@@ -113,6 +127,7 @@ export async function getCoachById(id: string) {
 }
 
 export async function updateCoach(id: string, data: UpdateCoachInput) {
+  await assertManagerCoach(id);
   const coachProfile = await CoachProfile.findOne({ userId: id });
   if (!coachProfile) {
     const user = await User.findOne({ _id: id, role: "COACH" });
