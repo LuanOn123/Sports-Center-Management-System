@@ -147,7 +147,7 @@ Generated from live checkout route AST and FE operations. MATCH means method/pat
 | facilities | Authenticated (service checks ownership) | features/manage/ManagerUsers.tsx<br>features/operations/OperationsPage.tsx | /facilities/{facilityId} | GET | BE/src/modules/facilities/facilities.route.ts:26 | MATCH |
 | facilities | ADMIN | features/manage/AdminFacilities.tsx<br>features/operations/OperationsPage.tsx | /facilities/{facilityId} | PUT | BE/src/modules/facilities/facilities.route.ts:43 | MATCH |
 | facilities | ADMIN, MANAGER | features/manage/ManagerUsers.tsx<br>features/operations/OperationsPage.tsx | /facilities/{facilityId}/staff | POST | BE/src/modules/facilities/facilities.route.ts:53 | MATCH |
-| facilities | ADMIN, MANAGER | features/operations/OperationsPage.tsx | /facilities/{facilityId}/coaches | POST | BE/src/modules/facilities/facilities.route.ts:13 | MATCH |
+| facilities | ADMIN, MANAGER | features/manage/ManagerUsers.tsx<br>features/operations/OperationsPage.tsx | /facilities/{facilityId}/coaches | POST | BE/src/modules/facilities/facilities.route.ts:13 | MATCH |
 | facilities | ADMIN, MANAGER | features/manage/AdminFacilities.tsx<br>features/operations/OperationsPage.tsx | /facilities/{facilityId}/staff/{userId}/{role} | DELETE | BE/src/modules/facilities/facilities.route.ts:63 | MATCH |
 | rooms | Authenticated (service checks ownership) | features/manage/ManagerRooms.tsx<br>features/operations/OperationsPage.tsx<br>features/manage/ResourcePage.tsx | /rooms/{id}/capabilities | PUT | BE/src/modules/operations/operations.routes.ts:137 | MATCH |
 | subjects | ADMIN | features/operations/OperationsPage.tsx | /subjects/{id}/requirements | PUT | BE/src/modules/operations/operations.routes.ts:175 | MATCH |

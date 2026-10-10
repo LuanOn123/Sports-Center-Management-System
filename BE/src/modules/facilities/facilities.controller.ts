@@ -76,7 +76,22 @@ export async function getFacilityById(
         ...(req.user?.role === "MANAGER" ? { where: { isActive: true } } : {}),
         include: {
           user: {
-            select: { id: true, fullName: true, email: true, role: true },
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              role: true,
+              coachProfile: {
+                select: {
+                  id: true,
+                  specializations: {
+                    select: {
+                      sport: { select: { id: true, name: true } },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },

@@ -5926,6 +5926,7 @@
     "path": "/facilities/{facilityId}/coaches",
     "roles": "ADMIN, MANAGER",
     "consumers": [
+      "FE/src/features/manage/ManagerUsers.tsx",
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/facilities/facilities.route.ts:13",
