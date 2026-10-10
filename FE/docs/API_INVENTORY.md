@@ -2,7 +2,7 @@
 
 Source: BE/src/config/swagger.ts + BE/src/modules/**/*.routes.ts (local checkout)
 
-Snapshot: 2026-10-08. Production base: https://sports-center-management-system.onrender.com/api/v1
+Snapshot: 2026-10-10. Production base: https://sports-center-management-system.onrender.com/api/v1
 
 Response examples are documentation only, never application data. The client sends the documented HTTP Bearer token.
 
