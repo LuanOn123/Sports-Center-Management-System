@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
@@ -32,8 +33,51 @@ export type NotificationTypeEnum =
   // Thanh toán
   | "PAYMENT_SUCCESS"
   | "PAYMENT_REFUNDED"
+  | "PAYMENT_FAILED"
+  // Nghỉ phép
+  | "LEAVE_REQUEST_SUBMITTED"
+  | "LEAVE_REQUEST_APPROVED"
+  | "LEAVE_REQUEST_REJECTED"
   // Chung
   | "GENERAL";
+
+export const NotificationTypeValues = [
+  "MEMBER_REGISTERED",
+  "CHAT_MESSAGE",
+  "SUBSCRIPTION_EXPIRING",
+  "SUBSCRIPTION_EXPIRED",
+  "SUBSCRIPTION_CANCELLED",
+  "UPCOMING_CLASS",
+  "SCHEDULE_CANCELLED",
+  "SCHEDULE_UPDATED",
+  "ENROLLMENT_CONFIRMED",
+  "ENROLLMENT_CANCELLED",
+  "TRAINING_PLAN_ASSIGNED",
+  "NEW_CLASS",
+  "COACH_CHANGED",
+  "ATTENDANCE_WARNING",
+  "ATTENDANCE_PENALTY",
+  "ATTENDANCE_PENALTY_REVOKED",
+  "SCHEDULE_ROOM_CHANGED",
+  "PAYMENT_SUCCESS",
+  "PAYMENT_REFUNDED",
+  "PAYMENT_FAILED",
+  "LEAVE_REQUEST_SUBMITTED",
+  "LEAVE_REQUEST_APPROVED",
+  "LEAVE_REQUEST_REJECTED",
+  "GENERAL",
+] as const;
+
+export const GetNotificationsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1, "Page must be greater than or equal to 1").default(1),
+  limit: z.coerce.number().int().min(1).max(100, "Limit cannot exceed 100").default(20),
+  isRead: z.enum(["true", "false"], {
+    errorMap: () => ({ message: "isRead must be 'true' or 'false'" }),
+  }).optional(),
+  type: z.enum(NotificationTypeValues, {
+    errorMap: () => ({ message: "Invalid notification type" }),
+  }).optional(),
+});
 
 /**
  * Internal helper — gửi một notification cho một user.
@@ -92,13 +136,20 @@ export async function broadcastNotification(
 // ─── CRUD API ──────────────────────────────────────────────────────────────
 
 export async function getMyNotifications(userId: string, query: any) {
-  const page = Math.max(1, parseInt(query.page ?? "1") || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(query.limit ?? "20") || 20));
+  const parsed = GetNotificationsQuerySchema.safeParse(query);
+  if (!parsed.success) {
+    const errorMsg = parsed.error.issues
+      .map((i) => `${i.path.join(".") || "query"}: ${i.message}`)
+      .join("; ");
+    throw new AppError(`Invalid query parameters: ${errorMsg}`, 400);
+  }
+
+  const { page, limit, isRead, type } = parsed.data;
   const skip = (page - 1) * limit;
 
   const where: any = { userId };
-  if (query.isRead !== undefined) where.isRead = query.isRead === "true";
-  if (query.type) where.type = query.type;
+  if (isRead !== undefined) where.isRead = isRead === "true";
+  if (type) where.type = type;
 
   const [total, notifications] = await Promise.all([
     prisma.notification.count({ where }),

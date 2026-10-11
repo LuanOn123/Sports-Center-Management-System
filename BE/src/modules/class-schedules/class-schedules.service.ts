@@ -4,7 +4,7 @@ import { prisma } from "../../config/prisma.js";
 import { Prisma, EnrollmentStatus } from "@prisma/client";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
-import { broadcastNotification } from "../notifications/notifications.service.js";
+import { broadcastNotification, createNotification } from "../notifications/notifications.service.js";
 import { ATTENDANCE } from "../../config/attendance.js";
 import { scanAttendanceWarnings } from "../attendance/attendance.service.js";
 import { lockSchedule } from "../../utils/dbLocks.js";
@@ -609,13 +609,36 @@ export async function updateSchedule(id: string, data: any) {
       if (updated.roomId !== existing.roomId) {
         changes.push(`Phòng mới: ${updated.room.name} (trước đó: ${existing.room.name}).`);
       }
+      if (data.coachId && data.coachId !== existing.coachId) {
+        const newCoach = await prisma.coachProfile.findUnique({
+          where: { id: data.coachId },
+          include: { user: { select: { fullName: true, id: true } } },
+        });
+        if (newCoach) {
+          changes.push(`Huấn luyện viên mới: ${newCoach.user.fullName}.`);
+          createNotification(
+            newCoach.user.id,
+            "COACH_CHANGED",
+            `Phân công buổi học: ${updated.class.name}`,
+            `Bạn được phân công phụ trách buổi học "${updated.class.name}" lúc ${fmt(updated.startTime)} tại ${updated.room.name}.`,
+            { metadata: { scheduleId: id, classId: updated.classId, coachId: data.coachId } }
+          ).catch(() => {});
+        }
+      }
       if (changes.length > 0) {
+        const notifType =
+          data.coachId &&
+          data.coachId !== existing.coachId &&
+          updated.roomId === existing.roomId &&
+          updated.startTime.getTime() === existing.startTime.getTime()
+            ? "COACH_CHANGED"
+            : "SCHEDULE_UPDATED";
         broadcastNotification(
           userIds,
-          "SCHEDULE_UPDATED",
+          notifType,
           `Lịch học đã thay đổi: ${updated.class.name}`,
           `Lịch học "${updated.class.name}" mà bạn đã đặt có thay đổi. ${changes.join(" ")} Vui lòng kiểm tra lại lịch của bạn.`,
-          { metadata: { scheduleId: id, classId: updated.classId } }
+          { metadata: { scheduleId: id, classId: updated.classId, ...(data.coachId ? { coachId: data.coachId } : {}) } }
         ).catch(() => {});
       }
     }

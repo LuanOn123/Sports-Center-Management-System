@@ -52,29 +52,114 @@ export async function withRequesters<T extends RequesterRecord>(rows: T[]) {
   });
 }
 
+import {
+  enqueueNotification,
+  flushNotificationOutbox,
+} from "../notifications/outbox.service.js";
+
 export async function createStaffLeave(
   user: { id: string; role: string },
   input: { startTime: string; endTime: string; reason: string },
 ) {
   if (user.role !== "COACH" && user.role !== "RECEPTIONIST")
     throw new AppError("Only facility staff can submit leave", 403);
+  const trimmedReason = input.reason?.trim();
+  if (!trimmedReason || trimmedReason.length < 3 || trimmedReason.length > 1000) {
+    throw new AppError("Lý do xin nghỉ phải từ 3 đến 1000 ký tự", 400);
+  }
+  const startDate = new Date(input.startTime);
+  const endDate = new Date(input.endTime);
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    throw new AppError("Thời gian nghỉ không hợp lệ", 400);
+  }
+  if (endDate <= startDate) {
+    throw new AppError("Thời gian kết thúc phải sau thời gian bắt đầu", 400);
+  }
+
   const coach =
     user.role === "COACH"
       ? await prisma.coachProfile.findUnique({ where: { userId: user.id } })
       : null;
   if (user.role === "COACH" && !coach)
     throw new AppError("Coach not found", 404);
-  return prisma.leaveRequest.create({
-    data: {
-      requesterId: user.id,
-      requesterRole: user.role,
-      coachId: coach?.id,
-      facilityId: requestContext.getStore()!.facilityId!,
-      reason: input.reason,
-      startTime: new Date(input.startTime),
-      endTime: new Date(input.endTime),
-    },
+
+  const facilityId = requestContext.getStore()!.facilityId!;
+
+  const leave = await prisma.$transaction(async (tx) => {
+    const createdLeave = await tx.leaveRequest.create({
+      data: {
+        requesterId: user.id,
+        requesterRole: user.role as UserRole,
+        coachId: coach?.id,
+        facilityId,
+        reason: trimmedReason,
+        startTime: startDate,
+        endTime: endDate,
+      },
+    });
+
+    const managers = await tx.facilityStaff.findMany({
+      where: {
+        facilityId,
+        role: "MANAGER",
+        isActive: true,
+        user: { isActive: true },
+      },
+      select: { userId: true },
+    });
+    let recipientUserIds = [...new Set(managers.map((m) => m.userId))];
+
+    if (recipientUserIds.length === 0) {
+      const admins = await tx.user.findMany({
+        where: { role: "ADMIN", isActive: true },
+        select: { id: true },
+      });
+      recipientUserIds = admins.map((a) => a.id);
+    }
+
+    const facilityRow = await tx.facility.findUnique({
+      where: { id: facilityId },
+      select: { name: true },
+    });
+    const sender = await tx.user.findUnique({
+      where: { id: user.id },
+      select: { fullName: true },
+    });
+
+    const senderName = sender?.fullName || "Nhân sự";
+    const roleText = user.role === "COACH" ? "Huấn luyện viên" : "Lễ tân";
+    const facilityName = facilityRow?.name || "cơ sở";
+
+    const fmt = (d: Date) =>
+      d.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+    const inclusiveEndDate = new Date(endDate.getTime() - 1000);
+    const dateRangeStr =
+      fmt(startDate) === fmt(inclusiveEndDate)
+        ? `ngày ${fmt(startDate)}`
+        : `từ ${fmt(startDate)} đến ${fmt(inclusiveEndDate)}`;
+
+    for (const managerUserId of recipientUserIds) {
+      await enqueueNotification(tx, {
+        userId: managerUserId,
+        type: "LEAVE_REQUEST_SUBMITTED",
+        title: `Đơn xin nghỉ phép: ${senderName}`,
+        body: `${senderName} (${roleText}) đã gửi đơn xin nghỉ phép tại ${facilityName} ${dateRangeStr}. Lý do: ${trimmedReason}`,
+        metadata: {
+          leaveRequestId: createdLeave.id,
+          facilityId,
+          requesterId: user.id,
+          requesterRole: user.role,
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
+        },
+      });
+    }
+
+    return createdLeave;
   });
+
+  await flushNotificationOutbox().catch(() => {});
+  return leave;
 }
 
 export function issueOwner(user: { id: string; role: string }) {

@@ -22,6 +22,8 @@ import {
   withRequesters,
 } from "./requesters.service.js";
 import { readAttendanceReport } from "../attendance/reception-attendance.service.js";
+import { enqueueNotification, flushNotificationOutbox } from "../notifications/outbox.service.js";
+import type { NotificationTypeEnum } from "../notifications/notifications.service.js";
 const router = Router();
 const staff = authorize("ADMIN", "MANAGER");
 const quantities = z.object({
@@ -557,7 +559,7 @@ route("patch", "/leave-requests/:id", [staff, validate(decision)], (req) =>
           );
         }
       }
-      return tx.leaveRequest.update({
+      const updatedLeave = await tx.leaveRequest.update({
         where: { id: id(req) },
         data: {
           status: req.body.status,
@@ -566,9 +568,55 @@ route("patch", "/leave-requests/:id", [staff, validate(decision)], (req) =>
           decidedAt: new Date(),
         },
       });
+
+      let requesterUserId = leave.requesterId;
+      if (!requesterUserId && coachId) {
+        const coachProfile = await tx.coachProfile.findUnique({
+          where: { id: coachId },
+          select: { userId: true },
+        });
+        requesterUserId = coachProfile?.userId || null;
+      }
+
+      if (requesterUserId) {
+        const facilityRow = await tx.facility.findUnique({
+          where: { id: leave.facilityId },
+          select: { name: true },
+        });
+        const facilityName = facilityRow?.name || "cơ sở";
+        const isApproved = req.body.status === "APPROVED";
+        const notifType: NotificationTypeEnum = isApproved
+          ? "LEAVE_REQUEST_APPROVED"
+          : "LEAVE_REQUEST_REJECTED";
+        const title = isApproved
+          ? `Đơn nghỉ phép đã được duyệt`
+          : `Đơn nghỉ phép bị từ chối`;
+        const body = isApproved
+          ? `Đơn xin nghỉ phép của bạn tại ${facilityName} đã được duyệt. Lý do xử lý: ${req.body.reason.trim()}`
+          : `Đơn xin nghỉ phép của bạn tại ${facilityName} đã bị từ chối. Lý do: ${req.body.reason.trim()}`;
+
+        await enqueueNotification(tx, {
+          userId: requesterUserId,
+          type: notifType,
+          title,
+          body,
+          reason: req.body.reason.trim(),
+          metadata: {
+            leaveRequestId: leave.id,
+            facilityId: leave.facilityId,
+            status: req.body.status,
+            decidedBy: actor(),
+          },
+        });
+      }
+
+      return updatedLeave;
     },
     { timeout: 30000 },
-  ),
+  ).then(async (result) => {
+    await flushNotificationOutbox().catch(() => {});
+    return result;
+  }),
 );
 
 route(

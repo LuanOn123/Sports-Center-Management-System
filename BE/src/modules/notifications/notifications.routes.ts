@@ -31,7 +31,11 @@ const router = Router();
  *             "UPCOMING_CLASS", "SCHEDULE_CANCELLED", "SCHEDULE_UPDATED",
  *             "ENROLLMENT_CONFIRMED", "ENROLLMENT_CANCELLED",
  *             "TRAINING_PLAN_ASSIGNED", "NEW_CLASS", "COACH_CHANGED",
- *             "PAYMENT_SUCCESS", "PAYMENT_REFUNDED", "PAYMENT_FAILED"
+ *             "ATTENDANCE_WARNING", "ATTENDANCE_PENALTY", "ATTENDANCE_PENALTY_REVOKED",
+ *             "SCHEDULE_ROOM_CHANGED",
+ *             "PAYMENT_SUCCESS", "PAYMENT_REFUNDED", "PAYMENT_FAILED",
+ *             "LEAVE_REQUEST_SUBMITTED", "LEAVE_REQUEST_APPROVED", "LEAVE_REQUEST_REJECTED",
+ *             "GENERAL"
  *           ]
  *         description: Filter by notification type
  *       - in: query

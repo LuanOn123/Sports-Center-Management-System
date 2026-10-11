@@ -837,6 +837,10 @@ enum NotificationType {
   // ── Thanh toán ──
   PAYMENT_SUCCESS // Thanh toán thành công
   PAYMENT_REFUNDED // Hoàn tiền
+  PAYMENT_FAILED // Thanh toán thất bại
+  LEAVE_REQUEST_SUBMITTED // Đơn nghỉ phép mới được gửi
+  LEAVE_REQUEST_APPROVED // Đơn nghỉ phép được duyệt
+  LEAVE_REQUEST_REJECTED // Đơn nghỉ phép bị từ chối
   // ── Chung ──
   GENERAL
 }
