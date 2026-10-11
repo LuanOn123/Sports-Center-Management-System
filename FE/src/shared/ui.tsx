@@ -179,15 +179,32 @@ export function Details({
   return (
     <div className="detail-content">
       <dl className="details">{primary.map(render)}</dl>
-      {secondary.map(([k, v]) => (
-        <details className="detail-disclosure" key={k}>
-          <summary>
-            {label(k)}
-            {Array.isArray(v) ? <span>{v.length} mục</span> : null}
-          </summary>
-          <Details value={v} depth={depth + 1} />
-        </details>
-      ))}
+      {secondary.map(([k, v]) => {
+        const isArr = Array.isArray(v);
+        if (isArr && v.length === 0) {
+          return (
+            <div className="detail-empty-item" key={k}>
+              <dt>{label(k)}</dt>
+              <dd>
+                <span>
+                  {k === "capabilities"
+                    ? "Chưa cấu hình trang thiết bị"
+                    : "Chưa có dữ liệu"}
+                </span>
+              </dd>
+            </div>
+          );
+        }
+        return (
+          <details className="detail-disclosure" key={k}>
+            <summary>
+              {label(k)}
+              {isArr ? <span>{v.length} mục</span> : null}
+            </summary>
+            <Details value={v} depth={depth + 1} />
+          </details>
+        );
+      })}
       {depth === 0 && entries.some(([k]) => technicalField.test(k)) && (
         <details className="detail-disclosure detail-meta">
           <summary>Thông tin bổ sung</summary>

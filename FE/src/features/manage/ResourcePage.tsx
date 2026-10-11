@@ -33,7 +33,8 @@ import {
   calendarRange,
   type ScheduleCalendarView,
 } from "./ScheduleCalendar";
-import { at, display, money } from "../../shared/config";
+import { at, display, label, money } from "../../shared/config";
+import { classSports } from "../../shared/sports";
 import { useDebouncedValue } from "../../shared/useDebouncedValue";
 import {
   Details,
@@ -660,7 +661,15 @@ export function ResourcePage({
                   </button>
                 </div>
               )}
-              {detailTab === "overview" && <Details value={detail.data.data} />}
+              {detailTab === "overview" && (
+                r.slug === "rooms" ? (
+                  <RoomDetailView data={detail.data.data} />
+                ) : r.slug === "schedules" ? (
+                  <ScheduleDetailView data={detail.data.data} />
+                ) : (
+                  <Details value={detail.data.data} />
+                )
+              )}
               {detailTab === "overview" &&
                 r.slug === "schedules" &&
                 !readOnly && (
@@ -1032,5 +1041,296 @@ function CoachAssignments({
       })}
       {error != null && <ErrorState error={error} />}
     </section>
+  );
+}
+
+export function RoomDetailView({ data }: { data: RecordData }) {
+  const capabilities = Array.isArray(data.capabilities)
+    ? (data.capabilities as RecordData[])
+    : [];
+  return (
+    <div className="detail-content room-detail-view">
+      <div
+        className="room-detail-header"
+        style={{
+          padding: "12px 24px",
+          borderBottom: "1px solid #e3ebe5",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <div>
+          <h3 style={{ margin: 0, fontSize: "18px" }}>
+            {String(data.name || "Phòng tập")}
+          </h3>
+          {data.location ? (
+            <small style={{ color: "#53675a" }}>
+              Vị trí: {String(data.location)}
+            </small>
+          ) : null}
+        </div>
+        <StatusBadge value={data.isActive !== false} />
+      </div>
+      <dl className="details">
+        <div>
+          <dt>Sức chứa</dt>
+          <dd>
+            <strong>{String(data.capacity ?? "—")}</strong> người
+          </dd>
+        </div>
+        <div>
+          <dt>Khu vực tập</dt>
+          <dd>{display(data.areaType)}</dd>
+        </div>
+        {data.location ? (
+          <div>
+            <dt>Vị trí</dt>
+            <dd>{String(data.location)}</dd>
+          </div>
+        ) : null}
+      </dl>
+      <div style={{ padding: "0 24px 16px" }}>
+        <h4
+          style={{
+            fontSize: "14px",
+            fontWeight: 600,
+            color: "#304e3d",
+            marginBottom: "8px",
+          }}
+        >
+          Trang thiết bị & khả năng đáp ứng
+        </h4>
+        {capabilities.length > 0 ? (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+              gap: "8px",
+            }}
+          >
+            {capabilities.map((c, i) => (
+              <div
+                key={i}
+                style={{
+                  padding: "8px 12px",
+                  background: "#f8faf9",
+                  border: "1px solid #e3ebe5",
+                  borderRadius: "8px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span>{label(String(c.key))}</span>
+                <strong>{String(c.quantity ?? c.minimum ?? "—")}</strong>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="detail-empty-item" style={{ margin: 0 }}>
+            <span>Chưa cấu hình trang thiết bị</span>
+          </div>
+        )}
+      </div>
+        {Boolean(data.createdAt || data.updatedAt) && (
+          <details className="detail-disclosure detail-meta">
+          <summary>Thông tin bổ sung</summary>
+          <dl className="details">
+            {data.createdAt ? (
+              <div>
+                <dt>Ngày tạo</dt>
+                <dd>{display(data.createdAt)}</dd>
+              </div>
+            ) : null}
+            {data.updatedAt ? (
+              <div>
+                <dt>Cập nhật lần cuối</dt>
+                <dd>{display(data.updatedAt)}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </details>
+      )}
+    </div>
+  );
+}
+
+export function ScheduleDetailView({ data }: { data: RecordData }) {
+  const cls = (data.class || {}) as RecordData;
+  const room = (data.room || {}) as RecordData;
+  const coach = (data.coach || {}) as RecordData;
+  const coachName =
+    at(coach, "user.fullName") ||
+    at(data, "coach.fullName") ||
+    at(cls, "coaches.0.coach.user.fullName");
+  const sports = classSports(cls);
+
+  const snapshot = data.requirementsSnapshot;
+  let snapshotEntries: [string, unknown][] = [];
+  if (snapshot && typeof snapshot === "object") {
+    if (Array.isArray(snapshot)) {
+      snapshotEntries = snapshot.map((item, idx) => [
+        String(item.key || item.name || `Yêu cầu ${idx + 1}`),
+        item.quantity ?? item.minimum ?? item.value ?? item,
+      ]);
+    } else {
+      snapshotEntries = Object.entries(snapshot);
+    }
+  }
+
+  const fmtDate = (d?: unknown) =>
+    d
+      ? new Date(String(d)).toLocaleDateString("vi-VN", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          timeZone: "Asia/Ho_Chi_Minh",
+        })
+      : "—";
+  const fmtTime = (d?: unknown) =>
+    d
+      ? new Date(String(d)).toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Asia/Ho_Chi_Minh",
+        })
+      : "—";
+
+  return (
+    <div className="detail-content schedule-detail-view">
+      <div
+        className="schedule-detail-header"
+        style={{
+          padding: "12px 24px",
+          borderBottom: "1px solid #e3ebe5",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <div>
+          <h3 style={{ margin: 0, fontSize: "18px" }}>
+            {String(cls.name || data.title || "Buổi học")}
+          </h3>
+          {sports.length > 0 && (
+            <div style={{ display: "flex", gap: "4px", marginTop: "4px" }}>
+              {sports.map((s) => (
+                <span key={s.id || s.name} className="badge">
+                  {s.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <StatusBadge value={data.status || "SCHEDULED"} />
+      </div>
+
+      <dl className="details">
+        <div>
+          <dt>Ngày diễn ra</dt>
+          <dd>
+            <strong>{fmtDate(data.startTime)}</strong>
+          </dd>
+        </div>
+        <div>
+          <dt>Thời gian</dt>
+          <dd>
+            {fmtTime(data.startTime)} – {fmtTime(data.endTime)}
+          </dd>
+        </div>
+        <div>
+          <dt>Phòng tập</dt>
+          <dd>
+            <strong>{String(room.name || "—")}</strong>
+            {room.location ? ` (${room.location})` : ""}
+            {room.areaType ? ` · ${display(room.areaType)}` : ""}
+          </dd>
+        </div>
+        <div>
+          <dt>Huấn luyện viên phụ trách</dt>
+          <dd>
+            <strong>{String(coachName || "Chưa phân công")}</strong>
+          </dd>
+        </div>
+        {cls.capacity ? (
+          <div>
+            <dt>Sức chứa lớp</dt>
+            <dd>{String(cls.capacity)} học viên</dd>
+          </div>
+        ) : null}
+        {cls.classType ? (
+          <div>
+            <dt>Loại lớp</dt>
+            <dd>
+              <StatusBadge value={cls.classType} />
+            </dd>
+          </div>
+        ) : null}
+      </dl>
+
+      <div style={{ padding: "0 24px 16px" }}>
+        <h4
+          style={{
+            fontSize: "14px",
+            fontWeight: 600,
+            color: "#304e3d",
+            marginBottom: "8px",
+          }}
+        >
+          Điều kiện tổ chức tại thời điểm tạo lịch
+        </h4>
+        {snapshotEntries.length > 0 ? (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+              gap: "8px",
+            }}
+          >
+            {snapshotEntries.map(([k, v], i) => (
+              <div
+                key={i}
+                style={{
+                  padding: "8px 12px",
+                  background: "#f8faf9",
+                  border: "1px solid #e3ebe5",
+                  borderRadius: "8px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span>{label(k)}</span>
+                <strong>{String(v ?? "—")}</strong>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="detail-empty-item" style={{ margin: 0 }}>
+            <span>Không có điều kiện đặc biệt tại thời điểm tạo lịch</span>
+          </div>
+        )}
+      </div>
+
+      {Boolean(data.createdAt || data.updatedAt) && (
+        <details className="detail-disclosure detail-meta">
+          <summary>Thông tin bổ sung</summary>
+          <dl className="details">
+            {data.createdAt ? (
+              <div>
+                <dt>Ngày tạo</dt>
+                <dd>{display(data.createdAt)}</dd>
+              </div>
+            ) : null}
+            {data.updatedAt ? (
+              <div>
+                <dt>Cập nhật lần cuối</dt>
+                <dd>{display(data.updatedAt)}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </details>
+      )}
+    </div>
   );
 }

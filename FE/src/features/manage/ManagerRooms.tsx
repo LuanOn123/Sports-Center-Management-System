@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type RecordData } from "../../shared/api";
 import { allPages } from "../../shared/pagedApi";
 import { getFacilityId } from "../../shared/facility";
-import { Details, Empty, ErrorState, Loading, Modal } from "../../shared/ui";
-import { ResourcePage } from "./ResourcePage";
+import { Empty, ErrorState, Loading, Modal } from "../../shared/ui";
+import { ResourcePage, ScheduleDetailView } from "./ResourcePage";
 import { resources } from "./config";
 import {
   ScheduleCalendar,
@@ -139,7 +139,7 @@ function RoomUsage() {
           title="Buổi học sử dụng phòng"
           onClose={() => setSelected(undefined)}
         >
-          <Details value={selected} />
+          <ScheduleDetailView data={selected} />
         </Modal>
       )}
       {configure && (
