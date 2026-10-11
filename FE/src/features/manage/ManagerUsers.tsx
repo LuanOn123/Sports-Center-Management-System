@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { User } from "lucide-react";
 import { api, type RecordData } from "../../shared/api";
 import { getFacilityId } from "../../shared/facility";
 import { allPages } from "../../shared/pagedApi";
@@ -41,6 +42,7 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
   const [target, setTarget] = useState<Staff>();
   const [coach, setCoach] = useState<string>();
   const [showCreateCoach, setShowCreateCoach] = useState(false);
+  const [showCreateReceptionist, setShowCreateReceptionist] = useState(false);
   const assigned = useQuery({
     queryKey: ["manager-staff", facilityId],
     queryFn: ({ signal }) =>
@@ -94,7 +96,7 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
             {assigned.data?.data.name} ·{" "}
             {isCoachOnly
               ? "Quản lý đội ngũ Huấn luyện viên, lấy HLV từ Admin hoặc tạo mới cho cơ sở."
-              : "Phân công Coach và theo dõi nhân sự tại cơ sở bạn quản lý."}
+              : "Phân công Huấn luyện viên và theo dõi nhân sự tại cơ sở bạn quản lý."}
           </p>
         </div>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -109,6 +111,14 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
               + Thêm HLV từ hệ thống (Admin)
             </button>
           )}
+          {!isCoachOnly && (
+            <button
+              className="button"
+              onClick={() => setShowCreateReceptionist(true)}
+            >
+              + Tạo Lễ tân
+            </button>
+          )}
           <button
             className="button primary"
             onClick={() => setShowCreateCoach(true)}
@@ -121,7 +131,7 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
         <div className="tabs">
           {[
             ["assigned", isCoachOnly ? "HLV tại cơ sở" : "Nhân sự cơ sở"],
-            ["COACH", isCoachOnly ? "HLV từ Admin (Chưa phân công)" : "Coach chưa phân công (Admin)"],
+            ["COACH", isCoachOnly ? "HLV từ Admin (Chưa phân công)" : "Huấn luyện viên chưa phân công (Admin)"],
           ].map(([key, text]) => (
             <button
               key={key}
@@ -165,7 +175,7 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
               Vai trò
               <select value={role} onChange={(e) => setRole(e.target.value)}>
                 <option value="">Tất cả</option>
-                <option value="COACH">Coach</option>
+                <option value="COACH">Huấn luyện viên</option>
                 <option value="RECEPTIONIST">Lễ tân</option>
               </select>
             </label>
@@ -195,6 +205,7 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
                   <th>Vai trò</th>
                   <th>Bộ môn</th>
                   <th>Phân công</th>
+                  <th>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -209,7 +220,7 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
                       )}
                     </td>
                     <td>{s.email}</td>
-                    <td>{s.role === "COACH" ? "Coach" : "Lễ tân"}</td>
+                    <td>{s.role === "COACH" ? "Huấn luyện viên" : "Lễ tân"}</td>
                     <td>
                       {s.role === "COACH" ? (
                         s.coachProfile?.specializations?.length ? (
@@ -231,20 +242,27 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
                     </td>
                     <td>
                       {view === "assigned" ? (
-                        <>
-                          <span className="badge">Đã phân công</span>
-                          {s.role === "COACH" && (
-                            <button
-                              className="button small"
-                              onClick={() => setCoach(s.id)}
-                            >
-                              Hồ sơ Coach
-                            </button>
-                          )}
-                        </>
+                        <span className="badge">Đã phân công</span>
+                      ) : (
+                        <span className="badge" style={{ opacity: 0.7 }}>Chưa phân công</span>
+                      )}
+                    </td>
+                    <td>
+                      {view === "assigned" ? (
+                        s.role === "COACH" ? (
+                          <button
+                            className="button small"
+                            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+                            title="Xem hồ sơ Huấn luyện viên"
+                            onClick={() => setCoach(s.id)}
+                          >
+                            <User size={14} aria-hidden="true" />
+                            <span>Xem hồ sơ</span>
+                          </button>
+                        ) : null
                       ) : (
                         <button
-                          className="button primary"
+                          className="button primary small"
                           onClick={() => {
                             assign.reset();
                             setTarget(s);
@@ -295,6 +313,12 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
       {showCreateCoach && (
         <CreateCoachModal onClose={() => setShowCreateCoach(false)} />
       )}
+      {showCreateReceptionist && (
+        <CreateReceptionistModal
+          facilityId={facilityId}
+          onClose={() => setShowCreateReceptionist(false)}
+        />
+      )}
       {coach && <CoachEditor id={coach} onClose={() => setCoach(undefined)} />}
     </>
   );
@@ -310,7 +334,7 @@ function CoachEditor({ id, onClose }: { id: string; onClose: () => void }) {
   });
   const profile = q.data?.data.coachProfile as RecordData | undefined;
   return (
-    <Modal title="Hồ sơ Coach" onClose={onClose} dismissible={!busy}>
+    <Modal title="Hồ sơ Huấn luyện viên" onClose={onClose} dismissible={!busy}>
       <div className="tabs">
         <button
           disabled={busy}
@@ -684,6 +708,157 @@ function CreateCoachModal({ onClose }: { onClose: () => void }) {
             disabled={!isValid || createCoach.isPending}
           >
             {createCoach.isPending ? "Đang tạo…" : "Tạo Huấn luyện viên"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function CreateReceptionistModal({
+  facilityId,
+  onClose,
+}: {
+  facilityId: string;
+  onClose: () => void;
+}) {
+  const cache = useQueryClient();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [gender, setGender] = useState<"MALE" | "FEMALE" | "OTHER">("MALE");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [error, setError] = useState<unknown>();
+
+  const createReceptionist = useMutation({
+    mutationFn: async () => {
+      return api("POST /facilities/{facilityId}/receptionists", {
+        params: { facilityId },
+        body: {
+          fullName: fullName.trim(),
+          email: email.trim(),
+          password: password.trim() || undefined,
+          phone: phone.trim() || undefined,
+          gender,
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth).toISOString() : undefined,
+        },
+      });
+    },
+    onSuccess: async () => {
+      await cache.invalidateQueries({ queryKey: ["manager-staff", facilityId] });
+      await cache.invalidateQueries({ queryKey: ["manager-candidates"] });
+      onClose();
+    },
+    onError: (err) => {
+      setError(err);
+    },
+  });
+
+  const isValid = fullName.trim().length > 0 && email.trim().length > 0;
+
+  return (
+    <Modal
+      title="Tạo Lễ tân mới"
+      onClose={onClose}
+      dismissible={!createReceptionist.isPending}
+    >
+      <form
+        className="manager-config-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (isValid && !createReceptionist.isPending) {
+            setError(undefined);
+            createReceptionist.mutate();
+          }
+        }}
+      >
+        <p className="field-note">
+          Tạo tài khoản Lễ tân mới cho cơ sở này. Tài khoản sẽ được phân công trực tiếp vào cơ sở.
+        </p>
+
+        {Boolean(error) && <ErrorState error={error} />}
+
+        <div className="form-grid">
+          <label>
+            Họ và tên *
+            <input
+              required
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Nguyễn Thị B"
+            />
+          </label>
+
+          <label>
+            Email *
+            <input
+              required
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="receptionist@example.com"
+            />
+          </label>
+
+          <label>
+            Mật khẩu
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Mặc định: Receptionist@123456"
+            />
+          </label>
+
+          <label>
+            Số điện thoại
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="0912345678"
+            />
+          </label>
+
+          <label>
+            Giới tính
+            <select
+              value={gender}
+              onChange={(e) =>
+                setGender(e.target.value as "MALE" | "FEMALE" | "OTHER")
+              }
+            >
+              <option value="MALE">Nam</option>
+              <option value="FEMALE">Nữ</option>
+              <option value="OTHER">Khác</option>
+            </select>
+          </label>
+
+          <label>
+            Ngày sinh
+            <input
+              type="date"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+            />
+          </label>
+        </div>
+
+        <div className="modal-footer" style={{ marginTop: "20px" }}>
+          <button
+            type="button"
+            className="button"
+            disabled={createReceptionist.isPending}
+            onClick={onClose}
+          >
+            Hủy
+          </button>
+          <button
+            type="submit"
+            className="button primary"
+            disabled={!isValid || createReceptionist.isPending}
+          >
+            {createReceptionist.isPending ? "Đang tạo…" : "Tạo Lễ tân"}
           </button>
         </div>
       </form>

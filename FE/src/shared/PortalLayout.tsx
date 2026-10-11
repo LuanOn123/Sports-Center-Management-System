@@ -210,18 +210,28 @@ export function PortalLayout({
           <div className="topbar-actions">
             <FacilityPicker />
             <HelpPanel role={user.role} base={base} />
-            <NotificationBell base={base} />
+            <NotificationBell base={base} role={user.role} />
             <div className="profile-link">
-              <Link
-                to={base + "/profile"}
-                aria-label={`Tài khoản của ${user.fullName}`}
-              >
-                <div>
-                  <strong>{user.fullName}</strong>
-                  <small>{title}</small>
-                </div>
-              </Link>
-              <Avatar user={user} />
+              {location.pathname === `${base}/profile` ? (
+                <>
+                  <div>
+                    <strong>{user.fullName}</strong>
+                    <small>{title}</small>
+                  </div>
+                  <Avatar user={user} interactive={true} />
+                </>
+              ) : (
+                <Link
+                  to={base + "/profile"}
+                  aria-label={`Tài khoản của ${user.fullName}`}
+                >
+                  <div>
+                    <strong>{user.fullName}</strong>
+                    <small>{title}</small>
+                  </div>
+                  <Avatar user={user} interactive={false} />
+                </Link>
+              )}
             </div>
           </div>
         </header>

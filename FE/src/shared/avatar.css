@@ -50,8 +50,12 @@
   font-size: 14px;
 }
 .profile-link > a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
   color: inherit;
   text-decoration: none;
+  min-width: 0;
 }
 .chat-avatar .avatar {
   width: 100%;

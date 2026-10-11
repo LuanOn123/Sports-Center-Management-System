@@ -8,7 +8,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { io, type Socket } from "socket.io-client";
 import {
@@ -37,16 +37,67 @@ import "./communication.css";
 
 type Notification = {
   id: string;
+  type?: string;
   title: string;
   body: string;
   reason?: string;
   isRead: boolean;
+  readAt?: string | null;
+  metadata?: Record<string, unknown> | null;
   createdAt: string;
 };
 
-export function NotificationBell({ base }: { base: string }) {
+export function getNotificationCta(n: Notification, role?: string): { label: string; to: string } | null {
+  const type = String(n.type || "");
+  const meta = n.metadata || {};
+  if (type.startsWith("LEAVE_REQUEST_")) {
+    if (role === "MANAGER") {
+      const leaveId = String(meta.leaveRequestId || meta.id || "");
+      return {
+        label: "Xem đơn nghỉ",
+        to: leaveId ? `/manager/leave?id=${leaveId}` : `/manager/leave`,
+      };
+    }
+    if (role === "COACH") {
+      return {
+        label: "Xem đơn nghỉ của tôi",
+        to: "/coach/leave",
+      };
+    }
+    if (role === "RECEPTIONIST") {
+      return {
+        label: "Xem đơn nghỉ của tôi",
+        to: "/receptionist/leave",
+      };
+    }
+  }
+  if (type.includes("SCHEDULE") || type === "COACH_CHANGED" || type === "UPCOMING_CLASS") {
+    if (role === "MEMBER") {
+      return {
+        label: "Xem lịch tập",
+        to: "/member/schedule",
+      };
+    }
+    if (role === "COACH") {
+      return {
+        label: "Xem lịch dạy",
+        to: "/coach/schedule",
+      };
+    }
+    if (role === "MANAGER") {
+      return {
+        label: "Xem lịch hoạt động",
+        to: "/manager/schedules",
+      };
+    }
+  }
+  return null;
+}
+
+export function NotificationBell({ base, role }: { base: string; role?: string }) {
   const [open, setOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const navigate = useNavigate();
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLElement>(null);
   const panelId = useId();
@@ -68,6 +119,7 @@ export function NotificationBell({ base }: { base: string }) {
         signal,
       }),
     enabled: open,
+    refetchInterval: open ? 20_000 : false,
   });
   const markRead = useMutation({
     mutationFn: (id: string) =>
@@ -188,33 +240,59 @@ export function NotificationBell({ base }: { base: string }) {
                 detail="Lịch tập, thanh toán và cập nhật từ trung tâm sẽ xuất hiện tại đây."
               />
             ) : (
-              list.data.data.map((item) => (
-                <button
-                  type="button"
-                  key={item.id}
-                  className={`notification-popover-item ${item.isRead ? "" : "unread"} ${expandedId === item.id ? "expanded" : ""}`}
-                  aria-expanded={expandedId === item.id}
-                  disabled={markRead.isPending}
-                  onClick={() => {
-                    setExpandedId((value) =>
-                      value === item.id ? null : item.id,
-                    );
-                    if (!item.isRead) markRead.mutate(item.id);
-                  }}
-                >
-                  <span className="notification-dot" />
-                  <span>
-                    <strong>{item.title}</strong>
-                    {!item.isRead && (
-                      <small className="notification-unread-label">
-                        Chưa đọc
-                      </small>
-                    )}
-                    <p>{item.body}</p>
-                    <small>{display(item.createdAt)}</small>
-                  </span>
-                </button>
-              ))
+              list.data.data.map((item) => {
+                const cta = getNotificationCta(item, role);
+                return (
+                  <button
+                    type="button"
+                    key={item.id}
+                    className={`notification-popover-item ${item.isRead ? "" : "unread"} ${expandedId === item.id ? "expanded" : ""}`}
+                    aria-expanded={expandedId === item.id}
+                    disabled={markRead.isPending}
+                    onClick={() => {
+                      setExpandedId((value) =>
+                        value === item.id ? null : item.id,
+                      );
+                      if (!item.isRead) markRead.mutate(item.id);
+                    }}
+                  >
+                    <span className="notification-dot" />
+                    <span>
+                      <strong>{item.title}</strong>
+                      {!item.isRead && (
+                        <small className="notification-unread-label">
+                          Chưa đọc
+                        </small>
+                      )}
+                      <p>{item.body}</p>
+                      {item.reason && (
+                        <p style={{ fontStyle: "italic", opacity: 0.85, fontSize: "0.85rem" }}>
+                          Lý do: {item.reason}
+                        </p>
+                      )}
+                      <small>{display(item.createdAt)}</small>
+                      {cta && (
+                        <span
+                          className="button small primary"
+                          style={{
+                            marginTop: "6px",
+                            display: "inline-block",
+                            width: "fit-content",
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpen(false);
+                            if (!item.isRead) markRead.mutate(item.id);
+                            navigate(cta.to);
+                          }}
+                        >
+                          {cta.label}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })
             )}
           </div>
           <footer>
@@ -320,15 +398,31 @@ export function Notifications({ role }: { role: string }) {
             <NotificationBody text={n.body} />
             {n.reason && <p>Lý do: {n.reason}</p>}
             <small>{display(n.createdAt)}</small>
-            {!n.isRead && (
-              <button
-                className="button small"
-                disabled={action.isPending}
-                onClick={() => action.mutate(n.id)}
-              >
-                Đánh dấu đã đọc
-              </button>
-            )}
+            <div className="workflow-actions" style={{ marginTop: "10px", gap: "8px" }}>
+              {(() => {
+                const cta = getNotificationCta(n, role);
+                return cta ? (
+                  <Link
+                    to={cta.to}
+                    className="button small primary"
+                    onClick={() => {
+                      if (!n.isRead) action.mutate(n.id);
+                    }}
+                  >
+                    {cta.label}
+                  </Link>
+                ) : null;
+              })()}
+              {!n.isRead && (
+                <button
+                  className="button small"
+                  disabled={action.isPending}
+                  onClick={() => action.mutate(n.id)}
+                >
+                  Đánh dấu đã đọc
+                </button>
+              )}
+            </div>
           </article>
         ))
       )}

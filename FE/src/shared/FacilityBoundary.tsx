@@ -14,7 +14,9 @@ import {
   mutationCount,
   subscribeMutations,
 } from "./facility";
+import { Building2 } from "lucide-react";
 import { ErrorState, Loading } from "./ui";
+
 export type Facility = {
   id: string;
   name: string;
@@ -34,8 +36,11 @@ export function FacilityPicker() {
   // KHÔNG phải cơ sở "sở hữu" gói (Membership là global). Giữ nguyên aria-label để
   // không làm hỏng các browser test đang tham chiếu nó.
   return (
-    <label className="facility-switch">
-      Cơ sở
+    <label className="facility-switch" title="Cơ sở đang làm việc">
+      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+        <Building2 size={12} aria-hidden="true" />
+        <span>Cơ sở</span>
+      </span>
       <select
         aria-label="Cơ sở đang làm việc"
         disabled={context.busy}
