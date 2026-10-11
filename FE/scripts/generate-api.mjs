@@ -16,7 +16,7 @@ if (process.argv.includes("--local")) {
       "tsx",
       "--input-type=module",
       "-e",
-      'import { swaggerSpec } from "./src/config/swagger.ts"; process.stdout.write(JSON.stringify(swaggerSpec));',
+      'import mod from "./src/config/swagger.ts"; const spec = mod.swaggerSpec || mod.default?.swaggerSpec || mod; process.stdout.write(JSON.stringify(spec));',
     ],
     {
       cwd: fileURLToPath(new URL("../../BE/", import.meta.url)),

@@ -2621,7 +2621,7 @@ dialog::backdrop {
     display: none;
   }
 
-  .profile-link > div {
+  .profile-link :is(div, a > div) {
     display: none;
   }
 

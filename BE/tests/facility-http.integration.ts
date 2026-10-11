@@ -41,15 +41,15 @@ async function main() {
         email: `${run}-${role}@test.invalid`,
         fullName: role,
         password: "test-hash",
-        role: actual,
+        role: actual as any,
       });
-      const id = user._id.toString();
+      const id = (user as any)._id.toString();
       users.push(id);
       ids[role] = id;
       await prisma.user.create({
         data: {
           id,
-          email: user.email,
+          email: (user as any).email,
           fullName: role,
           password: "test-hash",
           role: actual as any,
@@ -58,9 +58,9 @@ async function main() {
       tokens[role] = signAccessToken({ id, role: actual });
     }
     const app = (await import("../src/app.js")).default;
-    server = app.listen(0, "127.0.0.1");
+    server = (app as any).listen(0, "127.0.0.1");
     await new Promise<void>((resolve) => server!.once("listening", resolve));
-    const port = (server.address() as any).port;
+    const port = (server!.address() as any).port;
     // Public landing assistant stays public. Disable the provider for this test;
     // a 503 confirms the request reached the handler without making an API call.
     delete process.env.GROQ_API_KEY;

@@ -613,7 +613,7 @@ body:has(.portal-theme) {
     padding: 20px 16px;
   }
   .portal-theme .topbar {
-    padding: 12px 16px;
+    padding: 12px 12px;
     min-height: 66px;
   }
   .member-breadcrumb-label {
@@ -652,7 +652,7 @@ body:has(.portal-theme) {
   .portal-theme .modal-head h2 {
     font-size: 19px;
   }
-  .portal-theme .topbar .profile-link > div {
+  .portal-theme .topbar .profile-link :is(div, a > div) {
     display: none;
   }
 }

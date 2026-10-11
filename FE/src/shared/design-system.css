@@ -1238,24 +1238,30 @@ dialog::backdrop {
   }
 
   .app-layout .topbar {
-    padding: 10px 14px;
+    padding: 10px 12px;
   }
 
-  .app-layout .profile-link > div {
+  .app-layout .profile-link :is(div, a > div) {
     display: none;
   }
 
   .app-layout .breadcrumb {
     gap: 8px;
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 44px;
+    overflow: hidden;
   }
 
   .app-layout .breadcrumb strong {
     font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .topbar-actions {
-    gap: 8px;
+    gap: 6px;
+    flex-shrink: 0;
   }
 
   .app-layout .panel-heading,

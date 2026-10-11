@@ -117,7 +117,7 @@ async function main() {
       });
   }
   const app = (await import("../src/app.js")).default;
-  const server = app.listen(0, "127.0.0.1");
+  const server = (app as any).listen(0, "127.0.0.1");
   await new Promise<void>((resolve) => server.once("listening", resolve));
   const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/v1`;
   async function request(
@@ -352,7 +352,7 @@ async function main() {
     );
   } finally {
     await new Promise<void>((resolve, reject) =>
-      server.close((error) => (error ? reject(error) : resolve())),
+      server.close((error?: Error) => (error ? reject(error) : resolve())),
     );
     await disconnectTestMongo();
     await prisma.$disconnect();

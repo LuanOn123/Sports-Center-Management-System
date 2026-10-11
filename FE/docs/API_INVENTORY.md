@@ -2,7 +2,7 @@
 
 Source: BE/src/config/swagger.ts + BE/src/modules/**/*.routes.ts (local checkout)
 
-Snapshot: 2026-10-09. Production base: https://sports-center-management-system.onrender.com/api/v1
+Snapshot: 2026-10-10. Production base: https://sports-center-management-system.onrender.com/api/v1
 
 Response examples are documentation only, never application data. The client sends the documented HTTP Bearer token.
 
@@ -18084,6 +18084,102 @@ Request body:
   "required": [
     "userId",
     "role"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## POST /facilities/{facilityId}/coaches
+Manager tạo tài khoản HLV kèm bộ môn
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "facilityId",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "email": {
+      "type": "string"
+    },
+    "fullName": {
+      "type": "string"
+    },
+    "password": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "gender": {
+      "type": "string",
+      "enum": [
+        "MALE",
+        "FEMALE",
+        "OTHER"
+      ]
+    },
+    "dateOfBirth": {
+      "type": "string"
+    },
+    "experienceYears": {
+      "type": "integer"
+    },
+    "specialization": {
+      "type": "string"
+    },
+    "bio": {
+      "type": "string"
+    },
+    "sportIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "email",
+    "fullName",
+    "sportIds"
   ]
 }
 ```

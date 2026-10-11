@@ -7,6 +7,7 @@ import {
   Warehouse,
   Trophy,
   ClipboardList,
+  Dumbbell,
 } from "lucide-react";
 import type { ProfileOk } from "../../shared/generated";
 import { PortalLayout, type NavigationGroup } from "../../shared/PortalLayout";
@@ -24,7 +25,8 @@ const groups: NavigationGroup[] = [
   {
     title: "QUẢN LÝ CƠ SỞ",
     items: [
-      ["users", "Người dùng", Users],
+      ["users", "Nhân sự cơ sở", Users],
+      ["coaches", "Huấn luyện viên", Dumbbell],
       ["rooms", "Phòng tập", Warehouse],
       ["classes", "Lớp học", Trophy],
       ["schedules", "Lịch hoạt động", CalendarDays],
@@ -44,7 +46,6 @@ const groups: NavigationGroup[] = [
 ];
 const redirects: Record<string, string> = {
   members: "users",
-  coaches: "users",
   staff: "users",
   sports: "classes",
   bookings: "classes",
@@ -80,6 +81,10 @@ export function ManagerLayout({
         <Route path="/manager/dashboard" element={<ManagerOverview />} />
         <Route path="/manager/reports" element={<ManagerOverview reports />} />
         <Route path="/manager/users" element={<ManagerUsers />} />
+        <Route
+          path="/manager/coaches"
+          element={<ManagerUsers initialRole="COACH" />}
+        />
         <Route
           path="/manager/rooms"
           element={<ManagerRooms userId={user.id} />}

@@ -7,21 +7,40 @@ import { classSports } from "../../shared/sports";
 import { canTeach } from "../../shared/coachEligibility";
 import { Empty, ErrorState, Loading, Modal, SchemaForm } from "../../shared/ui";
 
-type Staff = { id: string; fullName: string; email: string; role: string };
+type CoachSpecializationItem = {
+  sport: { id: string; name: string };
+};
+type CoachProfileInfo = {
+  id: string;
+  specialization?: string | null;
+  experienceYears?: number | null;
+  bio?: string | null;
+  specializations?: CoachSpecializationItem[];
+};
+type Staff = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  role: string;
+  coachProfile?: CoachProfileInfo | null;
+};
 type Assignment = {
   userId: string;
   role: string;
   isActive: boolean;
   user: Staff;
 };
-export function ManagerUsers() {
+export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
+  const isCoachOnly = initialRole === "COACH";
   const facilityId = getFacilityId();
   const cache = useQueryClient();
   const [view, setView] = useState("assigned");
   const [search, setSearch] = useState("");
-  const [role, setRole] = useState("");
+  const [role, setRole] = useState(isCoachOnly ? "COACH" : "");
   const [target, setTarget] = useState<Staff>();
   const [coach, setCoach] = useState<string>();
+  const [showCreateCoach, setShowCreateCoach] = useState(false);
   const assigned = useQuery({
     queryKey: ["manager-staff", facilityId],
     queryFn: ({ signal }) =>
@@ -61,7 +80,7 @@ export function ManagerUsers() {
   const visible = rows.filter(
     (s) =>
       (!role || s.role === role) &&
-      `${s.fullName} ${s.email}`
+      `${s.fullName} ${s.email} ${s.phone || ""}`
         .toLocaleLowerCase("vi")
         .includes(search.toLocaleLowerCase("vi")),
   );
@@ -70,18 +89,39 @@ export function ManagerUsers() {
       <div className="page-heading">
         <div>
           <span className="eyebrow">QUẢN LÝ CƠ SỞ</span>
-          <h1>Nhân sự cơ sở</h1>
+          <h1>{isCoachOnly ? "Huấn luyện viên" : "Nhân sự cơ sở"}</h1>
           <p>
-            {assigned.data?.data.name} · Phân công Coach và theo dõi nhân sự tại
-            cơ sở bạn quản lý.
+            {assigned.data?.data.name} ·{" "}
+            {isCoachOnly
+              ? "Quản lý đội ngũ Huấn luyện viên, lấy HLV từ Admin hoặc tạo mới cho cơ sở."
+              : "Phân công Coach và theo dõi nhân sự tại cơ sở bạn quản lý."}
           </p>
+        </div>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          {view === "assigned" && (
+            <button
+              className="button"
+              onClick={() => {
+                setView("COACH");
+                setRole("");
+              }}
+            >
+              + Thêm HLV từ hệ thống (Admin)
+            </button>
+          )}
+          <button
+            className="button primary"
+            onClick={() => setShowCreateCoach(true)}
+          >
+            + Tạo Huấn luyện viên
+          </button>
         </div>
       </div>
       <section className="panel">
         <div className="tabs">
           {[
-            ["assigned", "Nhân sự cơ sở"],
-            ["COACH", "Coach chưa phân công"],
+            ["assigned", isCoachOnly ? "HLV tại cơ sở" : "Nhân sự cơ sở"],
+            ["COACH", isCoachOnly ? "HLV từ Admin (Chưa phân công)" : "Coach chưa phân công (Admin)"],
           ].map(([key, text]) => (
             <button
               key={key}
@@ -89,23 +129,38 @@ export function ManagerUsers() {
               aria-pressed={view === key}
               onClick={() => {
                 setView(key);
-                setRole("");
+                setRole(view === "assigned" && isCoachOnly ? "" : isCoachOnly ? "COACH" : "");
               }}
             >
               {text}
             </button>
           ))}
         </div>
+        {view === "COACH" && (
+          <div
+            style={{
+              margin: "12px 0 16px",
+              padding: "12px 16px",
+              background: "rgba(59, 130, 246, 0.08)",
+              border: "1px solid rgba(59, 130, 246, 0.2)",
+              borderRadius: "8px",
+              fontSize: "14px",
+              color: "inherit",
+            }}
+          >
+            <strong>Danh sách Huấn luyện viên hệ thống (Admin):</strong> Đây là các tài khoản đã được Admin cấp quyền Huấn luyện viên nhưng chưa thuộc cơ sở nào. Bấm <em>"Phân công vào cơ sở"</em> để thêm HLV vào chi nhánh của bạn.
+          </div>
+        )}
         <div className="filters">
           <label>
-            Tìm nhân sự
+            Tìm kiếm
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Họ tên hoặc email"
+              placeholder="Họ tên, email hoặc SĐT"
             />
           </label>
-          {view === "assigned" && (
+          {view === "assigned" && !isCoachOnly && (
             <label>
               Vai trò
               <select value={role} onChange={(e) => setRole(e.target.value)}>
@@ -121,7 +176,15 @@ export function ManagerUsers() {
         ) : source.error ? (
           <ErrorState error={source.error} retry={() => source.refetch()} />
         ) : !visible.length ? (
-          <Empty text="Không có nhân sự phù hợp" />
+          <Empty
+            text={
+              view === "COACH"
+                ? "Không có Huấn luyện viên nào đang chờ phân công từ hệ thống."
+                : isCoachOnly
+                  ? "Chưa có Huấn luyện viên nào tại cơ sở này. Hãy bấm \"+ Thêm HLV từ hệ thống (Admin)\" hoặc \"+ Tạo Huấn luyện viên\" để thêm."
+                  : "Không có nhân sự phù hợp"
+            }
+          />
         ) : (
           <div className="table-scroll" tabIndex={0}>
             <table>
@@ -130,15 +193,42 @@ export function ManagerUsers() {
                   <th>Họ tên</th>
                   <th>Email</th>
                   <th>Vai trò</th>
+                  <th>Bộ môn</th>
                   <th>Phân công</th>
                 </tr>
               </thead>
               <tbody>
                 {visible.map((s) => (
                   <tr key={s.id}>
-                    <td>{s.fullName}</td>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{s.fullName}</div>
+                      {s.phone && (
+                        <div style={{ fontSize: "12px", opacity: 0.7 }}>
+                          {s.phone}
+                        </div>
+                      )}
+                    </td>
                     <td>{s.email}</td>
                     <td>{s.role === "COACH" ? "Coach" : "Lễ tân"}</td>
+                    <td>
+                      {s.role === "COACH" ? (
+                        s.coachProfile?.specializations?.length ? (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                            {s.coachProfile.specializations.map((sp) => (
+                              <span key={sp.sport.id} className="badge">
+                                {sp.sport.name}
+                              </span>
+                            ))}
+                          </div>
+                        ) : s.coachProfile?.specialization ? (
+                          <span className="badge">{s.coachProfile.specialization}</span>
+                        ) : (
+                          <span className="badge" style={{ opacity: 0.6 }}>Chưa có môn</span>
+                        )
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td>
                       {view === "assigned" ? (
                         <>
@@ -201,6 +291,9 @@ export function ManagerUsers() {
             </div>
           </div>
         </Modal>
+      )}
+      {showCreateCoach && (
+        <CreateCoachModal onClose={() => setShowCreateCoach(false)} />
       )}
       {coach && <CoachEditor id={coach} onClose={() => setCoach(undefined)} />}
     </>
@@ -389,5 +482,211 @@ function CoachSports({
       </fieldset>
       {save.error && <ErrorState error={save.error} />}
     </form>
+  );
+}
+
+function CreateCoachModal({ onClose }: { onClose: () => void }) {
+  const facilityId = getFacilityId();
+  const cache = useQueryClient();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [gender, setGender] = useState<"MALE" | "FEMALE" | "OTHER">("MALE");
+  const [experienceYears, setExperienceYears] = useState("");
+  const [bio, setBio] = useState("");
+  const [selectedSports, setSelectedSports] = useState<string[]>([]);
+  const [error, setError] = useState<unknown>();
+
+  const sportsQuery = useQuery({
+    queryKey: ["all-sports"],
+    queryFn: ({ signal }) =>
+      allPages<{ id: string; name: string; isActive?: boolean }>("GET /sports", { signal }),
+  });
+
+  const activeSports = (sportsQuery.data?.data ?? []).filter(
+    (s) => s.isActive !== false
+  );
+
+  const createCoach = useMutation({
+    mutationFn: async () => {
+      if (!selectedSports.length) {
+        throw new Error("Bắt buộc chọn ít nhất một bộ môn.");
+      }
+      return api("POST /facilities/{facilityId}/coaches", {
+        params: { facilityId },
+        body: {
+          fullName: fullName.trim(),
+          email: email.trim(),
+          password: password.trim() || undefined,
+          phone: phone.trim() || undefined,
+          gender,
+          experienceYears: experienceYears ? Number(experienceYears) : undefined,
+          bio: bio.trim() || undefined,
+          sportIds: selectedSports,
+        },
+      });
+    },
+    onSuccess: async () => {
+      await cache.invalidateQueries({ queryKey: ["manager-staff", facilityId] });
+      await cache.invalidateQueries({ queryKey: ["qualified-coaches"] });
+      await cache.invalidateQueries({ queryKey: ["manager-candidates"] });
+      onClose();
+    },
+    onError: (err) => {
+      setError(err);
+    },
+  });
+
+  const isValid =
+    fullName.trim().length > 0 &&
+    email.trim().length > 0 &&
+    selectedSports.length > 0;
+
+  return (
+    <Modal title="Tạo Huấn luyện viên mới" onClose={onClose} dismissible={!createCoach.isPending}>
+      <form
+        className="manager-config-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (isValid && !createCoach.isPending) {
+            setError(undefined);
+            createCoach.mutate();
+          }
+        }}
+      >
+        <p className="field-note">
+          Tạo tài khoản HLV mới cho cơ sở này. Bắt buộc chọn ít nhất 1 bộ môn giảng dạy.
+        </p>
+
+        {Boolean(error) && <ErrorState error={error} />}
+
+        <div className="form-grid">
+          <label>
+            Họ và tên *
+            <input
+              required
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Nguyễn Văn A"
+            />
+          </label>
+
+          <label>
+            Email *
+            <input
+              required
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="coach@example.com"
+            />
+          </label>
+
+          <label>
+            Mật khẩu
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Mặc định: Coach@123456"
+            />
+          </label>
+
+          <label>
+            Số điện thoại
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="0901234567"
+            />
+          </label>
+
+          <label>
+            Giới tính
+            <select
+              value={gender}
+              onChange={(e) => setGender(e.target.value as any)}
+            >
+              <option value="MALE">Nam</option>
+              <option value="FEMALE">Nữ</option>
+              <option value="OTHER">Khác</option>
+            </select>
+          </label>
+
+          <label>
+            Số năm kinh nghiệm
+            <input
+              type="number"
+              min="0"
+              value={experienceYears}
+              onChange={(e) => setExperienceYears(e.target.value)}
+              placeholder="Ví dụ: 3"
+            />
+          </label>
+        </div>
+
+        <label style={{ display: "block", marginTop: "12px" }}>
+          Giới thiệu / Tiểu sử
+          <textarea
+            rows={2}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            placeholder="Chứng chỉ, phong cách huấn luyện..."
+          />
+        </label>
+
+        <fieldset style={{ marginTop: "16px" }} disabled={createCoach.isPending}>
+          <legend>Bộ môn giảng dạy * (Bắt buộc chọn ít nhất 1 môn)</legend>
+          {sportsQuery.isPending ? (
+            <Loading />
+          ) : !activeSports.length ? (
+            <Empty text="Không có bộ môn khả dụng" />
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "8px", marginTop: "8px" }}>
+              {activeSports.map((s) => (
+                <label key={s.id} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedSports.includes(s.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedSports([...selectedSports, s.id]);
+                      } else {
+                        setSelectedSports(selectedSports.filter((id) => id !== s.id));
+                      }
+                    }}
+                  />
+                  {s.name}
+                </label>
+              ))}
+            </div>
+          )}
+          {!selectedSports.length && (
+            <p className="field-note" style={{ color: "var(--color-danger, #ef4444)", marginTop: "4px" }}>
+              Vui lòng chọn ít nhất một bộ môn.
+            </p>
+          )}
+        </fieldset>
+
+        <div className="modal-footer" style={{ marginTop: "20px" }}>
+          <button
+            type="button"
+            className="button"
+            onClick={onClose}
+            disabled={createCoach.isPending}
+          >
+            Hủy
+          </button>
+          <button
+            type="submit"
+            className="button primary"
+            disabled={!isValid || createCoach.isPending}
+          >
+            {createCoach.isPending ? "Đang tạo…" : "Tạo Huấn luyện viên"}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }

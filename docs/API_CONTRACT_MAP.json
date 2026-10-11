@@ -664,6 +664,7 @@
     "roles": "Public",
     "consumers": [
       "FE/src/api/classes.api.ts",
+      "FE/src/features/coach/CoachProfile.tsx",
       "FE/src/features/manage/ActivityPlanner.tsx",
       "FE/src/features/manage/ClassForm.tsx",
       "FE/src/features/manage/config.ts",
@@ -1216,13 +1217,10 @@
     "roles": "MANAGER, ADMIN",
     "consumers": [
       "FE/src/features/manage/Dashboard.tsx",
+      "FE/src/features/manage/ManagerAnalytics.tsx",
       "FE/src/features/manage/ManagerOverview.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/reports/reports.routes.ts:39",
-=======
     "backend": "BE/src/modules/reports/reports.routes.ts:46",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "handler": "reportsController.getRevenueReport",
     "status": "MATCH",
     "request": null,
@@ -1263,11 +1261,7 @@
     "consumers": [
       "FE/src/features/manage/Dashboard.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/reports/reports.routes.ts:63",
-=======
     "backend": "BE/src/modules/reports/reports.routes.ts:70",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "handler": "reportsController.getMemberReport",
     "status": "MATCH",
     "request": null,
@@ -1306,11 +1300,7 @@
     "consumers": [
       "FE/src/features/manage/Dashboard.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/reports/reports.routes.ts:87",
-=======
     "backend": "BE/src/modules/reports/reports.routes.ts:94",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "handler": "reportsController.getEnrollmentReport",
     "status": "MATCH",
     "request": null,
@@ -1349,11 +1339,7 @@
     "consumers": [
       "FE/src/features/manage/Dashboard.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/reports/reports.routes.ts:111",
-=======
     "backend": "BE/src/modules/reports/reports.routes.ts:118",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "handler": "reportsController.getMembershipReport",
     "status": "MATCH",
     "request": null,
@@ -1390,11 +1376,7 @@
     "path": "/reports/subscription-logs",
     "roles": "MANAGER, ADMIN",
     "consumers": [],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/reports/reports.routes.ts:214",
-=======
     "backend": "BE/src/modules/reports/reports.routes.ts:221",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "handler": "reportsController.getSubscriptionLogs",
     "status": "MATCH",
     "request": null,
@@ -1447,11 +1429,7 @@
     "consumers": [
       "FE/src/features/manage/BusinessReports.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/reports/reports.routes.ts:208",
-=======
     "backend": "BE/src/modules/reports/reports.routes.ts:215",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "handler": "reportsController.getAttendanceReport",
     "status": "MATCH",
     "request": null,
@@ -1517,11 +1495,7 @@
     "consumers": [
       "FE/src/features/manage/BusinessReports.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/reports/reports.routes.ts:242",
-=======
     "backend": "BE/src/modules/reports/reports.routes.ts:249",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "handler": "reportsController.getCrossFacilityUsage",
     "status": "MATCH",
     "request": null,
@@ -1621,6 +1595,7 @@
     "path": "/payments",
     "roles": "MANAGER, RECEPTIONIST, ADMIN",
     "consumers": [
+      "FE/src/features/reception/dashboard/ReceptionAnalytics.tsx",
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
     "backend": "BE/src/modules/payments/payments.routes.ts:82",
@@ -3244,9 +3219,8 @@
     "path": "/coaches",
     "roles": "Authenticated (service checks ownership)",
     "consumers": [
-      "FE/src/features/manage/ActivityPlanner.tsx",
       "FE/src/features/manage/config.ts",
-      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/shared/coachEligibility.ts",
       "FE/src/shared/forms/SchemaForm.tsx",
       "FE/src/features/manage/ResourcePage.tsx"
     ],
@@ -3382,6 +3356,7 @@
     "consumers": [
       "FE/src/features/coach/data.ts",
       "FE/src/features/manage/config.ts",
+      "FE/src/features/manage/ManagerUsers.tsx",
       "FE/src/features/operations/OperationsPage.tsx",
       "FE/src/features/reception/attendance/AttendancePage.tsx",
       "FE/src/shared/forms/SchemaForm.tsx",
@@ -3587,6 +3562,8 @@
     "path": "/classes/{id}",
     "roles": "Authenticated (service checks ownership)",
     "consumers": [
+      "FE/src/features/manage/ClassForm.tsx",
+      "FE/src/shared/coachEligibility.ts",
       "FE/src/api/classes.api.ts"
     ],
     "backend": "BE/src/modules/classes/classes.routes.ts:113",
@@ -3733,7 +3710,7 @@
     "roles": "Authenticated (service checks ownership)",
     "consumers": [
       "FE/src/features/manage/ActivityPlanner.tsx",
-      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/features/manage/CoachAssignmentForm.tsx",
       "FE/src/api/classes.api.ts"
     ],
     "backend": "BE/src/modules/classes/classes.routes.ts:338",
@@ -3774,7 +3751,7 @@
     "roles": "Authenticated (service checks ownership)",
     "consumers": [
       "FE/src/features/manage/ActivityPlanner.tsx",
-      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/features/manage/CoachAssignmentForm.tsx",
       "FE/src/api/classes.api.ts"
     ],
     "backend": "BE/src/modules/classes/classes.routes.ts:385",
@@ -3864,6 +3841,7 @@
       "FE/src/features/coach/data.ts",
       "FE/src/features/manage/config.ts",
       "FE/src/features/manage/Dashboard.tsx",
+      "FE/src/features/manage/ManagerAnalytics.tsx",
       "FE/src/features/manage/ManagerRooms.tsx",
       "FE/src/features/reception/classes/ClassesPage.tsx",
       "FE/src/features/reception/dashboard/DashboardPage.tsx"
@@ -4334,6 +4312,7 @@
     "path": "/chat/messages/unread-count",
     "roles": "Authenticated (service checks ownership)",
     "consumers": [
+      "FE/src/features/reception/dashboard/ReceptionAnalytics.tsx",
       "FE/src/shared/Communication.tsx"
     ],
     "backend": "BE/src/modules/chat/chat.routes.ts:165",
@@ -4423,14 +4402,15 @@
       "FE/src/api/auth.api.ts",
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:75",
+    "backend": "BE/src/modules/auth/auth.routes.ts:77",
     "handler": "authController.login",
     "status": "MATCH",
     "request": {
       "type": "object",
       "required": [
         "email",
-        "password"
+        "password",
+        "turnstileToken"
       ],
       "properties": {
         "email": {
@@ -4439,6 +4419,12 @@
         },
         "password": {
           "type": "string"
+        },
+        "turnstileToken": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "description": "Single-use Turnstile token with action login"
         }
       }
     },
@@ -4447,7 +4433,8 @@
       "200",
       "400",
       "401",
-      "500"
+      "500",
+      "503"
     ]
   },
   {
@@ -4460,7 +4447,7 @@
       "FE/src/api/auth.api.ts",
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:99",
+    "backend": "BE/src/modules/auth/auth.routes.ts:101",
     "handler": "authController.logout",
     "status": "MATCH",
     "request": {
@@ -4492,7 +4479,7 @@
     "consumers": [
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:123",
+    "backend": "BE/src/modules/auth/auth.routes.ts:125",
     "handler": "authController.refreshToken",
     "status": "MATCH",
     "request": {
@@ -4524,7 +4511,7 @@
       "FE/src/api/auth.api.ts",
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:137",
+    "backend": "BE/src/modules/auth/auth.routes.ts:139",
     "handler": "authController.getMe",
     "status": "MATCH",
     "request": null,
@@ -4547,7 +4534,7 @@
       "FE/src/features/coach/CoachProfile.tsx",
       "FE/src/shared/Profile.tsx"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:166",
+    "backend": "BE/src/modules/auth/auth.routes.ts:168",
     "handler": "authController.updateMe",
     "status": "MATCH",
     "request": {
@@ -4606,8 +4593,10 @@
     "method": "POST",
     "path": "/auth/me/avatar",
     "roles": "Authenticated (service checks ownership)",
-    "consumers": [],
-    "backend": "BE/src/modules/auth/auth.routes.ts:201",
+    "consumers": [
+      "FE/src/shared/Avatar.tsx"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:203",
     "handler": "authController.uploadAvatar",
     "status": "MATCH",
     "request": null,
@@ -4632,7 +4621,7 @@
       "FE/src/shared/api.ts",
       "FE/src/shared/Profile.tsx"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:226",
+    "backend": "BE/src/modules/auth/auth.routes.ts:228",
     "handler": "authController.changePassword",
     "status": "MATCH",
     "request": {
@@ -4669,7 +4658,7 @@
     "consumers": [
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:259",
+    "backend": "BE/src/modules/auth/auth.routes.ts:261",
     "handler": "authController.forgotPassword",
     "status": "MATCH",
     "request": {
@@ -4701,7 +4690,7 @@
     "consumers": [
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:287",
+    "backend": "BE/src/modules/auth/auth.routes.ts:289",
     "handler": "authController.resetPassword",
     "status": "MATCH",
     "request": {
@@ -4742,10 +4731,7 @@
     "path": "/attendance",
     "roles": "MEMBER, COACH, MANAGER, RECEPTIONIST, ADMIN",
     "consumers": [
-<<<<<<< HEAD
-=======
       "FE/src/features/reception/classes/ClassesPage.tsx",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
       "FE/src/shared/Attendance.tsx"
     ],
     "backend": "BE/src/modules/attendance/attendance.routes.ts:54",
@@ -5298,15 +5284,14 @@
     ]
   },
   {
-<<<<<<< HEAD
-=======
     "key": "GET /attendance/monitoring",
     "feature": "attendance",
     "method": "GET",
     "path": "/attendance/monitoring",
     "roles": "Authenticated (service checks ownership)",
     "consumers": [
-      "FE/src/features/reception/attendance/AttendancePage.tsx"
+      "FE/src/features/reception/attendance/AttendancePage.tsx",
+      "FE/src/features/reception/dashboard/ReceptionAnalytics.tsx"
     ],
     "backend": "BE/src/modules/attendance/attendance.routes.ts:590",
     "handler": "controller.getReceptionMonitoring",
@@ -5527,7 +5512,6 @@
     ]
   },
   {
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "key": "GET /classes/{id}/registrations",
     "feature": "classes",
     "method": "GET",
@@ -5558,11 +5542,7 @@
     "consumers": [
       "FE/src/features/manage/AdminDashboard.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/reports/reports.routes.ts:13",
-=======
     "backend": "BE/src/modules/reports/reports.routes.ts:20",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "handler": "async (req, res) => {\r",
     "status": "MATCH",
     "request": null,
@@ -5631,21 +5611,14 @@
     "feature": "staff-candidates",
     "method": "GET",
     "path": "/staff-candidates",
-    "roles": "ADMIN, MANAGER",
+    "roles": "Authenticated (service checks ownership)",
     "consumers": [
       "FE/src/features/manage/AdminFacilities.tsx",
-<<<<<<< HEAD
-      "FE/src/features/operations/OperationsPage.tsx"
-    ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:46",
-    "handler": "(req) => requestContext.run({ ...requestContext.getStore(), ...(req.user.role === \"ADMIN\" ? { facilityId: undefined } : {}) }, () =>",
-=======
       "FE/src/features/manage/ManagerUsers.tsx",
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:65",
     "handler": "(req) =>",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -5663,17 +5636,14 @@
     "path": "/coaches/{id}/specializations",
     "roles": "Authenticated (service checks ownership)",
     "consumers": [
+      "FE/src/features/coach/CoachProfile.tsx",
       "FE/src/features/manage/ManagerUsers.tsx",
       "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/shared/coachEligibility.ts",
       "FE/src/features/manage/ResourcePage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:52",
-    "handler": "(req) =>\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:87",
     "handler": "async (req) => {",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -5695,13 +5665,8 @@
       "FE/src/features/operations/OperationsPage.tsx",
       "FE/src/features/manage/ResourcePage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:144",
-    "handler": "(req) =>\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:182",
     "handler": "(req) =>",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -5730,17 +5695,12 @@
     "feature": "leave-requests",
     "method": "GET",
     "path": "/leave-requests/{id}/affected",
-    "roles": "ADMIN, MANAGER",
+    "roles": "Authenticated (service checks ownership)",
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:55",
-    "handler": "async (req) => {\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:91",
     "handler": "async (req) => {",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -5765,7 +5725,7 @@
       "FE/src/shared/FacilityBoundary.tsx",
       "FE/src/shared/forms/SchemaForm.tsx"
     ],
-    "backend": "BE/src/modules/facilities/facilities.route.ts:13",
+    "backend": "BE/src/modules/facilities/facilities.route.ts:23",
     "handler": "Controller.getFacilities",
     "status": "MATCH",
     "request": null,
@@ -5802,7 +5762,7 @@
       "FE/src/shared/FacilityBoundary.tsx",
       "FE/src/shared/forms/SchemaForm.tsx"
     ],
-    "backend": "BE/src/modules/facilities/facilities.route.ts:24",
+    "backend": "BE/src/modules/facilities/facilities.route.ts:34",
     "handler": "Controller.createFacility",
     "status": "MATCH",
     "request": {
@@ -5861,7 +5821,7 @@
       "FE/src/features/manage/ManagerUsers.tsx",
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/facilities/facilities.route.ts:16",
+    "backend": "BE/src/modules/facilities/facilities.route.ts:26",
     "handler": "Controller.getFacilityById",
     "status": "MATCH",
     "request": null,
@@ -5883,7 +5843,7 @@
       "FE/src/features/manage/AdminFacilities.tsx",
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/facilities/facilities.route.ts:33",
+    "backend": "BE/src/modules/facilities/facilities.route.ts:43",
     "handler": "Controller.updateFacility",
     "status": "MATCH",
     "request": {
@@ -5928,7 +5888,7 @@
       "FE/src/features/manage/ManagerUsers.tsx",
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/facilities/facilities.route.ts:43",
+    "backend": "BE/src/modules/facilities/facilities.route.ts:53",
     "handler": "Controller.assignStaff",
     "status": "MATCH",
     "request": {
@@ -5960,6 +5920,75 @@
     ]
   },
   {
+    "key": "POST /facilities/{facilityId}/coaches",
+    "feature": "facilities",
+    "method": "POST",
+    "path": "/facilities/{facilityId}/coaches",
+    "roles": "ADMIN, MANAGER",
+    "consumers": [
+      "FE/src/features/manage/ManagerUsers.tsx",
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/facilities/facilities.route.ts:13",
+    "handler": "Controller.createFacilityCoach",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "MALE",
+            "FEMALE",
+            "OTHER"
+          ]
+        },
+        "dateOfBirth": {
+          "type": "string"
+        },
+        "experienceYears": {
+          "type": "integer"
+        },
+        "specialization": {
+          "type": "string"
+        },
+        "bio": {
+          "type": "string"
+        },
+        "sportIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "email",
+        "fullName",
+        "sportIds"
+      ]
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  {
     "key": "DELETE /facilities/{facilityId}/staff/{userId}/{role}",
     "feature": "facilities",
     "method": "DELETE",
@@ -5969,7 +5998,7 @@
       "FE/src/features/manage/AdminFacilities.tsx",
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/facilities/facilities.route.ts:53",
+    "backend": "BE/src/modules/facilities/facilities.route.ts:63",
     "handler": "Controller.removeStaff",
     "status": "MATCH",
     "request": null,
@@ -5986,19 +6015,14 @@
     "feature": "rooms",
     "method": "PUT",
     "path": "/rooms/{id}/capabilities",
-    "roles": "ADMIN, MANAGER",
+    "roles": "Authenticated (service checks ownership)",
     "consumers": [
       "FE/src/features/manage/ManagerRooms.tsx",
       "FE/src/features/operations/OperationsPage.tsx",
       "FE/src/features/manage/ResourcePage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:84",
-    "handler": "async (req) =>\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:122",
     "handler": "async (req) =>",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6039,13 +6063,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:122",
-    "handler": "(req) =>\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:160",
     "handler": "(req) =>",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6082,17 +6101,12 @@
     "feature": "slots",
     "method": "GET",
     "path": "/slots",
-    "roles": "ADMIN, MANAGER",
+    "roles": "Authenticated (service checks ownership)",
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:199",
-    "handler": "() =>\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:238",
     "handler": "() =>",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6108,17 +6122,12 @@
     "feature": "slots",
     "method": "POST",
     "path": "/slots",
-    "roles": "ADMIN, MANAGER",
+    "roles": "Authenticated (service checks ownership)",
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:202",
-    "handler": "(req) =>\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:241",
     "handler": "(req) =>",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6152,17 +6161,12 @@
     "feature": "schedule-patterns",
     "method": "GET",
     "path": "/schedule-patterns",
-    "roles": "ADMIN, MANAGER",
+    "roles": "Authenticated (service checks ownership)",
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:205",
-    "handler": "() =>\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:244",
     "handler": "() =>",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6178,17 +6182,12 @@
     "feature": "schedule-patterns",
     "method": "POST",
     "path": "/schedule-patterns",
-    "roles": "ADMIN, MANAGER",
+    "roles": "Authenticated (service checks ownership)",
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:208",
-    "handler": "(req) =>\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:247",
     "handler": "(req) =>",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6243,13 +6242,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:279",
-    "handler": "async (req) => {\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:318",
     "handler": "async (req) => {",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6269,13 +6263,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:298",
-    "handler": "async (req) => {\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:342",
     "handler": "(req) => createStaffLeave(req.user, req.body)",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6311,17 +6300,12 @@
     "feature": "leave-requests",
     "method": "PATCH",
     "path": "/leave-requests/{id}",
-    "roles": "ADMIN, MANAGER",
+    "roles": "Authenticated (service checks ownership)",
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:334",
-    "handler": "(req) =>\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:364",
     "handler": "(req) =>",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6397,13 +6381,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:458",
-    "handler": "(req) =>\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:494",
     "handler": "async (req) =>",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6423,13 +6402,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:469",
-    "handler": "(req) =>\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:507",
     "handler": "(req) => {",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6463,13 +6437,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:505",
-    "handler": "async (req) => {\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:554",
     "handler": "async (req) => {",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6489,13 +6458,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:520",
-    "handler": "async (req) => {\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:569",
     "handler": "async (req) => {",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6529,13 +6493,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:540",
-    "handler": "async (req) => {\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:590",
     "handler": "async (req) => {",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6555,13 +6514,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:486",
-    "handler": "(req) =>\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:533",
     "handler": "async (req) => {",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6597,18 +6551,13 @@
     "feature": "audit-logs",
     "method": "GET",
     "path": "/audit-logs",
-    "roles": "ADMIN, MANAGER",
+    "roles": "Authenticated (service checks ownership)",
     "consumers": [
       "FE/src/features/manage/AuditLogPage.tsx",
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:504",
-    "handler": "(req) => getAuditFeed(req.user.role, req.query)",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:551",
     "handler": "(req) =>",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": null,
     "query": [
@@ -6650,13 +6599,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:548",
-    "handler": "() =>\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:599",
     "handler": "() =>",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6676,13 +6620,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:556",
-    "handler": "async (req) => {\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:607",
     "handler": "async (req) => {",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6727,13 +6666,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-<<<<<<< HEAD
-    "backend": "BE/src/modules/operations/operations.routes.ts:602",
-    "handler": "(req) =>\r",
-=======
     "backend": "BE/src/modules/operations/operations.routes.ts:653",
     "handler": "(req) =>",
->>>>>>> df076c41bdcf8949936a16613563fd5eda0114f0
     "status": "MATCH",
     "request": {
       "type": "object",
