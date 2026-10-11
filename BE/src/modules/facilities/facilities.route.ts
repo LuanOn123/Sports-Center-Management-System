@@ -4,7 +4,7 @@ import { authorize } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
 import { checkFacilityScope } from "../../middlewares/facilityScope.js";
 import * as Controller from "./facilities.controller.js";
-import { CreateFacilitySchema, UpdateFacilitySchema, AssignStaffSchema, AssignManagerSchema, CreateFacilityCoachSchema } from "./facilities.schema.js";
+import { CreateFacilitySchema, UpdateFacilitySchema, AssignStaffSchema, AssignManagerSchema, CreateFacilityCoachSchema, CreateFacilityReceptionistSchema } from "./facilities.schema.js";
 
 const router = Router();
 router.put("/:facilityId/manager", authenticate, authorize("ADMIN"), checkFacilityScope, validate(AssignManagerSchema), Controller.setFacilityManager);
@@ -17,6 +17,16 @@ router.post(
   checkFacilityScope,
   validate(CreateFacilityCoachSchema),
   Controller.createFacilityCoach
+);
+
+// Manager / Admin tạo Lễ tân tại cơ sở
+router.post(
+  "/:facilityId/receptionists",
+  authenticate,
+  authorize("ADMIN", "MANAGER"),
+  checkFacilityScope,
+  validate(CreateFacilityReceptionistSchema),
+  Controller.createFacilityReceptionist
 );
 
 // Lấy danh sách facility (Dùng chung, scope lọc theo role)

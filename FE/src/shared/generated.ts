@@ -62,6 +62,7 @@ export type PostFacilitiesRequest = { "code": string; "name": string; "address":
 export type PutFacilitiesFacilityIdRequest = { "code"?: string; "name"?: string; "address"?: string; "contactInfo"?: string; "timezone"?: string; "isActive"?: boolean };
 export type PostFacilitiesFacilityIdStaffRequest = { "userId": string; "role": "MANAGER" | "COACH" | "RECEPTIONIST" };
 export type PostFacilitiesFacilityIdCoachesRequest = { "email": string; "fullName": string; "password"?: string; "phone"?: string; "gender"?: "MALE" | "FEMALE" | "OTHER"; "dateOfBirth"?: string; "experienceYears"?: number; "specialization"?: string; "bio"?: string; "sportIds": Array<string> };
+export type PostFacilitiesFacilityIdReceptionistsRequest = { "email": string; "fullName": string; "password"?: string; "phone"?: string; "gender"?: "MALE" | "FEMALE" | "OTHER"; "dateOfBirth"?: string };
 export type PutRoomsIdCapabilitiesRequest = { "values": {  } };
 export type PutSubjectsIdRequirementsRequest = { "values": {  } };
 export type PostSlotsRequest = { "name": string; "startMinute": number; "endMinute": number };

@@ -6854,6 +6854,73 @@
       "409"
     ]
   },
+  "POST /facilities/{facilityId}/receptionists": {
+    "path": "/facilities/{facilityId}/receptionists",
+    "method": "POST",
+    "summary": "Tạo tài khoản lễ tân tại cơ sở",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "facilityId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "MALE",
+            "FEMALE",
+            "OTHER"
+          ]
+        },
+        "dateOfBirth": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "email",
+        "fullName"
+      ]
+    },
+    "statusCodes": [
+      "201",
+      "400",
+      "403",
+      "409"
+    ]
+  },
   "DELETE /facilities/{facilityId}/staff/{userId}/{role}": {
     "path": "/facilities/{facilityId}/staff/{userId}/{role}",
     "method": "DELETE",

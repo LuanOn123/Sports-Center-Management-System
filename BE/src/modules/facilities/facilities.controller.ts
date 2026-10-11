@@ -6,6 +6,7 @@ import {
   UpdateFacilitySchema,
   AssignStaffSchema,
   CreateFacilityCoachSchema,
+  CreateFacilityReceptionistSchema,
 } from "./facilities.schema.js";
 import { User } from "../../models/User.js";
 import { CoachProfile } from "../../models/CoachProfile.js";
@@ -368,6 +369,88 @@ export async function createFacilityCoach(req: Request, res: Response): Promise<
   } catch (error) {
     await User.deleteOne({ _id: mongoUser._id }).catch(() => {});
     await CoachProfile.deleteOne({ _id: mongoProfile._id }).catch(() => {});
+    throw error;
+  }
+}
+
+export async function createFacilityReceptionist(req: Request, res: Response): Promise<void> {
+  const facilityId = req.user?.role === "MANAGER"
+    ? requestContext.getStore()!.facilityId!
+    : String(req.params.facilityId);
+
+  const data = CreateFacilityReceptionistSchema.parse(req.body);
+
+  const facility = await prisma.facility.findUnique({ where: { id: facilityId } });
+  if (!facility || !facility.isActive) {
+    throw new AppError("Facility not found or inactive", 404);
+  }
+
+  const [existingMongo, existingPg] = await Promise.all([
+    User.findOne({ email: data.email }),
+    prisma.user.findUnique({ where: { email: data.email } }),
+  ]);
+  if (existingMongo || existingPg) {
+    throw new AppError("Email is already in use", 409);
+  }
+
+  const hashedPassword = await hashPassword(data.password || "Receptionist@123456");
+
+  const mongoUser = new User({
+    email: data.email,
+    password: hashedPassword,
+    fullName: data.fullName,
+    phone: data.phone || null,
+    gender: data.gender || null,
+    dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+    role: "RECEPTIONIST",
+  });
+  await mongoUser.save();
+  const userId = mongoUser._id.toString();
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const pgUser = await tx.user.create({
+        data: {
+          id: userId,
+          email: data.email,
+          password: hashedPassword,
+          fullName: data.fullName,
+          phone: data.phone || null,
+          gender: (data.gender as any) || null,
+          dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+          role: "RECEPTIONIST",
+        },
+      });
+
+      const facilityStaff = await tx.facilityStaff.create({
+        data: {
+          userId,
+          facilityId,
+          role: "RECEPTIONIST",
+          isActive: true,
+        },
+      });
+
+      return { pgUser, facilityStaff };
+    });
+
+    sendSuccess(
+      res,
+      {
+        id: userId,
+        email: mongoUser.email,
+        fullName: mongoUser.fullName,
+        phone: mongoUser.phone,
+        gender: mongoUser.gender,
+        role: "RECEPTIONIST",
+        isActive: true,
+        facilityStaff: result.facilityStaff,
+      },
+      "Receptionist created successfully",
+      201
+    );
+  } catch (error) {
+    await User.deleteOne({ _id: mongoUser._id }).catch(() => {});
     throw error;
   }
 }

@@ -36,3 +36,14 @@ export const CreateFacilityCoachSchema = z.object({
 });
 
 export type CreateFacilityCoachInput = z.infer<typeof CreateFacilityCoachSchema>;
+
+export const CreateFacilityReceptionistSchema = z.object({
+  email: z.string().email("Email không hợp lệ"),
+  fullName: z.string().trim().min(1, "Họ tên không được để trống"),
+  password: z.string().min(6, "Mật khẩu tối thiểu 6 ký tự").optional(),
+  phone: z.string().regex(/^[0-9+\-() ]*$/, "Số điện thoại không hợp lệ").optional(),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
+  dateOfBirth: z.string().optional(),
+});
+
+export type CreateFacilityReceptionistInput = z.infer<typeof CreateFacilityReceptionistSchema>;
