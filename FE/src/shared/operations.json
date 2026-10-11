@@ -6395,6 +6395,16 @@
         "schema": {
           "type": "string"
         }
+      },
+      {
+        "name": "role",
+        "in": "query",
+        "required": false,
+        "description": "Lọc ứng viên theo role. Admin truyền COACH để lấy HLV chưa phân công.",
+        "schema": {
+          "type": "string",
+          "enum": ["MANAGER", "COACH"]
+        }
       }
     ],
     "body": null,

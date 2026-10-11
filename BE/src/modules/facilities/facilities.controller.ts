@@ -53,7 +53,47 @@ export async function getFacilities(
       },
     };
   }
-  const facilities = await prisma.facility.findMany({ where, ...(req.user?.role === "ADMIN" ? { include: { staffs: { where: { isActive: true, role: "MANAGER" }, include: { user: { select: { id: true, fullName: true, email: true } } } } } } : {}), orderBy: { name: "asc" } });
+  const facilities = await prisma.facility.findMany({
+    where,
+    ...(req.user?.role === "ADMIN"
+      ? {
+          include: {
+            staffs: {
+              where: {
+                isActive: true,
+                role: { in: ["MANAGER", "COACH"] },
+              },
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    role: true,
+                    coachProfile: {
+                      select: {
+                        id: true,
+                        specialization: true,
+                        experienceYears: true,
+                        bio: true,
+                        specializations: {
+                          select: {
+                            sport: {
+                              select: { id: true, name: true },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        }
+      : {}),
+    orderBy: { name: "asc" },
+  });
   sendSuccess(res, facilities);
 }
 
@@ -140,9 +180,11 @@ export async function assignStaff(req: Request, res: Response): Promise<void> {
     : String(req.params.facilityId);
   const data = AssignStaffSchema.parse(req.body);
   if (req.user?.role === "ADMIN") {
-    if (data.role !== "MANAGER") throw new AppError("Admin chỉ phân công quản lý cơ sở", 403);
-    sendSuccess(res, await assignFacilityManager(facilityId, data.userId), "Staff assigned successfully", 201);
-    return;
+    if (data.role === "MANAGER") {
+      sendSuccess(res, await assignFacilityManager(facilityId, data.userId), "Staff assigned successfully", 201);
+      return;
+    }
+    if (data.role !== "COACH") throw new AppError("Admin chỉ phân công quản lý hoặc HLV vào cơ sở", 403);
   }
 
   if (req.user?.role === "MANAGER" && data.role === "MANAGER")

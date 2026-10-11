@@ -88,10 +88,12 @@ route("get", "/staff-candidates", [staff], (req) =>
         where: {
           isActive: true,
           ...(req.user.role === "ADMIN"
-            ? {
-                role: "MANAGER",
-                facilityStaffs: { none: { role: "MANAGER", isActive: true } },
-              }
+            ? req.query.role === "COACH"
+              ? { role: "COACH", facilityStaffs: { none: { isActive: true } } }
+              : {
+                  role: "MANAGER",
+                  facilityStaffs: { none: { role: "MANAGER", isActive: true } },
+                }
             : { role: "COACH", facilityStaffs: { none: { isActive: true } } }),
         },
         select: {
