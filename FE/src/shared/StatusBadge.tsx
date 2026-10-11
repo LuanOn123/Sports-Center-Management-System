@@ -1,3 +1,4 @@
+import { CheckCircle2, Clock, XCircle } from "lucide-react";
 import { display } from "./config";
 
 export function StatusBadge({ value }: { value: unknown }) {
@@ -11,9 +12,11 @@ export function StatusBadge({ value }: { value: unknown }) {
     "COMPLETED",
     "PAID",
     "AVAILABLE",
+    "APPROVED",
+    "RESOLVED",
   ].includes(status)
     ? "success"
-    : ["PENDING", "SUSPENDED", "LATE", "LIMITED"].includes(status)
+    : ["PENDING", "SUSPENDED", "LATE", "LIMITED", "OPEN", "IN_PROGRESS"].includes(status)
       ? "warning"
       : [
             "FALSE",
@@ -23,6 +26,8 @@ export function StatusBadge({ value }: { value: unknown }) {
             "ABSENT",
             "INACTIVE",
             "UNAVAILABLE",
+            "REJECTED",
+            "CLOSED",
           ].includes(status)
         ? "danger"
         : ["SCHEDULED", "ISSUED", "PREMIUM", "REFUNDED", "RESERVED"].includes(
@@ -30,5 +35,22 @@ export function StatusBadge({ value }: { value: unknown }) {
             )
           ? "info"
           : "neutral";
-  return <span className={`badge badge-${tone}`}>{display(value)}</span>;
+
+  const Icon = ["APPROVED", "SUCCESS", "COMPLETED", "RESOLVED"].includes(status)
+    ? CheckCircle2
+    : ["PENDING", "IN_PROGRESS", "OPEN"].includes(status)
+      ? Clock
+      : ["REJECTED", "FAILED", "CANCELLED", "CLOSED"].includes(status)
+        ? XCircle
+        : null;
+
+  return (
+    <span
+      className={`badge badge-${tone}`}
+      style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}
+    >
+      {Icon && <Icon size={12} aria-hidden="true" />}
+      <span>{display(value)}</span>
+    </span>
+  );
 }

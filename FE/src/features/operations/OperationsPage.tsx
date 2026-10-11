@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Calendar } from "lucide-react";
 import { api, type RecordData } from "../../shared/api";
+import { StatusBadge } from "../../shared/StatusBadge";
 import { getFacilityId } from "../../shared/facility";
 import {
   assertCoachCanTeach,
@@ -109,7 +111,7 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
         ? "POST /facilities/{facilityId}/staff"
         : kind === "slots" && manager
           ? "POST /slots"
-          : kind === "leave" && role === "COACH"
+          : kind === "leave" && (role === "COACH" || role === "RECEPTIONIST")
             ? "POST /leave-requests"
             : kind === "issues" && member
               ? "POST /issues"
@@ -209,175 +211,179 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
         />
       ) : (
         <div className="operations-list">
-          {visibleRows.map((row) => (
-            <article className="panel" key={String(row.id)}>
-              <RequestHeading>{titleOf(row)}</RequestHeading>
-              {reviewRequests && (
-                <p>
-                  Người gửi:{" "}
-                  {String(
-                    at(row, "requester.fullName") ||
-                      at(row, "user.fullName") ||
-                      "Chưa có thông tin",
-                  )}{" "}
-                  ·{" "}
-                  {display(
-                    at(row, "requester.role") ||
-                      row.requesterRole ||
-                      (row.coachId ? "COACH" : "MEMBER"),
-                  )}
-                </p>
-              )}
-              {reviewRequests && row.decisionReason != null && (
-                <p>Lý do quyết định: {String(row.decisionReason)}</p>
-              )}
-              <p>
-                {reviewRequests && row.status
-                  ? requestStatusText(row.status)
-                  : display(row.status || row.role || row.action || row.code)}
-              </p>
-              {row.description != null &&
-                !attendanceReportData(row.description) && (
-                  <p>{String(row.description)}</p>
-                )}
-              {kind === "issues" && attendanceReportData(row.description) && (
-                <AttendanceReportReview
-                  issue={row}
-                  manager={role === "MANAGER"}
-                  onSuccess={done}
-                />
-              )}
-              {row.reason != null && <p>{String(row.reason)}</p>}
-              {row.response != null && <p>Phản hồi: {String(row.response)}</p>}
-              {row.startTime != null && (
-                <p>
-                  {display(row.startTime)} → {display(row.endTime)}
-                </p>
-              )}
-              {row.startMinute != null && (
-                <p>
-                  {clock(Number(row.startMinute))} –{" "}
-                  {clock(Number(row.endMinute))}
-                </p>
-              )}
-              {row.amount != null && (
-                <p>{Number(row.amount).toLocaleString("vi-VN")} đ</p>
-              )}
-              {kind === "audit" && (
-                <>
+          {visibleRows.map((row) =>
+            kind === "leave" ? (
+              <LeaveItem
+                key={String(row.id)}
+                row={row}
+                manager={manager}
+                onDecision={() => setDecision(row)}
+              />
+            ) : (
+              <article className="panel" key={String(row.id)}>
+                <RequestHeading>{titleOf(row)}</RequestHeading>
+                {reviewRequests && (
                   <p>
-                    Người thực hiện: {String(row.actorId)} ·{" "}
-                    {display(row.createdAt)}
+                    Người gửi:{" "}
+                    {String(
+                      at(row, "requester.fullName") ||
+                        at(row, "user.fullName") ||
+                        "Chưa có thông tin",
+                    )}{" "}
+                    ·{" "}
+                    {display(
+                      at(row, "requester.role") ||
+                        row.requesterRole ||
+                        (row.coachId ? "COACH" : "MEMBER"),
+                    )}
                   </p>
-                  <details>
-                    <summary>Nội dung thay đổi</summary>
-                    <pre>
-                      {JSON.stringify(
-                        { before: row.before, after: row.after },
-                        null,
-                        2,
-                      )}
-                    </pre>
-                  </details>
-                </>
-              )}
-              <div className="operations-actions">
-                {kind === "facilities" && admin && (
-                  <button
-                    className="button"
-                    onClick={() =>
-                      setModal({
-                        operation: "PUT /facilities/{facilityId}",
-                        params: { facilityId: String(row.id) },
-                        initial: row,
-                      })
-                    }
-                  >
-                    Chỉnh sửa
-                  </button>
                 )}
-                {kind === "staff" &&
-                  manager &&
-                  (admin || row.role !== "MANAGER") && (
-                    <button
-                      className="button"
-                      onClick={() =>
-                        void remove(
-                          "DELETE /facilities/{facilityId}/staff/{userId}/{role}",
-                          {
-                            facilityId,
-                            userId: String(row.userId),
-                            role: String(row.role),
-                          },
-                        )
-                      }
-                    >
-                      Gỡ phân công
-                    </button>
-                  )}
-                {kind === "leave" && manager && row.status === "PENDING" && (
-                  <button className="button" onClick={() => setDecision(row)}>
-                    Xử lý đơn nghỉ
-                  </button>
+                {reviewRequests && row.decisionReason != null && (
+                  <p>Lý do quyết định: {String(row.decisionReason)}</p>
                 )}
-                {kind === "issues" &&
-                  !member &&
+                <p>
+                  {reviewRequests && row.status
+                    ? requestStatusText(row.status)
+                    : display(row.status || row.role || row.action || row.code)}
+                </p>
+                {row.description != null &&
                   !attendanceReportData(row.description) && (
-                    <button
-                      className="button"
-                      onClick={() =>
-                        setModal({
-                          operation: "PATCH /issues/{id}",
-                          params: { id: String(row.id) },
-                          initial: row,
-                        })
-                      }
-                    >
-                      Phản hồi
-                    </button>
+                    <p>{String(row.description)}</p>
                   )}
-                {kind === "issues" && member && row.status === "OPEN" && (
+                {kind === "issues" && attendanceReportData(row.description) && (
+                  <AttendanceReportReview
+                    issue={row}
+                    manager={role === "MANAGER"}
+                    onSuccess={done}
+                  />
+                )}
+                {row.reason != null && <p>{String(row.reason)}</p>}
+                {row.response != null && <p>Phản hồi: {String(row.response)}</p>}
+                {row.startTime != null && (
+                  <p>
+                    {display(row.startTime)} → {display(row.endTime)}
+                  </p>
+                )}
+                {row.startMinute != null && (
+                  <p>
+                    {clock(Number(row.startMinute))} –{" "}
+                    {clock(Number(row.endMinute))}
+                  </p>
+                )}
+                {row.amount != null && (
+                  <p>{Number(row.amount).toLocaleString("vi-VN")} đ</p>
+                )}
+                {kind === "audit" && (
                   <>
-                    <button
-                      className="button"
-                      onClick={() =>
-                        setModal({
-                          operation: "PUT /issues/{id}",
-                          params: { id: String(row.id) },
-                          initial: row,
-                        })
-                      }
-                    >
-                      Sửa yêu cầu
-                    </button>
-                    <button
-                      className="button"
-                      onClick={() =>
-                        void remove("DELETE /issues/{id}", {
-                          id: String(row.id),
-                        })
-                      }
-                    >
-                      Xóa yêu cầu
-                    </button>
+                    <p>
+                      Người thực hiện: {String(row.actorId)} ·{" "}
+                      {display(row.createdAt)}
+                    </p>
+                    <details>
+                      <summary>Nội dung thay đổi</summary>
+                      <pre>
+                        {JSON.stringify(
+                          { before: row.before, after: row.after },
+                          null,
+                          2,
+                        )}
+                      </pre>
+                    </details>
                   </>
                 )}
-                {kind === "orders" && row.status === "PENDING" && (
-                  <button
-                    className="button primary"
-                    onClick={() =>
-                      setModal({
-                        operation: "POST /counter-orders/{id}/confirm",
-                        params: { id: String(row.id) },
-                      })
-                    }
-                  >
-                    Xác nhận đã thu tiền
-                  </button>
-                )}
-              </div>
-            </article>
-          ))}
+                <div className="operations-actions">
+                  {kind === "facilities" && admin && (
+                    <button
+                      className="button"
+                      onClick={() =>
+                        setModal({
+                          operation: "PUT /facilities/{facilityId}",
+                          params: { facilityId: String(row.id) },
+                          initial: row,
+                        })
+                      }
+                    >
+                      Chỉnh sửa
+                    </button>
+                  )}
+                  {kind === "staff" &&
+                    manager &&
+                    (admin || row.role !== "MANAGER") && (
+                      <button
+                        className="button"
+                        onClick={() =>
+                          void remove(
+                            "DELETE /facilities/{facilityId}/staff/{userId}/{role}",
+                            {
+                              facilityId,
+                              userId: String(row.userId),
+                              role: String(row.role),
+                            },
+                          )
+                        }
+                      >
+                        Gỡ phân công
+                      </button>
+                    )}
+                  {kind === "issues" &&
+                    !member &&
+                    !attendanceReportData(row.description) && (
+                      <button
+                        className="button"
+                        onClick={() =>
+                          setModal({
+                            operation: "PATCH /issues/{id}",
+                            params: { id: String(row.id) },
+                            initial: row,
+                          })
+                        }
+                      >
+                        Phản hồi
+                      </button>
+                    )}
+                  {kind === "issues" && member && row.status === "OPEN" && (
+                    <>
+                      <button
+                        className="button"
+                        onClick={() =>
+                          setModal({
+                            operation: "PUT /issues/{id}",
+                            params: { id: String(row.id) },
+                            initial: row,
+                          })
+                        }
+                      >
+                        Sửa yêu cầu
+                      </button>
+                      <button
+                        className="button"
+                        onClick={() =>
+                          void remove("DELETE /issues/{id}", {
+                            id: String(row.id),
+                          })
+                        }
+                      >
+                        Xóa yêu cầu
+                      </button>
+                    </>
+                  )}
+                  {kind === "orders" && row.status === "PENDING" && (
+                    <button
+                      className="button primary"
+                      onClick={() =>
+                        setModal({
+                          operation: "POST /counter-orders/{id}/confirm",
+                          params: { id: String(row.id) },
+                        })
+                      }
+                    >
+                      Xác nhận đã thu tiền
+                    </button>
+                  )}
+                </div>
+              </article>
+            ),
+          )}
         </div>
       )}
       {kind === "audit" && (
@@ -400,12 +406,19 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
       )}
       {modal && (
         <Modal title={title} onClose={() => setModal(undefined)}>
-          <OperationForm
-            {...modal}
-            managerOnly={!admin}
-            onSuccess={done}
-            onCancel={() => setModal(undefined)}
-          />
+          {modal.operation === "POST /leave-requests" ? (
+            <LeaveRequestForm
+              onSuccess={done}
+              onCancel={() => setModal(undefined)}
+            />
+          ) : (
+            <OperationForm
+              {...modal}
+              managerOnly={!admin}
+              onSuccess={done}
+              onCancel={() => setModal(undefined)}
+            />
+          )}
         </Modal>
       )}
       {decision && (
@@ -635,6 +648,289 @@ function PatternForm({ onSuccess }: { onSuccess: () => void }) {
     </form>
   );
 }
+export function parseLeaveRange(startTimeStr: string, endTimeStr: string) {
+  const start = new Date(startTimeStr);
+  const end = new Date(endTimeStr);
+  let inclusiveEnd = end;
+  const endMs = end.getTime();
+  const startMs = start.getTime();
+  if (
+    endMs > startMs &&
+    ((end.getUTCHours() === 17 && end.getUTCMinutes() === 0) ||
+      (end.getHours() === 0 && end.getMinutes() === 0))
+  ) {
+    inclusiveEnd = new Date(endMs - 1000);
+  }
+  const diffDays = Math.max(
+    1,
+    Math.round((endMs - startMs) / (24 * 3600 * 1000)),
+  );
+  const dtf = new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const startFormatted = dtf.format(start);
+  const endFormatted = dtf.format(inclusiveEnd);
+  return {
+    startFormatted,
+    endFormatted,
+    diffDays,
+    isSameDay: startFormatted === endFormatted,
+  };
+}
+
+function LeaveItem({
+  row,
+  manager,
+  onDecision,
+}: {
+  row: RecordData;
+  manager: boolean;
+  onDecision: () => void;
+}) {
+  const range =
+    row.startTime && row.endTime
+      ? parseLeaveRange(String(row.startTime), String(row.endTime))
+      : null;
+  const requesterName = String(
+    at(row, "requester.fullName") ||
+      at(row, "user.fullName") ||
+      row.coachName ||
+      "Nhân sự",
+  );
+  const requesterRole = String(
+    at(row, "requester.role") ||
+      row.requesterRole ||
+      (row.coachId ? "COACH" : "RECEPTIONIST"),
+  );
+  const status = String(row.status || "PENDING").toUpperCase();
+
+  return (
+    <article className="leave-card" key={String(row.id)}>
+      <div className="leave-header">
+        <div className="leave-requester-info">
+          <h3 className="leave-requester-name">{requesterName}</h3>
+          <span className="leave-role-badge">{display(requesterRole)}</span>
+        </div>
+        <StatusBadge value={status} />
+      </div>
+
+      {range && (
+        <div className="leave-date-pill">
+          <Calendar size={16} aria-hidden="true" />
+          <span>
+            {range.isSameDay
+              ? `Ngày ${range.startFormatted}`
+              : `${range.startFormatted} → ${range.endFormatted}`}
+          </span>
+          <span className="leave-days-count">{range.diffDays} ngày nghỉ</span>
+        </div>
+      )}
+
+      {row.reason != null && (
+        <div>
+          <div className="leave-section-title">Lý do xin nghỉ</div>
+          <p className="leave-reason-text">{String(row.reason)}</p>
+        </div>
+      )}
+
+      {status !== "PENDING" && (
+        <div className={`leave-decision-box ${status.toLowerCase()}`}>
+          <div className="leave-decision-header">
+            <span>
+              Kết quả:{" "}
+              {status === "APPROVED" ? "Đã duyệt nghỉ" : "Từ chối duyệt"}
+            </span>
+          </div>
+          {row.decisionReason != null && (
+            <p className="leave-decision-reason">
+              <strong>Lý do quyết định:</strong> {String(row.decisionReason)}
+            </p>
+          )}
+          {Boolean(row.decidedAt || row.updatedAt) && (
+            <div className="leave-decision-meta">
+              Thời điểm: {display(row.decidedAt || row.updatedAt)}
+              {Boolean(row.decidedBy) && ` · Người xử lý: ${String(row.decidedBy)}`}
+            </div>
+          )}
+        </div>
+      )}
+
+      {manager && status === "PENDING" && (
+        <div className="operations-actions" style={{ marginTop: "auto" }}>
+          <button className="button primary" onClick={onDecision}>
+            Xử lý đơn nghỉ
+          </button>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function LeaveRequestForm({
+  onSuccess,
+  onCancel,
+}: {
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const todayStr = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+  }).format(new Date());
+
+  const [startDate, setStartDate] = useState(todayStr);
+  const [endDate, setEndDate] = useState(todayStr);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>();
+
+  const calcDays = () => {
+    if (!startDate || !endDate) return 0;
+    const s = new Date(startDate);
+    const e = new Date(endDate);
+    const diff =
+      Math.round((e.getTime() - s.getTime()) / (24 * 3600 * 1000)) + 1;
+    return diff > 0 ? diff : 0;
+  };
+  const days = calcDays();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (days <= 0) {
+      setError(new Error("Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu."));
+      return;
+    }
+    const trimmedReason = reason.trim();
+    if (trimmedReason.length < 3 || trimmedReason.length > 1000) {
+      setError(new Error("Lý do xin nghỉ phải từ 3 đến 1000 ký tự."));
+      return;
+    }
+    setBusy(true);
+    setError(undefined);
+    try {
+      const startTime = new Date(`${startDate}T00:00:00+07:00`).toISOString();
+      const nextDay = new Date(`${endDate}T00:00:00+07:00`);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const endTime = nextDay.toISOString();
+
+      await api("POST /leave-requests", {
+        body: {
+          startTime,
+          endTime,
+          reason: trimmedReason,
+        },
+      });
+      onSuccess();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form className="operations-form" onSubmit={handleSubmit}>
+      {error != null && <ErrorState error={error} />}
+      <fieldset disabled={busy} style={{ border: 0, padding: 0 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "1rem",
+          }}
+        >
+          <label>
+            Từ ngày
+            <input
+              type="date"
+              required
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                if (endDate < e.target.value) setEndDate(e.target.value);
+              }}
+            />
+          </label>
+          <label>
+            Đến ngày
+            <input
+              type="date"
+              required
+              min={startDate}
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </label>
+        </div>
+
+        <div className="leave-form-summary">
+          <span>Thời gian xin nghỉ:</span>
+          <strong>
+            {days > 0 ? `${days} ngày` : "Khoảng ngày không hợp lệ"}
+          </strong>
+        </div>
+        <p className="leave-note">
+          * Đơn nghỉ áp dụng trọn ngày (từ 00:00 ngày bắt đầu đến 23:59 ngày kết thúc theo giờ Việt Nam).
+        </p>
+
+        <label>
+          Lý do xin nghỉ
+          <textarea
+            required
+            rows={4}
+            minLength={3}
+            maxLength={1000}
+            placeholder="Nhập lý do xin nghỉ (từ 3 đến 1000 ký tự)..."
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            style={{
+              padding: "0.7rem",
+              background: "var(--panel, #17191f)",
+              color: "inherit",
+              border: "1px solid #ffffff30",
+              borderRadius: "8px",
+              resize: "vertical",
+            }}
+          />
+          <div
+            className={`character-counter ${
+              reason.length > 0 &&
+              (reason.trim().length < 3 || reason.trim().length > 1000)
+                ? "invalid"
+                : ""
+            }`}
+          >
+            {reason.trim().length}/1000 ký tự (tối thiểu 3)
+          </div>
+        </label>
+
+        <div
+          className="operations-actions"
+          style={{ justifyContent: "flex-end", marginTop: "1rem" }}
+        >
+          <button
+            type="button"
+            className="button"
+            onClick={onCancel}
+            disabled={busy}
+          >
+            Hủy
+          </button>
+          <button
+            type="submit"
+            className="button primary"
+            disabled={busy || days <= 0 || reason.trim().length < 3}
+          >
+            {busy ? "Đang gửi..." : "Gửi đơn nghỉ phép"}
+          </button>
+        </div>
+      </fieldset>
+    </form>
+  );
+}
+
 function LeaveDecision({
   leave,
   onSuccess,
@@ -731,8 +1027,69 @@ function LeaveDecision({
         }
       }}
     >
+      {error != null && <ErrorState error={error} />}
       <fieldset disabled={busy}>
-        <p>{String(leave.reason)}</p>
+        <div
+          className="leave-decision-summary panel"
+          style={{
+            marginBottom: "1.25rem",
+            padding: "1rem",
+            background: "rgba(255, 255, 255, 0.03)",
+            borderRadius: "8px",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "0.5rem",
+            }}
+          >
+            <strong>
+              {String(
+                at(leave, "requester.fullName") ||
+                  at(leave, "user.fullName") ||
+                  leave.coachName ||
+                  "Nhân sự gửi đơn",
+              )}
+            </strong>
+            <span className="leave-role-badge">
+              {display(
+                at(leave, "requester.role") ||
+                  leave.requesterRole ||
+                  (leave.coachId ? "COACH" : "RECEPTIONIST"),
+              )}
+            </span>
+          </div>
+          {Boolean(leave.startTime && leave.endTime) && (
+            <div
+              style={{
+                fontSize: "0.9rem",
+                color: "var(--primary, #38bdf8)",
+                marginBottom: "0.5rem",
+              }}
+            >
+              Khoảng nghỉ:{" "}
+              {(() => {
+                const r = parseLeaveRange(
+                  String(leave.startTime),
+                  String(leave.endTime),
+                );
+                return `${r.startFormatted} → ${r.endFormatted} (${r.diffDays} ngày)`;
+              })()}
+            </div>
+          )}
+          <div
+            style={{
+              fontSize: "0.9rem",
+              color: "var(--text-secondary, #cbd5e1)",
+            }}
+          >
+            <strong>Lý do xin nghỉ:</strong> {String(leave.reason)}
+          </div>
+        </div>
         <label>
           Quyết định
           <select value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -741,10 +1098,11 @@ function LeaveDecision({
           </select>
         </label>
         <label>
-          Lý do
+          Lý do quyết định
           <input
             required
             minLength={3}
+            placeholder="Nhập lý do duyệt hoặc từ chối..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
