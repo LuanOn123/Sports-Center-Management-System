@@ -1,3 +1,8 @@
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
 AGENTS/
 agents/
 .agents/
