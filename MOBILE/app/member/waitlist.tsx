@@ -5,11 +5,13 @@ import { getMyWaitlist, leaveWaitlist } from '../../services/workflowService';
 import { WorkflowScreen, WorkflowCard, WorkflowText, WorkflowButton, WorkflowState, workflowStatus } from '../../components/shared/WorkflowScreen';
 import { formatDate, formatTime } from '../../lib/format';
 import { showConfirm } from '../../lib/alert';
+import { memberProfileIdOf } from '../../lib/businessRules';
 
 export default function WaitlistScreen() {
-  const { currentFacility } = useAuth();
+  const { user, currentFacility } = useAuth();
+  const hasProfile = Boolean(memberProfileIdOf(user));
   const cache = useQueryClient();
-  const list = useQuery({ queryKey: ['waitlist', currentFacility?.id], queryFn: ({ signal }) => getMyWaitlist(signal), refetchInterval: 30_000 });
+  const list = useQuery({ queryKey: ['waitlist', currentFacility?.id], enabled: hasProfile, queryFn: ({ signal }) => getMyWaitlist(signal), refetchInterval: 30_000 });
   const leave = useMutation({ mutationFn: leaveWaitlist, onSettled: () => cache.invalidateQueries({ queryKey: ['waitlist'] }) });
   const promoted = list.data?.data.filter((entry) => entry.status === 'PROMOTED').map((entry) => entry.id).sort().join(',') || '';
   useEffect(() => {
@@ -17,7 +19,7 @@ export default function WaitlistScreen() {
   }, [promoted, cache]);
   return <WorkflowScreen title="Danh sách chờ" subtitle={currentFacility?.name} refreshing={list.isRefetching} onRefresh={() => { void list.refetch(); }}>
     <WorkflowText>Khi có chỗ trống, hệ thống xét theo thứ tự chờ và kiểm tra lại gói tập, quota, lịch học và quyết định chuyên cần. Vào danh sách chờ chưa đảm bảo có chỗ.</WorkflowText>
-    <WorkflowState pending={list.isPending} error={list.error || leave.error} retry={() => { void list.refetch(); }} empty={list.isSuccess && !list.data.data.length ? 'Chưa có lượt đăng ký chờ.' : undefined} />
+    <WorkflowState pending={hasProfile && list.isPending} error={list.error || leave.error} retry={() => { void list.refetch(); }} empty={!hasProfile ? 'Chưa có hồ sơ hội viên.' : list.isSuccess && !list.data.data.length ? 'Chưa có lượt đăng ký chờ.' : undefined} />
     {list.data?.data.map((entry) => <WorkflowCard key={entry.id} title={entry.schedule?.class?.name || 'Buổi học'}>
       <WorkflowText>{entry.schedule && `${formatDate(entry.schedule.startTime)} · ${formatTime(entry.schedule.startTime)}`}</WorkflowText>
       <WorkflowText>Thứ tự {entry.position} · {workflowStatus(entry.status)}</WorkflowText>

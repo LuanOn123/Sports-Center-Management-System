@@ -13,21 +13,19 @@ import { Brand } from '../shared/Brand';
 import { FacilityPicker } from '../shared/FacilityPicker';
 import { ClassCardSkeleton } from '../shared/Skeleton';
 import { PendingPaymentCard } from './membership/PendingPaymentCard';
+import { MissingMemberProfile } from './MissingMemberProfile';
 import { QuickAccessGrid } from '../shared/QuickAccessGrid';
 import { getQuickAccessForRole } from '../../navigation/quickAccessConfig';
 import { useMemberHome } from '../../hooks/member/useMemberHome';
 import { useUnreadNotificationCount } from '../../hooks/shared/useNotifications';
 import { Colors } from '../../constants/theme';
 import { TIER_LABEL } from '../../constants/membership';
+import { TRAINING_LEVEL_LABEL } from '../../constants/profile';
 import { formatDate, formatTime } from '../../lib/format';
+import { memberProfileIdOf } from '../../lib/businessRules';
 import type { User, MembershipTier, Enrollment } from '../../lib/types';
 import { ROUTES } from '../../navigation/routes';
 
-const LEVEL_LABEL: Record<string, string> = {
-  BEGINNER: 'Cơ bản',
-  INTERMEDIATE: 'Trung cấp',
-  ADVANCED: 'Nâng cao',
-};
 
 interface MemberHomeViewProps {
   user: User | null;
@@ -39,7 +37,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export function MemberHomeView({ user, facilityId }: MemberHomeViewProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const memberId = user?.memberProfile?.id ?? user?.id;
+  const memberId = memberProfileIdOf(user) ?? undefined;
   const unreadNotificationsCount = useUnreadNotificationCount();
 
   const {
@@ -104,7 +102,9 @@ export function MemberHomeView({ user, facilityId }: MemberHomeViewProps) {
       {/* Membership Status Card — key riêng cho từng nhánh: thẻ đổi từ FREE → ACTIVE khi dữ liệu
           về/thanh toán xong phải được mount lại. Nếu tái dùng cùng View rồi thêm `shadow-md` (biến CSS)
           sau lần render đầu, NativeWind in upgrade warning và crash "Couldn't find a navigation context". */}
-      {Boolean(status.activeSubscription) ? (
+      {!memberId ? (
+        <MissingMemberProfile key="membership-missing" />
+      ) : Boolean(status.activeSubscription) ? (
         /* ACTIVE MEMBERSHIP */
         <View key="membership-active" className="bg-bg-surface rounded-xl p-xl mb-lg border shadow-md" style={{ borderColor: Colors.tier[effectiveTier] + '60' }}>
           <View className="flex-row justify-between items-start mb-md">
@@ -175,7 +175,7 @@ export function MemberHomeView({ user, facilityId }: MemberHomeViewProps) {
           <View className="flex-1 bg-bg-surface rounded-lg p-lg border border-border">
             <Icon name="track-changes" size={20} color={Colors.primary} style={{ marginBottom: 4 }} />
             <Text className="text-xs text-text-muted font-bevn-regular uppercase tracking-wide">Trình độ</Text>
-            <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mt-0.5">{LEVEL_LABEL[user!.memberProfile!.trainingLevel!]}</Text>
+            <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mt-0.5">{TRAINING_LEVEL_LABEL[user!.memberProfile!.trainingLevel!]}</Text>
           </View>
           {Boolean(user?.memberProfile?.fitnessGoal) && (
             <View className="flex-[2] bg-bg-surface rounded-lg p-lg border border-border">

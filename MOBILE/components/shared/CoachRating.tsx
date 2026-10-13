@@ -55,9 +55,11 @@ interface CoachRatingProps {
   coachId: string;
   coachName?: string;
   classId?: string;
+  /** Tiêu đề thay thế (vd: màn chi tiết lớp đã có mục "Đánh giá" thì không lặp tên HLV) */
+  title?: string;
 }
 
-export function CoachRating({ coachId, coachName, classId }: CoachRatingProps) {
+export function CoachRating({ coachId, coachName, classId, title }: CoachRatingProps) {
   const { user } = useAuth();
   const isMember = user?.role === 'MEMBER';
 
@@ -131,7 +133,7 @@ export function CoachRating({ coachId, coachName, classId }: CoachRatingProps) {
   return (
     <View className="mb-xl">
       <View className="flex-row justify-between items-center">
-        <Text className="text-lg font-bold font-bevn-bold text-text-primary mb-md">Đánh Giá {coachName ? `· ${coachName}` : 'Huấn Luyện Viên'}</Text>
+        <Text className="text-lg font-bold font-bevn-bold text-text-primary mb-md">{title ?? `Đánh giá ${coachName ? `· ${coachName}` : 'huấn luyện viên'}`}</Text>
         {summary.totalFeedbacks > 0 && (
           <View className="flex-row items-center gap-1.5">
             <Stars value={Math.round(summary.averageRating ?? 0)} />

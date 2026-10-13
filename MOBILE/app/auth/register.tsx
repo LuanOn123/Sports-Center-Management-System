@@ -8,7 +8,7 @@ import { Link, useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Icon } from '../../components/shared/Icon';
+import { PasswordInput } from '../../components/shared/PasswordInput';
 import { useAuth } from '../../context/AuthContext';
 import { Colors } from '../../constants/theme';
 import { ApiError } from '../../lib/api';
@@ -16,6 +16,9 @@ import { Brand } from '../../components';
 import { showAlert } from '../../lib/alert';
 import { KeyboardAwareView } from '../../components/shared/KeyboardAwareView';
 import { ROUTES } from '../../navigation/routes';
+import { BirthDateField } from '../../components/shared/BirthDateField';
+import { memberBirthDateError, normalizeVnPhoneInput, vnPhoneError } from '../../lib/businessRules';
+import { VN_PHONE_MAX_DIGITS, VN_PHONE_MIN_DIGITS, VN_PHONE_PREFIX } from '../../constants/profile';
 
 const schema = z
   .object({
@@ -23,7 +26,14 @@ const schema = z
     email: z.string().email('Email không hợp lệ'),
     password: z.string().min(6, 'Mật khẩu ít nhất 6 ký tự'),
     confirmPassword: z.string().min(1, 'Nhập lại mật khẩu'),
-    phone: z.string().optional(),
+    phone: z.string().optional().superRefine((value, ctx) => {
+      const message = vnPhoneError(value);
+      if (message) ctx.addIssue({ code: 'custom', message });
+    }),
+    dateOfBirth: z.string().optional().superRefine((value, ctx) => {
+      const message = memberBirthDateError(value);
+      if (message) ctx.addIssue({ code: 'custom', message });
+    }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Mật khẩu xác nhận không khớp',
@@ -40,8 +50,6 @@ export default function RegisterScreen() {
   const { register: authRegister } = useAuth();
   const insets = useSafeAreaInsets();
   const scrollViewRef = React.useRef<ScrollView>(null);
-  const [showPwd, setShowPwd] = useState(false);
-  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
   React.useEffect(() => {
@@ -61,6 +69,7 @@ export default function RegisterScreen() {
       fullName: '',
       email: '',
       phone: '',
+      dateOfBirth: '',
       password: '',
       confirmPassword: '',
     },
@@ -74,6 +83,7 @@ export default function RegisterScreen() {
         password: data.password,
         fullName: data.fullName,
         phone: data.phone || undefined,
+        dateOfBirth: data.dateOfBirth || undefined,
       });
       Haptic.success();
       showAlert('Đăng ký thành công', 'Vui lòng đăng nhập để bắt đầu sử dụng tài khoản.', () => router.replace(ROUTES.login));
@@ -115,8 +125,7 @@ export default function RegisterScreen() {
 
         {/* Card */}
         <View className="bg-bg-surface rounded-xl p-xl border border-border">
-          <Text className="text-xl font-bold font-bevn-bold text-text-primary">Tạo tài khoản</Text>
-          <Text className="text-sm text-text-secondary mt-1 mb-xl font-bevn-regular">Điền thông tin để đăng ký thành viên</Text>
+          <Text className="text-xl font-bold font-bevn-bold text-text-primary text-center mb-xl">Tạo tài khoản</Text>
 
           {/* Full Name */}
           <View className="mb-lg">
@@ -173,66 +182,69 @@ export default function RegisterScreen() {
               name="phone"
               render={({ field: { onChange, value } }) => (
                 <TextInput
-                  className="bg-bg-elevated rounded-md p-md text-text-primary text-md border border-border font-bevn-regular"
+                  className={clsx('bg-bg-elevated rounded-md p-md text-text-primary text-md border font-bevn-regular', errors.phone ? 'border-status-failed' : 'border-border')}
                   placeholder="0901234567"
                   placeholderTextColor={Colors.text.muted}
-                  keyboardType="phone-pad"
+                  keyboardType="number-pad"
+                  autoComplete="tel"
                   value={value ?? ''}
-                  onChangeText={onChange}
+                  onChangeText={(text) => onChange(normalizeVnPhoneInput(text))}
                 />
               )}
             />
+            {errors.phone
+              ? <Text className="text-xs text-status-failed mt-1 font-bevn-regular">{errors.phone.message}</Text>
+              : <Text className="text-xs text-text-muted mt-1 font-bevn-regular">{`Bắt đầu bằng ${VN_PHONE_PREFIX}, gồm ${VN_PHONE_MIN_DIGITS}–${VN_PHONE_MAX_DIGITS} số`}</Text>}
+          </View>
+
+          {/* Date of birth (optional — giống web) */}
+          <View className="mb-lg">
+            <Text className="text-sm text-text-secondary mb-1.5 font-bevn-medium">Ngày sinh</Text>
+            <Controller
+              control={control}
+              name="dateOfBirth"
+              render={({ field: { onChange, value } }) => (
+                <BirthDateField value={value} onChange={onChange} hasError={Boolean(errors.dateOfBirth)} />
+              )}
+            />
+            {errors.dateOfBirth && <Text className="text-xs text-status-failed mt-1 font-bevn-regular">{errors.dateOfBirth.message}</Text>}
           </View>
 
           {/* Password */}
           <View className="mb-lg">
             <Text className="text-sm text-text-secondary mb-1.5 font-bevn-medium">Mật khẩu</Text>
-            <View className={clsx('flex-row items-center bg-bg-elevated rounded-md border pr-sm', errors.password ? 'border-status-failed' : 'border-border')}>
-              <Controller
-                control={control}
-                name="password"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput
-                    className="flex-1 p-md text-text-primary text-md font-bevn-regular"
-                    placeholder="Ít nhất 6 ký tự"
-                    placeholderTextColor={Colors.text.muted}
-                    secureTextEntry={!showPwd}
-                    value={value ?? ''}
-                    onChangeText={onChange}
-                    onFocus={() => handleInputFocus(180)}
-                  />
-                )}
-              />
-              <TouchableOpacity className="p-sm justify-center items-center" onPress={() => setShowPwd(p => !p)} activeOpacity={0.7}>
-                <Icon name={showPwd ? 'visibility-off' : 'visibility'} size={20} color={Colors.text.secondary} />
-              </TouchableOpacity>
-            </View>
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { onChange, value } }) => (
+                <PasswordInput
+                  value={value ?? ''}
+                  onChangeText={onChange}
+                  onFocus={() => handleInputFocus(180)}
+                  placeholder="Ít nhất 6 ký tự"
+                  hasError={Boolean(errors.password)}
+                />
+              )}
+            />
             {errors.password && <Text className="text-xs text-status-failed mt-1 font-bevn-regular">{errors.password.message}</Text>}
           </View>
 
           {/* Confirm Password */}
           <View className="mb-lg">
             <Text className="text-sm text-text-secondary mb-1.5 font-bevn-medium">Xác nhận mật khẩu</Text>
-            <View className={clsx('flex-row items-center bg-bg-elevated rounded-md border pr-sm', errors.confirmPassword ? 'border-status-failed' : 'border-border')}>
-              <Controller
-                control={control}
-                name="confirmPassword"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput
-                    className="flex-1 p-md text-text-primary text-md font-bevn-regular"
-                    placeholder="Nhập lại mật khẩu"
-                    placeholderTextColor={Colors.text.muted}
-                    secureTextEntry={!showConfirmPwd}
-                    value={value ?? ''}
-                    onChangeText={onChange}
-                    onFocus={() => handleInputFocus(260)}
-                  />
-                )}
-              />
-              <TouchableOpacity className="p-sm justify-center items-center" onPress={() => setShowConfirmPwd(p => !p)} activeOpacity={0.7}>
-                <Icon name={showConfirmPwd ? 'visibility-off' : 'visibility'} size={20} color={Colors.text.secondary} />
-              </TouchableOpacity>
-            </View>
+            <Controller
+              control={control}
+              name="confirmPassword"
+              render={({ field: { onChange, value } }) => (
+                <PasswordInput
+                  value={value ?? ''}
+                  onChangeText={onChange}
+                  onFocus={() => handleInputFocus(260)}
+                  placeholder="Nhập lại mật khẩu"
+                  hasError={Boolean(errors.confirmPassword)}
+                />
+              )}
+            />
             {errors.confirmPassword && <Text className="text-xs text-status-failed mt-1 font-bevn-regular">{errors.confirmPassword.message}</Text>}
           </View>
 

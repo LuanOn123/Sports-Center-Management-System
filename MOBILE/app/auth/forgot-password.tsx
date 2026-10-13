@@ -12,7 +12,7 @@ import {
 import clsx from 'clsx';
 import { Link, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Icon } from '../../components/shared/Icon';
+import { PasswordInput } from '../../components/shared/PasswordInput';
 import { KeyboardAwareView } from '../../components/shared/KeyboardAwareView';
 import { Colors } from '../../constants/theme';
 import { api, ApiError } from '../../lib/api';
@@ -225,32 +225,28 @@ export default function ForgotPasswordScreen() {
 
               <View className="mb-lg">
                 <Text className="text-sm text-text-secondary mb-1.5 font-bevn-medium">Mật khẩu mới</Text>
-                <View className="flex-row items-center bg-bg-elevated rounded-md border border-border pr-sm">
-                  <TextInput
-                    className="flex-1 p-md text-text-primary text-md font-bevn-regular"
-                    placeholder="Ít nhất 6 ký tự"
-                    placeholderTextColor={Colors.text.muted}
-                    secureTextEntry={!showPwd}
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                    onFocus={() => handleInputFocus(120)}
-                  />
-                  <TouchableOpacity className="p-sm justify-center items-center" onPress={() => { Haptic.light(); setShowPwd((p) => !p); }} activeOpacity={0.7}>
-                    <Icon name={showPwd ? 'visibility-off' : 'visibility'} size={20} color={Colors.text.secondary} />
-                  </TouchableOpacity>
-                </View>
+                <PasswordInput
+                  placeholder="Ít nhất 6 ký tự"
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  onFocus={() => handleInputFocus(120)}
+                  revealed={showPwd}
+                  onToggleReveal={() => setShowPwd((p) => !p)}
+                />
               </View>
 
               <View className="mb-lg">
                 <Text className="text-sm text-text-secondary mb-1.5 font-bevn-medium">Xác nhận mật khẩu mới</Text>
-                <TextInput
-                  className="bg-bg-elevated rounded-md p-md text-text-primary text-md border border-border font-bevn-regular"
+                {/* Dùng chung nút ẩn/hiện với ô mật khẩu mới */}
+                <PasswordInput
                   placeholder="Nhập lại mật khẩu mới"
-                  placeholderTextColor={Colors.text.muted}
-                  secureTextEntry={!showPwd}
+                  autoComplete="new-password"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   onFocus={() => handleInputFocus(180)}
+                  revealed={showPwd}
+                  showToggle={false}
                 />
               </View>
 

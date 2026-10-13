@@ -104,6 +104,16 @@ const SERVER_MESSAGE_VI: Record<string, string> = {
   'Cannot book a past class': 'Không thể đăng ký buổi học đã bắt đầu.',
   'You are already enrolled in this class': 'Bạn đã đăng ký buổi học này.',
   'Premium membership required to book this class': 'Lớp này yêu cầu gói Premium còn hiệu lực.',
+  // Tài khoản thiếu hồ sơ hội viên (thường do dữ liệu BE chưa đồng bộ) — câu theo web + hướng xử lý
+  'Member not found': 'Không tìm thấy hồ sơ hội viên. Vui lòng liên hệ trung tâm.',
+  'Member profile not found': 'Không tìm thấy hồ sơ hội viên. Vui lòng liên hệ trung tâm.',
+  // BE chặn khi hồ sơ hội viên chưa sẵn sàng / tài khoản không còn là MEMBER hoạt động (câu theo web khi có)
+  'Cannot checkout: user is not an active MEMBER': 'Tài khoản chưa sẵn sàng để mua gói (hồ sơ hội viên chưa được kích hoạt). Vui lòng liên hệ trung tâm.',
+  'Cannot create subscription: user is not an active MEMBER': 'Không thể đăng ký gói cho tài khoản không còn là hội viên hoạt động.',
+  'Cannot renew subscription: user is no longer an active MEMBER': 'Không thể gia hạn cho tài khoản không còn là hội viên hoạt động.',
+  'Cannot book class: user is not an active MEMBER': 'Chỉ hội viên đang hoạt động mới được đăng ký lớp.',
+  'Cannot enroll: user is not an active MEMBER': 'Chỉ hội viên đang hoạt động mới được đăng ký khóa học.',
+  'Cannot join waitlist: user is not an active MEMBER': 'Chỉ hội viên đang hoạt động mới được vào danh sách chờ.',
   FACILITY_CONTEXT_REQUIRED: 'Vui lòng chọn cơ sở để tiếp tục.',
   CONFLICTING_FACILITY_CONTEXT: 'Thông tin cơ sở không khớp. Vui lòng thử lại.',
   FORBIDDEN_SCOPE: 'Bạn không có quyền truy cập cơ sở này.',

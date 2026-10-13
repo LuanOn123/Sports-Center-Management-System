@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   ActivityIndicator,
   Platform,
   Keyboard,
@@ -14,9 +13,10 @@ import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { Icon } from '../../components/shared/Icon';
+import { PasswordInput } from '../../components/shared/PasswordInput';
 import { Avatar } from '../../components/shared/Avatar';
 import { ScreenHeader } from '../../components/shared/ScreenHeader';
 import { useAuth } from '../../context/AuthContext';
@@ -26,15 +26,8 @@ import { Colors } from '../../constants/theme';
 import { KeyboardAwareView } from '../../components/shared/KeyboardAwareView';
 import { Haptic } from '../../lib/haptics';
 import { CoachSpecializations } from '../../components/coach/CoachSpecializations';
+import { ProfileInfoForm } from '../../components/profile/ProfileInfoForm';
 
-const profileSchema = z.object({
-  fullName: z.string().trim().min(2, 'Ít nhất 2 ký tự').max(100, 'Tối đa 100 ký tự'),
-  phone: z.string().refine((value) => !value || /^[0-9+]{9,15}$/.test(value), 'Số điện thoại cần 9–15 chữ số').optional(),
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
-  dateOfBirth: z.string().refine((value) => !value || (/^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value && Date.parse(value) <= Date.now()), 'Ngày sinh cần dạng YYYY-MM-DD và không ở tương lai').optional(),
-  fitnessGoal: z.string().max(500).optional(),
-  trainingPreference: z.string().max(500).optional(),
-});
 const pwdSchema = z
   .object({
     currentPassword: z.string().min(1, 'Nhập mật khẩu hiện tại'),
@@ -45,14 +38,7 @@ const pwdSchema = z
     message: 'Mật khẩu xác nhận không khớp',
     path: ['confirmPassword'],
   });
-type ProfileForm = z.infer<typeof profileSchema>;
 type PwdForm = z.infer<typeof pwdSchema>;
-
-const LEVEL_OPTIONS = [
-  { value: 'BEGINNER', label: 'Cơ bản' },
-  { value: 'INTERMEDIATE', label: 'Trung cấp' },
-  { value: 'ADVANCED', label: 'Nâng cao' },
-];
 
 const ROLE_LABEL: Record<string, string> = {
   MEMBER: 'Hội viên',
@@ -61,17 +47,11 @@ const ROLE_LABEL: Record<string, string> = {
   MANAGER: 'Quản lý',
   ADMIN: 'Quản trị viên',
 };
-const LEVEL_LABEL: Record<string, string> = {
-  BEGINNER: 'Cơ bản',
-  INTERMEDIATE: 'Trung cấp',
-  ADVANCED: 'Nâng cao',
-};
-
 const FIELD_SCROLL_OFFSETS: Record<string, number> = {
-  fullName: 60,
-  phone: 140,
-  fitnessGoal: 220,
-  trainingPreference: 320,
+  fullName: 120,
+  phone: 360,
+  fitnessGoalNote: 560,
+  trainingNote: 820,
   currentPassword: 80,
   newPassword: 160,
   confirmPassword: 240,
@@ -82,12 +62,7 @@ export default function ProfileScreen() {
   const { user, logout, refreshUser } = useAuth();
   const isCoach = user?.role === 'COACH';
   const [tab, setTab] = useState<'info' | 'security'>('info');
-  const [editingLevel, setEditingLevel] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
-  const [showCurrentPwd, setShowCurrentPwd] = useState(false);
-  const [showNewPwd, setShowNewPwd] = useState(false);
-  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
-  const queryClient = useQueryClient();
 
   const scrollViewRef = useRef<ScrollView>(null);
   const inputRefs = useRef<Record<string, React.RefObject<any>>>({});
@@ -140,32 +115,6 @@ export default function ProfileScreen() {
     }, 120);
   };
 
-  const { control, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<ProfileForm>({
-    resolver: zodResolver(profileSchema),
-    defaultValues: {
-      fullName: user?.fullName ?? '',
-      phone: user?.phone ?? '',
-      gender: user?.gender,
-      dateOfBirth: user?.dateOfBirth?.slice(0, 10) ?? '',
-      fitnessGoal: user?.memberProfile?.fitnessGoal ?? '',
-      trainingPreference: user?.memberProfile?.trainingPreference ?? '',
-    },
-  });
-
-  // Sync form values when user data loads
-  React.useEffect(() => {
-    if (user) {
-      reset({
-        fullName: user.fullName ?? '',
-        phone: user.phone ?? '',
-        gender: user.gender,
-        dateOfBirth: user.dateOfBirth?.slice(0, 10) ?? '',
-        fitnessGoal: user.memberProfile?.fitnessGoal ?? '',
-        trainingPreference: user.memberProfile?.trainingPreference ?? '',
-      });
-    }
-  }, [user, reset]);
-
   const {
     control: pwdControl,
     handleSubmit: handlePwd,
@@ -177,22 +126,6 @@ export default function ProfileScreen() {
       currentPassword: '',
       newPassword: '',
       confirmPassword: '',
-    },
-  });
-
-  const updateProfile = useMutation({
-    mutationFn: (data: ProfileForm) => {
-      Haptic.medium();
-      return api.patch('/auth/me', { ...data, dateOfBirth: data.dateOfBirth || undefined });
-    },
-    onSuccess: async () => {
-      Haptic.success();
-      await refreshUser();
-      showAlert('Thành công', 'Hồ sơ đã được cập nhật!');
-    },
-    onError: (e) => {
-      Haptic.error();
-      showAlert('Lỗi', e instanceof ApiError ? e.message : 'Cập nhật thất bại');
     },
   });
 
@@ -279,22 +212,6 @@ export default function ProfileScreen() {
     onError: (e) => {
       Haptic.error();
       showAlert('Lỗi', e instanceof ApiError ? e.message : 'Đổi mật khẩu thất bại');
-    },
-  });
-
-  const updateLevel = useMutation({
-    mutationFn: (level: string) => {
-      Haptic.selection();
-      return api.patch('/auth/me', { trainingLevel: level });
-    },
-    onSuccess: async () => {
-      Haptic.success();
-      await refreshUser();
-      setEditingLevel(false);
-    },
-    onError: (e) => {
-      Haptic.error();
-      showAlert('Lỗi', e instanceof ApiError ? e.message : 'Cập nhật thất bại');
     },
   });
 
@@ -389,242 +306,70 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {tab === 'info' && (
-          <View className="bg-bg-surface rounded-xl p-xl border border-border mb-lg">
-            <View className="mb-lg">
-              <Text className="text-sm text-text-secondary mb-sm font-bevn-medium">Giới tính</Text>
-              <Controller control={control} name="gender" render={({ field: { value, onChange } }) => <View className="flex-row flex-wrap gap-sm">
-                {([{ value: 'MALE', label: 'Nam' }, { value: 'FEMALE', label: 'Nữ' }, { value: 'OTHER', label: 'Khác' }] as const).map((option) => <TouchableOpacity key={option.value} accessibilityRole="button" accessibilityState={{ selected: value === option.value }} onPress={() => onChange(option.value)} className={clsx('rounded-md px-lg py-sm border', value === option.value ? 'bg-primary border-primary' : 'bg-bg-elevated border-border')}><Text className={clsx('font-bevn-medium text-sm', value === option.value ? 'text-text-inverse' : 'text-text-primary')}>{option.label}</Text></TouchableOpacity>)}
-              </View>} />
-            </View>
-            <View className="mb-lg">
-              <Text className="text-sm text-text-secondary mb-sm font-bevn-medium">Ngày sinh (YYYY-MM-DD)</Text>
-              <Controller control={control} name="dateOfBirth" render={({ field: { value, onChange } }) => <TextInput accessibilityLabel="Ngày sinh" value={value || ''} onChangeText={onChange} placeholder="2000-01-31" maxLength={10} placeholderTextColor={Colors.text.muted} className="bg-bg-elevated rounded-md p-md text-text-primary border border-border font-bevn-regular" />} />
-              {errors.dateOfBirth && <Text className="text-status-failed text-xs mt-sm font-bevn-regular">{errors.dateOfBirth.message}</Text>}
-            </View>
-            {/* Full name */}
-            <View className="mb-lg">
-              <Text className="text-sm text-text-secondary mb-1.5 font-bevn-medium">Họ và tên</Text>
-              <Controller
-                control={control}
-                name="fullName"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    ref={getInputRef('fullName')}
-                    className={clsx(
-                      'bg-bg-elevated rounded-md p-md text-text-primary text-md border font-bevn-regular',
-                      errors.fullName ? 'border-status-failed' : 'border-border'
-                    )}
-                    value={value ?? ''}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    onFocus={(e) => handleFocus('fullName', e)}
-                    placeholder="Nhập họ và tên..."
-                    placeholderTextColor={Colors.text.muted}
-                    editable={true}
-                  />
-                )}
-              />
-              {errors.fullName && <Text className="text-xs text-status-failed mt-1 font-bevn-regular">{errors.fullName.message}</Text>}
-            </View>
-
-            {/* Phone */}
-            <View className="mb-lg">
-              <Text className="text-sm text-text-secondary mb-1.5 font-bevn-medium">Số điện thoại</Text>
-              <Controller
-                control={control}
-                name="phone"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    ref={getInputRef('phone')}
-                    className="bg-bg-elevated rounded-md p-md text-text-primary text-md border border-border font-bevn-regular"
-                    value={value ?? ''}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    onFocus={(e) => handleFocus('phone', e)}
-                    keyboardType="phone-pad"
-                    placeholder="Nhập số điện thoại..."
-                    placeholderTextColor={Colors.text.muted}
-                    editable={true}
-                  />
-                )}
-              />
-            </View>
-
-            {/* Member-specific fields: only show for non-coaches */}
-            {!isCoach && (
-              <>
-                {/* Fitness Goal */}
-                <View className="mb-lg">
-                  <Text className="text-sm text-text-secondary mb-1.5 font-bevn-medium">Mục tiêu tập luyện</Text>
-                  <Controller
-                    control={control}
-                    name="fitnessGoal"
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <TextInput
-                        ref={getInputRef('fitnessGoal')}
-                        className="bg-bg-elevated rounded-md p-md text-text-primary text-md border border-border font-bevn-regular min-h-[80px]"
-                        value={value ?? ''}
-                        onChangeText={onChange}
-                        onBlur={onBlur}
-                        onFocus={(e) => handleFocus('fitnessGoal', e)}
-                        multiline
-                        placeholder="Mô tả mục tiêu của bạn..."
-                        placeholderTextColor={Colors.text.muted}
-                        textAlignVertical="top"
-                        editable={true}
-                      />
-                    )}
-                  />
-                </View>
-
-                {/* Training Preference */}
-                <View className="mb-lg">
-                  <Text className="text-sm text-text-secondary mb-1.5 font-bevn-medium">Thời gian tập yêu thích</Text>
-                  <Controller
-                    control={control}
-                    name="trainingPreference"
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <TextInput
-                        ref={getInputRef('trainingPreference')}
-                        className="bg-bg-elevated rounded-md p-md text-text-primary text-md border border-border font-bevn-regular"
-                        value={value ?? ''}
-                        onChangeText={onChange}
-                        onBlur={onBlur}
-                        onFocus={(e) => handleFocus('trainingPreference', e)}
-                        placeholder="VD: Sáng sớm, chiều tối..."
-                        placeholderTextColor={Colors.text.muted}
-                        editable={true}
-                      />
-                    )}
-                  />
-                </View>
-
-                {/* Training Level */}
-                <View className="mb-lg">
-                  <Text className="text-sm text-text-secondary mb-1.5 font-bevn-medium">Trình độ</Text>
-                  {!editingLevel ? (
-                    <TouchableOpacity className="flex-row justify-between items-center bg-bg-elevated rounded-md p-md border border-border" onPress={() => setEditingLevel(true)}>
-                      <Text className="text-md text-text-primary font-bevn-medium">{LEVEL_LABEL[user?.memberProfile?.trainingLevel ?? ''] ?? '—'}</Text>
-                      <Text className="text-sm text-primary font-bevn-medium">Thay đổi</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <View className="flex-row gap-sm">
-                      {LEVEL_OPTIONS.map((opt) => (
-                        <TouchableOpacity
-                          key={opt.value}
-                          className={clsx(
-                            'flex-1 py-sm rounded-md items-center border',
-                            user?.memberProfile?.trainingLevel === opt.value ? 'bg-primary border-primary' : 'bg-bg-elevated border-border'
-                          )}
-                          onPress={() => updateLevel.mutate(opt.value)}
-                          disabled={updateLevel.isPending}
-                        >
-                          <Text className={clsx('text-sm font-bevn-medium', user?.memberProfile?.trainingLevel === opt.value ? 'text-text-inverse font-bold' : 'text-text-secondary')}>{opt.label}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              </>
-            )}
-
-            <TouchableOpacity
-              className={clsx('bg-primary rounded-md p-md items-center mt-sm', isSubmitting && 'opacity-60')}
-              onPress={handleSubmit((data) => updateProfile.mutate(data))}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? <ActivityIndicator color={Colors.text.inverse} /> : <Text className="text-text-inverse font-bold font-bevn-bold text-md">Lưu thay đổi</Text>}
-            </TouchableOpacity>
-          </View>
-        )}
+        {tab === 'info' && <ProfileInfoForm onFieldFocus={handleFocus} getInputRef={getInputRef} />}
 
         {tab === 'security' && (
           <View className="bg-bg-surface rounded-xl p-xl border border-border mb-lg">
             {/* Current Password */}
             <View className="mb-lg">
               <Text className="text-sm text-text-secondary mb-1.5 font-bevn-medium">Mật khẩu hiện tại</Text>
-              <View className={clsx('flex-row items-center bg-bg-elevated rounded-md border pr-sm', pwdErrors.currentPassword ? 'border-status-failed' : 'border-border')}>
-                <Controller
-                  control={pwdControl}
-                  name="currentPassword"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      ref={getInputRef('currentPassword')}
-                      className="flex-1 p-md text-text-primary text-md font-bevn-regular"
-                      value={value ?? ''}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      onFocus={(e) => handleFocus('currentPassword', e)}
-                      secureTextEntry={!showCurrentPwd}
-                      placeholderTextColor={Colors.text.muted}
-                      placeholder="••••••••"
-                      editable={true}
-                    />
-                  )}
-                />
-                <TouchableOpacity className="p-sm justify-center items-center" onPress={() => setShowCurrentPwd((p) => !p)} activeOpacity={0.7}>
-                  <Icon name={showCurrentPwd ? 'visibility-off' : 'visibility'} size={20} color={Colors.text.secondary} />
-                </TouchableOpacity>
-              </View>
+              <Controller
+                control={pwdControl}
+                name="currentPassword"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <PasswordInput
+                    ref={getInputRef('currentPassword')}
+                    value={value ?? ''}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    onFocus={(e) => handleFocus('currentPassword', e)}
+                    placeholder="••••••••"
+                    hasError={Boolean(pwdErrors.currentPassword)}
+                  />
+                )}
+              />
               {pwdErrors.currentPassword && <Text className="text-xs text-status-failed mt-1 font-bevn-regular">{pwdErrors.currentPassword.message}</Text>}
             </View>
 
             {/* New Password */}
             <View className="mb-lg">
               <Text className="text-sm text-text-secondary mb-1.5 font-bevn-medium">Mật khẩu mới</Text>
-              <View className={clsx('flex-row items-center bg-bg-elevated rounded-md border pr-sm', pwdErrors.newPassword ? 'border-status-failed' : 'border-border')}>
-                <Controller
-                  control={pwdControl}
-                  name="newPassword"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      ref={getInputRef('newPassword')}
-                      className="flex-1 p-md text-text-primary text-md font-bevn-regular"
-                      value={value ?? ''}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      onFocus={(e) => handleFocus('newPassword', e)}
-                      secureTextEntry={!showNewPwd}
-                      placeholderTextColor={Colors.text.muted}
-                      placeholder="Ít nhất 6 ký tự"
-                      editable={true}
-                    />
-                  )}
-                />
-                <TouchableOpacity className="p-sm justify-center items-center" onPress={() => setShowNewPwd((p) => !p)} activeOpacity={0.7}>
-                  <Icon name={showNewPwd ? 'visibility-off' : 'visibility'} size={20} color={Colors.text.secondary} />
-                </TouchableOpacity>
-              </View>
+              <Controller
+                control={pwdControl}
+                name="newPassword"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <PasswordInput
+                    ref={getInputRef('newPassword')}
+                    value={value ?? ''}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    onFocus={(e) => handleFocus('newPassword', e)}
+                    placeholder="Ít nhất 6 ký tự"
+                    hasError={Boolean(pwdErrors.newPassword)}
+                  />
+                )}
+              />
               {pwdErrors.newPassword && <Text className="text-xs text-status-failed mt-1 font-bevn-regular">{pwdErrors.newPassword.message}</Text>}
             </View>
 
             {/* Confirm New Password */}
             <View className="mb-lg">
               <Text className="text-sm text-text-secondary mb-1.5 font-bevn-medium">Xác nhận mật khẩu mới</Text>
-              <View className={clsx('flex-row items-center bg-bg-elevated rounded-md border pr-sm', pwdErrors.confirmPassword ? 'border-status-failed' : 'border-border')}>
-                <Controller
-                  control={pwdControl}
-                  name="confirmPassword"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      ref={getInputRef('confirmPassword')}
-                      className="flex-1 p-md text-text-primary text-md font-bevn-regular"
-                      value={value ?? ''}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      onFocus={(e) => handleFocus('confirmPassword', e)}
-                      secureTextEntry={!showConfirmPwd}
-                      placeholderTextColor={Colors.text.muted}
-                      placeholder="Nhập lại mật khẩu mới..."
-                      editable={true}
-                    />
-                  )}
-                />
-                <TouchableOpacity className="p-sm justify-center items-center" onPress={() => setShowConfirmPwd((p) => !p)} activeOpacity={0.7}>
-                  <Icon name={showConfirmPwd ? 'visibility-off' : 'visibility'} size={20} color={Colors.text.secondary} />
-                </TouchableOpacity>
-              </View>
+              <Controller
+                control={pwdControl}
+                name="confirmPassword"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <PasswordInput
+                    ref={getInputRef('confirmPassword')}
+                    value={value ?? ''}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    onFocus={(e) => handleFocus('confirmPassword', e)}
+                    placeholder="Nhập lại mật khẩu mới..."
+                    hasError={Boolean(pwdErrors.confirmPassword)}
+                  />
+                )}
+              />
               {pwdErrors.confirmPassword && <Text className="text-xs text-status-failed mt-1 font-bevn-regular">{pwdErrors.confirmPassword.message}</Text>}
             </View>
             <TouchableOpacity

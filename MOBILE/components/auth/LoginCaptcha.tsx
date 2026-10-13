@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { captchaHtml, turnstileOrigin, turnstileSiteKey } from '../../lib/captcha';
+import { CAPTCHA_WEBVIEW_HEIGHT, captchaHtml, turnstileOrigin, turnstileSiteKey } from '../../lib/captcha';
 import { Colors } from '../../constants/theme';
 
 export function LoginCaptcha({ onChange }: { onChange: (token: string) => void }) {
@@ -18,7 +18,7 @@ export function LoginCaptcha({ onChange }: { onChange: (token: string) => void }
   if (!turnstileSiteKey) return <Text className="text-status-failed text-sm mb-md">Xác minh bảo mật chưa được cấu hình. Vui lòng liên hệ trung tâm.</Text>;
   return <View className="mb-md">
     <WebView key={attempt} source={{ html: captchaHtml(turnstileSiteKey), baseUrl: turnstileOrigin }}
-      style={{ height: 190, backgroundColor: Colors.bg.surface }} scrollEnabled={false}
+      style={{ height: CAPTCHA_WEBVIEW_HEIGHT, backgroundColor: Colors.bg.surface }} scrollEnabled={false}
       javaScriptEnabled domStorageEnabled originWhitelist={['https://*', 'http://*', 'about:*']}
       onError={() => { onToken.current(''); setError('Không tải được xác minh bảo mật.'); }}
       onMessage={(event) => {

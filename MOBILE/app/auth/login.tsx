@@ -8,7 +8,7 @@ import { Link } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Icon } from '../../components/shared/Icon';
+import { PasswordInput } from '../../components/shared/PasswordInput';
 import { useAuth } from '../../context/AuthContext';
 import { Colors } from '../../constants/theme';
 import { ApiError } from '../../lib/api';
@@ -34,7 +34,6 @@ import { Haptic } from '../../lib/haptics';
 export default function LoginScreen() {
   const { login } = useAuth();
   const insets = useSafeAreaInsets();
-  const [showPwd, setShowPwd] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
   const [captchaAttempt, setCaptchaAttempt] = useState(0);
 
@@ -116,26 +115,19 @@ export default function LoginScreen() {
           {/* Password */}
           <View className="mb-lg">
             <Text className="text-sm text-text-secondary mb-1.5 font-bevn-medium">Mật khẩu</Text>
-            <View className={clsx('flex-row items-center bg-bg-elevated rounded-md border pr-sm', errors.password ? 'border-status-failed' : 'border-border')}>
-              <Controller
-                control={control}
-                name="password"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput
-                    className="flex-1 p-md text-text-primary text-md font-bevn-regular"
-                    placeholder="••••••••"
-                    placeholderTextColor={Colors.text.muted}
-                    secureTextEntry={!showPwd}
-                    autoComplete="current-password"
-                    value={value ?? ''}
-                    onChangeText={onChange}
-                  />
-                )}
-              />
-              <TouchableOpacity className="p-sm justify-center items-center" onPress={() => setShowPwd(p => !p)} activeOpacity={0.7}>
-                <Icon name={showPwd ? 'visibility-off' : 'visibility'} size={20} color={Colors.text.secondary} />
-              </TouchableOpacity>
-            </View>
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { onChange, value } }) => (
+                <PasswordInput
+                  value={value ?? ''}
+                  onChangeText={onChange}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  hasError={Boolean(errors.password)}
+                />
+              )}
+            />
             {errors.password && <Text className="text-xs text-status-failed mt-1 font-bevn-regular">{errors.password.message}</Text>}
             <Link href={ROUTES.forgotPassword} asChild>
               <TouchableOpacity className="self-end mt-sm">
