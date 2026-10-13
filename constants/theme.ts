@@ -4,44 +4,44 @@ import { Platform } from 'react-native';
 export const Colors = {
   // Backgrounds
   bg: {
-    primary: '#0A0A0A',
-    surface: '#1A1A1A',
-    elevated: '#242424',
-    card: '#1E1E1E',
+    primary: '#0B1018',
+    surface: '#131A26',
+    elevated: '#192332',
+    card: '#131A26',
   },
   // Brand
-  primary: '#A3E635',     // lime-400
-  primaryDark: '#65A30D', // lime-700
-  accent: '#22C55E',      // green-500
+  primary: '#D4FF00',     // lime-400
+  primaryDark: '#526222', // lime-700
+  accent: '#64DFB4',      // green-500
   // Text
   text: {
-    primary: '#F5F5F5',
-    secondary: '#A3A3A3',
-    muted: '#525252',
-    inverse: '#0A0A0A',
+    primary: '#F1F4F9',
+    secondary: '#9BAAC0',
+    muted: '#8498B2',
+    inverse: '#0B1018',
   },
   // Status
   status: {
-    active: '#A3E635',
-    expired: '#EF4444',
-    suspended: '#F59E0B',
-    cancelled: '#EF4444',
-    scheduled: '#3B82F6',
-    completed: '#22C55E',
-    booked: '#8B5CF6',
-    pending: '#F59E0B',
-    success: '#22C55E',
-    failed: '#EF4444',
+    active: '#D4FF00',
+    expired: '#FF8D9A',
+    suspended: '#F5CB65',
+    cancelled: '#FF8D9A',
+    scheduled: '#65CFFF',
+    completed: '#64DFB4',
+    booked: '#C8B4FF',
+    pending: '#F5CB65',
+    success: '#64DFB4',
+    failed: '#FF8D9A',
   },
   // UI
-  border: '#2A2A2A',
-  divider: '#1F1F1F',
+  border: '#263143',
+  divider: '#1D2635',
   overlay: 'rgba(0,0,0,0.7)',
   // Tiers
   tier: {
-    FREE: '#6B7280',
-    MEMBERSHIP: '#3B82F6',
-    PREMIUM: '#F59E0B',
+    FREE: '#8498B2',
+    MEMBERSHIP: '#65CFFF',
+    PREMIUM: '#F5CB65',
   },
   // Logo thương hiệu — khớp FE web (public/brand/pulse-member.svg + shared/portal-theme.css)
   brand: {
@@ -55,12 +55,12 @@ export const Colors = {
   },
   // Màu nhấn cho ô Truy cập nhanh (navigation/quickAccessConfig.ts)
   feature: {
-    lime: '#A3E635',
-    violet: '#8B5CF6',
-    cyan: '#06B6D4',
-    amber: '#F59E0B',
-    emerald: '#10B981',
-    pink: '#EC4899',
+    lime: '#D4FF00',
+    violet: '#C8B4FF',
+    cyan: '#65CFFF',
+    amber: '#F5CB65',
+    emerald: '#64DFB4',
+    pink: '#FF8D9A',
   },
 } as const;
 
@@ -108,9 +108,9 @@ export const Shadow = {
     },
   }) as object,
   glow: Platform.select({
-    web: { boxShadow: '0px 0px 12px rgba(163, 230, 53, 0.3)' },
+    web: { boxShadow: '0px 0px 12px rgba(212, 255, 0, 0.3)' },
     default: {
-      shadowColor: '#A3E635',
+      shadowColor: '#D4FF00',
       shadowOffset: { width: 0, height: 0 },
       shadowOpacity: 0.3,
       shadowRadius: 12,

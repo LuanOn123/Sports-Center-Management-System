@@ -124,6 +124,7 @@ export default function TabLayout() {
       }}
     >
       {tabs.map((tab) => (
+        <Tabs.Protected key={tab.name} guard={tab.name === 'enrollments' ? user?.role === 'MEMBER' : tab.name === 'coach-attendance' ? user?.role === 'COACH' : true}>
         <Tabs.Screen
           key={tab.name}
           name={tab.name}
@@ -145,6 +146,7 @@ export default function TabLayout() {
               ),
           }}
         />
+        </Tabs.Protected>
       ))}
     </Tabs>
   );

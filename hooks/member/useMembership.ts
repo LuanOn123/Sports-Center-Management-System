@@ -56,6 +56,7 @@ export function useMembershipData(memberId: string | undefined) {
     /** Đang tải trạng thái gói (danh sách subscription) */
     statusLoading: subsQuery.isLoading,
     plansLoading: plansQuery.isLoading,
+    error: plansQuery.error ?? subsQuery.error,
     refetchSubs: subsQuery.refetch,
     refetchPlans: plansQuery.refetch,
     onRefresh: async () => {
@@ -68,7 +69,7 @@ export function useMembershipData(memberId: string | undefined) {
 
 /** Ước tính hoàn tiền phía client trước khi gọi API — BE là nguồn chính thức */
 export function estimateSelfCancelRefund(sub: Subscription) {
-  return selfCancelRefundEstimate(sub.endDate, Number(sub.plan?.price ?? 0));
+  return selfCancelRefundEstimate(sub.endDate, Number(sub.priceSnapshot ?? sub.plan?.price ?? 0));
 }
 
 /** Gói hiệu lực của hội viên đúng bằng plan này (khớp theo planId như FE web) — dùng để hiện "Gia hạn" */
@@ -82,6 +83,7 @@ export function useCancelSubscription() {
     mutationFn: ({ id, reason }: { id: string; reason?: string }) => cancelSubscription(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+      for (const key of ['my-enrollments', 'my-enrollments-upcoming', 'enrollment-quota', 'course-plan', 'classes', 'member-schedule']) void queryClient.invalidateQueries({ queryKey: [key] });
     },
   });
 }

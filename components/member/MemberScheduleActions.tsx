@@ -14,6 +14,8 @@ import { ApiError } from '../../lib/api';
 import { showAlert, showConfirm } from '../../lib/alert';
 import { formatTime, formatWeekdayDate } from '../../lib/format';
 import type { ScheduleActionsContext } from '../shared/ScheduleDetailView';
+import { WaitlistAction } from './WaitlistAction';
+import { canTakeAttendance } from '../../lib/businessRules';
 
 const MY_ENROLLMENTS_LIMIT = '100';
 const errorMessage = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback);
@@ -63,12 +65,12 @@ export function MemberScheduleActions({ schedule: s, isFull, isPast }: ScheduleA
             <Icon name="check-circle" size={22} color={Colors.status.active} />
             <Text className="text-status-active text-md font-bevn-bold text-center">Bạn đã đặt lịch buổi học này</Text>
           </View>
-          <TouchableOpacity className="flex-row items-center justify-center gap-2 bg-primary rounded-xl p-lg mt-md" onPress={() => setShowScanner(true)}>
+          <TouchableOpacity disabled={!canTakeAttendance(s)} style={{ opacity: canTakeAttendance(s) ? 1 : 0.5 }} className="flex-row items-center justify-center gap-2 bg-primary rounded-xl p-lg mt-md" onPress={() => setShowScanner(true)}>
             <Icon name="qr-code-scanner" size={20} color={Colors.text.inverse} />
-            <Text className="text-text-inverse text-md font-bevn-bold">Điểm danh vào lớp</Text>
+            <Text className="text-text-inverse text-md font-bevn-bold">{canTakeAttendance(s) ? 'Điểm danh vào lớp' : 'Điểm danh mở trước buổi học 30 phút'}</Text>
           </TouchableOpacity>
         </>
-      ) : (
+      ) : isFull && !isPast ? <WaitlistAction scheduleId={s.id} /> : (
         <TouchableOpacity
           className="rounded-xl p-lg items-center"
           style={{ backgroundColor: isFull || isPast ? Colors.bg.elevated : Colors.primary, opacity: book.isPending ? 0.7 : 1 }}

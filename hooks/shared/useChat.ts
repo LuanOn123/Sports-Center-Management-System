@@ -3,7 +3,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getConversations, getContacts, getMessages, markMessagesRead, sendMessage, GENERAL_CHAT_ID } from '../../services/chatService';
+import { getConversations, getContacts, getMessages, markMessagesRead, sendMessage, sendMessageWithFile, GENERAL_CHAT_ID } from '../../services/chatService';
+import type { DocumentPickerAsset } from 'expo-document-picker';
 import { getSocket } from '../../lib/socket';
 import type { ChatMessage, ChatConversation, User } from '../../lib/types';
 
@@ -63,8 +64,10 @@ export function useChatMessages(userId: string | undefined, currentUserId: strin
     queryKey: ['chat-messages', userId ?? null],
     queryFn: () => getMessages(targetId),
     enabled: ready,
+    refetchInterval: 30_000,
   });
 
+  useEffect(() => { setMessages([]); }, [userId, currentUserId]);
   // Sync REST data into local state
   useEffect(() => {
     if (query.data?.data) setMessages(query.data.data);
@@ -72,7 +75,7 @@ export function useChatMessages(userId: string | undefined, currentUserId: strin
 
   // Mark as read on mount — phòng chung không có khái niệm đã đọc, BE trả count:0
   useEffect(() => {
-    if (ready) markMessagesRead(targetId);
+    if (ready) void markMessagesRead(targetId).catch(() => {});
   }, [ready, targetId]);
 
   // Listen for socket events
@@ -92,7 +95,7 @@ export function useChatMessages(userId: string | undefined, currentUserId: strin
         return [...prev, msg];
       });
       if (!isGeneral && msg.senderId === userId) {
-        markMessagesRead(targetId);
+        void markMessagesRead(targetId).catch(() => {});
       }
     };
 
@@ -101,8 +104,8 @@ export function useChatMessages(userId: string | undefined, currentUserId: strin
   }, [userId, currentUserId, isGeneral, ready, targetId]);
 
   const handleSend = useCallback(
-    async (content: string, currentUser?: User | null) => {
-      if (!ready || !content.trim()) return;
+    async (content: string, currentUser?: User | null, attachment?: DocumentPickerAsset) => {
+      if (!ready || (!content.trim() && !attachment)) return;
 
       const optMsg: ChatMessage = {
         id: `temp-${Date.now()}`,
@@ -116,9 +119,9 @@ export function useChatMessages(userId: string | undefined, currentUserId: strin
       setMessages((prev) => [...prev, optMsg]);
 
       try {
-        const res = await sendMessage({ receiverId: targetId, content: content.trim() });
+        const res = attachment ? await sendMessageWithFile(targetId, content, attachment) : await sendMessage({ receiverId: targetId, content: content.trim() });
         setMessages((prev) =>
-          prev.map((m) => (m.id === optMsg.id ? res.data : m))
+          [...prev.filter((m) => m.id !== optMsg.id && m.id !== res.data.id), res.data]
         );
         if (!isGeneral) {
           queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
@@ -134,6 +137,7 @@ export function useChatMessages(userId: string | undefined, currentUserId: strin
   return {
     messages,
     isLoading: query.isLoading,
+    error: query.error,
     refetch: query.refetch,
     handleSend,
     send: handleSend,

@@ -112,7 +112,7 @@ export default function ClassesScreen() {
             key={type ?? 'all'}
             className={clsx(
               'flex-1 py-xs rounded-md items-center border',
-              selectedType === type ? 'bg-[#A3E63520] border-primary' : 'bg-bg-surface border-border'
+              selectedType === type ? 'bg-[#D4FF0020] border-primary' : 'bg-bg-surface border-border'
             )}
             onPress={() => {
               Haptic.selection();
@@ -161,7 +161,7 @@ export default function ClassesScreen() {
               <View className="mb-md">
                 <View className="flex-row justify-between items-start mb-xs">
                   <Text className="flex-1 text-lg font-bold font-bevn-bold text-text-primary mr-sm">{item.name}</Text>
-                  <View className={clsx('rounded-full px-sm py-0.5', item.classType === 'PREMIUM' ? 'bg-[#F59E0B20]' : 'bg-[#3B82F620]')}>
+                  <View className={clsx('rounded-full px-sm py-0.5', item.classType === 'PREMIUM' ? 'bg-[#F5CB6520]' : 'bg-[#65CFFF20]')}>
                     <Text className="text-xs font-semibold font-bevn-semibold text-text-secondary">{TYPE_LABEL[item.classType]}</Text>
                   </View>
                 </View>

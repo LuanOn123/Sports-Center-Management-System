@@ -1,3 +1,4 @@
+import { vietnamDate } from '../../lib/date';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   View, Text, FlatList, ScrollView, TouchableOpacity,
@@ -34,12 +35,12 @@ function isSchedulePast(endTime?: string) {
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);
-  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  return `${pad2(vietnamDate(d).getUTCDate())}/${pad2(vietnamDate(d).getUTCMonth() + 1)} ${pad2(vietnamDate(d).getUTCHours())}:${pad2(vietnamDate(d).getUTCMinutes())}`;
 }
 function formatDate(iso: string) {
   const d = new Date(iso);
-  const weekday = WEEKDAY_LABELS[(d.getDay() + 6) % 7];
-  return `${weekday}, ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`;
+  const weekday = WEEKDAY_LABELS[(vietnamDate(d).getUTCDay() + 6) % 7];
+  return `${weekday}, ${pad2(vietnamDate(d).getUTCDate())}/${pad2(vietnamDate(d).getUTCMonth() + 1)}`;
 }
 
 export function MemberScheduleView() {
@@ -128,7 +129,7 @@ export function MemberScheduleView() {
             </View>
             {showCancel && item.status === 'BOOKED' && !past && (
               <TouchableOpacity
-                className="bg-[#EF444420] rounded-md px-md py-xs"
+                className="bg-[#FF8D9A20] rounded-md px-md py-xs"
                 onPress={() => {
                   Haptic.warning();
                   handleCancel(item.id, item.schedule?.class?.name);
@@ -221,7 +222,7 @@ export function MemberScheduleView() {
                         selected ? 'bg-primary border-transparent' : isToday(d) ? 'border-primary' : 'border-transparent'
                       )}
                     >
-                      <Text className={clsx('text-sm font-semibold font-bevn-semibold', selected ? 'text-text-inverse font-bevn-bold' : 'text-text-primary')}>{d.getDate()}</Text>
+                      <Text className={clsx('text-sm font-semibold font-bevn-semibold', selected ? 'text-text-inverse font-bevn-bold' : 'text-text-primary')}>{vietnamDate(d).getUTCDate()}</Text>
                     </View>
                     <View className={clsx('w-[5px] h-[5px] rounded-[3px]', hasClass ? 'bg-primary' : 'bg-transparent')} />
                   </TouchableOpacity>
@@ -246,12 +247,12 @@ export function MemberScheduleView() {
                 <View key={d.toISOString()} className="flex-row mb-md">
                   <View className="w-14">
                     <Text className={clsx('text-sm font-bold font-bevn-bold', selected ? 'text-primary' : 'text-text-primary')}>
-                      {pad2(d.getDate())}/{pad2(d.getMonth() + 1)}
+                      {pad2(vietnamDate(d).getUTCDate())}/{pad2(vietnamDate(d).getUTCMonth() + 1)}
                     </Text>
                     <Text className="text-xs text-text-muted font-bevn-regular">{WEEKDAY_LABELS[i]}</Text>
                   </View>
 
-                  {hasClasses && <View className="w-0.5 bg-[#A3E63550] rounded-sm mr-md" />}
+                  {hasClasses && <View className="w-0.5 bg-[#D4FF0050] rounded-sm mr-md" />}
 
                   <View className="flex-1 gap-sm">
                     {!hasClasses ? (
@@ -262,7 +263,7 @@ export function MemberScheduleView() {
                         return (
                           <TouchableOpacity
                             key={e.id}
-                            className="flex-row items-center gap-sm p-md rounded-md bg-[#A3E63515] border border-[#A3E63540]"
+                            className="flex-row items-center gap-sm p-md rounded-md bg-[#D4FF0015] border border-[#D4FF0040]"
                             activeOpacity={0.8}
                             onPress={() => e.scheduleId && router.push(ROUTES.scheduleDetail(e.scheduleId))}
                           >
@@ -287,7 +288,7 @@ export function MemberScheduleView() {
                               <Text className="text-xs text-text-muted font-bevn-regular">Đã diễn ra</Text>
                             ) : (
                               <TouchableOpacity
-                                className="bg-[#EF444420] rounded-sm px-sm py-1"
+                                className="bg-[#FF8D9A20] rounded-sm px-sm py-1"
                                 onPress={() => handleCancel(e.id)}
                                 disabled={cancelPending}
                               >

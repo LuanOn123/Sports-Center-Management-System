@@ -3,6 +3,7 @@
 
 import { api } from '../lib/api';
 import type { AppNotification } from '../lib/types';
+import { allPages } from '../lib/pagedApi';
 
 export interface NotificationQuery {
   isRead?: 'true' | 'false';
@@ -13,7 +14,7 @@ export interface NotificationQuery {
 
 /** GET /notifications */
 export const getNotifications = (query?: NotificationQuery) =>
-  api.get<AppNotification[]>('/notifications', query as Record<string, string | undefined>);
+  allPages<AppNotification>('/notifications', query as Record<string, string | undefined>);
 
 /** GET /notifications/unread-count */
 export const getUnreadNotificationCount = () =>

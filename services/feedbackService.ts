@@ -13,11 +13,12 @@ export interface CreateFeedbackPayload {
 }
 
 /** GET /feedbacks?coachId=... — data trả về { feedbacks, summary } */
-export const getCoachFeedbacks = (coachId: string, classId?: string) =>
+export const getCoachFeedbacks = (coachId: string, classId?: string, page = 1) =>
   api.get<{ feedbacks: CoachFeedback[]; summary: CoachFeedbackSummary }>('/feedbacks', {
     coachId,
     classId,
-    limit: '20',
+    limit: '10',
+    page: String(page),
   });
 
 /** GET /feedbacks/my */

@@ -16,13 +16,14 @@ interface MembershipPlanCardProps {
   registered?: Subscription;
   isCreating: boolean;
   disabled: boolean;
+  blockedReason?: string;
   onCheckout: () => void;
 }
 
-export function MembershipPlanCard({ plan, registered, isCreating, disabled, onCheckout }: MembershipPlanCardProps) {
+export function MembershipPlanCard({ plan, registered, isCreating, disabled, blockedReason, onCheckout }: MembershipPlanCardProps) {
   const tierColor = Colors.tier[plan.tier];
   const dailyPrice = planDailyPrice(plan);
-  const canBuy = isPurchasablePlan(plan) && !disabled;
+  const canBuy = isPurchasablePlan(plan) && !disabled && !blockedReason;
 
   return (
     <View className="bg-bg-surface rounded-xl p-xl mb-md border" style={{ borderColor: registered ? Colors.primary : Colors.border }}>
@@ -67,6 +68,7 @@ export function MembershipPlanCard({ plan, registered, isCreating, disabled, onC
           {isCreating ? 'Đang tạo mã...' : registered ? 'Gia hạn qua VietQR' : 'Chuyển khoản VietQR'}
         </Text>
       </TouchableOpacity>
+      {blockedReason && <Text className="text-xs text-status-pending font-bevn-regular mt-sm">{blockedReason}</Text>}
       <Text className="text-xs text-text-muted font-bevn-regular text-center mt-sm">
         Quét mã bằng ứng dụng ngân hàng. Sau khi nhận tiền, hệ thống sẽ kích hoạt gói hoặc thông báo nếu cần đối soát.
       </Text>

@@ -14,7 +14,7 @@
     "android": {
       "package": "com.pulsecenter.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#0A0A0A",
+        "backgroundColor": "#0B1018",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -48,9 +48,12 @@
         {
           "photosPermission": "Pulse cần quyền truy cập thư viện ảnh để bạn đổi ảnh đại diện.",
           "savePhotosPermission": "Pulse cần quyền lưu ảnh để bạn lưu mã QR thanh toán và quét lại trong app ngân hàng.",
-          "granularPermissions": ["photo"]
+          "granularPermissions": [
+            "photo"
+          ]
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "extra": {
       "router": {

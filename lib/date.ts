@@ -1,30 +1,39 @@
 // lib/date.ts
-// Tiện ích ngày/tuần dùng chung (tuần bắt đầu từ Thứ Hai, theo giờ máy)
+// Tiện ích ngày/tuần theo giờ Việt Nam (GMT+7), giống lịch trên web.
 
 const DAY_MS = 86_400_000;
+const VIETNAM_OFFSET_MS = 7 * 60 * 60_000;
+
+/** Shift for UTC getters only; this is not a real instant to send to the backend. */
+export function vietnamDate(value: Date | string) {
+  return new Date(new Date(value).getTime() + VIETNAM_OFFSET_MS);
+}
+
+/** Parse an explicit Vietnamese wall-clock value; reject impossible calendar dates. */
+export function parseVietnamDateTime(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(value)) return NaN;
+  const ms = Date.parse(`${value.replace(' ', 'T')}:00+07:00`);
+  if (!Number.isFinite(ms)) return NaN;
+  return vietnamDate(new Date(ms)).toISOString().slice(0, 16).replace('T', ' ') === value ? ms : NaN;
+}
 
 export function startOfDay(d: Date) {
-  const date = new Date(d);
-  date.setHours(0, 0, 0, 0);
-  return date;
+  const date = vietnamDate(d);
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) - VIETNAM_OFFSET_MS);
 }
 
 export function endOfDay(d: Date) {
-  const date = new Date(d);
-  date.setHours(23, 59, 59, 999);
-  return date;
+  return new Date(startOfDay(d).getTime() + DAY_MS - 1);
 }
 
 export function addDays(d: Date, n: number) {
-  const date = new Date(d);
-  date.setDate(date.getDate() + n);
-  return date;
+  return new Date(d.getTime() + n * DAY_MS);
 }
 
 /** Thứ Hai đầu tuần chứa ngày d (00:00) */
 export function startOfWeek(d: Date) {
   const date = startOfDay(d);
-  const day = date.getDay();
+  const day = vietnamDate(date).getUTCDay();
   return addDays(date, day === 0 ? -6 : 1 - day);
 }
 
@@ -35,7 +44,7 @@ export function weekDays(d: Date) {
 }
 
 export function isSameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  return startOfDay(a).getTime() === startOfDay(b).getTime();
 }
 
 export function isToday(d: Date) {

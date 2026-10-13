@@ -1,4 +1,5 @@
 // lib/format.ts
+import { vietnamDate } from './date';
 // Định dạng hiển thị dùng chung (ngày giờ, tiền tệ)
 
 // toLocaleDateString('vi-VN', ...) không đáng tin trên RN/Hermes — ICU của máy
@@ -9,8 +10,8 @@ export function pad2(n: number) {
 
 /** dd/MM/yyyy */
 export function formatDate(iso: string) {
-  const d = new Date(iso);
-  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+  const d = vietnamDate(iso);
+  return `${pad2(d.getUTCDate())}/${pad2(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
 }
 
 // Theo Date.getDay(): 0 = Chủ Nhật
@@ -19,20 +20,21 @@ const WEEKDAY_LONG = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Th�
 
 /** "T2, 05/10/2026" (short) hoặc "Thứ Hai, 05/10/2026" (long) */
 export function formatWeekdayDate(iso: string, style: 'short' | 'long' = 'short') {
-  const d = new Date(iso);
+  const d = vietnamDate(iso);
   const names = style === 'long' ? WEEKDAY_LONG : WEEKDAY_SHORT;
-  return `${names[d.getDay()]}, ${formatDate(iso)}`;
+  return `${names[d.getUTCDay()]}, ${formatDate(iso)}`;
 }
 
 /** dd/MM */
 export function formatDayMonth(d: Date) {
-  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`;
+  const vn = vietnamDate(d);
+  return `${pad2(vn.getUTCDate())}/${pad2(vn.getUTCMonth() + 1)}`;
 }
 
 /** HH:mm */
 export function formatTime(iso: string) {
-  const d = new Date(iso);
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  const d = vietnamDate(iso);
+  return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
 }
 
 /** mm:ss từ số mili-giây còn lại */

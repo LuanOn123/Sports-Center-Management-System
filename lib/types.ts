@@ -74,6 +74,7 @@ export interface MembershipPlan {
   durationDays: number;
   tier: MembershipTier;
   isActive: boolean;
+  maxConcurrentClasses?: number;
 }
 
 export interface Subscription {
@@ -88,6 +89,9 @@ export interface Subscription {
   paymentMethod: PaymentMethod;
   note?: string;
   createdAt: string;
+  durationDaysSnapshot?: number;
+  priceSnapshot?: string | number;
+  maxConcurrentClassesSnapshot?: number;
 }
 
 export interface MembershipStatus {
@@ -221,6 +225,7 @@ export interface ClassSchedule {
 
 export interface Enrollment {
   id: string;
+  classId?: string;
   scheduleId: string;
   schedule?: ClassSchedule;
   memberId: string;
@@ -259,7 +264,7 @@ export interface GenerateQrResult {
   manualCodeExpiresIn: number; // giây — mã dự phòng sống ngắn hơn QR (90s)
 }
 
-export type AttendanceBucketStatus = 'OK' | 'WARN' | 'RELEASE';
+export type AttendanceBucketStatus = 'NORMAL' | 'NOTICE' | 'WARNING';
 
 export interface AttendanceBucket {
   classId: string;
@@ -272,6 +277,11 @@ export interface AttendanceBucket {
   excusedCount: number;
   attendanceRate: number;
   status: AttendanceBucketStatus;
+  policy: 'FIXED' | 'RECURRING';
+  totalPlannedSessions: number | null;
+  currentAbsences: number;
+  allowedAbsences: number;
+  remainingAbsences: number;
 }
 
 export type AttendancePenaltyStatus = 'PENDING' | 'APPLIED' | 'REVOKED' | 'EXPIRED';
@@ -423,11 +433,34 @@ export interface BulkEnrollSessionResult {
 export interface WholeCourseEnrollmentResult {
   classId: string;
   className: string;
-  enrolled: number;
-  alreadyBooked: number;
-  reactivated: number;
-  totalSessions: number;
-  results: BulkEnrollSessionResult[];
+  summary: {
+    totalSessions: number;
+    enrolledNow: number;
+    alreadyBooked: number;
+    totalRegistered: number;
+    firstSessionStart: string;
+    lastSessionEnd: string;
+  };
+  quota: ConcurrentClassQuota;
+  sessions: Array<{ scheduleId: string; startTime: string; endTime: string; roomId: string; roomName: string; enrollmentId: string; status: 'BOOKED' | 'REACTIVATED' | 'ALREADY_BOOKED' }>;
+}
+
+export interface CoursePlan {
+  course: null | {
+    classId: string; className: string; totalSessions: number; firstSessionStart: string; lastSessionEnd: string;
+    weekdayLabels: string[]; capacity: number;
+    availability: { minRemainingSlots: number; fullSessionCount: number; isFullyBookable: boolean };
+  };
+  registration: null | {
+    eligible: boolean; blockers: Array<{ code: string; message: string; sessionId?: string }>;
+    registeredSessions: number; remainingSessionsToRegister: number; isFullyRegistered: boolean;
+  };
+  sessions: Array<{
+    id: string; startTime: string; endTime: string; status: ScheduleStatus;
+    room?: { name: string }; remainingSlots: number; isFull: boolean; isBookable: boolean; canBook: boolean;
+    myEnrollmentStatus: EnrollmentStatus | null;
+    conflictWith?: { className: string; startTime: string; endTime: string } | null;
+  }>;
 }
 
 // ─── Pagination ───────────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@
 
 import { api } from '../lib/api';
 import type { Facility } from '../lib/types';
+import { allPages } from '../lib/pagedApi';
 
 /** GET /facilities — MEMBER/ADMIN thấy mọi cơ sở đang hoạt động, COACH chỉ thấy cơ sở được phân công */
-export const getFacilities = () => api.get<Facility[]>('/facilities');
+export const getFacilities = () => allPages<Facility>('/facilities');

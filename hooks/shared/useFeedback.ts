@@ -10,11 +10,12 @@ import {
   type CreateFeedbackPayload,
 } from '../../services/feedbackService';
 import type { CoachFeedback, CoachFeedbackSummary } from '../../lib/types';
+import { useAuth } from '../../context/AuthContext';
 
-export function useCoachFeedbacks(coachId: string | undefined, classId?: string) {
+export function useCoachFeedbacks(coachId: string | undefined, classId?: string, page = 1) {
   const query = useQuery({
-    queryKey: ['coach-feedbacks', coachId, classId],
-    queryFn: () => getCoachFeedbacks(coachId!, classId),
+    queryKey: ['coach-feedbacks', coachId, classId, page],
+    queryFn: () => getCoachFeedbacks(coachId!, classId, page),
     enabled: Boolean(coachId),
   });
 
@@ -24,7 +25,8 @@ export function useCoachFeedbacks(coachId: string | undefined, classId?: string)
 }
 
 export function useMyFeedbacks() {
-  const query = useQuery({ queryKey: ['my-feedbacks'], queryFn: getMyFeedbacks });
+  const { user } = useAuth();
+  const query = useQuery({ queryKey: ['my-feedbacks', user?.id], queryFn: getMyFeedbacks, enabled: user?.role === 'MEMBER' });
   const feedbacks: CoachFeedback[] = query.data?.data ?? [];
   return { ...query, feedbacks };
 }

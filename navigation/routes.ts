@@ -24,11 +24,21 @@ export const ROUTES = {
   // Màn ngoài tabs
   membershipPlans: '/membership/plans',
   myAttendance: '/attendance/my',
+  checkin: '/member/checkin',
+  waitlist: '/member/waitlist',
+  support: '/member/support',
+  payments: '/member/payments',
+  coachLeave: '/coach/leave',
+  coachFeedback: '/coach/feedback',
+  coachMember: (id: string): Href => ({ pathname: '/coach/member/[id]', params: { id } }),
+  aiAssistant: '/assistant',
 
   // Route động
   classDetail: (id: string): Href => ({ pathname: '/classes/[id]', params: { id } }),
   scheduleDetail: (scheduleId: string): Href => ({ pathname: '/schedule/[scheduleId]', params: { scheduleId } }),
   payment: (paymentId: string): Href => ({ pathname: '/payment/[paymentId]', params: { paymentId } }),
+  invoice: (id: string): Href => ({ pathname: '/invoice/[id]', params: { id } }),
+  paymentDetail: (id: string): Href => ({ pathname: '/member/payment-detail/[id]', params: { id } }),
   chatThread: (userId: string, name?: string): Href => ({ pathname: '/chat/[userId]', params: { userId, ...(name ? { name } : {}) } }),
   coachAttendanceFor: (scheduleId: string): Href => ({ pathname: '/(tabs)/coach-attendance', params: { scheduleId } }),
 } as const;
@@ -42,6 +52,9 @@ const ROUTE_ROLES: Record<string, readonly Role[]> = {
   membership: ['MEMBER'],
   payment: ['MEMBER'],
   attendance: ['MEMBER'],
+  member: ['MEMBER'],
+  invoice: ['MEMBER'],
+  coach: ['COACH'],
   'coach-attendance': ['COACH'],
 };
 

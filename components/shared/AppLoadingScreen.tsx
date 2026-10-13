@@ -52,7 +52,7 @@ export function AppLoadingScreen({ message = 'Đang khởi động ứng dụng.
   return (
     <View className="flex-1 bg-bg-primary justify-center items-center px-xl">
       {/* Background radial glow effect */}
-      <View className="absolute w-72 h-72 rounded-full bg-[#A3E63508] blur-3xl" />
+      <View className="absolute w-72 h-72 rounded-full bg-[#D4FF0008] blur-3xl" />
 
       {/* Branded Logo with Pulse */}
       <Animated.View style={{ transform: [{ scale: pulseAnim }] }} className="items-center mb-xl">

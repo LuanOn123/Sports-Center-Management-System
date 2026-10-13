@@ -4,9 +4,8 @@
 
 import { api } from '../lib/api';
 import type { Class, ClassSchedule, Enrollment, ScheduleStatus } from '../lib/types';
+import { allPages } from '../lib/pagedApi';
 
-const PAGE_LIMIT = 100;
-const MAX_PAGES = 20; // chặn vòng lặp vô hạn nếu pagination bất thường
 const CLASS_BATCH_SIZE = 4; // số lớp gọi song song mỗi lượt (giống FE web)
 
 export interface ScheduleRange {
@@ -19,19 +18,11 @@ export interface ScheduleRange {
 
 /** GET /classes?coachId= — các lớp HLV được phân công */
 export const getCoachClasses = (coachId: string) =>
-  api.get<Class[]>('/classes', { coachId, limit: '50' });
+  allPages<Class>('/classes', { coachId });
 
 /** GET /class-schedules?classId=&startAfter=&startBefore= — gom đủ mọi trang của một lớp */
 async function getClassSchedules(classId: string, range: ScheduleRange): Promise<ClassSchedule[]> {
-  const query = { classId, ...range, limit: String(PAGE_LIMIT) };
-  let all: ClassSchedule[] = [];
-  for (let page = 1; page <= MAX_PAGES; page += 1) {
-    const res = await api.get<ClassSchedule[]>('/class-schedules', { ...query, page: String(page) });
-    all = all.concat(res.data ?? []);
-    const totalPages = res.pagination?.totalPages ?? 1;
-    if (!res.data?.length || page >= totalPages) break;
-  }
-  return all;
+  return (await allPages<ClassSchedule>('/class-schedules', { classId, ...range })).data.filter((s) => s.classId === classId || s.class?.id === classId);
 }
 
 /**
@@ -49,4 +40,4 @@ export async function getCoachSchedules(classIds: string[], range: ScheduleRange
 
 /** GET /enrollments/schedule/:scheduleId — học viên đã đăng ký một buổi */
 export const getScheduleEnrollments = (scheduleId: string) =>
-  api.get<Enrollment[]>(`/enrollments/schedule/${scheduleId}`);
+  allPages<Enrollment>(`/enrollments/schedule/${scheduleId}`);

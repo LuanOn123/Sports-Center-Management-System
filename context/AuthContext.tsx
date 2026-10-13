@@ -15,7 +15,8 @@ import { connectSocket, disconnectSocket } from '../lib/socket';
 import { onSessionExpired } from '../lib/sessionEvents';
 import { showAlert } from '../lib/alert';
 import { getFacilities } from '../services/facilityService';
-import { MOBILE_ROLES, type Facility, type LoginTokens, type User } from '../lib/types';
+import { type Facility, type User } from '../lib/types';
+import { assertMobileRole, loginWithCaptcha } from '../services/authService';
 
 interface AuthContextValue {
   user: User | null;
@@ -23,7 +24,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   facilities: Facility[];
   currentFacility: Facility | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, turnstileToken: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -44,15 +45,6 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 // Mobile chỉ phục vụ Hội viên & Huấn luyện viên — role khác (Admin/Quản lý/Lễ tân)
 // vào app sẽ chỉ nhận toàn 403 ở các API dành riêng cho hội viên/HLV.
-function assertMobileRole(me: User) {
-  if (!MOBILE_ROLES.includes(me.role)) {
-    throw new ApiError(
-      'Ứng dụng di động chỉ dành cho Hội viên và Huấn luyện viên. Vui lòng đăng nhập bằng bản web.',
-      403,
-    );
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
@@ -75,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [applyFacility]);
 
   const resetSessionState = useCallback(async () => {
+    await queryClient.cancelQueries();
     setUser(null);
     setFacilities([]);
     await applyFacility(null);
@@ -96,8 +89,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Connect socket with the restored user session
           connectSocket(me.data.id);
         }
-      } catch {
-        await clearTokens();
+      } catch (e) {
+        // Keep the refresh token during temporary network/server failures so
+        // reopening the app can restore the session when the service recovers.
+        if (!(e instanceof ApiError) || [400, 401, 403].includes(e.status)) await clearTokens();
         await applyFacility(null);
       } finally {
         setIsLoading(false);
@@ -121,12 +116,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, [resetSessionState]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, turnstileToken: string) => {
     // BE so khớp email chính xác (lưu chữ thường) — chuẩn hoá để gõ hoa/thừa khoảng trắng vẫn vào được.
-    const r = await api.publicPost<LoginTokens>('/auth/login', {
-      email: email.trim().toLowerCase(),
-      password,
-    });
+    const r = await loginWithCaptcha(email, password, turnstileToken);
     await saveTokens(r.data.accessToken, r.data.refreshToken);
     try {
       const me = await api.get<User>('/auth/me');
@@ -145,9 +137,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(async (data: RegisterData) => {
     await api.publicPost<User>('/auth/register', { ...data, email: data.email.trim().toLowerCase() });
-    // After register, login automatically
-    await login(data.email, data.password);
-  }, [login]);
+    // Return to the login form after registration.
+  }, []);
 
   const logout = useCallback(async () => {
     try {
@@ -167,15 +158,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     const me = await api.get<User>('/auth/me');
+    try { assertMobileRole(me.data); }
+    catch (e) { await logout(); throw e; }
     setUser(me.data);
-  }, []);
+  }, [logout]);
 
   const selectFacility = useCallback(async (id: string) => {
     if (id === getFacilityId()) return;
+    if (!facilities.some((f) => f.id === id)) throw new ApiError('Cơ sở không hợp lệ.', 403);
+    if (queryClient.isMutating()) throw new ApiError('Vui lòng đợi thao tác hiện tại hoàn tất trước khi đổi cơ sở.', 409);
+    await queryClient.cancelQueries();
     await applyFacility(id);
     // Mọi dữ liệu đã tải thuộc cơ sở cũ — làm mới toàn bộ các query đang hiển thị.
     await queryClient.resetQueries();
-  }, [applyFacility, queryClient]);
+  }, [applyFacility, queryClient, facilities]);
 
   const reloadFacilities = useCallback(async () => {
     await loadFacilities();

@@ -123,7 +123,7 @@ export function MemberHomeView({ user, facilityId }: MemberHomeViewProps) {
                 {status.activeSubscription!.plan?.name ?? `Gói ${TIER_LABEL[effectiveTier]}`}
               </Text>
             </View>
-            <TouchableOpacity className="bg-[#A3E63520] rounded-full px-md py-xs" onPress={() => router.push(ROUTES.membershipPlans)}>
+            <TouchableOpacity className="bg-[#D4FF0020] rounded-full px-md py-xs" onPress={() => router.push(ROUTES.membershipPlans)}>
               <Text className="text-primary text-sm font-semibold font-bevn-semibold">Quản lý gói</Text>
             </TouchableOpacity>
           </View>
@@ -154,7 +154,7 @@ export function MemberHomeView({ user, facilityId }: MemberHomeViewProps) {
                 {statusLoading ? '—' : 'Miễn Phí (FREE)'}
               </Text>
             </View>
-            <TouchableOpacity className="bg-[#A3E63520] rounded-full px-md py-xs" onPress={() => router.push(ROUTES.membershipPlans)}>
+            <TouchableOpacity className="bg-[#D4FF0020] rounded-full px-md py-xs" onPress={() => router.push(ROUTES.membershipPlans)}>
               <Text className="text-primary text-sm font-semibold font-bevn-semibold">Đăng ký gói</Text>
             </TouchableOpacity>
           </View>
@@ -233,7 +233,7 @@ export function MemberHomeView({ user, facilityId }: MemberHomeViewProps) {
                   </View>
                 )}
               </View>
-              <View className="bg-[#8B5CF620] rounded-full px-sm py-[3px] ml-sm">
+              <View className="bg-[#C8B4FF20] rounded-full px-sm py-[3px] ml-sm">
                 <Text className="text-xs font-semibold font-bevn-semibold text-status-booked">Đã đặt</Text>
               </View>
             </TouchableOpacity>
@@ -242,9 +242,9 @@ export function MemberHomeView({ user, facilityId }: MemberHomeViewProps) {
       </View>
 
       {/* AI Shortcut (stub) */}
-      <TouchableOpacity className="bg-[#A3E63515] rounded-xl p-xl flex-row justify-between items-center border border-[#A3E63530]">
+      <TouchableOpacity className="bg-[#D4FF0015] rounded-xl p-xl flex-row justify-between items-center border border-[#D4FF0030]">
         <View className="flex-row items-center gap-md">
-          <View className="w-11 h-11 rounded-full bg-[#A3E63520] justify-center items-center">
+          <View className="w-11 h-11 rounded-full bg-[#D4FF0020] justify-center items-center">
             <Icon name="auto-awesome" size={24} color={Colors.primary} />
           </View>
           <View>

@@ -1,8 +1,8 @@
 // components/member/membership/SubscriptionHistory.tsx
 // Lịch sử đăng ký gói gần đây
 
-import React from 'react';
-import { View, Text } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
 import {
   SUBSCRIPTION_HISTORY_LIMIT, SUBSCRIPTION_STATUS_COLOR, SUBSCRIPTION_STATUS_LABEL,
 } from '../../../constants/membership';
@@ -10,11 +10,12 @@ import { formatDate } from '../../../lib/format';
 import type { Subscription } from '../../../lib/types';
 
 export function SubscriptionHistory({ subscriptions }: { subscriptions: Subscription[] }) {
+  const [visible, setVisible] = useState(SUBSCRIPTION_HISTORY_LIMIT);
   if (subscriptions.length === 0) return null;
   return (
     <View className="mb-xl">
       <Text className="text-lg font-bevn-bold text-text-primary mb-md">Lịch sử đăng ký</Text>
-      {subscriptions.slice(0, SUBSCRIPTION_HISTORY_LIMIT).map((s) => {
+      {subscriptions.slice(0, visible).map((s) => {
         const color = SUBSCRIPTION_STATUS_COLOR[s.status];
         return (
           <View key={s.id} className="flex-row justify-between items-center py-md border-b border-divider">
@@ -28,6 +29,7 @@ export function SubscriptionHistory({ subscriptions }: { subscriptions: Subscrip
           </View>
         );
       })}
+      {subscriptions.length > visible && <TouchableOpacity accessibilityRole="button" className="p-md" onPress={() => setVisible((count) => count + SUBSCRIPTION_HISTORY_LIMIT)}><Text className="text-primary text-sm font-bevn-medium">Xem thêm lịch sử</Text></TouchableOpacity>}
     </View>
   );
 }
