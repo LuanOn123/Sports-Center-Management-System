@@ -8,3 +8,4 @@ dist/
 !.env.example
 prisma/baseline.tmp.prisma
 prisma/*.tmp.prisma
+.neon
