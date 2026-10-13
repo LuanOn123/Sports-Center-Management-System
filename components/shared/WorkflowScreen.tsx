@@ -3,16 +3,23 @@ import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndic
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from './ScreenHeader';
 import { Colors } from '../../constants/theme';
+import { Icon } from './Icon';
 
-export function WorkflowScreen({ title, subtitle, children, refreshing = false, onRefresh }: {
+export function WorkflowScreen({ title, subtitle, children, refreshing = false, onRefresh, footer }: {
   title: string; subtitle?: string; children: ReactNode; refreshing?: boolean; onRefresh?: () => void;
+  /** Vùng cố định dưới đáy (vd: nút đăng ký) — nằm trên vùng an toàn của máy */
+  footer?: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
   return <View className="flex-1 bg-bg-primary"><ScreenHeader title={title} subtitle={subtitle} />
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ width: '100%', maxWidth: 760, alignSelf: 'center', padding: 20, paddingBottom: Math.max(32, insets.bottom + 20), gap: 16 }}
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ width: '100%', maxWidth: 760, alignSelf: 'center', padding: 20, paddingBottom: footer ? 20 : Math.max(32, insets.bottom + 20), gap: 16 }}
       refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} /> : undefined}>
       {children}
-    </ScrollView></View>;
+    </ScrollView>
+    {footer && <View className="bg-bg-primary border-t border-border px-xl pt-md" style={{ paddingBottom: Math.max(insets.bottom, 12) }}>
+      <View style={{ width: '100%', maxWidth: 760, alignSelf: 'center' }}>{footer}</View>
+    </View>}
+  </View>;
 }
 export function WorkflowCard({ title, children }: { title?: string; children: ReactNode }) {
   return <View className="bg-bg-surface border border-border rounded-md p-lg gap-md">
@@ -22,12 +29,15 @@ export function WorkflowCard({ title, children }: { title?: string; children: Re
 export function WorkflowText({ children }: { children: ReactNode }) {
   return <Text className="text-sm text-text-secondary font-bevn-regular leading-[22px]">{children}</Text>;
 }
-export function WorkflowButton({ title, onPress, busy = false, disabled = false, secondary = false }: {
+export function WorkflowButton({ title, onPress, busy = false, disabled = false, secondary = false, icon }: {
   title: string; onPress: () => void; busy?: boolean; disabled?: boolean; secondary?: boolean;
+  /** Icon đứng trước chữ (tuỳ chọn) */
+  icon?: string;
 }) {
+  const color = secondary ? Colors.text.primary : Colors.text.inverse;
   return <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: disabled || busy, busy }}
-    onPress={onPress} disabled={disabled || busy} className={`rounded-sm p-md items-center border ${secondary ? 'bg-bg-elevated border-border' : 'bg-primary border-primary'} ${(disabled || busy) ? 'opacity-60' : ''}`}>
-    {busy ? <ActivityIndicator color={secondary ? Colors.primary : Colors.text.inverse} /> : <Text className={`${secondary ? 'text-text-primary' : 'text-text-inverse'} text-sm font-bevn-semibold`}>{title}</Text>}
+    onPress={onPress} disabled={disabled || busy} className={`rounded-sm p-md flex-row items-center justify-center gap-sm border ${secondary ? 'bg-bg-elevated border-border' : 'bg-primary border-primary'} ${(disabled || busy) ? 'opacity-60' : ''}`}>
+    {busy ? <ActivityIndicator color={secondary ? Colors.primary : Colors.text.inverse} /> : <>{icon && <Icon name={icon} size={18} color={color} />}<Text className={`${secondary ? 'text-text-primary' : 'text-text-inverse'} text-sm font-bevn-semibold`}>{title}</Text></>}
   </TouchableOpacity>;
 }
 export function WorkflowField({ label, ...props }: TextInputProps & { label: string }) {

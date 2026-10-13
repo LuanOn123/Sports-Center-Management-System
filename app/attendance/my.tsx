@@ -134,20 +134,26 @@ export default function MyAttendanceScreen() {
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
-        <WorkflowButton title="Quét QR / Nhập mã điểm danh" onPress={() => setScannerOpen(true)} />
+        <View className="mb-xl">
+          <WorkflowButton icon="qr-code-scanner" title="Quét QR / Nhập mã điểm danh" onPress={() => setScannerOpen(true)} />
+        </View>
         <WorkflowState error={summary.error || history.error} retry={() => { void onRefresh(); }} />
         {/* Tỉ lệ chuyên cần theo lớp */}
         <View className="mb-xl">
-          <View className="flex-row items-center gap-1.5 mb-1">
-            <Icon name="insights" size={18} color={Colors.primary} />
-            <Text className="text-lg font-bold font-bevn-bold text-text-primary">Tỉ lệ chuyên cần theo lớp</Text>
+          <View className="flex-row items-center gap-1.5 mb-sm">
+            <Icon name="insights" size={16} color={Colors.primary} />
+            <Text className="text-md font-bold font-bevn-bold text-text-primary">Tỉ lệ chuyên cần theo lớp</Text>
           </View>
           <Text className="text-xs text-text-muted font-bevn-regular mb-md">Khóa cố định tính số lần vắng theo 20% tổng buổi kế hoạch. Lớp định kỳ tính trên 10 buổi gần nhất, tối thiểu 5 buổi. Cảnh báo chỉ để tham khảo; hạn chế đặt lớp do quản lý quyết định.</Text>
 
           {summary.isLoading ? (
             <ActivityIndicator color={Colors.primary} style={{ marginTop: 16 }} />
           ) : buckets.length === 0 ? (
-            <Text className="text-sm text-text-muted font-bevn-regular">Chưa đủ dữ liệu chuyên cần.</Text>
+            // BE chỉ trả tỉ lệ cho lớp đã có buổi học (đã đặt) kết thúc — giải thích đúng lý do trống
+            <View className="bg-bg-surface rounded-lg p-lg border border-border">
+              <Text className="text-sm text-text-secondary font-bevn-medium">Chưa có dữ liệu chuyên cần.</Text>
+              <Text className="text-xs text-text-muted font-bevn-regular mt-1">Tỉ lệ sẽ hiển thị sau khi buổi học đầu tiên bạn đã đặt kết thúc.</Text>
+            </View>
           ) : (
             buckets.map((b) => (
               <View key={b.classId} className="bg-bg-surface rounded-lg p-lg mb-sm border border-border">
@@ -173,9 +179,9 @@ export default function MyAttendanceScreen() {
         {/* Quyết định chuyên cần (hình phạt) */}
         {penalties.length > 0 && (
           <View className="mb-xl">
-            <View className="flex-row items-center gap-1.5 mb-1">
-              <Icon name="warning" size={18} color="#D97706" />
-              <Text className="text-lg font-bold font-bevn-bold text-text-primary">Quyết định chuyên cần</Text>
+            <View className="flex-row items-center gap-1.5 mb-sm">
+              <Icon name="warning" size={16} color="#D97706" />
+              <Text className="text-md font-bold font-bevn-bold text-text-primary">Quyết định chuyên cần</Text>
             </View>
             {penalties.map((p) => (
               <View key={p.id} className="bg-bg-surface rounded-lg p-lg mb-sm border border-border">
@@ -239,16 +245,17 @@ export default function MyAttendanceScreen() {
 
         {/* Lịch sử điểm danh */}
         <View className="mb-xl">
-          <View className="flex-row items-center gap-1.5 mb-1">
-            <Icon name="history" size={18} color={Colors.primary} />
-            <Text className="text-lg font-bold font-bevn-bold text-text-primary">Lịch sử điểm danh</Text>
+          <View className="flex-row items-center gap-1.5 mb-sm">
+            <Icon name="history" size={16} color={Colors.primary} />
+            <Text className="text-md font-bold font-bevn-bold text-text-primary">Lịch sử điểm danh</Text>
           </View>
           {history.isLoading ? (
             <ActivityIndicator color={Colors.primary} style={{ marginTop: 16 }} />
           ) : records.length === 0 ? (
-            <View className="bg-bg-surface rounded-xl p-xxxl items-center border border-border">
-              <Icon name="event-busy" size={44} color={Colors.text.muted} style={{ marginBottom: 12 }} />
-              <Text className="text-sm text-text-muted font-bevn-regular">Chưa có bản ghi điểm danh.</Text>
+            <View className="bg-bg-surface rounded-xl px-xl py-xxl items-center border border-border">
+              <Icon name="event-busy" size={32} color={Colors.text.muted} style={{ marginBottom: 8 }} />
+              <Text className="text-md text-text-primary font-bevn-semibold">Chưa có bản ghi điểm danh</Text>
+              <Text className="text-xs text-text-muted font-bevn-regular mt-1 text-center">Các buổi điểm danh của bạn sẽ xuất hiện tại đây.</Text>
             </View>
           ) : (
             records.map((r) => (

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { turnstileSiteKey } from '../../lib/captcha';
+import { TURNSTILE_HEIGHT, TURNSTILE_MIN_WIDTH, captchaScale, turnstileSiteKey } from '../../lib/captcha';
 
 type Turnstile = { render: (container: HTMLElement, options: Record<string, unknown>) => string; remove: (id: string) => void };
 let pendingScript: Promise<Turnstile> | undefined;
@@ -36,9 +36,12 @@ export function LoginCaptcha({ onChange }: { onChange: (token: string) => void }
     void loadScript().then((api) => {
       if (!active || !container.current) return;
       sdk = api;
+      // Form hẹp hơn 300px → thu nhỏ widget dạng thanh ngang cho vừa
+      const scale = captchaScale(container.current.parentElement?.clientWidth ?? 0);
+      if (scale < 1) Object.assign(container.current.style, { width: `${TURNSTILE_MIN_WIDTH}px`, transform: `scale(${scale})`, transformOrigin: 'left top', marginBottom: `${-TURNSTILE_HEIGHT * (1 - scale)}px` });
       setStatus('Vui lòng hoàn tất xác minh bảo mật.');
       widget = api.render(container.current, {
-        sitekey: turnstileSiteKey, action: 'login', theme: 'dark', size: window.innerWidth < 380 ? 'compact' : 'flexible', 'response-field': false,
+        sitekey: turnstileSiteKey, action: 'login', theme: 'dark', size: 'flexible', 'response-field': false,
         callback: (token: string) => { if (active) { onToken.current(token); setError(''); setStatus('Đã xác minh bảo mật.'); } },
         'expired-callback': () => fail('Xác minh đã hết hạn. Vui lòng thử lại.'),
         'timeout-callback': () => fail('Xác minh quá thời gian. Vui lòng thử lại.'),

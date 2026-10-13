@@ -26,3 +26,7 @@ export const ATTENDANCE_OPEN_BEFORE_MS = 30 * 60_000;
 
 /** Chỉ học viên ở các trạng thái này mới hiện trong danh sách điểm danh */
 export const ATTENDANCE_ROSTER_STATUSES = ['BOOKED', 'COMPLETED'];
+
+/** Khung ngắm QR (4 góc trên camera toàn màn hình): cạnh tối đa (px) và tỉ lệ tối đa theo chiều cao màn hình */
+export const QR_SCAN_FRAME_MAX = 340;
+export const QR_SCAN_FRAME_HEIGHT_RATIO = 0.5;

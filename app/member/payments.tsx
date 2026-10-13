@@ -6,11 +6,12 @@ import { getMemberInvoices } from '../../services/workflowService';
 import { WorkflowScreen, WorkflowCard, WorkflowText, WorkflowButton, WorkflowState, workflowStatus } from '../../components/shared/WorkflowScreen';
 import { formatDate, formatVnd } from '../../lib/format';
 import { ROUTES } from '../../navigation/routes';
+import { memberProfileIdOf } from '../../lib/businessRules';
 
 export default function PaymentsScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const memberId = user?.memberProfile?.id;
+  const memberId = memberProfileIdOf(user);
   const list = useQuery({ queryKey: ['member-invoices', memberId], enabled: Boolean(memberId), queryFn: ({ signal }) => getMemberInvoices(memberId!, signal) });
   return <WorkflowScreen title="Thanh toán & hóa đơn" refreshing={list.isRefetching} onRefresh={() => { void list.refetch(); }}>
     <WorkflowText>Các khoản thu của bạn được ghi nhận tại trung tâm. Liên hệ trung tâm nếu cần đối chiếu hoặc hoàn tiền.</WorkflowText>

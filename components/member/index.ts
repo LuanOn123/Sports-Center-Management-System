@@ -4,3 +4,4 @@ export * from './MemberScheduleView';
 export * from './membership';
 export * from './payment';
 export * from './MemberScheduleActions';
+export * from './MissingMemberProfile';

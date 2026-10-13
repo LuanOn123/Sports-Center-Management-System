@@ -189,6 +189,7 @@ export interface ClassCoach {
     id: string;
     user: Pick<User, 'id' | 'fullName' | 'email'>;
     specialization?: string;
+    experienceYears?: number;
     bio?: string;
   };
 }
@@ -445,10 +446,16 @@ export interface WholeCourseEnrollmentResult {
   sessions: Array<{ scheduleId: string; startTime: string; endTime: string; roomId: string; roomName: string; enrollmentId: string; status: 'BOOKED' | 'REACTIVATED' | 'ALREADY_BOOKED' }>;
 }
 
+/** Khung lịch lặp lại trong tuần (Thứ + giờ + phòng) — GET /classes/:id/course-plan */
+export interface CoursePlanSlot {
+  weekday: number; weekdayLabel: string; startTime: string; endTime: string; durationMinutes: number;
+  roomId: string; roomName: string; sessionCount: number;
+}
+
 export interface CoursePlan {
   course: null | {
     classId: string; className: string; totalSessions: number; firstSessionStart: string; lastSessionEnd: string;
-    weekdayLabels: string[]; capacity: number;
+    weekdayLabels: string[]; capacity: number; slots: CoursePlanSlot[];
     availability: { minRemainingSlots: number; fullSessionCount: number; isFullyBookable: boolean };
   };
   registration: null | {
