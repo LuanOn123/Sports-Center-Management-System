@@ -56,7 +56,7 @@ export function FacilityPicker() {
                     key={f.id}
                     className={clsx(
                       'flex-row items-center gap-md rounded-lg p-md mb-sm border',
-                      active ? 'bg-[#A3E63515] border-primary' : 'bg-bg-elevated border-border'
+                      active ? 'bg-[#D4FF0015] border-primary' : 'bg-bg-elevated border-border'
                     )}
                     onPress={() => handleSelect(f.id)}
                     activeOpacity={0.7}

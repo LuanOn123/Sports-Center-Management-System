@@ -41,9 +41,15 @@ Nội dung file `.env`:
 ```env
 # Backend API Base URL (Render Server)
 EXPO_PUBLIC_API_BASE_URL=https://sports-center-management-system.onrender.com/api/v1
+EXPO_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY=0x4AAAAAAFSemj8jOA4n9j1n
+EXPO_PUBLIC_TURNSTILE_ORIGIN=https://localhost
 ```
 
-> **Lưu ý**: Biến môi trường trong Expo bắt buộc phải có tiền tố `EXPO_PUBLIC_` để app có thể đọc được lúc runtime.
+> **Lưu ý**: Expo đóng gói các biến `EXPO_PUBLIC_` vào bundle. Sau khi thay đổi `.env`, khởi động lại Expo bằng `npx expo start --clear`.
+
+Mobile dùng cùng API với web: `POST /auth/login`, gửi `email`, `password` và `turnstileToken`. Bản web mobile hiển thị Cloudflare Turnstile; Android/iOS dùng WebView. Nút đăng nhập chỉ bật khi đã xác minh, token được thay mới sau mỗi lần gửi. Sau khi đăng ký thành công, ứng dụng chuyển về màn đăng nhập.
+
+Site Key công khai phải cùng widget với web. Hostname chạy mobile web và origin WebView cần được cho phép trong Cloudflare. Không đưa Secret Key vào mobile. Luồng này sử dụng `/auth/login` đang có trên Render, không cần triển khai endpoint mới.
 
 ---
 
@@ -101,7 +107,16 @@ MOBILE/
 Để kiểm tra lỗi type trong toàn bộ dự án:
 
 ```bash
-npm run tsc -- --noEmit
+npm run typecheck
 # hoặc
 npx tsc --noEmit
 ```
+
+## Kiểm thử và đối chiếu với web
+
+```bash
+npm test
+npx expo export --platform all --output-dir .expo/audit-export
+```
+
+Xem [báo cáo đồng bộ Member/Coach](docs/MOBILE_WEB_SYNC_2026-10-12.md) để biết các luồng đã bổ sung, hợp đồng API và giới hạn kiểm chứng thực tế.

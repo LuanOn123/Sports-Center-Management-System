@@ -16,12 +16,13 @@ import { Brand } from '../../components';
 import { showAlert } from '../../lib/alert';
 import { KeyboardAwareView } from '../../components/shared/KeyboardAwareView';
 import { ROUTES } from '../../navigation/routes';
+import { LoginCaptcha } from '../../components/auth/LoginCaptcha';
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
 const schema = z.object({
-  email: z.string().email('Email không đúng định dạng'),
-  password: z.string().min(6, 'Mật khẩu ít nhất 6 ký tự'),
+  email: z.string().trim().email('Email không đúng định dạng'),
+  password: z.string().min(1, 'Vui lòng nhập mật khẩu'),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -34,6 +35,8 @@ export default function LoginScreen() {
   const { login } = useAuth();
   const insets = useSafeAreaInsets();
   const [showPwd, setShowPwd] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaAttempt, setCaptchaAttempt] = useState(0);
 
   const { control, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -46,12 +49,15 @@ export default function LoginScreen() {
   const onSubmit = async (data: FormData) => {
     Haptic.medium();
     try {
-      await login(data.email, data.password);
+      await login(data.email, data.password, captchaToken);
       Haptic.success();
     } catch (e) {
       Haptic.error();
       const msg = e instanceof ApiError ? e.message : 'Đăng nhập thất bại. Vui lòng thử lại.';
       showAlert('Lỗi đăng nhập', msg);
+    } finally {
+      setCaptchaToken('');
+      setCaptchaAttempt((value) => value + 1);
     }
   };
 
@@ -61,6 +67,9 @@ export default function LoginScreen() {
         className="flex-1"
         contentContainerStyle={{
           flexGrow: 1,
+          width: '100%',
+          maxWidth: 520,
+          alignSelf: 'center',
           justifyContent: 'center',
           paddingHorizontal: 20,
           paddingTop: Math.max(insets.top, 24) + 10,
@@ -135,11 +144,15 @@ export default function LoginScreen() {
             </Link>
           </View>
 
+          <LoginCaptcha key={captchaAttempt} onChange={setCaptchaToken} />
           {/* Submit */}
           <TouchableOpacity
-            className={clsx('bg-primary rounded-md p-md items-center justify-center mt-sm', isSubmitting && 'opacity-60')}
+            accessibilityRole="button"
+            accessibilityLabel="Đăng nhập"
+            accessibilityState={{ disabled: isSubmitting || !captchaToken, busy: isSubmitting }}
+            className={clsx('bg-primary rounded-md p-md items-center justify-center mt-sm', (isSubmitting || !captchaToken) && 'opacity-60')}
             onPress={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !captchaToken}
             activeOpacity={0.85}
           >
             {isSubmitting

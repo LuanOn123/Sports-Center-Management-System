@@ -17,6 +17,8 @@ import { showAlert } from '../../../lib/alert';
 import { Haptic } from '../../../lib/haptics';
 import { Colors } from '../../../constants/theme';
 import { ROUTES } from '../../../navigation/routes';
+import { downgradeReason } from '../../../lib/businessRules';
+import { WorkflowState } from '../../shared/WorkflowScreen';
 
 interface MembershipPlansViewProps {
   memberId: string | undefined;
@@ -56,6 +58,7 @@ export function MembershipPlansView({ memberId, scope }: MembershipPlansViewProp
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={false} onRefresh={screen.onRefresh} tintColor={Colors.primary} />}
       >
+        <WorkflowState error={screen.error} retry={() => { void screen.onRefresh(); }} />
         {screen.statusLoading ? (
           <ActivityIndicator color={Colors.primary} style={{ marginVertical: 20 }} />
         ) : (
@@ -83,6 +86,7 @@ export function MembershipPlansView({ memberId, scope }: MembershipPlansViewProp
                 registered={screen.registeredFor(plan.id)}
                 isCreating={screen.creatingPlanId === plan.id}
                 disabled={screen.isCreatingCheckout}
+                blockedReason={downgradeReason(activeSub, plan)}
                 onCheckout={() => handleCheckout(plan.id)}
               />
             ))

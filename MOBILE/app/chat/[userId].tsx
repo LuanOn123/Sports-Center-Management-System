@@ -1,3 +1,4 @@
+import { vietnamDate } from '../../lib/date';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
@@ -14,6 +15,11 @@ import { KeyboardAwareView } from '../../components/shared/KeyboardAwareView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Haptic } from '../../lib/haptics';
 import { ROUTES } from '../../navigation/routes';
+import * as DocumentPicker from 'expo-document-picker';
+import { CHAT_FILE_TYPES } from '../../services/chatService';
+import { ProtectedAttachment } from '../../components/shared/ProtectedAttachment';
+import { WorkflowState } from '../../components/shared/WorkflowScreen';
+import { showAlert } from '../../lib/alert';
 
 // toLocaleDateString('vi-VN', ...) không đáng tin trên RN/Hermes — ICU của máy
 // có thể trả dấu "-" thay vì "/" giữa ngày/tháng. Tự ghép chuỗi cho chắc.
@@ -23,15 +29,15 @@ function pad2(n: number) {
 }
 function formatTime(iso: string) {
   const d = new Date(iso);
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  return `${pad2(vietnamDate(d).getUTCHours())}:${pad2(vietnamDate(d).getUTCMinutes())}`;
 }
 function formatDateSep(iso: string) {
   const d = new Date(iso);
-  return `${WEEKDAY_LONG[d.getDay()]}, ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`;
+  return `${WEEKDAY_LONG[vietnamDate(d).getUTCDay()]}, ${pad2(vietnamDate(d).getUTCDate())}/${pad2(vietnamDate(d).getUTCMonth() + 1)}`;
 }
 function isSameDay(a: string, b: string) {
   const da = new Date(a), db = new Date(b);
-  return da.getDate() === db.getDate() && da.getMonth() === db.getMonth() && da.getFullYear() === db.getFullYear();
+  return vietnamDate(da).getUTCDate() === vietnamDate(db).getUTCDate() && vietnamDate(da).getUTCMonth() === vietnamDate(db).getUTCMonth() && vietnamDate(da).getUTCFullYear() === vietnamDate(db).getUTCFullYear();
 }
 
 export default function ChatScreen() {
@@ -41,10 +47,13 @@ export default function ChatScreen() {
   const { user } = useAuth();
   const flatListRef = useRef<FlatList>(null);
   const [text, setText] = useState('');
+  const [attachment, setAttachment] = useState<DocumentPicker.DocumentPickerAsset>();
+  const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
   const textRef = useRef('');
 
   // ─── Hooks (logic) ──────────────────────────────────────────────────────────
-  const { messages, isLoading, handleSend, isGeneral } = useChatMessages(userId, user?.id);
+  const { messages, isLoading, handleSend, isGeneral, error, refetch } = useChatMessages(userId, user?.id);
   const partnerName = usePartnerName(userId, name);
   const headerTitle = isGeneral ? 'Phòng chung' : partnerName;
 
@@ -73,13 +82,24 @@ export default function ChatScreen() {
     };
   }, []);
 
-  const onSend = () => {
+  const onSend = async () => {
     const trimmed = textRef.current.trim();
-    if (!trimmed) return;
-    textRef.current = '';
-    setText('');
+    if ((!trimmed && !attachment) || sendingRef.current) return;
+    sendingRef.current = true; setSending(true);
     Haptic.medium();
-    handleSend(trimmed, user);
+    try { await handleSend(trimmed, user, attachment); textRef.current = ''; setText(''); setAttachment(undefined); }
+    catch (e) { showAlert('Không gửi được tin nhắn', e instanceof Error ? e.message : 'Vui lòng thử lại.'); }
+    finally { sendingRef.current = false; setSending(false); }
+  };
+
+  const pickAttachment = async () => {
+    try {
+      const picked = await DocumentPicker.getDocumentAsync({ type: CHAT_FILE_TYPES, copyToCacheDirectory: true, multiple: false });
+      if (picked.canceled) return;
+      const file = picked.assets[0];
+      if (file.size != null && file.size > 10 * 1024 * 1024) { showAlert('Tệp quá lớn', 'Tệp tối đa 10 MB.'); return; }
+      setAttachment(file);
+    } catch (e) { showAlert('Không chọn được tệp', e instanceof Error ? e.message : 'Vui lòng thử lại.'); }
   };
 
   const handleBack = () => {
@@ -109,7 +129,7 @@ export default function ChatScreen() {
         <TouchableOpacity className="p-1" onPress={handleBack} activeOpacity={0.7}>
           <Icon name="arrow-back" size={22} color={Colors.text.primary} />
         </TouchableOpacity>
-        <View className="w-9 h-9 rounded-full bg-[#A3E63525] justify-center items-center">
+        <View className="w-9 h-9 rounded-full bg-[#D4FF0025] justify-center items-center">
           {isGeneral ? (
             <Icon name="group" size={18} color={Colors.primary} />
           ) : (
@@ -124,6 +144,7 @@ export default function ChatScreen() {
         </View>
       </View>
 
+      <WorkflowState error={error} retry={() => { void refetch(); }} />
       {/* Messages */}
       {isLoading ? (
         <ActivityIndicator color={Colors.primary} style={{ flex: 1 }} size="large" />
@@ -169,12 +190,7 @@ export default function ChatScreen() {
                     {item.content ? (
                       <Text className={clsx('text-sm font-bevn-regular', isMine ? 'text-text-inverse' : 'text-text-primary')}>{item.content}</Text>
                     ) : null}
-                    {item.fileUrl ? (
-                      <View className="flex-row items-center gap-1">
-                        <Icon name="attach-file" size={14} color={isMine ? Colors.text.inverse : Colors.text.primary} />
-                        <Text className={clsx('text-sm font-bevn-regular', isMine ? 'text-text-inverse' : 'text-text-primary')}>Tệp đính kèm</Text>
-                      </View>
-                    ) : null}
+                    {item.fileUrl ? <ProtectedAttachment url={item.fileUrl} /> : null}
 
                     <Text
                       className="text-[10px] font-bevn-regular mt-1 self-end"
@@ -196,6 +212,7 @@ export default function ChatScreen() {
         />
       )}
 
+      {attachment && <View className="flex-row items-center justify-between px-lg py-sm bg-bg-surface"><Text className="text-text-primary text-sm font-bevn-regular flex-1" numberOfLines={1}>{attachment.name}</Text><TouchableOpacity disabled={sending} accessibilityRole="button" accessibilityLabel="Bỏ tệp đính kèm" onPress={() => setAttachment(undefined)}><Icon name="close" size={20} color={Colors.text.secondary} /></TouchableOpacity></View>}
       {/* Input */}
       <View
         className="flex-row items-end gap-sm px-lg py-md border-t border-border"
@@ -204,9 +221,11 @@ export default function ChatScreen() {
           backgroundColor: Colors.bg.surface,
         }}
       >
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Chọn ảnh hoặc PDF" disabled={sending} className="p-sm" onPress={() => { void pickAttachment(); }}><Icon name="attach-file" size={22} color={Colors.primary} /></TouchableOpacity>
         <TextInput
           className="flex-1 bg-bg-elevated rounded-lg px-lg py-sm text-text-primary font-bevn-regular text-sm max-h-[100px] border border-border"
           value={text}
+          editable={!sending}
           onChangeText={(val) => {
             setText(val);
             textRef.current = val;
@@ -226,13 +245,13 @@ export default function ChatScreen() {
           }}
         />
         <TouchableOpacity
-          className={clsx('w-10 h-10 rounded-full justify-center items-center', text.trim() ? 'bg-primary' : 'bg-bg-elevated')}
+          className={clsx('w-10 h-10 rounded-full justify-center items-center', text.trim() || attachment ? 'bg-primary' : 'bg-bg-elevated')}
           onPress={onSend}
-          disabled={!text.trim()}
+          disabled={sending || (!text.trim() && !attachment)}
           activeOpacity={0.7}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Icon name="send" size={20} color={text.trim() ? Colors.text.inverse : Colors.text.muted} />
+          {sending ? <ActivityIndicator color={Colors.primary} /> : <Icon name="send" size={20} color={text.trim() || attachment ? Colors.text.inverse : Colors.text.muted} />}
         </TouchableOpacity>
       </View>
     </KeyboardAwareView>

@@ -16,7 +16,7 @@ export const SUBSCRIPTION_STATUS_LABEL: Record<SubscriptionStatus, string> = {
   ACTIVE: 'Hiệu lực',
   EXPIRED: 'Hết hạn',
   CANCELLED: 'Đã hủy',
-  SUSPENDED: 'Tạm dừng',
+  SUSPENDED: 'Đã thay thế / ngừng quyền lợi',
 };
 
 export const SUBSCRIPTION_STATUS_COLOR: Record<SubscriptionStatus, string> = {

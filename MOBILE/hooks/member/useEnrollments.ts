@@ -6,6 +6,7 @@ import { getMyEnrollments, cancelEnrollment, transferEnrollment, getMyQuota, enr
 import { showAlert, showConfirm } from '../../lib/alert';
 import { ApiError } from '../../lib/api';
 import type { ConcurrentClassQuota, Enrollment } from '../../lib/types';
+import { useAuth } from '../../context/AuthContext';
 
 export function useMyEnrollments(status?: string, limit?: string, options?: { enabled?: boolean }) {
   return useQuery({
@@ -41,11 +42,13 @@ export function useUpcomingEnrollments() {
 
 /** Hook lấy quota lớp học song song của hội viên — GET /enrollments/my/quota */
 export function useMyQuota() {
+  const { user } = useAuth();
   return useQuery<{ data: ConcurrentClassQuota }, Error, ConcurrentClassQuota>({
     queryKey: ['enrollment-quota'],
     queryFn: getMyQuota,
     select: (res) => res.data,
     staleTime: 60_000, // 1 phút — quota thay đổi khi book/cancel
+    enabled: user?.role === 'MEMBER',
   });
 }
 
@@ -117,13 +120,11 @@ export function useEnrollWholeCourse() {
       queryClient.invalidateQueries({ queryKey: ['my-enrollments-upcoming'] });
       queryClient.invalidateQueries({ queryKey: ['enrollment-quota'] });
       const d = res.data;
-      const lines: string[] = [];
-      if (d.enrolled > 0) lines.push(`Đăng ký mới: ${d.enrolled} buổi`);
-      if (d.reactivated > 0) lines.push(`Kích hoạt lại: ${d.reactivated} buổi`);
-      if (d.alreadyBooked > 0) lines.push(`Đã đặt trước: ${d.alreadyBooked} buổi`);
+      for (const key of ['course-plan', 'class-schedules', 'member-schedule', 'classes']) void queryClient.invalidateQueries({ queryKey: [key] });
+      const lines = [`Đăng ký thêm: ${d.summary.enrolledNow} buổi`, `Đã đăng ký: ${d.summary.totalRegistered}/${d.summary.totalSessions} buổi`];
       showAlert(
         'Đăng ký trọn khóa thành công',
-        lines.join('\n') || `Đã xử lý ${d.totalSessions} buổi học.`
+        lines.join('\n')
       );
 
     },

@@ -35,7 +35,7 @@ export function useCoachAttendance(coachId: string | undefined, initialScheduleI
     }),
     [todayKey]
   );
-  const { schedules: allSchedules, isLoading: schedulesLoading, refetch: refetchSchedules } = useCoachSchedules(coachId, range);
+  const { schedules: allSchedules, isLoading: schedulesLoading, refetch: refetchSchedules, error: schedulesError } = useCoachSchedules(coachId, range);
   const schedules = allSchedules.filter((s) => s.status !== 'CANCELLED');
 
   // Buổi được chọn có thể nằm ngoài khoảng đã tải (mở từ Lịch dạy tuần khác) → tải riêng
@@ -77,12 +77,13 @@ export function useCoachAttendance(coachId: string | undefined, initialScheduleI
   return {
     schedules,
     schedulesLoading,
+    error: schedulesError ?? enrollmentsQuery.error ?? attendanceQuery.error ?? detailQuery.error,
     selectedSchedule,
     /** Đang ở chế độ xem một buổi (kể cả khi buổi còn đang tải) */
     hasSelection: Boolean(selectedId),
     selectSchedule: (id: string | null) => setSelectedId(id),
     roster,
-    rosterLoading: enrollmentsQuery.isLoading || attendanceQuery.isLoading || (Boolean(selectedId) && !selectedSchedule),
+    rosterLoading: enrollmentsQuery.isLoading || attendanceQuery.isLoading || detailQuery.isLoading,
     recordFor,
     canWrite,
     canShowQr,
@@ -91,7 +92,7 @@ export function useCoachAttendance(coachId: string | undefined, initialScheduleI
     startMarking: (memberId: string) => setMarkingMemberId(memberId),
     cancelMarking: () => setMarkingMemberId(null),
     mark: (status: AttendanceStatus, onError: (e: unknown) => void) => {
-      if (!markingMemberId) return;
+      if (!markingMemberId || !canWrite || markMutation.isPending) return;
       markMutation.mutate({ memberId: markingMemberId, status }, { onError });
       setMarkingMemberId(null);
     },

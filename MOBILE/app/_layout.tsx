@@ -42,7 +42,7 @@ function AuthGuard() {
 }
 
 function RootLayoutContent() {
-  const { isLoading, isAuthenticated, facilities } = useAuth();
+  const { isLoading, isAuthenticated, facilities, user } = useAuth();
 
   if (isLoading) {
     return <AppLoadingScreen message="Đang kiểm tra phiên đăng nhập..." />;
@@ -57,12 +57,26 @@ function RootLayoutContent() {
     <>
       <AuthGuard />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg.primary } }}>
-        <Stack.Screen name="auth" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="classes/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="schedule/[scheduleId]" options={{ headerShown: false }} />
-        <Stack.Screen name="membership/plans" options={{ headerShown: false }} />
-        <Stack.Screen name="payment/[paymentId]" options={{ headerShown: false }} />
+        <Stack.Protected guard={!isAuthenticated}>
+          <Stack.Screen name="auth" />
+        </Stack.Protected>
+        <Stack.Protected guard={isAuthenticated}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="classes/[id]" />
+          <Stack.Screen name="schedule/[scheduleId]" />
+          <Stack.Screen name="chat" />
+          <Stack.Screen name="assistant" />
+        </Stack.Protected>
+        <Stack.Protected guard={isAuthenticated && user?.role === 'MEMBER'}>
+          <Stack.Screen name="membership/plans" />
+          <Stack.Screen name="payment/[paymentId]" />
+          <Stack.Screen name="attendance/my" />
+          <Stack.Screen name="member" />
+          <Stack.Screen name="invoice/[id]" />
+        </Stack.Protected>
+        <Stack.Protected guard={isAuthenticated && user?.role === 'COACH'}>
+          <Stack.Screen name="coach" />
+        </Stack.Protected>
       </Stack>
     </>
   );

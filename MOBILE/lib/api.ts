@@ -6,7 +6,7 @@ import type { User } from './types';
 if (!process.env.EXPO_PUBLIC_API_BASE_URL) {
   throw new Error('[api] EXPO_PUBLIC_API_BASE_URL is not set. Please create a .env file (see .env.example).');
 }
-export const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+export const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL.trim().replace(/\/+$/, '');
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -38,6 +38,7 @@ export class ApiError extends Error {
 
 let _accessToken = '';
 let _refreshToken = '';
+let _sessionVersion = 0;
 
 export async function initTokens() {
   _accessToken = (await storage.getAccessToken()) || '';
@@ -45,12 +46,14 @@ export async function initTokens() {
 }
 
 export async function saveTokens(access: string, refresh: string) {
+  _sessionVersion += 1;
   _accessToken = access;
   _refreshToken = refresh;
   await storage.setTokens(access, refresh);
 }
 
 export async function clearTokens() {
+  _sessionVersion += 1;
   _accessToken = '';
   _refreshToken = '';
   await storage.clearTokens();
@@ -89,6 +92,18 @@ export function getFacilityId() {
 
 // Mã lỗi thô của BE → câu tiếng Việt cho người dùng.
 const SERVER_MESSAGE_VI: Record<string, string> = {
+  'Invalid email or password': 'Email hoặc mật khẩu không đúng.',
+  'Your account has been deactivated': 'Tài khoản đã ngừng hoạt động. Vui lòng liên hệ trung tâm.',
+  'Email is already in use': 'Email đã được sử dụng.',
+  'Current password is incorrect': 'Mật khẩu hiện tại không đúng.',
+  'Refresh token not found': 'Không tìm thấy phiên đăng nhập. Vui lòng đăng nhập lại.',
+  'Invalid or expired refresh token': 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.',
+  'Refresh token has been revoked': 'Phiên đăng nhập đã bị thu hồi. Vui lòng đăng nhập lại.',
+  'Refresh token has expired': 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+  'This class is full': 'Lớp đã đủ số lượng học viên.',
+  'Cannot book a past class': 'Không thể đăng ký buổi học đã bắt đầu.',
+  'You are already enrolled in this class': 'Bạn đã đăng ký buổi học này.',
+  'Premium membership required to book this class': 'Lớp này yêu cầu gói Premium còn hiệu lực.',
   FACILITY_CONTEXT_REQUIRED: 'Vui lòng chọn cơ sở để tiếp tục.',
   CONFLICTING_FACILITY_CONTEXT: 'Thông tin cơ sở không khớp. Vui lòng thử lại.',
   FORBIDDEN_SCOPE: 'Bạn không có quyền truy cập cơ sở này.',
@@ -111,13 +126,13 @@ const axiosInstance = axios.create({
 
 // Request interceptor — tự động gắn Bearer token vào mỗi request
 axiosInstance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  if (_accessToken) {
+  if (_accessToken && config.headers.Authorization !== null) {
     config.headers.Authorization = `Bearer ${_accessToken}`;
   }
   // /auth không cần cơ sở; /facilities tự nhận facilityId ở path — gửi thêm header
   // sẽ bị BE coi là CONFLICTING_FACILITY_CONTEXT.
   const url = config.url ?? '';
-  if (_facilityId && !url.startsWith('/auth') && !url.startsWith('/facilities')) {
+  if (_facilityId && !config.headers.has('X-Facility-Id') && !url.startsWith('/auth') && !url.startsWith('/facilities')) {
     config.headers['X-Facility-Id'] = _facilityId;
   }
   return config;
@@ -129,24 +144,27 @@ let _refreshing: Promise<void> | null = null;
 
 async function doRefresh() {
   if (_refreshing) return _refreshing;
+  const version = _sessionVersion;
+  const refresh = _refreshToken;
   _refreshing = (async () => {
     try {
       const r = await axiosInstance.post<Envelope<{ accessToken: string; refreshToken?: string }>>(
         '/auth/refresh-token',
-        { refreshToken: _refreshToken },
+        { refreshToken: refresh },
       );
-      await saveTokens(r.data.data.accessToken, r.data.data.refreshToken || _refreshToken);
+      if (version !== _sessionVersion) throw new ApiError('Phiên đăng nhập đã thay đổi. Vui lòng thử lại.', 409);
+      await saveTokens(r.data.data.accessToken, r.data.data.refreshToken || refresh);
     } catch (e) {
       const err = e as AxiosError<Envelope<unknown>>;
-      const status = err.response?.status ?? 0;
-      if ([400, 401, 403].includes(status)) {
+      const status = e instanceof ApiError ? e.status : err.response?.status ?? 0;
+      if (version === _sessionVersion && [400, 401, 403].includes(status)) {
         await clearTokens();
         // Refresh token bị BE từ chối dứt khoát (thu hồi do đổi mật khẩu/khóa
         // tài khoản/đổi role) — báo cho AuthContext tự đăng xuất, tránh "nửa phiên".
         emitSessionExpired();
       }
       throw new ApiError(
-        err.response?.data?.message || 'Phiên đăng nhập đã hết hạn.',
+        e instanceof Error ? e.message : 'Phiên đăng nhập đã hết hạn.',
         status,
       );
     } finally {
@@ -170,14 +188,16 @@ axiosInstance.interceptors.response.use(
     // Nếu BE trả về success: false trong body (HTTP 200 nhưng lỗi nghiệp vụ)
     const payload = response.data as Envelope<unknown>;
     if (payload && payload.success === false) {
-      throw new ApiError(payload.message || 'Yêu cầu thất bại.', response.status, payload.errors);
+      throw new ApiError(viMessage(payload.message) || 'Yêu cầu thất bại.', response.status, payload.errors);
     }
     return response;
   },
   (error: AxiosError<Envelope<unknown>>) => {
-    if (error.code === 'ECONNABORTED' || error.code === 'ERR_CANCELED') {
-      // Timeout hoặc bị huỷ (AbortSignal)
+    if (error.code === 'ERR_CANCELED') {
       throw error;
+    }
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+      throw new ApiError('Máy chủ phản hồi quá lâu. Vui lòng thử lại sau ít phút.', 0);
     }
     if (!error.response) {
       throw new ApiError('Không thể kết nối máy chủ. Vui lòng kiểm tra mạng.', 0);
@@ -218,7 +238,11 @@ export async function apiRequest<T>(
     params: Object.keys(params).length ? params : undefined,
     data: options.body,
     signal: options.signal,
-    headers: options.headers,
+    headers: {
+      ...(_facilityId && !path.startsWith('/auth') && !path.startsWith('/facilities') ? { 'X-Facility-Id': _facilityId } : {}),
+      ...options.headers,
+      ...(options.requiresAuth === false ? { Authorization: null } : {}),
+    },
   };
 
   // requiresAuth chỉ quyết định có tự refresh token + retry khi gặp 401 hay không
@@ -230,11 +254,47 @@ export async function apiRequest<T>(
     if (e instanceof ApiError && e.status === 401 && _refreshToken && options.requiresAuth !== false) {
       await doRefresh();
       // Retry sau khi refresh token
-      const retryRes = await axiosInstance.request<Envelope<T>>(config);
-      return retryRes.data;
+      try {
+        const retryRes = await axiosInstance.request<Envelope<T>>(config);
+        return retryRes.data;
+      } catch (retryError) {
+        if (retryError instanceof ApiError && retryError.status === 401) {
+          await clearTokens();
+          emitSessionExpired();
+        }
+        throw retryError;
+      }
+    }
+    if (e instanceof ApiError && options.requiresAuth !== false && hasSession() &&
+      (e.status === 401 || /^Unauthorized: (account is locked|role has changed, please login again|user not found)$/i.test(e.message.trim()))) {
+      await clearTokens();
+      emitSessionExpired();
     }
     throw e;
   }
+}
+
+/** Only send bearer credentials to our authenticated attachment endpoint. */
+export function attachmentLocation(value: string): URL | null {
+  try {
+    const base = new URL(BASE_URL);
+    const url = new URL(value, base.origin);
+    if (url.hostname === base.hostname && base.protocol === 'https:') url.protocol = 'https:';
+    const prefix = `${base.pathname}/chat/attachments/`;
+    if (url.origin !== base.origin || url.username || url.password || !url.pathname.startsWith(prefix) || !/^[^/]+$/.test(url.pathname.slice(prefix.length))) return null;
+    return url;
+  } catch { return null; }
+}
+
+export async function fetchAttachment(value: string, signal?: AbortSignal): Promise<Blob> {
+  const url = attachmentLocation(value);
+  if (!url) throw new ApiError('Tệp cũ không còn khả dụng.', 400);
+  const request = () => fetch(url.href, { headers: _accessToken ? { Authorization: `Bearer ${_accessToken}` } : {}, signal, redirect: 'error', cache: 'no-store' });
+  let response = await request();
+  if (response.status === 401 && _refreshToken) { await doRefresh(); response = await request(); }
+  if (response.status === 401) { await clearTokens(); emitSessionExpired(); }
+  if (!response.ok) throw new ApiError('Không thể tải tệp đính kèm hoặc bạn không có quyền tải.', response.status);
+  return response.blob();
 }
 
 // ─── Convenience wrappers ────────────────────────────────────────────────────

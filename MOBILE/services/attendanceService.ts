@@ -3,6 +3,7 @@
 
 import { api } from '../lib/api';
 import type { Attendance, AttendanceStatus, AttendanceSummary, GenerateQrResult } from '../lib/types';
+import { allPages } from '../lib/pagedApi';
 
 export type AttendanceCredential = { qrToken: string; code?: never } | { code: string; qrToken?: never };
 
@@ -17,7 +18,7 @@ export const scanAttendanceQr = (credential: AttendanceCredential) =>
 
 /** GET /attendance/my — lịch sử điểm danh của chính hội viên (phân trang) */
 export const getMyAttendance = (params?: { status?: string; classId?: string; page?: string; limit?: string }) =>
-  api.get<Attendance[]>('/attendance/my', params);
+  allPages<Attendance>('/attendance/my', params);
 
 /** GET /attendance/my/summary — tỉ lệ chuyên cần theo lớp + danh sách hình phạt của chính mình */
 export const getMyAttendanceSummary = () =>
@@ -31,7 +32,7 @@ export const appealAttendancePenalty = (id: string, reason: string) =>
 
 /** GET /attendance?scheduleId= — điểm danh của một ca học */
 export const getScheduleAttendance = (scheduleId: string) =>
-  api.get<Attendance[]>('/attendance', { scheduleId });
+  allPages<Attendance>('/attendance', { scheduleId });
 
 /** POST /attendance — HLV ghi điểm danh cho học viên */
 export const createAttendance = (payload: { scheduleId: string; memberId: string; status: AttendanceStatus }) =>

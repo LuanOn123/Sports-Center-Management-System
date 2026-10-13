@@ -117,11 +117,11 @@ export default function ChatTabScreen() {
       {/* Phòng chung — kênh chung toàn trung tâm, luôn ghim đầu danh sách (không lọc theo search) */}
       <View className="px-xl pb-sm">
         <TouchableOpacity
-          className="flex-row items-center gap-md rounded-lg p-lg border border-[#A3E63540] bg-[#A3E63510]"
+          className="flex-row items-center gap-md rounded-lg p-lg border border-[#D4FF0040] bg-[#D4FF0010]"
           onPress={() => router.push(ROUTES.chatThread(GENERAL_CHAT_ID, 'Phòng chung'))}
           activeOpacity={0.7}
         >
-          <View className="w-12 h-12 rounded-full bg-[#A3E63525] justify-center items-center">
+          <View className="w-12 h-12 rounded-full bg-[#D4FF0025] justify-center items-center">
             <Icon name="group" size={22} color={Colors.primary} />
           </View>
           <View className="flex-1">
@@ -157,7 +157,7 @@ export default function ChatTabScreen() {
             <TouchableOpacity
               className={clsx(
                 'flex-row items-center gap-md rounded-lg p-lg border mb-sm',
-                item.unreadCount > 0 ? 'border-[#A3E63550] bg-bg-elevated' : 'bg-bg-surface border-border'
+                item.unreadCount > 0 ? 'border-[#D4FF0050] bg-bg-elevated' : 'bg-bg-surface border-border'
               )}
               onPress={() => router.push(ROUTES.chatThread(item.user.id, item.user.fullName))}
               activeOpacity={0.7}

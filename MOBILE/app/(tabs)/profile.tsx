@@ -25,12 +25,15 @@ import { showAlert, showConfirm } from '../../lib/alert';
 import { Colors } from '../../constants/theme';
 import { KeyboardAwareView } from '../../components/shared/KeyboardAwareView';
 import { Haptic } from '../../lib/haptics';
+import { CoachSpecializations } from '../../components/coach/CoachSpecializations';
 
 const profileSchema = z.object({
-  fullName: z.string().min(2, 'Ít nhất 2 ký tự'),
-  phone: z.string().optional(),
-  fitnessGoal: z.string().optional(),
-  trainingPreference: z.string().optional(),
+  fullName: z.string().trim().min(2, 'Ít nhất 2 ký tự').max(100, 'Tối đa 100 ký tự'),
+  phone: z.string().refine((value) => !value || /^[0-9+]{9,15}$/.test(value), 'Số điện thoại cần 9–15 chữ số').optional(),
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
+  dateOfBirth: z.string().refine((value) => !value || (/^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value && Date.parse(value) <= Date.now()), 'Ngày sinh cần dạng YYYY-MM-DD và không ở tương lai').optional(),
+  fitnessGoal: z.string().max(500).optional(),
+  trainingPreference: z.string().max(500).optional(),
 });
 const pwdSchema = z
   .object({
@@ -142,6 +145,8 @@ export default function ProfileScreen() {
     defaultValues: {
       fullName: user?.fullName ?? '',
       phone: user?.phone ?? '',
+      gender: user?.gender,
+      dateOfBirth: user?.dateOfBirth?.slice(0, 10) ?? '',
       fitnessGoal: user?.memberProfile?.fitnessGoal ?? '',
       trainingPreference: user?.memberProfile?.trainingPreference ?? '',
     },
@@ -153,6 +158,8 @@ export default function ProfileScreen() {
       reset({
         fullName: user.fullName ?? '',
         phone: user.phone ?? '',
+        gender: user.gender,
+        dateOfBirth: user.dateOfBirth?.slice(0, 10) ?? '',
         fitnessGoal: user.memberProfile?.fitnessGoal ?? '',
         trainingPreference: user.memberProfile?.trainingPreference ?? '',
       });
@@ -176,7 +183,7 @@ export default function ProfileScreen() {
   const updateProfile = useMutation({
     mutationFn: (data: ProfileForm) => {
       Haptic.medium();
-      return api.patch('/auth/me', data);
+      return api.patch('/auth/me', { ...data, dateOfBirth: data.dateOfBirth || undefined });
     },
     onSuccess: async () => {
       Haptic.success();
@@ -325,7 +332,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           <Text className="text-xl font-bold font-bevn-bold text-text-primary">{user?.fullName}</Text>
           <Text className="text-sm text-text-secondary mt-0.5 font-bevn-regular">{user?.email}</Text>
-          <View className={clsx('flex-row items-center gap-1 mt-sm bg-[#A3E63520] rounded-full px-lg py-1', isCoach && 'bg-[#A3E63525] border border-[#A3E63540]')}>
+          <View className={clsx('flex-row items-center gap-1 mt-sm bg-[#D4FF0020] rounded-full px-lg py-1', isCoach && 'bg-[#D4FF0025] border border-[#D4FF0040]')}>
             <Icon name={isCoach ? 'sports' : 'person'} size={14} color={Colors.primary} />
             <Text className="text-primary text-sm font-semibold font-bevn-semibold">{ROLE_LABEL[user?.role ?? 'MEMBER']}</Text>
           </View>
@@ -345,7 +352,7 @@ export default function ProfileScreen() {
               </View>
 
               <View className="flex-row items-center gap-1.5">
-                <Icon name="workspace-premium" size={16} color="#F59E0B" />
+                <Icon name="workspace-premium" size={16} color="#F5CB65" />
                 <Text className="text-sm text-text-secondary font-bevn-medium">Kinh nghiệm:</Text>
                 <Text className="text-sm font-semibold font-bevn-semibold text-text-primary flex-1">
                   {user?.coachProfile?.experienceYears ? `${user.coachProfile.experienceYears} năm` : 'Đang cập nhật'}
@@ -365,6 +372,7 @@ export default function ProfileScreen() {
           </View>
         )}
 
+        {isCoach && user?.coachProfile?.id && <View className="mb-lg"><CoachSpecializations coachId={user.coachProfile.id} /></View>}
         {/* Tabs */}
         <View className="flex-row gap-md mb-lg">
           <TouchableOpacity
@@ -383,6 +391,17 @@ export default function ProfileScreen() {
 
         {tab === 'info' && (
           <View className="bg-bg-surface rounded-xl p-xl border border-border mb-lg">
+            <View className="mb-lg">
+              <Text className="text-sm text-text-secondary mb-sm font-bevn-medium">Giới tính</Text>
+              <Controller control={control} name="gender" render={({ field: { value, onChange } }) => <View className="flex-row flex-wrap gap-sm">
+                {([{ value: 'MALE', label: 'Nam' }, { value: 'FEMALE', label: 'Nữ' }, { value: 'OTHER', label: 'Khác' }] as const).map((option) => <TouchableOpacity key={option.value} accessibilityRole="button" accessibilityState={{ selected: value === option.value }} onPress={() => onChange(option.value)} className={clsx('rounded-md px-lg py-sm border', value === option.value ? 'bg-primary border-primary' : 'bg-bg-elevated border-border')}><Text className={clsx('font-bevn-medium text-sm', value === option.value ? 'text-text-inverse' : 'text-text-primary')}>{option.label}</Text></TouchableOpacity>)}
+              </View>} />
+            </View>
+            <View className="mb-lg">
+              <Text className="text-sm text-text-secondary mb-sm font-bevn-medium">Ngày sinh (YYYY-MM-DD)</Text>
+              <Controller control={control} name="dateOfBirth" render={({ field: { value, onChange } }) => <TextInput accessibilityLabel="Ngày sinh" value={value || ''} onChangeText={onChange} placeholder="2000-01-31" maxLength={10} placeholderTextColor={Colors.text.muted} className="bg-bg-elevated rounded-md p-md text-text-primary border border-border font-bevn-regular" />} />
+              {errors.dateOfBirth && <Text className="text-status-failed text-xs mt-sm font-bevn-regular">{errors.dateOfBirth.message}</Text>}
+            </View>
             {/* Full name */}
             <View className="mb-lg">
               <Text className="text-sm text-text-secondary mb-1.5 font-bevn-medium">Họ và tên</Text>
@@ -619,7 +638,7 @@ export default function ProfileScreen() {
         )}
 
         {/* Logout */}
-        <TouchableOpacity className="bg-[#EF444415] rounded-lg p-lg items-center border border-[#EF444430]" onPress={handleLogout}>
+        <TouchableOpacity className="bg-[#FF8D9A15] rounded-lg p-lg items-center border border-[#FF8D9A30]" onPress={handleLogout}>
           <Text className="text-status-failed font-bold font-bevn-bold text-md">Đăng xuất</Text>
         </TouchableOpacity>
       </ScrollView>

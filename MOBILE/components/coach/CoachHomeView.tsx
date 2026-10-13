@@ -1,3 +1,4 @@
+import { vietnamDate } from '../../lib/date';
 // components/coach/CoachHomeView.tsx
 // UI Trang chủ dành riêng cho Huấn luyện viên (Coach)
 
@@ -13,6 +14,7 @@ import { Brand } from '../shared/Brand';
 import { FacilityPicker } from '../shared/FacilityPicker';
 import { ClassCardSkeleton } from '../shared/Skeleton';
 import { QuickAccessGrid } from '../shared/QuickAccessGrid';
+import { WeeklyTeachingSummary } from './WeeklyTeachingSummary';
 import { getQuickAccessForRole } from '../../navigation/quickAccessConfig';
 import { useCoachHome } from '../../hooks/coach/useCoachHome';
 import { useUnreadNotificationCount } from '../../hooks/shared/useNotifications';
@@ -33,12 +35,12 @@ function pad2(n: number) {
 }
 function formatDate(iso: string) {
   const d = new Date(iso);
-  return `${WEEKDAY_SHORT[d.getDay()]}, ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+  return `${WEEKDAY_SHORT[vietnamDate(d).getUTCDay()]}, ${pad2(vietnamDate(d).getUTCDate())}/${pad2(vietnamDate(d).getUTCMonth() + 1)}/${vietnamDate(d).getUTCFullYear()}`;
 }
 
 function formatTime(iso: string) {
   const d = new Date(iso);
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  return `${pad2(vietnamDate(d).getUTCHours())}:${pad2(vietnamDate(d).getUTCMinutes())}`;
 }
 
 interface CoachHomeViewProps {
@@ -105,7 +107,7 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
 
       {/* Greeting */}
       <View className="mb-xl">
-        <View className="flex-row items-center gap-1 bg-[#A3E63520] px-sm py-[3px] rounded-full self-start mb-xs">
+        <View className="flex-row items-center gap-1 bg-[#D4FF0020] px-sm py-[3px] rounded-full self-start mb-xs">
           <Icon name="sports" size={14} color={Colors.primary} />
           <Text className="text-xs font-bold font-bevn-bold text-primary tracking-wide">HUẤN LUYỆN VIÊN</Text>
         </View>
@@ -125,13 +127,13 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
           <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mt-0.5">{coachClasses.length} lớp</Text>
         </View>
         <View className="flex-1 bg-bg-surface rounded-lg p-lg border border-border">
-          <Icon name="event-available" size={20} color="#10B981" style={{ marginBottom: 4 }} />
+          <Icon name="event-available" size={20} color="#64DFB4" style={{ marginBottom: 4 }} />
           <Text className="text-xs text-text-muted font-bevn-regular uppercase tracking-wide">Lịch dạy sắp tới</Text>
           <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mt-0.5">{teachingSchedules.length} buổi</Text>
         </View>
         {Boolean(user?.coachProfile?.experienceYears) && (
           <View className="flex-1 bg-bg-surface rounded-lg p-lg border border-border">
-            <Icon name="workspace-premium" size={20} color="#F59E0B" style={{ marginBottom: 4 }} />
+            <Icon name="workspace-premium" size={20} color="#F5CB65" style={{ marginBottom: 4 }} />
             <Text className="text-xs text-text-muted font-bevn-regular uppercase tracking-wide">Kinh nghiệm</Text>
             <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mt-0.5">{user?.coachProfile?.experienceYears} năm</Text>
           </View>
@@ -140,6 +142,7 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
 
       {/* ─── TRUY CẬP NHANH (QUICK ACCESS CHO HLV) — ĐƯỢC ĐẶT LÊN TRÊN LỊCH DẠY ─── */}
       <QuickAccessGrid items={getQuickAccessForRole('COACH')} />
+      {coachId && <WeeklyTeachingSummary coachId={coachId} />}
 
       {/* ─── LỊCH DẠY SẮP TỚI ─── */}
       <View className="mb-xl">
@@ -172,7 +175,7 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
               activeOpacity={0.8}
             >
               <View className="flex-row justify-between items-center mb-xs">
-                <View className="bg-[#A3E63518] px-sm py-0.5 rounded-sm">
+                <View className="bg-[#D4FF0018] px-sm py-0.5 rounded-sm">
                   <Text className="text-xs font-semibold font-bevn-semibold text-primary">{s.class?.sports?.map((sp) => sp.name).join(', ') || 'Môn thể thao'}</Text>
                 </View>
                 <View className="flex-row items-center gap-1">

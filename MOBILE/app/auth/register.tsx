@@ -4,7 +4,7 @@ import {
   Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import clsx from 'clsx';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,6 +36,7 @@ import { Keyboard } from 'react-native';
 import { Haptic } from '../../lib/haptics';
 
 export default function RegisterScreen() {
+  const router = useRouter();
   const { register: authRegister } = useAuth();
   const insets = useSafeAreaInsets();
   const scrollViewRef = React.useRef<ScrollView>(null);
@@ -75,6 +76,7 @@ export default function RegisterScreen() {
         phone: data.phone || undefined,
       });
       Haptic.success();
+      showAlert('Đăng ký thành công', 'Vui lòng đăng nhập để bắt đầu sử dụng tài khoản.', () => router.replace(ROUTES.login));
     } catch (e) {
       Haptic.error();
       const msg = e instanceof ApiError ? e.message : 'Đăng ký thất bại. Vui lòng thử lại.';
@@ -95,6 +97,9 @@ export default function RegisterScreen() {
         className="flex-1"
         contentContainerStyle={{
           flexGrow: 1,
+          width: '100%',
+          maxWidth: 520,
+          alignSelf: 'center',
           paddingHorizontal: 20,
           paddingTop: Math.max(insets.top, 24) + 10,
           paddingBottom: Math.max(insets.bottom, 24) + 20,

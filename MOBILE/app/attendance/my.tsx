@@ -1,3 +1,4 @@
+import { vietnamDate } from '../../lib/date';
 // app/attendance/my.tsx
 // Chuyên cần & lịch sử điểm danh của hội viên — tỉ lệ theo lớp, hình phạt (kèm khiếu nại), lịch sử điểm danh
 
@@ -15,6 +16,10 @@ import { Colors } from '../../constants/theme';
 import { Haptic } from '../../lib/haptics';
 import type { AttendanceStatus, AttendanceBucketStatus, AttendancePenaltyStatus } from '../../lib/types';
 import { ROUTES } from '../../navigation/routes';
+import { QrScannerModal } from '../../components/shared/QrScannerModal';
+import { useScanAttendance } from '../../hooks/member/useAttendance';
+import { WorkflowButton, WorkflowState } from '../../components/shared/WorkflowScreen';
+import { showAlert } from '../../lib/alert';
 
 const STATUS_LABEL: Record<AttendanceStatus, string> = {
   PRESENT: 'Có mặt',
@@ -24,15 +29,15 @@ const STATUS_LABEL: Record<AttendanceStatus, string> = {
 };
 
 const BUCKET_STATUS_LABEL: Record<AttendanceBucketStatus, string> = {
-  OK: 'Đạt',
-  WARN: 'Cần cải thiện',
-  RELEASE: 'Dưới ngưỡng',
+  NORMAL: 'Bình thường',
+  NOTICE: 'Nhắc nhở',
+  WARNING: 'Cảnh báo',
 };
 
 const BUCKET_STATUS_COLOR: Record<AttendanceBucketStatus, string> = {
-  OK: Colors.status.booked,
-  WARN: '#D97706',
-  RELEASE: Colors.status.expired,
+  NORMAL: Colors.status.success,
+  NOTICE: Colors.status.pending,
+  WARNING: Colors.status.expired,
 };
 
 const PENALTY_STATUS_LABEL: Record<AttendancePenaltyStatus, string> = {
@@ -49,17 +54,19 @@ function pad2(n: number) {
 }
 function formatDate(iso: string) {
   const d = new Date(iso);
-  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+  return `${pad2(vietnamDate(d).getUTCDate())}/${pad2(vietnamDate(d).getUTCMonth() + 1)}/${vietnamDate(d).getUTCFullYear()}`;
 }
 function formatDateTime(iso: string) {
   const d = new Date(iso);
-  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  return `${pad2(vietnamDate(d).getUTCDate())}/${pad2(vietnamDate(d).getUTCMonth() + 1)}/${vietnamDate(d).getUTCFullYear()} ${pad2(vietnamDate(d).getUTCHours())}:${pad2(vietnamDate(d).getUTCMinutes())}`;
 }
 
 export default function MyAttendanceScreen() {
   const router = useRouter();
   const [appealingId, setAppealingId] = useState<string | null>(null);
   const [reason, setReason] = useState('');
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const scan = useScanAttendance();
 
   const history = useMyAttendance();
   const summary = useMyAttendanceSummary();
@@ -127,13 +134,15 @@ export default function MyAttendanceScreen() {
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
+        <WorkflowButton title="Quét QR / Nhập mã điểm danh" onPress={() => setScannerOpen(true)} />
+        <WorkflowState error={summary.error || history.error} retry={() => { void onRefresh(); }} />
         {/* Tỉ lệ chuyên cần theo lớp */}
         <View className="mb-xl">
           <View className="flex-row items-center gap-1.5 mb-1">
             <Icon name="insights" size={18} color={Colors.primary} />
             <Text className="text-lg font-bold font-bevn-bold text-text-primary">Tỉ lệ chuyên cần theo lớp</Text>
           </View>
-          <Text className="text-xs text-text-muted font-bevn-regular mb-md">Tính trên tối đa 10 buổi đã kết thúc; vắng có phép không làm giảm tỉ lệ.</Text>
+          <Text className="text-xs text-text-muted font-bevn-regular mb-md">Khóa cố định tính số lần vắng theo 20% tổng buổi kế hoạch. Lớp định kỳ tính trên 10 buổi gần nhất, tối thiểu 5 buổi. Cảnh báo chỉ để tham khảo; hạn chế đặt lớp do quản lý quyết định.</Text>
 
           {summary.isLoading ? (
             <ActivityIndicator color={Colors.primary} style={{ marginTop: 16 }} />
@@ -155,6 +164,7 @@ export default function MyAttendanceScreen() {
                 <Text className="text-xs text-text-muted font-bevn-regular">
                   Có mặt {b.presentCount} · muộn {b.lateCount} · vắng {b.absentCount} · không điểm danh {b.noShowCount} · có phép {b.excusedCount}
                 </Text>
+                <Text className="text-xs text-text-secondary font-bevn-regular mt-sm">{b.policy === 'FIXED' ? `Khóa cố định · ${b.totalPlannedSessions ?? '—'} buổi kế hoạch` : 'Lớp định kỳ'} · Vắng {b.currentAbsences}/{b.allowedAbsences} · Còn {b.remainingAbsences} lần vắng</Text>
               </View>
             ))
           )}
@@ -258,6 +268,7 @@ export default function MyAttendanceScreen() {
           )}
         </View>
       </ScrollView>
+      <QrScannerModal visible={scannerOpen} onClose={() => setScannerOpen(false)} isSubmitting={scan.isPending} onSubmitCredential={(credential) => scan.mutate(credential, { onSuccess: () => { setScannerOpen(false); showAlert('Điểm danh thành công', 'Đã ghi nhận điểm danh của bạn.'); }, onError: (e) => showAlert('Không thể điểm danh', e.message) })} />
     </View>
   );
 }

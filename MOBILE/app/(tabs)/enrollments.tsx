@@ -1,3 +1,4 @@
+import { vietnamDate } from '../../lib/date';
 // app/(tabs)/enrollments.tsx
 // Tab "Lớp học" — Quản lý lớp đã đặt: Sắp tới | Hoàn thành | Đã hủy
 // Member: xem ca học sắp tới, đổi buổi học, hủy đặt chỗ
@@ -17,6 +18,7 @@ import {
 import clsx from 'clsx';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import { allPages } from '../../lib/pagedApi';
 import { Icon } from '../../components/shared/Icon';
 import { ScreenHeader } from '../../components/shared/ScreenHeader';
 import { ClassCardSkeleton } from '../../components/shared/Skeleton';
@@ -40,11 +42,11 @@ function pad2(n: number) {
 }
 function formatDate(iso: string) {
   const d = new Date(iso);
-  return `${WEEKDAY_LABELS[d.getDay()]}, ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+  return `${WEEKDAY_LABELS[vietnamDate(d).getUTCDay()]}, ${pad2(vietnamDate(d).getUTCDate())}/${pad2(vietnamDate(d).getUTCMonth() + 1)}/${vietnamDate(d).getUTCFullYear()}`;
 }
 function formatTime(iso: string) {
   const d = new Date(iso);
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  return `${pad2(vietnamDate(d).getUTCHours())}:${pad2(vietnamDate(d).getUTCMinutes())}`;
 }
 function isSchedulePast(endTime?: string) {
   return Boolean(endTime) && new Date(endTime!) < new Date();
@@ -164,7 +166,7 @@ function EnrollmentCard({
 
             {/* Hủy đặt chỗ */}
             <TouchableOpacity
-              className="flex-1 flex-row items-center justify-center gap-1 py-xs rounded-lg border border-[#EF444440] bg-[#EF444415]"
+              className="flex-1 flex-row items-center justify-center gap-1 py-xs rounded-lg border border-[#FF8D9A40] bg-[#FF8D9A15]"
               onPress={() => onCancel(item.id, item.schedule?.class?.name)}
               disabled={cancelPending}
               activeOpacity={0.8}
@@ -194,7 +196,7 @@ function QuotaBanner() {
   return (
     <View className={clsx(
       'mx-xl mb-sm rounded-xl px-lg py-sm flex-row items-center border gap-2',
-      isFull ? 'bg-[#EF444412] border-[#EF444430]' : 'bg-[#A3E63510] border-[#A3E63530]'
+      isFull ? 'bg-[#FF8D9A12] border-[#FF8D9A30]' : 'bg-[#D4FF0010] border-[#D4FF0030]'
     )}>
       <Icon
         name={isFull ? 'block' : 'school'}
@@ -214,7 +216,7 @@ function QuotaBanner() {
       {quota.hasActiveSubscription && (
         <View className={clsx(
           'rounded-full px-sm py-0.5',
-          isFull ? 'bg-[#EF444420]' : 'bg-[#A3E63520]'
+          isFull ? 'bg-[#FF8D9A20]' : 'bg-[#D4FF0020]'
         )}>
           <Text className={clsx(
             'text-xs font-bevn-bold',
@@ -257,7 +259,7 @@ export default function EnrollmentsScreen() {
   } = useQuery({
     queryKey: ['transfer-schedules', targetClassId],
     queryFn: () =>
-      api.get<ClassSchedule[]>('/class-schedules', {
+      allPages<ClassSchedule>('/class-schedules', {
         classId: targetClassId,
         status: 'SCHEDULED',
         limit: '50',
@@ -424,7 +426,7 @@ export default function EnrollmentsScreen() {
                   <View
                     className={clsx(
                       'rounded-full min-w-[16px] h-4 px-1 items-center justify-center',
-                      isActive ? 'bg-[#00000030]' : 'bg-[#A3E63525]'
+                      isActive ? 'bg-[#00000030]' : 'bg-[#D4FF0025]'
                     )}
                   >
                     <Text
@@ -528,7 +530,7 @@ export default function EnrollmentsScreen() {
 
             {/* Note */}
             <View className="px-lg pt-md pb-xs">
-              <View className="bg-[#A3E63510] border border-[#A3E63530] rounded-lg p-sm flex-row items-start gap-2">
+              <View className="bg-[#D4FF0010] border border-[#D4FF0030] rounded-lg p-sm flex-row items-start gap-2">
                 <Icon name="info" size={16} color={Colors.primary} style={{ marginTop: 2 }} />
                 <Text className="flex-1 text-xs text-text-secondary font-bevn-regular leading-4">
                   Chọn một buổi học khác còn trống. Buổi học cũ chỉ được hủy khi máy chủ xác nhận chỗ mới thành công.
@@ -573,7 +575,7 @@ export default function EnrollmentsScreen() {
                       className={clsx(
                         'p-md rounded-xl border flex-row items-center gap-md',
                         isSelected
-                          ? 'border-primary bg-[#A3E63512]'
+                          ? 'border-primary bg-[#D4FF0012]'
                           : isFull
                           ? 'border-border bg-bg-card opacity-50'
                           : 'border-border bg-bg-elevated'
@@ -608,7 +610,7 @@ export default function EnrollmentsScreen() {
                       <View
                         className={clsx(
                           'rounded-full px-sm py-[3px]',
-                          isFull ? 'bg-[#6B728020]' : 'bg-[#A3E63520]'
+                          isFull ? 'bg-[#8498B220]' : 'bg-[#D4FF0020]'
                         )}
                       >
                         <Text

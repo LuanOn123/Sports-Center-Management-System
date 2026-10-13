@@ -3,10 +3,11 @@
 
 import { api } from '../lib/api';
 import type { ConcurrentClassQuota, Enrollment, WholeCourseEnrollmentResult } from '../lib/types';
+import { allPages } from '../lib/pagedApi';
 
 /** GET /enrollments/my?status=...&limit=... */
 export const getMyEnrollments = (status?: string, limit?: string) =>
-  api.get<Enrollment[]>('/enrollments/my', { status, limit });
+  allPages<Enrollment>('/enrollments/my', { status });
 
 /** DELETE /enrollments/:id */
 export const cancelEnrollment = (id: string) =>

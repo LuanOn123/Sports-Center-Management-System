@@ -1,3 +1,4 @@
+import { vietnamDate } from '../../lib/date';
 // components/shared/CoachRating.tsx
 // Đánh giá HLV — hiển thị điểm trung bình, danh sách đánh giá và form gửi/sửa của Member
 
@@ -11,6 +12,8 @@ import {
 import { showAlert, showConfirm } from '../../lib/alert';
 import { ApiError } from '../../lib/api';
 import { Colors } from '../../constants/theme';
+import { WorkflowButton, WorkflowState, WorkflowText } from './WorkflowScreen';
+import { useMyEnrollments } from '../../hooks/member/useEnrollments';
 
 function Stars({ value, size = 16 }: { value: number; size?: number }) {
   return (
@@ -45,7 +48,7 @@ function timeAgo(iso: string) {
   if (days < 1) return 'Hôm nay';
   if (days < 30) return `${days} ngày trước`;
   const d = new Date(iso);
-  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+  return `${pad2(vietnamDate(d).getUTCDate())}/${pad2(vietnamDate(d).getUTCMonth() + 1)}/${vietnamDate(d).getUTCFullYear()}`;
 }
 
 interface CoachRatingProps {
@@ -58,8 +61,14 @@ export function CoachRating({ coachId, coachName, classId }: CoachRatingProps) {
   const { user } = useAuth();
   const isMember = user?.role === 'MEMBER';
 
-  const { feedbacks, summary, isLoading } = useCoachFeedbacks(coachId, classId);
-  const { feedbacks: myFeedbacks } = useMyFeedbacks();
+  const [page, setPage] = useState(1);
+  const list = useCoachFeedbacks(coachId, classId, page);
+  const { feedbacks, summary, isLoading } = list;
+  const mine = useMyFeedbacks();
+  const { feedbacks: myFeedbacks } = mine;
+  const enrollmentList = useMyEnrollments(undefined, undefined, { enabled: isMember });
+  const canReview = enrollmentList.data?.data.some((e) => ['BOOKED', 'COMPLETED'].includes(e.status) &&
+    ((Boolean(classId) && (e.classId === classId || e.schedule?.class?.id === classId)) || e.schedule?.class?.coaches?.some((c) => c.coachId === coachId)));
   const submitMutation = useSubmitFeedback();
   const deleteMutation = useDeleteFeedback();
 
@@ -133,7 +142,8 @@ export function CoachRating({ coachId, coachName, classId }: CoachRatingProps) {
         )}
       </View>
 
-      {isMember && (
+      <WorkflowState error={list.error || mine.error || enrollmentList.error} retry={() => { void list.refetch(); if (isMember) { void mine.refetch(); void enrollmentList.refetch(); } }} />
+      {isMember && (canReview || myExisting) && (
         <View className="bg-bg-elevated rounded-lg p-lg mb-md border border-border">
           {editing ? (
             <View className="gap-sm">
@@ -212,6 +222,11 @@ export function CoachRating({ coachId, coachName, classId }: CoachRatingProps) {
           </View>
         ))
       )}
+      {(list.data?.pagination?.totalPages || 1) > 1 && <View className="gap-sm mt-md">
+        <WorkflowText>Trang {page} / {list.data?.pagination?.totalPages}</WorkflowText>
+        <WorkflowButton title="Trang trước" secondary disabled={page <= 1 || list.isFetching} onPress={() => setPage((n) => n - 1)} />
+        <WorkflowButton title="Trang sau" secondary disabled={page >= (list.data?.pagination?.totalPages || 1) || list.isFetching} onPress={() => setPage((n) => n + 1)} />
+      </View>}
     </View>
   );
 }

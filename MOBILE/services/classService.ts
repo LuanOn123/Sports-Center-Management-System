@@ -3,6 +3,7 @@
 
 import { api } from '../lib/api';
 import type { Class, Sport } from '../lib/types';
+import { allPages } from '../lib/pagedApi';
 
 export interface ClassFilters {
   search?: string;
@@ -15,8 +16,8 @@ export interface ClassFilters {
 
 /** GET /classes */
 export const getClasses = (filters?: ClassFilters) =>
-  api.get<Class[]>('/classes', filters as Record<string, string | undefined>);
+  allPages<Class>('/classes', filters as Record<string, string | undefined>);
 
 /** GET /sports */
 export const getSports = () =>
-  api.publicGet<Sport[]>('/sports', { isActive: 'true', limit: '50' });
+  allPages<Sport>('/sports', { isActive: 'true' });

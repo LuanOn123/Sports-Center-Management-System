@@ -20,7 +20,7 @@ export function connectSocket(userId: string): Socket | null {
   const wsUrl = BASE_URL.replace(/\/api\/v1\/?$/, '');
 
   if (_socket) {
-    _socket.auth = { token };
+    _socket.auth = (callback) => callback({ token: getAccessToken() });
     if (!_socket.connected) {
       _socket.connect();
     }
@@ -31,7 +31,7 @@ export function connectSocket(userId: string): Socket | null {
     transports: ['websocket', 'polling'],
     reconnectionAttempts: 5,
     reconnectionDelay: 2000,
-    auth: { token },
+    auth: (callback) => callback({ token: getAccessToken() }),
   });
 
   _socket.on('connect', () => {

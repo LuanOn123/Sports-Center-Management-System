@@ -106,12 +106,12 @@ export default function NotificationsScreen() {
             <TouchableOpacity
               className={clsx(
                 'flex-row gap-md rounded-lg p-lg border mb-sm',
-                !item.isRead ? 'border-[#A3E63550] bg-bg-elevated' : 'bg-bg-surface border-border'
+                !item.isRead ? 'border-[#D4FF0050] bg-bg-elevated' : 'bg-bg-surface border-border'
               )}
               onPress={() => handlePress(item)}
               activeOpacity={0.7}
             >
-              <View className={clsx('w-10 h-10 rounded-lg justify-center items-center', !item.isRead ? 'bg-[#A3E63520]' : 'bg-bg-elevated')}>
+              <View className={clsx('w-10 h-10 rounded-lg justify-center items-center', !item.isRead ? 'bg-[#D4FF0020]' : 'bg-bg-elevated')}>
                 <Icon name={TYPE_ICON[item.type] ?? 'notifications'} size={20} color={Colors.primary} />
               </View>
               <View className="flex-1">

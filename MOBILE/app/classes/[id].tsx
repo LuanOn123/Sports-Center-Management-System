@@ -1,353 +1,67 @@
 import React from 'react';
-import {
-  View, Text, ScrollView,
-  TouchableOpacity, ActivityIndicator, Platform,
-} from 'react-native';
-import clsx from 'clsx';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Icon } from '../../components/shared/Icon';
-import { ScreenHeader } from '../../components/shared/ScreenHeader';
-import { api, ApiError } from '../../lib/api';
-import { showAlert, showConfirm } from '../../lib/alert';
-import { CoachRating } from '../../components/shared/CoachRating';
-import { useMyQuota, useEnrollWholeCourse } from '../../hooks/member/useEnrollments';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
-import type { Class, ClassSchedule, Enrollment, EnrollmentStatus } from '../../lib/types';
-import { Colors } from '../../constants/theme';
-import { Haptic } from '../../lib/haptics';
+import { apiRequest } from '../../lib/api';
+import { allPages } from '../../lib/pagedApi';
+import type { Class, ClassSchedule, CoursePlan } from '../../lib/types';
+import { useEnrollWholeCourse, useBookSchedule } from '../../hooks/member/useEnrollments';
+import { CoachRating } from '../../components/shared/CoachRating';
+import { WaitlistAction } from '../../components/member/WaitlistAction';
+import { WorkflowScreen, WorkflowCard, WorkflowText, WorkflowButton, WorkflowState } from '../../components/shared/WorkflowScreen';
+import { formatDate, formatTime } from '../../lib/format';
 import { ROUTES } from '../../navigation/routes';
-
-const TYPE_LABEL: Record<string, string> = { REGULAR: 'Tiêu Chuẩn', PREMIUM: 'Cao Cấp' };
-
-// toLocaleDateString('vi-VN', ...) không đáng tin trên RN/Hermes — ICU của máy
-// có thể trả dấu "-" thay vì "/" giữa ngày/tháng. Tự ghép chuỗi cho chắc.
-const WEEKDAY_SHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-function pad2(n: number) {
-  return String(n).padStart(2, '0');
-}
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  return `${WEEKDAY_SHORT[d.getDay()]}, ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`;
-}
-function formatTime(iso: string) {
-  const d = new Date(iso);
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
+import { showAlert, showConfirm } from '../../lib/alert';
 
 export default function ClassDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user, currentFacility } = useAuth();
   const router = useRouter();
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
   const isMember = user?.role === 'MEMBER';
-
-  // Quota lớp học song song — chỉ dùng cho MEMBER
-  const { data: quota } = useMyQuota();
-  const { handleEnrollWholeCourse, isPending: bulkPending } = useEnrollWholeCourse();
-
-  const handleGoBack = () => {
-    if (router.canGoBack()) router.back();
-    else router.replace(ROUTES.classes);
-  };
-
-  const { data: classData, isLoading } = useQuery({
-    queryKey: ['class', id],
-    queryFn: () => api.get<Class>(`/classes/${id}`),
-    enabled: Boolean(id),
-  });
-
-  const { data: schedulesData, isLoading: schedLoading } = useQuery({
-    queryKey: ['class-schedules', id],
-    queryFn: () => api.get<ClassSchedule[]>('/class-schedules', {
-      classId: id,
-      status: 'SCHEDULED',
-      limit: '10',
-    }),
-    enabled: Boolean(id),
-  });
-
-  // Lấy danh sách enrollments của user để check trạng thái từng schedule (BOOKED, CANCELLED)
-  const { data: enrollmentsData } = useQuery({
-    queryKey: ['my-enrollments'],
-    queryFn: () => api.get<Enrollment[]>('/enrollments/my', { limit: '100' }),
-  });
-
-  const bookMutation = useMutation({
-    mutationFn: (scheduleId: string) => {
-      Haptic.medium();
-      return api.post('/enrollments', { scheduleId });
-    },
-    onSuccess: () => {
-      Haptic.success();
-      queryClient.invalidateQueries({ queryKey: ['my-enrollments'] });
-      showAlert('Đặt lịch thành công', 'Lịch học đã được thêm vào danh sách của bạn.');
-    },
-    onError: (e) => {
-      Haptic.error();
-      const msg = e instanceof ApiError ? e.message : 'Đặt lịch thất bại. Vui lòng thử lại.';
-      showAlert('Lỗi', msg);
-    },
-  });
-
-  const cls = classData?.data;
-  const targetCoach = cls?.coaches?.find((c) => c.isPrimary) ?? cls?.coaches?.[0];
-  const schedules = schedulesData?.data ?? [];
-  // Map scheduleId -> status ('BOOKED' | 'CANCELLED' | 'COMPLETED')
-  const userEnrollmentMap = new Map<string, EnrollmentStatus>();
-  (enrollmentsData?.data ?? []).forEach((e) => {
-    if (!userEnrollmentMap.has(e.scheduleId) || e.status === 'BOOKED') {
-      userEnrollmentMap.set(e.scheduleId, e.status);
-    }
-  });
-
-  const topNav = (
-    <ScreenHeader
-      title={cls?.name ?? 'Chi tiết lớp học'}
-      onBackPress={handleGoBack}
-    />
-  );
-
-  if (isLoading) {
-    return (
-      <View className="flex-1 bg-bg-primary">
-        {topNav}
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator color={Colors.primary} size="large" />
-        </View>
-      </View>
-    );
-  }
-
-  if (!cls) {
-    return (
-      <View className="flex-1 bg-bg-primary">
-        {topNav}
-        <View className="flex-1 justify-center items-center">
-          <Text className="text-text-muted text-md font-bevn-regular">Không tìm thấy lớp học</Text>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View className="flex-1 bg-bg-primary">
-      {topNav}
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
-      {/* Class Info */}
-      <View className="bg-bg-surface rounded-xl p-xl mb-xl border border-border">
-        <View className="flex-row justify-between items-start mb-sm">
-          <Text className="flex-1 text-xxl font-bold font-bevn-bold text-text-primary mr-sm">{cls.name}</Text>
-          <View className={clsx('rounded-full px-sm py-[3px]', cls.classType === 'PREMIUM' ? 'bg-[#F59E0B20]' : 'bg-[#3B82F620]')}>
-            <Text className="text-xs font-semibold font-bevn-semibold text-text-secondary">{TYPE_LABEL[cls.classType]}</Text>
-          </View>
-        </View>
-        {Boolean(cls.sports?.length) && (
-          <View className="flex-row items-center gap-1 mb-xs">
-            <Icon name="sports" size={16} color={Colors.primary} />
-            <Text className="text-sm text-text-secondary font-bevn-regular">{cls.sports!.map((s) => s.name).join(', ')}</Text>
-          </View>
-        )}
-        {Boolean(cls.description) && <Text className="text-sm text-text-secondary leading-[22px] mb-lg font-bevn-regular">{cls.description}</Text>}
-        <View className="flex-row justify-around pt-lg border-t border-divider">
-          <View className="items-center">
-            <Text className="text-xxl font-bold font-bevn-bold text-primary">{cls.capacity}</Text>
-            <Text className="text-xs text-text-muted font-bevn-regular mt-0.5">Sĩ số tối đa</Text>
-          </View>
-          <View className="w-px bg-divider" />
-          <View className="items-center">
-            <Text className="text-xxl font-bold font-bevn-bold text-primary">{cls.coaches?.length ?? 0}</Text>
-            <Text className="text-xs text-text-muted font-bevn-regular mt-0.5">Huấn luyện viên</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Coaches */}
-      {Boolean(cls.coaches && cls.coaches.length > 0) && (
-        <View className="mb-xl">
-          <Text className="text-lg font-bold font-bevn-bold text-text-primary mb-md">Huấn Luyện Viên</Text>
-          {cls.coaches!.map((c) => (
-            <View key={c.coachId} className="flex-row bg-bg-surface rounded-lg p-lg mb-sm border border-border">
-              <View className="w-12 h-12 rounded-full bg-bg-elevated justify-center items-center mr-md">
-                <Text className="text-xl font-bold font-bevn-bold text-primary">{c.coach?.user?.fullName?.charAt(0) ?? '?'}</Text>
-              </View>
-              <View className="flex-1">
-                <View className="flex-row items-center gap-sm mb-1">
-                  <Text className="text-md font-bold font-bevn-bold text-text-primary">{c.coach?.user?.fullName ?? '—'}</Text>
-                  {Boolean(c.isPrimary) && (
-                    <View className="bg-[#A3E63520] rounded-full px-sm py-0.5">
-                      <Text className="text-xs text-primary font-semibold font-bevn-semibold">Chính</Text>
-                    </View>
-                  )}
-                </View>
-                {Boolean(c.coach?.specialization) && (
-                  <View className="flex-row items-center gap-1 mb-xs">
-                    <Icon name="star-outline" size={14} color={Colors.text.secondary} />
-                    <Text className="text-sm text-text-secondary font-bevn-regular">{c.coach!.specialization}</Text>
-                  </View>
-                )}
-                {Boolean(c.coach?.bio) && (
-                  <Text className="text-xs text-text-muted font-bevn-regular" numberOfLines={2}>{c.coach!.bio}</Text>
-                )}
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {Boolean(targetCoach) && (
-        <CoachRating
-          coachId={targetCoach!.coachId}
-          coachName={targetCoach!.coach?.user?.fullName}
-          classId={cls.id}
-        />
-      )}
-
-      {/* Quota Banner — chỉ hiện với Member */}
-      {isMember && quota && (
-        <View className="bg-bg-surface rounded-xl p-lg mb-xl border border-border flex-row items-center">
-          <Icon name="school" size={20} color={Colors.primary} style={{ marginRight: 10 }} />
-          <View className="flex-1">
-            <Text className="text-sm font-bold font-bevn-bold text-text-primary">
-              Quota lớp học song song
-            </Text>
-            <Text className="text-xs text-text-secondary font-bevn-regular mt-0.5">
-              {quota.hasActiveSubscription
-                ? `Đang dùng ${quota.used}/${quota.limit} lớp · Còn lại ${quota.remaining} chỗ`
-                : 'Chưa có gói tập — cần mua gói để đặt lịch'}
-            </Text>
-          </View>
-          {quota.hasActiveSubscription && (
-            <View
-              className={clsx(
-                'rounded-full w-10 h-10 justify-center items-center',
-                quota.remaining === 0 ? 'bg-[#EF444420]' : 'bg-[#A3E63520]'
-              )}
-            >
-              <Text
-                className={clsx(
-                  'text-sm font-bold font-bevn-bold',
-                  quota.remaining === 0 ? 'text-status-cancelled' : 'text-status-active'
-                )}
-              >
-                {quota.remaining}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* Schedules */}
-      <View className="mb-xl">
-        <View className="flex-row justify-between items-center mb-md">
-          <Text className="text-lg font-bold font-bevn-bold text-text-primary">Lịch Học Sắp Tới</Text>
-          {/* Nút đăng ký trọn khóa — chỉ hiện với Member khi có lịch */}
-          {isMember && schedules.length > 0 && (
-            <TouchableOpacity
-              className={clsx(
-                'flex-row items-center gap-1 rounded-lg px-md py-xs',
-                bulkPending ? 'bg-bg-elevated' : 'bg-primary'
-              )}
-              onPress={() => cls && handleEnrollWholeCourse(cls.id, cls.name)}
-              disabled={bulkPending}
-            >
-              {bulkPending ? (
-                <ActivityIndicator size="small" color={Colors.text.muted} />
-              ) : (
-                <>
-                  <Icon name="playlist-add-check" size={16} color={Colors.text.inverse} />
-                  <Text className="text-xs font-bold font-bevn-bold text-text-inverse">Trọn khóa</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          )}
-        </View>
-        {schedLoading ? (
-          <ActivityIndicator color={Colors.primary} style={{ marginTop: 16 }} />
-        ) : schedules.length === 0 ? (
-          <View className="bg-bg-surface rounded-lg p-xl items-center border border-border">
-            <Icon name="event-busy" size={36} color={Colors.text.muted} style={{ marginBottom: 8 }} />
-            <Text className="text-text-muted text-sm font-bevn-regular">Chưa có lịch học sắp tới</Text>
-          </View>
-        ) : (
-          schedules.map((s) => {
-            const slotsUsed = s._count?.enrollments ?? 0;
-            const slotsLeft = cls.capacity - slotsUsed;
-            const isFull = slotsLeft <= 0;
-            const isPast = new Date(s.startTime) < new Date();
-            const userStatus = userEnrollmentMap.get(s.id);
-            const isBooked = userStatus === 'BOOKED';
-            // CANCELLED vẫn cho đặt lại — BE tự reactivate (BR-07)
-            const isDisabled = isFull || isPast || isBooked || bookMutation.isPending;
-
-            return (
-              <View
-                key={s.id}
-                className={clsx(
-                  'flex-row justify-between items-center rounded-lg p-lg mb-sm border',
-                  isBooked ? 'border-[#A3E63560] bg-[#A3E63508]' : 'bg-bg-surface border-border'
-                )}
-              >
-                <View className="flex-1">
-                  <Text className="text-sm font-semibold font-bevn-semibold text-primary mb-0.5">{formatDate(s.startTime)}</Text>
-                  <Text className="text-md font-bold font-bevn-bold text-text-primary mb-0.5">{formatTime(s.startTime)} – {formatTime(s.endTime)}</Text>
-                  {Boolean(s.room) && (
-                    <View className="flex-row items-center gap-1 mb-xs">
-                      <Icon name="place" size={14} color={Colors.text.secondary} />
-                      <Text className="text-xs text-text-secondary font-bevn-regular">{s.room!.name}</Text>
-                    </View>
-                  )}
-                  <View className="flex-row items-center gap-1 mb-xs">
-                    <Icon
-                      name="group"
-                      size={14}
-                      color={isPast ? Colors.text.muted : isFull ? Colors.status.cancelled : Colors.status.active}
-                    />
-                    <Text className={clsx('text-xs font-bevn-medium', (isFull || isPast) ? 'text-status-cancelled' : 'text-status-active')}>
-                      {isPast ? 'Đã qua giờ' : isFull ? 'Hết chỗ' : `Còn ${slotsLeft} chỗ`}
-                    </Text>
-                  </View>
-                </View>
-
-                {isBooked ? (
-                  /* ĐÃ ĐẶT — hiển thị badge xanh thay vì nút */
-                  <View className="flex-row items-center gap-1 bg-[#A3E63520] rounded-full px-md py-xs border border-[#A3E63540]">
-                    <Icon name="check-circle" size={16} color={Colors.status.active} />
-                    <Text className="text-xs text-status-active font-bold font-bevn-bold">Đã đặt</Text>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    className={clsx(
-                      'rounded-md px-lg py-sm min-w-[80px] items-center',
-                      (isFull || isPast) ? 'bg-bg-elevated' : 'bg-primary'
-                    )}
-                    onPress={() => {
-                      if (!isFull && !isPast) {
-                        showConfirm(
-                          'Xác nhận đặt lịch',
-                          `Đặt lớp "${cls.name}" lúc ${formatTime(s.startTime)}?`,
-                          () => bookMutation.mutate(s.id),
-                          undefined,
-                          'Đặt lịch'
-                        );
-                      }
-                    }}
-                    disabled={isDisabled}
-                  >
-                    {bookMutation.isPending
-                      ? <ActivityIndicator color={Colors.text.inverse} size="small" />
-                      : <Text className={clsx('font-bold font-bevn-bold text-sm', (isFull || isPast) ? 'text-text-muted' : 'text-text-inverse')}>
-                          {isPast ? 'Đã diễn ra' : isFull ? 'Hết chỗ' : 'Đặt lịch'}
-                        </Text>}
-                  </TouchableOpacity>
-                )}
-
-              </View>
-            );
-          })
-        )}
-      </View>
-      </ScrollView>
-    </View>
-  );
+  const cls = useQuery({ queryKey: ['class', id, currentFacility?.id], enabled: Boolean(id), queryFn: ({ signal }) => apiRequest<Class>(`/classes/${encodeURIComponent(id)}`, 'GET', { signal }) });
+  const plan = useQuery({ queryKey: ['course-plan', id, currentFacility?.id], enabled: Boolean(id) && isMember, queryFn: ({ signal }) => apiRequest<CoursePlan>(`/classes/${encodeURIComponent(id)}/course-plan`, 'GET', { signal }) });
+  const coachSessions = useQuery({ queryKey: ['class-schedules', id, currentFacility?.id], enabled: Boolean(id) && user?.role === 'COACH', queryFn: ({ signal }) => allPages<ClassSchedule>('/class-schedules', { classId: id, status: 'SCHEDULED', startAfter: new Date().toISOString() }, signal) });
+  const bulk = useEnrollWholeCourse();
+  const book = useBookSchedule();
+  const value = cls.data?.data;
+  const course = plan.data?.data.course;
+  const registration = plan.data?.data.registration;
+  return <WorkflowScreen title={value?.name || 'Chi tiết lớp học'} refreshing={cls.isRefetching || plan.isRefetching || coachSessions.isRefetching} onRefresh={() => { void cls.refetch(); if (isMember) void plan.refetch(); else void coachSessions.refetch(); }}>
+    <WorkflowState pending={cls.isPending} error={cls.error} retry={() => { void cls.refetch(); }} />
+    {value && <>
+      <WorkflowCard title={value.name}><WorkflowText>{value.classType === 'PREMIUM' ? 'Cao cấp' : 'Tiêu chuẩn'} · {value.capacity} học viên / buổi</WorkflowText>
+        <WorkflowText>{value.sports?.map((sport) => sport.name).join(' · ')}</WorkflowText><WorkflowText>{value.description || 'Chưa có mô tả lớp.'}</WorkflowText>
+      </WorkflowCard>
+      {value.coaches?.map((assigned) => <WorkflowCard key={assigned.coachId} title={assigned.coach?.user?.fullName || 'Huấn luyện viên'}>
+        <WorkflowText>{assigned.isPrimary ? 'Huấn luyện viên chính' : 'Huấn luyện viên'} · {assigned.coach?.specialization || 'Chưa cập nhật chuyên môn'}</WorkflowText>
+        {assigned.coach?.bio && <WorkflowText>{assigned.coach.bio}</WorkflowText>}
+        {isMember && <CoachRating coachId={assigned.coachId} coachName={assigned.coach?.user?.fullName} classId={id} />}
+      </WorkflowCard>)}
+      {isMember ? <>
+        <WorkflowState pending={plan.isPending} error={plan.error} retry={() => { void plan.refetch(); }} />
+        {course && <WorkflowCard title="Kế hoạch khóa học">
+          <WorkflowText>{course.totalSessions} buổi · {course.weekdayLabels.join(' · ')}</WorkflowText>
+          <WorkflowText>{formatDate(course.firstSessionStart)} → {formatDate(course.lastSessionEnd)}</WorkflowText>
+          <WorkflowText>{course.availability.fullSessionCount} buổi đầy · Ít nhất {course.availability.minRemainingSlots} chỗ trống / buổi</WorkflowText>
+          {registration && <WorkflowText>Đã đăng ký {registration.registeredSessions}/{course.totalSessions} buổi</WorkflowText>}
+          {registration?.blockers.map((blocker, index) => <WorkflowText key={`${blocker.code}:${index}`}>{blocker.message}</WorkflowText>)}
+          <WorkflowButton title={registration?.isFullyRegistered ? 'Đã đăng ký đủ khóa' : 'Đăng ký trọn khóa'} disabled={!registration?.eligible || registration.isFullyRegistered} busy={bulk.isPending} onPress={() => bulk.handleEnrollWholeCourse(id, value.name)} />
+          {registration?.blockers.some((blocker) => /SUBSCRIPTION|TIER|MEMBERSHIP/.test(blocker.code)) && <WorkflowButton title="Xem gói thành viên" secondary onPress={() => router.push(ROUTES.membershipPlans)} />}
+        </WorkflowCard>}
+        {plan.isSuccess && !plan.data.data.sessions.length && <WorkflowState empty="Chưa có lịch học sắp tới." />}
+        {plan.data?.data.sessions.map((session) => <WorkflowCard key={session.id} title={`${formatDate(session.startTime)} · ${formatTime(session.startTime)}–${formatTime(session.endTime)}`}>
+          <WorkflowText>{session.room?.name || 'Phòng tập'} · {session.isFull ? 'Hết chỗ' : `Còn ${session.remainingSlots} chỗ`}</WorkflowText>
+          {session.conflictWith && <WorkflowText>Trùng lịch với lớp {session.conflictWith.className}.</WorkflowText>}
+          {session.myEnrollmentStatus === 'BOOKED' ? <WorkflowButton title="Đã đặt · Xem buổi học" secondary onPress={() => router.push(ROUTES.scheduleDetail(session.id))} />
+            : session.isFull && session.status === 'SCHEDULED' && Date.parse(session.startTime) > Date.now() ? <WaitlistAction scheduleId={session.id} />
+            : <WorkflowButton title={session.canBook ? 'Đặt buổi học' : 'Chưa thể đặt buổi này'} busy={book.isPending} disabled={!session.canBook} onPress={() => showConfirm('Đặt buổi học', `Đặt lớp ${value.name} lúc ${formatTime(session.startTime)}?`, () => book.mutate(session.id, { onSuccess: () => { void plan.refetch(); showAlert('Đặt lịch thành công', 'Đã thêm buổi học vào lịch của bạn.'); }, onError: (e) => showAlert('Không thể đặt buổi học', e.message) }), undefined, 'Đặt lịch')} />}
+        </WorkflowCard>)}
+      </> : <>
+        <WorkflowState pending={coachSessions.isPending} error={coachSessions.error} retry={() => { void coachSessions.refetch(); }} empty={coachSessions.isSuccess && !coachSessions.data.data.length ? 'Chưa có buổi dạy sắp tới.' : undefined} />
+        {coachSessions.data?.data.map((session) => <WorkflowCard key={session.id} title={`${formatDate(session.startTime)} · ${formatTime(session.startTime)}–${formatTime(session.endTime)}`}>
+          <WorkflowText>{session.room?.name || 'Phòng tập'}</WorkflowText><WorkflowButton title="Xem học viên & điểm danh" onPress={() => router.push(ROUTES.coachAttendanceFor(session.id))} />
+        </WorkflowCard>)}
+      </>}
+    </>}
+  </WorkflowScreen>;
 }

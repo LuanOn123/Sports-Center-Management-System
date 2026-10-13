@@ -18,6 +18,8 @@ import { formatTime, formatWeekdayDate } from '../../lib/format';
 import { ApiError } from '../../lib/api';
 import { showAlert } from '../../lib/alert';
 import type { ClassSchedule, Enrollment } from '../../lib/types';
+import { WorkflowState } from '../shared/WorkflowScreen';
+import { ROUTES } from '../../navigation/routes';
 
 interface CoachAttendanceViewProps {
   coachId: string | undefined;
@@ -63,7 +65,7 @@ export function CoachAttendanceView({ coachId, initialScheduleId }: CoachAttenda
         onBackPress={att.hasSelection ? closeSession : undefined}
       />
 
-      {!att.hasSelection ? (
+      {att.error ? <View className="p-xl"><WorkflowState error={att.error} retry={() => { void att.onRefresh(); }} /></View> : !att.hasSelection ? (
         /* Danh sách buổi để chọn */
         att.schedulesLoading ? (
           <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} size="large" />
@@ -131,13 +133,14 @@ export function CoachAttendanceView({ coachId, initialScheduleId }: CoachAttenda
                 <View className="w-[38px] h-[38px] rounded-full bg-bg-elevated items-center justify-center">
                   <Text className="text-sm font-bevn-bold text-primary">{memberNameOf(item).charAt(0).toUpperCase()}</Text>
                 </View>
-                <View className="flex-1">
+                <TouchableOpacity className="flex-1" onPress={() => router.push(ROUTES.coachMember(item.memberId))}>
                   <Text className="text-sm font-bevn-semibold text-text-primary">{memberNameOf(item)}</Text>
                   <Text className="text-xs text-text-muted mt-0.5 font-bevn-regular" numberOfLines={1}>
                     {record ? ATTENDANCE_STATUS_LABEL[record.status] : 'Chưa điểm danh'}
                     {contact ? ` • ${contact}` : ''}
                   </Text>
-                </View>
+                  <Text className="text-xs text-primary font-bevn-medium mt-xs">Xem hồ sơ học viên</Text>
+                </TouchableOpacity>
                 {record ? (
                   <View className="px-sm py-1 rounded-md border" style={{ backgroundColor: color + '20', borderColor: color }}>
                     <Text className="text-xs font-bevn-semibold" style={{ color }}>{ATTENDANCE_STATUS_LABEL[record.status]}</Text>
