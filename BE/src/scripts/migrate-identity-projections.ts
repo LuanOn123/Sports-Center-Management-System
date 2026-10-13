@@ -55,18 +55,32 @@ async function main() {
     if (
       ["MANAGER", "COACH", "RECEPTIONIST"].includes(role) &&
       (await prisma.facility.findUnique({ where: { id: "legacy-main" } }))
-    )
-      await prisma.facilityStaff.upsert({
-        where: {
-          userId_facilityId_role: {
-            userId: id,
-            facilityId: "legacy-main",
-            role: role as any,
+    ) {
+      if (role === "MANAGER") {
+        const activeManager = await prisma.facilityStaff.findFirst({
+          where: { facilityId: "legacy-main", role: "MANAGER", isActive: true },
+        });
+        if (activeManager && activeManager.userId !== id) {
+          console.log(`Skipping manager assignment to legacy-main for user ${user.email} (already assigned to ${activeManager.userId})`);
+          continue;
+        }
+      }
+      try {
+        await prisma.facilityStaff.upsert({
+          where: {
+            userId_facilityId_role: {
+              userId: id,
+              facilityId: "legacy-main",
+              role: role as any,
+            },
           },
-        },
-        create: { userId: id, facilityId: "legacy-main", role: role as any },
-        update: {},
-      });
+          create: { userId: id, facilityId: "legacy-main", role: role as any },
+          update: {},
+        });
+      } catch (staffErr: any) {
+        console.warn(`[facilityStaff] Skipped assignment for ${user.email} (${role}): ${staffErr?.message || staffErr}`);
+      }
+    }
   }
   if (apply) {
     // Existing assignments establish the specialization used by legacy classes.
@@ -91,9 +105,10 @@ async function main() {
   );
 }
 main()
-  .catch(() => {
+  .catch((err) => {
     console.error(
       "Identity migration failed; inspect connection and identity collisions before retrying.",
+      err,
     );
     process.exitCode = 1;
   })

@@ -33,6 +33,17 @@ export async function synchronizeUserProjection(id: string) {
       // enrollments and staff assignments when legacy UUIDs become ObjectIds.
       await tx.user.update({ where: { id: old.id }, data: { id } });
     }
+    if (data.phone) {
+      const conflictingPhoneUser = await tx.user.findFirst({
+        where: { phone: data.phone, id: { not: id } },
+      });
+      if (conflictingPhoneUser) {
+        await tx.user.update({
+          where: { id: conflictingPhoneUser.id },
+          data: { phone: null },
+        });
+      }
+    }
     await tx.user.upsert({
       where: { id },
       create: { id, ...data },
