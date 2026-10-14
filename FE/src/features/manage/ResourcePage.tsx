@@ -1,5 +1,6 @@
 import { StatusBadge } from "../../shared/StatusBadge";
 import { ClassForm } from "./ClassForm";
+import { ScheduleForm } from "./ScheduleForm";
 import { CoachAssignmentForm } from "./CoachAssignmentForm";
 import { ClassRegistrations, MemberProfile } from "./UserCourseDetails";
 import { ResourceCollection } from "../../shared/ResourceCollection";
@@ -535,6 +536,14 @@ export function ResourcePage({
           {r.slug === "classes" && ["create", "edit"].includes(modal.kind) ? (
             <ClassForm
               initial={modal.kind === "edit" ? modal.row : {}}
+              onSuccess={done}
+              onCancel={() => setModal(null)}
+              onBusyChange={setBusy}
+            />
+          ) : r.slug === "schedules" && ["create", "edit"].includes(modal.kind) ? (
+            <ScheduleForm
+              initial={modal.kind === "edit" ? modal.row : {}}
+              mode={modal.kind as "create" | "edit"}
               onSuccess={done}
               onCancel={() => setModal(null)}
               onBusyChange={setBusy}

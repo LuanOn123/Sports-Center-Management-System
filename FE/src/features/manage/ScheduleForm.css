@@ -1,0 +1,262 @@
+/* ScheduleForm styling conforming to Pulse Design System */
+
+.schedule-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.schedule-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.schedule-date-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.schedule-date-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.schedule-date-icon-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 220px;
+}
+
+.schedule-date-icon-box svg {
+  position: absolute;
+  left: 14px;
+  color: var(--color-primary, #c9ff00);
+  pointer-events: none;
+}
+
+.schedule-date-input {
+  width: 100%;
+  padding-left: 42px !important;
+  font-family: inherit;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  color: #fff;
+  height: 44px;
+}
+
+.schedule-date-input:focus {
+  border-color: var(--color-primary, #c9ff00);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(201, 255, 0, 0.15);
+}
+
+.schedule-date-quick {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.schedule-quick-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.schedule-quick-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.schedule-date-friendly {
+  font-size: 13px;
+  color: var(--color-primary, #c9ff00);
+  background: rgba(201, 255, 0, 0.06);
+  border: 1px solid rgba(201, 255, 0, 0.18);
+  padding: 6px 12px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+}
+
+/* Shifts header */
+.schedule-shifts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.schedule-shifts-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.schedule-shifts-title strong {
+  font-size: 14px;
+  color: #fff;
+}
+
+.schedule-shifts-title small {
+  font-size: 12px;
+  color: var(--color-text-muted, #94a3b8);
+}
+
+.schedule-shifts-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Shifts grid */
+.schedule-shifts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.schedule-shift-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: inherit;
+}
+
+.schedule-shift-card:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
+}
+
+.schedule-shift-card.selected {
+  background: rgba(201, 255, 0, 0.08);
+  border-color: var(--color-primary, #c9ff00);
+  box-shadow: 0 0 14px rgba(201, 255, 0, 0.16);
+}
+
+.schedule-shift-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.schedule-shift-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: #fff;
+}
+
+.schedule-shift-duration {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-muted, #94a3b8);
+}
+
+.schedule-shift-card.selected .schedule-shift-duration {
+  background: rgba(201, 255, 0, 0.18);
+  color: var(--color-primary, #c9ff00);
+  font-weight: 600;
+}
+
+.schedule-shift-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.schedule-shift-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.schedule-shift-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+  color: transparent;
+  transition: all 0.15s ease;
+}
+
+.schedule-shift-card.selected .schedule-shift-badge {
+  border-color: var(--color-primary, #c9ff00);
+  background: var(--color-primary, #c9ff00);
+  color: #000;
+}
+
+/* Summary info */
+.schedule-summary-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 13px;
+}
+
+.schedule-summary-bar strong {
+  color: var(--color-primary, #c9ff00);
+}
+
+/* Time overview inputs (Playwright & Visual Clarity) */
+.schedule-time-overview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.schedule-time-overview input {
+  background: rgba(255, 255, 255, 0.03) !important;
+  color: #94a3b8 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+@media (max-width: 640px) {
+  .schedule-shifts-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .schedule-time-overview {
+    grid-template-columns: 1fr;
+  }
+}
