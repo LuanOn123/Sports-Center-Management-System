@@ -250,7 +250,8 @@
 }
 .coach-session.is-cancelled {
   border-left-color: var(--color-error);
-  background: #fff9f8;
+  background: var(--color-surface-muted);
+  opacity: 0.75;
 }
 .coach-agenda {
   display: grid;
