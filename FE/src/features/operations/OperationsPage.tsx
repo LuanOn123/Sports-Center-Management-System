@@ -45,6 +45,7 @@ const titleOf = (row: RecordData) =>
   String(
     row.name ||
       row.title ||
+      row.fullName ||
       at(row, "user.fullName") ||
       at(row, "class.name") ||
       at(row, "member.user.fullName") ||
@@ -475,10 +476,28 @@ function OperationForm(props: {
         planId: plans
           .filter((p) => p.tier !== "FREE" && p.isActive)
           .map((p) => ({ value: String(p.id), label: titleOf(p) })),
-        memberId: members.map((m) => ({
-          value: String(m.id),
-          label: titleOf((m.user as RecordData) || m),
-        })),
+        memberId: members
+          .filter((m) => (m.user as RecordData)?.isActive !== false)
+          .map((m) => {
+            const user = (m.user as RecordData) || {};
+            const fullName = String(
+              user.fullName ||
+                at(m, "user.fullName") ||
+                m.fullName ||
+                m.name ||
+                "",
+            ).trim();
+            const contact = String(user.phone || user.email || "").trim();
+            const label = fullName
+              ? contact
+                ? `${fullName} · ${contact}`
+                : fullName
+              : contact || titleOf((m.user as RecordData) || m);
+            return {
+              value: String(m.id),
+              label,
+            };
+          }),
       };
     },
   });
