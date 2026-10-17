@@ -14,6 +14,8 @@ import {
   Volleyball,
   CheckCircle2,
   ArrowRightLeft,
+  FileText,
+  AlertTriangle,
 } from "lucide-react";
 import { ErrorState, Loading, Modal } from "../../shared/ui";
 import {
@@ -33,6 +35,8 @@ export function MyClassesPage() {
     useState<Enrollment | null>(null);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [leaveReason, setLeaveReason] = useState("");
   const [targetScheduleId, setTargetScheduleId] = useState("");
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -79,14 +83,45 @@ export function MyClassesPage() {
       queryClient.invalidateQueries({ queryKey: ["member-schedule"] });
     },
     onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Không thể hủy đăng ký ca học này.";
+      // Handle late cancellation explicitly
+      if (msg.toLowerCase().includes("late_cancellation") || msg.toLowerCase().includes("late cancellation") || msg.toLowerCase().includes("60")) {
+        setMessage({
+          type: "error",
+          text: "Đã quá hạn tự hủy đặt chỗ (chỉ được hủy trước giờ học ít nhất 60 phút). Vui lòng liên hệ trực tiếp lễ tân cơ sở nếu bạn có việc đột xuất.",
+        });
+      } else {
+        setMessage({ type: "error", text: msg });
+      }
+      setConfirmCancelOpen(false);
+    },
+  });
+
+  // Leave request mutation
+  const leaveMutation = useMutation({
+    mutationFn: async (enrollmentId: string) => {
+      const { api } = await import("../../shared/api");
+      return api("POST /enrollments/{id}/leave-request", {
+        params: { id: enrollmentId },
+        body: { reason: leaveReason.trim() },
+      });
+    },
+    onSuccess: () => {
+      setMessage({
+        type: "success",
+        text: "Đơn xin nghỉ buổi học đã được gửi tới Quản lý cơ sở để duyệt chuyên cần.",
+      });
+      setLeaveOpen(false);
+      setLeaveReason("");
+      setSelectedEnrollment(null);
+      void queryClient.invalidateQueries({ queryKey: ["my-enrollments"] });
+    },
+    onError: (err: unknown) => {
       setMessage({
         type: "error",
-        text:
-          err instanceof Error
-            ? err.message
-            : "Không thể hủy đăng ký ca học này.",
+        text: err instanceof Error ? err.message : "Không thể gửi đơn xin nghỉ.",
       });
-      setConfirmCancelOpen(false);
+      setLeaveOpen(false);
     },
   });
 
@@ -466,7 +501,7 @@ export function MyClassesPage() {
                 </div>
 
                 {/* ACTION BUTTONS */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <button
                     className="member-button"
                     onClick={() => navigate(`/member/classes/${item.classId}`)}
@@ -500,6 +535,25 @@ export function MyClassesPage() {
 
                   {canCancel && (
                     <button
+                      onClick={() => {
+                        setLeaveReason("");
+                        leaveMutation.reset();
+                        setSelectedEnrollment(item);
+                        setLeaveOpen(true);
+                      }}
+                      className="button small"
+                      style={{
+                        borderColor: "var(--member-warning, #d97706)",
+                        color: "var(--member-warning, #d97706)",
+                      }}
+                      title="Gửi đơn xin nghỉ buổi học này"
+                    >
+                      <FileText size={14} /> Xin nghỉ
+                    </button>
+                  )}
+
+                  {canCancel && (
+                    <button
                       className="member-button"
                       onClick={() => {
                         setSelectedEnrollment(item);
@@ -525,6 +579,57 @@ export function MyClassesPage() {
             );
           })}
         </div>
+      )}
+
+      {/* LATE CANCELLATION INFO */}
+      {activeTab === "BOOKED" && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: 10, backgroundColor: "#fffbeb", border: "1px solid #fde68a", fontSize: 12, color: "#92400e" }}>
+          <AlertTriangle size={14} />
+          <span>Chỉ được hủy đặt chỗ trước giờ học <strong>ít nhất 60 phút</strong>. Sau thời hạn này, hãy gửi đơn xin nghỉ cho Quản lý duyệt.</span>
+        </div>
+      )}
+
+      {/* LEAVE REQUEST MODAL */}
+      {leaveOpen && selectedEnrollment && (
+        <Modal
+          title="Gửi đơn xin nghỉ buổi học"
+          dismissible={!leaveMutation.isPending}
+          onClose={() => setLeaveOpen(false)}
+          maxWidth={560}
+        >
+          <p style={{ marginBottom: 8, fontSize: 14, color: "var(--member-muted, #58695f)" }}>
+            Lý do xin nghỉ sẽ được gửi tới Quản lý để duyệt chuyên cần.
+            Lớp: <strong>{selectedEnrollment.schedule?.class?.name}</strong>
+          </p>
+          <label style={{ display: "block" }}>
+            <span style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>Lý do xin nghỉ *</span>
+            <textarea
+              rows={4}
+              maxLength={1000}
+              minLength={3}
+              value={leaveReason}
+              onChange={(e) => setLeaveReason(e.target.value)}
+              placeholder="Ví dụ: Bị bệnh, có công việc đột xuất..."
+              style={{ width: "100%", resize: "vertical", padding: "10px", borderRadius: 8, border: "1px solid var(--member-border, #d0d7d3)", fontSize: 13 }}
+            />
+            <span style={{ fontSize: 11, color: leaveReason.length < 3 ? "#d92d20" : "#58695f", display: "block", textAlign: "right", marginTop: 4 }}>
+              {leaveReason.length}/1000 ký tự
+            </span>
+          </label>
+          {Boolean(leaveMutation.error) && (
+            <ErrorState error={leaveMutation.error} />
+          )}
+          <div className="modal-footer">
+            <button className="button" disabled={leaveMutation.isPending} onClick={() => setLeaveOpen(false)}>Đóng</button>
+            <button
+              className="button primary"
+              disabled={leaveReason.trim().length < 3 || leaveMutation.isPending}
+              onClick={() => leaveMutation.mutate(selectedEnrollment.id)}
+            >
+              {leaveMutation.isPending ? "Đang gửi..." : "Gửi đơn xin nghỉ"}
+            </button>
+          </div>
+        </Modal>
       )}
 
       {/* CANCEL CONFIRM MODAL */}
