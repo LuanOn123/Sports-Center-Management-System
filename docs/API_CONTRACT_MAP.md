@@ -174,7 +174,18 @@ Generated from live checkout route AST and FE operations. MATCH means method/pat
 | subjects | Public | UNUSED_API (no direct consumer found) | /subjects/{id} | GET | BE/src/modules/sports/sports.routes.ts:78 | MATCH |
 | subjects | ADMIN | UNUSED_API (no direct consumer found) | /subjects/{id} | PATCH | BE/src/modules/sports/sports.routes.ts:166 | MATCH |
 | subjects | ADMIN | UNUSED_API (no direct consumer found) | /subjects/{id} | DELETE | BE/src/modules/sports/sports.routes.ts:194 | MATCH |
+| class-schedules | Authenticated (service checks ownership) | features/manage/ResourcePage.tsx<br>api/classes.api.ts | /class-schedules/under-capacity | GET | BE/src/modules/class-schedules/class-schedules.routes.ts:149 | MATCH |
+| enrollments | MEMBER | pages/member/MyClassesPage.tsx<br>api/enrollments.api.ts | /enrollments/{id}/leave-request | POST | BE/src/modules/enrollments/enrollments.routes.ts:359 | MATCH |
+| enrollments | Authenticated (service checks ownership) | api/enrollments.api.ts | /enrollments/{id}/health-notes | PATCH | BE/src/modules/enrollments/enrollments.routes.ts:367 | MATCH |
+| facilities | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /facilities/{facilityId}/limits | GET | BE/src/modules/facilities/facilities.route.ts:44 | MATCH |
+| terms | ADMIN, MANAGER, COACH, RECEPTIONIST, MEMBER | features/manage/AdminTerms.tsx<br>features/manage/ScheduleForm.tsx<br>features/operations/OperationsPage.tsx<br>pages/member/BrowseClassesPage.tsx | /terms | GET | BE/src/modules/terms/terms.routes.ts:30 | MATCH |
+| terms | ADMIN, MANAGER, COACH, RECEPTIONIST, MEMBER | features/manage/ScheduleForm.tsx<br>pages/member/BrowseClassesPage.tsx | /terms/current | GET | BE/src/modules/terms/terms.routes.ts:47 | MATCH |
+| terms | ADMIN, MANAGER, COACH, RECEPTIONIST, MEMBER | UNUSED_API (no direct consumer found) | /terms/{id} | GET | BE/src/modules/terms/terms.routes.ts:63 | MATCH |
+| terms | Authenticated (service checks ownership) | features/manage/AdminTerms.tsx | /terms | POST | BE/src/modules/terms/terms.routes.ts:79 | MATCH |
+| terms | Authenticated (service checks ownership) | features/manage/AdminTerms.tsx | /terms/{id} | PATCH | BE/src/modules/terms/terms.routes.ts:96 | MATCH |
+| terms | Authenticated (service checks ownership) | features/manage/AdminTerms.tsx | /terms/{id} | DELETE | BE/src/modules/terms/terms.routes.ts:113 | MATCH |
+| members | MANAGER, RECEPTIONIST, ADMIN | features/manage/config.ts<br>features/reception/members/MembersPage.tsx<br>features/reception/membership/MembershipPage.tsx | /members | POST | BE/src/modules/members/members.routes.ts:10 | MATCH |
 
-Backend operations absent from FE catalog: POST /members, GET /class-schedules/under-capacity, POST /enrollments/{id}/leave-request, PATCH /enrollments/{id}/health-notes, GET /facilities/{facilityId}/limits, GET /terms, GET /terms/current, GET /terms/{id}, POST /terms, PATCH /terms/{id}, DELETE /terms/{id}.
+Backend operations absent from FE catalog: none.
 
 Request/response examples may be incomplete in Swagger. Handwritten workflow overrides retain stricter verified body constraints and extra parameters. Successful integration tests and their coverage are recorded separately in INTEGRATION_AUDIT_2026-10-06.md.

@@ -4013,6 +4013,9 @@
           "type": "string",
           "format": "date-time",
           "example": "2026-09-15T08:00:00+07:00"
+        },
+        "termId": {
+          "type": "string"
         }
       }
     },
@@ -5802,6 +5805,31 @@
         "timezone": {
           "type": "string",
           "default": "Asia/Ho_Chi_Minh"
+        },
+        "maxClasses": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Số lớp học tối đa (Để trống = Không giới hạn)"
+        },
+        "maxRooms": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Số phòng tập tối đa"
+        },
+        "maxCoaches": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Số lượng HLV tối đa"
+        },
+        "maxMembers": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Số lượng hội viên active tối đa"
+        },
+        "maxSports": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Số bộ môn tối đa"
         }
       },
       "required": [
@@ -5886,6 +5914,31 @@
         },
         "isActive": {
           "type": "boolean"
+        },
+        "maxClasses": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Số lớp học tối đa (Để trống = Không giới hạn)"
+        },
+        "maxRooms": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Số phòng tập tối đa"
+        },
+        "maxCoaches": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Số lượng HLV tối đa"
+        },
+        "maxMembers": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Số lượng hội viên active tối đa"
+        },
+        "maxSports": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Số bộ môn tối đa"
         }
       }
     },
@@ -6288,6 +6341,9 @@
         "endDate": {
           "type": "string",
           "format": "date"
+        },
+        "termId": {
+          "type": "string"
         }
       },
       "required": [
@@ -6967,6 +7023,418 @@
       "401",
       "403",
       "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /class-schedules/under-capacity",
+    "feature": "class-schedules",
+    "method": "GET",
+    "path": "/class-schedules/under-capacity",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/api/classes.api.ts"
+    ],
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:149",
+    "handler": "schedulesController.getUnderCapacitySchedules",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "name": "hoursAhead",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "number"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /enrollments/{id}/leave-request",
+    "feature": "enrollments",
+    "method": "POST",
+    "path": "/enrollments/{id}/leave-request",
+    "roles": "MEMBER",
+    "consumers": [
+      "FE/src/pages/member/MyClassesPage.tsx",
+      "FE/src/api/enrollments.api.ts"
+    ],
+    "backend": "BE/src/modules/enrollments/enrollments.routes.ts:359",
+    "handler": "enrollmentsController.requestEnrollmentLeave",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "reason"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 3,
+          "description": "Lý do xin nghỉ (3-1000 ký tự)"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /enrollments/{id}/health-notes",
+    "feature": "enrollments",
+    "method": "PATCH",
+    "path": "/enrollments/{id}/health-notes",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/api/enrollments.api.ts"
+    ],
+    "backend": "BE/src/modules/enrollments/enrollments.routes.ts:367",
+    "handler": "enrollmentsController.updateEnrollmentHealthNotes",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "healthNotes": {
+          "type": "string",
+          "description": "Ghi chú sức khỏe (null để xóa)"
+        },
+        "saveToProfile": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /facilities/{facilityId}/limits",
+    "feature": "facilities",
+    "method": "GET",
+    "path": "/facilities/{facilityId}/limits",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/operations/OperationsPage.tsx"
+    ],
+    "backend": "BE/src/modules/facilities/facilities.route.ts:44",
+    "handler": "Controller.getFacilityLimits",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /terms",
+    "feature": "terms",
+    "method": "GET",
+    "path": "/terms",
+    "roles": "ADMIN, MANAGER, COACH, RECEPTIONIST, MEMBER",
+    "consumers": [
+      "FE/src/features/manage/AdminTerms.tsx",
+      "FE/src/features/manage/ScheduleForm.tsx",
+      "FE/src/features/operations/OperationsPage.tsx",
+      "FE/src/pages/member/BrowseClassesPage.tsx"
+    ],
+    "backend": "BE/src/modules/terms/terms.routes.ts:30",
+    "handler": "termsController.listTerms",
+    "status": "MATCH",
+    "request": null,
+    "query": [
+      {
+        "name": "status",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "PLANNING",
+            "OPEN_REGISTRATION",
+            "IN_PROGRESS",
+            "CLOSED"
+          ]
+        }
+      },
+      {
+        "name": "year",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "number"
+        }
+      },
+      {
+        "name": "page",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "number"
+        }
+      },
+      {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "number"
+        }
+      }
+    ],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /terms/current",
+    "feature": "terms",
+    "method": "GET",
+    "path": "/terms/current",
+    "roles": "ADMIN, MANAGER, COACH, RECEPTIONIST, MEMBER",
+    "consumers": [
+      "FE/src/features/manage/ScheduleForm.tsx",
+      "FE/src/pages/member/BrowseClassesPage.tsx"
+    ],
+    "backend": "BE/src/modules/terms/terms.routes.ts:47",
+    "handler": "termsController.getCurrentTerm",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "GET /terms/{id}",
+    "feature": "terms",
+    "method": "GET",
+    "path": "/terms/{id}",
+    "roles": "ADMIN, MANAGER, COACH, RECEPTIONIST, MEMBER",
+    "consumers": [],
+    "backend": "BE/src/modules/terms/terms.routes.ts:63",
+    "handler": "termsController.getTermById",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /terms",
+    "feature": "terms",
+    "method": "POST",
+    "path": "/terms",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/manage/AdminTerms.tsx"
+    ],
+    "backend": "BE/src/modules/terms/terms.routes.ts:79",
+    "handler": "termsController.createTerm",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "name",
+        "startDate",
+        "endDate",
+        "registrationStartDate",
+        "registrationEndDate"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "registrationStartDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "registrationEndDate": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "PATCH /terms/{id}",
+    "feature": "terms",
+    "method": "PATCH",
+    "path": "/terms/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/manage/AdminTerms.tsx"
+    ],
+    "backend": "BE/src/modules/terms/terms.routes.ts:96",
+    "handler": "termsController.updateTerm",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "registrationStartDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "registrationEndDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "PLANNING",
+            "OPEN_REGISTRATION",
+            "IN_PROGRESS",
+            "CLOSED"
+          ]
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
+  },
+  {
+    "key": "DELETE /terms/{id}",
+    "feature": "terms",
+    "method": "DELETE",
+    "path": "/terms/{id}",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/manage/AdminTerms.tsx"
+    ],
+    "backend": "BE/src/modules/terms/terms.routes.ts:113",
+    "handler": "termsController.deleteTerm",
+    "status": "MATCH",
+    "request": null,
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /members",
+    "feature": "members",
+    "method": "POST",
+    "path": "/members",
+    "roles": "MANAGER, RECEPTIONIST, ADMIN",
+    "consumers": [
+      "FE/src/features/manage/config.ts",
+      "FE/src/features/reception/members/MembersPage.tsx",
+      "FE/src/features/reception/membership/MembershipPage.tsx"
+    ],
+    "backend": "BE/src/modules/members/members.routes.ts:10",
+    "handler": "membersController.createMember",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "userId"
+      ],
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "fitnessGoal": {
+          "type": "string"
+        },
+        "trainingLevel": {
+          "type": "string",
+          "enum": [
+            "BEGINNER",
+            "INTERMEDIATE",
+            "ADVANCED"
+          ]
+        },
+        "trainingPreference": {
+          "type": "string"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "409",
       "500"
     ]
   }
