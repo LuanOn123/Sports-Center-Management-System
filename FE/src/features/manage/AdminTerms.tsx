@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Calendar, Pencil, Trash2, ChevronDown, Clock, UserCheck, Sparkles } from "lucide-react";
+import { Plus, Calendar, Pencil, Trash2, ChevronDown, Clock, UserCheck, Sparkles, Building2 } from "lucide-react";
 import { api } from "../../shared/api";
 import { Empty, ErrorState, Loading, Modal } from "../../shared/ui";
 import type { Term, TermStatus } from "../../shared/generated";
@@ -38,7 +38,8 @@ type TermFormData = {
   registrationStartDate: string;
   registrationEndDate: string;
   status?: TermStatus;
-  description?: string;
+  description?: string | null;
+  facilityId?: string | null;
 };
 
 /** Convert YYYY-MM-DD → ISO datetime string (start of day UTC) */
@@ -62,12 +63,14 @@ function autoCode(name: string, startDate: string): string {
 
 function TermForm({
   initial,
+  facilities,
   onSave,
   onCancel,
   isPending,
   error,
 }: {
   initial?: Partial<TermFormData>;
+  facilities?: Array<{ id: string; name: string; code: string }>;
   onSave: (data: TermFormData) => void;
   onCancel: () => void;
   isPending: boolean;
@@ -80,6 +83,7 @@ function TermForm({
   const [regStart, setRegStart] = useState(initial?.registrationStartDate?.slice(0, 10) ?? "");
   const [regEnd, setRegEnd] = useState(initial?.registrationEndDate?.slice(0, 10) ?? "");
   const [status, setStatus] = useState<TermStatus>(initial?.status ?? "PLANNING");
+  const [facilityId, setFacilityId] = useState<string>(initial?.facilityId ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [localError, setLocalError] = useState<string>("");
 
@@ -113,6 +117,7 @@ function TermForm({
       registrationEndDate: toISODate(regEnd, true),
       status,
       description: description.trim() || undefined,
+      facilityId: facilityId || null,
     });
   }
 
@@ -184,6 +189,24 @@ function TermForm({
             </select>
           </label>
         )}
+        {/* Facility assignment */}
+        <label className="wide">
+          Áp dụng cho Cơ sở (Chi nhánh)
+          <select
+            value={facilityId}
+            onChange={(e) => setFacilityId(e.target.value)}
+          >
+            <option value="">Toàn hệ thống (Tất cả cơ sở)</option>
+            {facilities?.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name} ({f.code})
+              </option>
+            ))}
+          </select>
+          <span style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+            Chọn một cơ sở cụ thể hoặc để &quot;Toàn hệ thống&quot; để áp dụng cho mọi chi nhánh.
+          </span>
+        </label>
         {/* Description */}
         <label className="wide">
           Ghi chú (tùy chọn)
@@ -217,14 +240,25 @@ export function AdminTerms() {
   const [deleting, setDeleting] = useState<Term | null>(null);
   const [yearFilter, setYearFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [facilityFilter, setFacilityFilter] = useState<string>("");
+
+  const facilitiesQuery = useQuery({
+    queryKey: ["facilities-lookup"],
+    queryFn: ({ signal }) =>
+      api<Array<{ id: string; name: string; code: string }>>("GET /facilities", {
+        signal,
+      }),
+  });
+  const facilities = (facilitiesQuery.data as any)?.data ?? facilitiesQuery.data ?? [];
 
   const termsQuery = useQuery({
-    queryKey: ["admin-terms", yearFilter, statusFilter],
+    queryKey: ["admin-terms", yearFilter, statusFilter, facilityFilter],
     queryFn: ({ signal }) =>
       api<Term[]>("GET /terms", {
         query: {
           ...(yearFilter ? { year: yearFilter } : {}),
           ...(statusFilter ? { status: statusFilter } : {}),
+          ...(facilityFilter ? { facilityId: facilityFilter, exactFacility: "true" } : {}),
           limit: "100",
         },
         signal,
@@ -344,6 +378,20 @@ export function AdminTerms() {
             ))}
           </select>
         </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+          Cơ sở
+          <select
+            value={facilityFilter}
+            onChange={(e) => setFacilityFilter(e.target.value)}
+            style={{ fontSize: 13, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border)" }}
+          >
+            <option value="">Tất cả cơ sở</option>
+            <option value="system">Toàn hệ thống (Chung)</option>
+            {Array.isArray(facilities) && facilities.map((f: any) => (
+              <option key={f.id} value={f.id}>{f.name} ({f.code})</option>
+            ))}
+          </select>
+        </label>
         <ChevronDown size={16} style={{ color: "var(--muted)", marginLeft: -8 }} />
       </div>
 
@@ -364,6 +412,15 @@ export function AdminTerms() {
                 <div className="panel-heading">
                   <span className="admin-card-icon"><Calendar size={22} /></span>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    {term.facility ? (
+                      <span className="badge" style={{ background: "rgba(59, 130, 246, 0.15)", color: "#60a5fa", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <Building2 size={12} /> {term.facility.name}
+                      </span>
+                    ) : (
+                      <span className="badge" style={{ background: "rgba(107, 114, 128, 0.15)", color: "#9ca3af", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <Building2 size={12} /> Toàn hệ thống
+                      </span>
+                    )}
                     {isEarlyReg && (
                       <span className="badge success" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                         <Sparkles size={12} /> Đang mở đăng ký sớm
@@ -374,6 +431,14 @@ export function AdminTerms() {
                 </div>
                 <h2 style={{ margin: "10px 0 6px", fontSize: 18 }}>{term.name}</h2>
                 <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", fontSize: 13 }}>
+                  <dt style={{ color: "var(--muted)", fontWeight: 500 }}>Phạm vi:</dt>
+                  <dd style={{ margin: 0 }}>
+                    {term.facility ? (
+                      <strong style={{ color: "#60a5fa" }}>{term.facility.name} ({term.facility.code})</strong>
+                    ) : (
+                      <span style={{ color: "var(--muted)" }}>Toàn hệ thống (Tất cả chi nhánh)</span>
+                    )}
+                  </dd>
                   <dt style={{ color: "var(--muted)", fontWeight: 500 }}>Kỳ học:</dt>
                   <dd style={{ margin: 0 }}>{fmtDate(term.startDate)} → {fmtDate(term.endDate)}</dd>
                   <dt style={{ color: "var(--muted)", fontWeight: 500 }}>Đăng ký:</dt>
@@ -400,7 +465,7 @@ export function AdminTerms() {
                     type="button"
                     className="button"
                     style={{ flex: 1, fontSize: 12, padding: "6px 8px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}
-                    onClick={() => navigate("/manage/schedule")}
+                    onClick={() => navigate("/admin/schedules")}
                     title="Xếp lịch các lớp học tại cơ sở cho kỳ này"
                   >
                     <Clock size={14} /> Xếp lịch
@@ -409,7 +474,7 @@ export function AdminTerms() {
                     type="button"
                     className="button"
                     style={{ flex: 1, fontSize: 12, padding: "6px 8px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}
-                    onClick={() => navigate("/manage/classes")}
+                    onClick={() => navigate("/admin/classes")}
                     title="Phân công HLV cho các lớp học"
                   >
                     <UserCheck size={14} /> Gán HLV
@@ -438,6 +503,7 @@ export function AdminTerms() {
       {creating && (
         <Modal title="Thêm kỳ học mới" onClose={() => setCreating(false)}>
           <TermForm
+            facilities={facilities}
             onSave={(data) => createMutation.mutate(data)}
             onCancel={() => setCreating(false)}
             isPending={createMutation.isPending}
@@ -451,6 +517,7 @@ export function AdminTerms() {
         <Modal title={`Chỉnh sửa · ${editing.name}`} onClose={() => setEditing(null)}>
           <TermForm
             initial={editing}
+            facilities={facilities}
             onSave={(data) => updateMutation.mutate({ ...data, id: editing.id })}
             onCancel={() => setEditing(null)}
             isPending={updateMutation.isPending}

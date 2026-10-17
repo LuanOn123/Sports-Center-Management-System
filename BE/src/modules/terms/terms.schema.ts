@@ -25,6 +25,7 @@ export const CreateTermSchema = z
       .datetime({ message: "Ngày đóng đăng ký không hợp lệ (ISO format)" }),
     status: TermStatusEnum.optional().default("PLANNING"),
     description: z.string().max(500).optional(),
+    facilityId: z.string().uuid("ID cơ sở không hợp lệ").nullable().optional(),
   })
   .superRefine((data, ctx) => {
     const start = new Date(data.startDate).getTime();
@@ -64,6 +65,7 @@ export const UpdateTermSchema = z
     registrationEndDate: z.string().datetime().optional(),
     status: TermStatusEnum.optional(),
     description: z.string().max(500).nullable().optional(),
+    facilityId: z.string().uuid("ID cơ sở không hợp lệ").nullable().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.startDate && data.endDate) {
@@ -90,6 +92,8 @@ export const TermQuerySchema = z.object({
   status: TermStatusEnum.optional(),
   search: z.string().optional(),
   current: z.enum(["true", "false"]).optional(),
+  facilityId: z.string().optional(),
+  year: z.string().optional(),
   page: z.string().optional(),
   limit: z.string().optional(),
 });

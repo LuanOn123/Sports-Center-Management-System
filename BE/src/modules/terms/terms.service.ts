@@ -19,10 +19,15 @@ export async function createTerm(data: any) {
   return prisma.term.create({
     data: {
       ...data,
+      facilityId: data.facilityId || null,
       startDate,
       endDate,
       registrationStartDate,
       registrationEndDate,
+    },
+    include: {
+      facility: { select: { id: true, name: true, code: true } },
+      _count: { select: { schedules: true, patterns: true } },
     },
   });
 }
@@ -36,16 +41,26 @@ export async function listTerms(query: any) {
 
   // If query.current === "true", return the active / open term
   if (query.current === "true") {
+    const facilityWhere: any = query.facilityId
+      ? { OR: [{ facilityId: query.facilityId }, { facilityId: null }] }
+      : {};
+
     const currentTerm = await prisma.term.findFirst({
       where: {
-        OR: [
-          { status: "IN_PROGRESS" },
-          { status: "OPEN_REGISTRATION" },
-          { startDate: { lte: now }, endDate: { gte: now } },
+        AND: [
+          facilityWhere,
+          {
+            OR: [
+              { status: "IN_PROGRESS" },
+              { status: "OPEN_REGISTRATION" },
+              { startDate: { lte: now }, endDate: { gte: now } },
+            ],
+          },
         ],
       },
       orderBy: { startDate: "asc" },
       include: {
+        facility: { select: { id: true, name: true, code: true } },
         _count: { select: { schedules: true, patterns: true } },
       },
     });
@@ -60,6 +75,26 @@ export async function listTerms(query: any) {
       { code: { contains: query.search, mode: "insensitive" } },
     ];
   }
+  if (query.year) {
+    const yearNum = parseInt(query.year);
+    if (!isNaN(yearNum)) {
+      const yearStart = new Date(`${yearNum}-01-01T00:00:00.000Z`);
+      const yearEnd = new Date(`${yearNum}-12-31T23:59:59.999Z`);
+      where.startDate = { gte: yearStart, lte: yearEnd };
+    }
+  }
+  if (query.facilityId) {
+    if (query.facilityId === "system" || query.facilityId === "null") {
+      where.facilityId = null;
+    } else if (query.exactFacility === "true") {
+      where.facilityId = query.facilityId;
+    } else {
+      where.AND = [
+        ...(where.AND || []),
+        { OR: [{ facilityId: query.facilityId }, { facilityId: null }] },
+      ];
+    }
+  }
 
   const [total, terms] = await Promise.all([
     prisma.term.count({ where }),
@@ -69,6 +104,7 @@ export async function listTerms(query: any) {
       take: limit,
       orderBy: { startDate: "desc" },
       include: {
+        facility: { select: { id: true, name: true, code: true } },
         _count: { select: { schedules: true, patterns: true } },
       },
     }),
@@ -81,6 +117,7 @@ export async function getTermById(id: string) {
   const term = await prisma.term.findUnique({
     where: { id },
     include: {
+      facility: { select: { id: true, name: true, code: true } },
       _count: { select: { schedules: true, patterns: true } },
       schedules: {
         where: { status: "SCHEDULED" },
@@ -94,18 +131,28 @@ export async function getTermById(id: string) {
   return term;
 }
 
-export async function getCurrentTerm() {
+export async function getCurrentTerm(facilityId?: string) {
   const now = new Date();
+  const facilityWhere = facilityId
+    ? { OR: [{ facilityId }, { facilityId: null }] }
+    : {};
+
   const currentTerm = await prisma.term.findFirst({
     where: {
-      OR: [
-        { status: "IN_PROGRESS" },
-        { status: "OPEN_REGISTRATION" },
-        { startDate: { lte: now }, endDate: { gte: now } },
+      AND: [
+        facilityWhere,
+        {
+          OR: [
+            { status: "IN_PROGRESS" },
+            { status: "OPEN_REGISTRATION" },
+            { startDate: { lte: now }, endDate: { gte: now } },
+          ],
+        },
       ],
     },
     orderBy: { startDate: "asc" },
     include: {
+      facility: { select: { id: true, name: true, code: true } },
       _count: { select: { schedules: true, patterns: true } },
     },
   });
@@ -146,6 +193,9 @@ export async function updateTerm(id: string, data: any) {
   }
 
   const updateData: any = { ...data };
+  if (data.facilityId !== undefined) {
+    updateData.facilityId = data.facilityId || null;
+  }
   if (data.startDate) updateData.startDate = newStartDate;
   if (data.endDate) updateData.endDate = newEndDate;
   if (data.registrationStartDate) updateData.registrationStartDate = new Date(data.registrationStartDate);
@@ -155,6 +205,7 @@ export async function updateTerm(id: string, data: any) {
     where: { id },
     data: updateData,
     include: {
+      facility: { select: { id: true, name: true, code: true } },
       _count: { select: { schedules: true, patterns: true } },
     },
   });
@@ -192,12 +243,31 @@ export async function findTermForDate(date: Date, tx?: any) {
 }
 
 /** Helper: Kiểm tra tính hợp lệ của buổi học trong kỳ */
-export async function assertCanScheduleInTerm(termId: string, startTime: Date, endTime: Date, tx?: any) {
+export async function assertCanScheduleInTerm(
+  termId: string,
+  startTime: Date,
+  endTime: Date,
+  facilityIdOrTx?: string | any,
+  maybeTx?: any
+) {
+  const facilityId = typeof facilityIdOrTx === "string" ? facilityIdOrTx : undefined;
+  const tx = (facilityIdOrTx && typeof facilityIdOrTx === "object" && "$executeRaw" in facilityIdOrTx)
+    ? facilityIdOrTx
+    : maybeTx;
   const db = tx ?? prisma;
-  const term = await db.term.findUnique({ where: { id: termId } });
+  const term = await db.term.findUnique({
+    where: { id: termId },
+    include: { facility: true },
+  });
   if (!term) throw new AppError("Kỳ học được chọn không tồn tại", 404);
   if (term.status === "CLOSED") {
     throw new AppError(`Kỳ học "${term.name}" đã kết thúc (CLOSED), không thể xếp thêm lịch học.`, 400);
+  }
+  if (term.facilityId && facilityId && term.facilityId !== facilityId) {
+    throw new AppError(
+      `Kỳ học "${term.name}" được gán riêng cho cơ sở "${term.facility?.name || term.facilityId}", không áp dụng cho cơ sở này.`,
+      400
+    );
   }
   if (startTime < term.startDate || endTime > term.endDate) {
     const fmt = (d: Date) => d.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });

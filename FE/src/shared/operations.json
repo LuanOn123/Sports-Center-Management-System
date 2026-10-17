@@ -8247,11 +8247,15 @@
       "type": "object",
       "required": ["name", "startDate", "endDate", "registrationStartDate", "registrationEndDate"],
       "properties": {
+        "code": { "type": "string" },
         "name": { "type": "string" },
         "startDate": { "type": "string", "format": "date" },
         "endDate": { "type": "string", "format": "date" },
         "registrationStartDate": { "type": "string", "format": "date" },
-        "registrationEndDate": { "type": "string", "format": "date" }
+        "registrationEndDate": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["PLANNING", "OPEN_REGISTRATION", "IN_PROGRESS", "CLOSED"] },
+        "description": { "type": "string" },
+        "facilityId": { "type": "string" }
       }
     },
     "statusCodes": ["201", "400", "401", "403", "409", "500"]
@@ -8268,12 +8272,15 @@
     "body": {
       "type": "object",
       "properties": {
+        "code": { "type": "string" },
         "name": { "type": "string" },
         "startDate": { "type": "string", "format": "date" },
         "endDate": { "type": "string", "format": "date" },
         "registrationStartDate": { "type": "string", "format": "date" },
         "registrationEndDate": { "type": "string", "format": "date" },
-        "status": { "type": "string", "enum": ["PLANNING", "OPEN_REGISTRATION", "IN_PROGRESS", "CLOSED"] }
+        "status": { "type": "string", "enum": ["PLANNING", "OPEN_REGISTRATION", "IN_PROGRESS", "CLOSED"] },
+        "description": { "type": "string" },
+        "facilityId": { "type": "string" }
       }
     },
     "statusCodes": ["200", "400", "401", "403", "404", "409", "500"]

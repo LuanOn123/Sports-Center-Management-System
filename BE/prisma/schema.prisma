@@ -200,6 +200,7 @@ model Facility {
   auditLogs AuditLog[]
   staffs      FacilityStaff[]
   visits      FacilityVisit[]
+  terms       Term[]
 }
 
 model FacilityStaff {
@@ -460,6 +461,8 @@ model Term {
   registrationEndDate   DateTime
   status                TermStatus        @default(PLANNING)
   description           String?
+  facilityId            String?
+  facility              Facility?         @relation(fields: [facilityId], references: [id], onDelete: SetNull)
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
 
@@ -468,6 +471,7 @@ model Term {
 
   @@index([status])
   @@index([startDate, endDate])
+  @@index([facilityId])
 }
 
 // ─────────────────────────────────────────

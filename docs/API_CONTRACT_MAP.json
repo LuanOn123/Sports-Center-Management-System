@@ -5741,6 +5741,7 @@
     "roles": "Authenticated (service checks ownership)",
     "consumers": [
       "FE/src/features/manage/AdminFacilities.tsx",
+      "FE/src/features/manage/AdminTerms.tsx",
       "FE/src/features/manage/AuditLogPage.tsx",
       "FE/src/features/operations/OperationsPage.tsx",
       "FE/src/shared/api.ts",
@@ -7279,6 +7280,9 @@
         "registrationEndDate"
       ],
       "properties": {
+        "code": {
+          "type": "string"
+        },
         "name": {
           "type": "string"
         },
@@ -7297,6 +7301,21 @@
         "registrationEndDate": {
           "type": "string",
           "format": "date"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "PLANNING",
+            "OPEN_REGISTRATION",
+            "IN_PROGRESS",
+            "CLOSED"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "facilityId": {
+          "type": "string"
         }
       }
     },
@@ -7325,6 +7344,9 @@
     "request": {
       "type": "object",
       "properties": {
+        "code": {
+          "type": "string"
+        },
         "name": {
           "type": "string"
         },
@@ -7352,6 +7374,12 @@
             "IN_PROGRESS",
             "CLOSED"
           ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "facilityId": {
+          "type": "string"
         }
       }
     },
