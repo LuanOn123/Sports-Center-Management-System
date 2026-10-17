@@ -59,7 +59,17 @@ function title(cursor: Date, view: ScheduleCalendarView) {
   return `${start.toLocaleDateString("vi-VN")} – ${last.toLocaleDateString("vi-VN")}`;
 }
 
-function ScheduleCard({ row, compact, onSelect }: { row: RecordData; compact: boolean; onSelect: (row: RecordData) => void }) {
+function ScheduleCard({
+  row,
+  compact,
+  onSelect,
+  underCapacity,
+}: {
+  row: RecordData;
+  compact: boolean;
+  onSelect: (row: RecordData) => void;
+  underCapacity?: { bookedCount: number; minCapacity: number };
+}) {
   const status = String(row.status || "SCHEDULED").toLowerCase();
   return (
     <button
@@ -71,6 +81,22 @@ function ScheduleCard({ row, compact, onSelect }: { row: RecordData; compact: bo
       <strong>{display(at(row, "class.name"))}</strong>
       <span><Clock3 size={12} /> {time(row.startTime)}–{time(row.endTime)}</span>
       {!compact && <span><MapPin size={12} /> {display(at(row, "room.name"))}</span>}
+      {underCapacity && (
+        <span
+          style={{
+            display: "inline-block",
+            fontSize: "0.7rem",
+            fontWeight: 600,
+            color: "#92400e",
+            backgroundColor: "#fef3c7",
+            padding: "1px 4px",
+            borderRadius: "4px",
+            marginTop: "2px",
+          }}
+        >
+          ⚠️ Chưa đủ sĩ số ({underCapacity.bookedCount}/{underCapacity.minCapacity})
+        </span>
+      )}
     </button>
   );
 }
@@ -82,6 +108,7 @@ export function ScheduleCalendar({
   onCursorChange,
   onViewChange,
   onSelect,
+  underCapacityMap,
 }: {
   rows: RecordData[];
   cursor: Date;
@@ -89,6 +116,7 @@ export function ScheduleCalendar({
   onCursorChange: (value: Date) => void;
   onViewChange: (value: ScheduleCalendarView) => void;
   onSelect: (row: RecordData) => void;
+  underCapacityMap?: Map<string, any>;
 }) {
   const { start, end } = calendarRange(cursor, view);
   const days: Date[] = [];
@@ -132,7 +160,15 @@ export function ScheduleCalendar({
                   <strong>{day.getDate()}</strong>
                 </header>
                 <div className="calendar-events">
-                  {(grouped.get(key) || []).map((row) => <ScheduleCard key={String(row.id)} row={row} compact={view === "month"} onSelect={onSelect} />)}
+                  {(grouped.get(key) || []).map((row) => (
+                    <ScheduleCard
+                      key={String(row.id)}
+                      row={row}
+                      compact={view === "month"}
+                      onSelect={onSelect}
+                      underCapacity={underCapacityMap?.get(String(row.id))}
+                    />
+                  ))}
                   {view === "week" && !(grouped.get(key) || []).length && <span className="calendar-empty-day">Chưa có lịch</span>}
                 </div>
               </section>
