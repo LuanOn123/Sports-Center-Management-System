@@ -42,20 +42,37 @@ function CoursePatternSummary({ classId }: { classId: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {term && (
-        <span
-          style={{
-            alignSelf: "flex-start",
-            fontSize: 11,
-            fontWeight: 700,
-            color: "#15803d",
-            backgroundColor: "#f0fdf4",
-            border: "1px solid #bbf7d0",
-            padding: "2px 8px",
-            borderRadius: 6,
-          }}
-        >
-          📅 {term.name}
-        </span>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          <span
+            style={{
+              alignSelf: "flex-start",
+              fontSize: 11,
+              fontWeight: 700,
+              color: "#15803d",
+              backgroundColor: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+              padding: "2px 8px",
+              borderRadius: 6,
+            }}
+          >
+            📅 {term.name}
+          </span>
+          {term.status === "OPEN_REGISTRATION" && (
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: "#0369a1",
+                backgroundColor: "#f0f9ff",
+                border: "1px solid #bae6fd",
+                padding: "2px 6px",
+                borderRadius: 6,
+              }}
+            >
+              ⚡ Mở đăng ký
+            </span>
+          )}
+        </div>
       )}
       {slots.slice(0, 4).map((slot) => (
         <div
@@ -139,6 +156,15 @@ export function BrowseClassesPage() {
   const classes = classData?.classes || [];
   const sports = sportsData?.sports || [];
 
+  const openRegTerm = termsList.find(
+    (t: any) =>
+      t.status === "OPEN_REGISTRATION" ||
+      (t.registrationStartDate &&
+        t.registrationEndDate &&
+        new Date(t.registrationStartDate).getTime() <= Date.now() &&
+        new Date(t.registrationEndDate).getTime() >= Date.now()),
+  );
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {/* HEADER BANNER */}
@@ -180,6 +206,66 @@ export function BrowseClassesPage() {
           </p>
         </div>
       </div>
+
+      {/* EARLY REGISTRATION NOTIFICATION BANNER */}
+      {openRegTerm && (
+        <div
+          style={{
+            background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)",
+            borderRadius: 14,
+            padding: "16px 20px",
+            border: "1px solid #bbf7d0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 14,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 10,
+                backgroundColor: "#16a34a",
+                color: "#ffffff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 800,
+                fontSize: 18,
+                flexShrink: 0,
+              }}
+            >
+              ⚡
+            </div>
+            <div>
+              <strong style={{ color: "#166534", fontSize: 14, display: "block" }}>
+                Cổng đăng ký sớm đang mở: {openRegTerm.name}
+              </strong>
+              <span style={{ color: "#15803d", fontSize: 13 }}>
+                Đăng ký ngay từ hôm nay để giữ chỗ tốt nhất trước khi khai giảng vào ngày{" "}
+                <strong>{new Date(openRegTerm.startDate).toLocaleDateString("vi-VN")}</strong>.
+              </span>
+            </div>
+          </div>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: "#166534",
+              backgroundColor: "#dcfce7",
+              padding: "6px 14px",
+              borderRadius: 8,
+              border: "1px solid #86efac",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Hạn đăng ký: {new Date(openRegTerm.registrationEndDate).toLocaleDateString("vi-VN")}
+          </span>
+        </div>
+      )}
 
       <div className="member-sport-tabs" aria-label="Chọn bộ môn">
         <button

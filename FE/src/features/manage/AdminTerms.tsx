@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Calendar, Pencil, Trash2, ChevronDown } from "lucide-react";
+import { Plus, Calendar, Pencil, Trash2, ChevronDown, Clock, UserCheck, Sparkles } from "lucide-react";
 import { api } from "../../shared/api";
 import { Empty, ErrorState, Loading, Modal } from "../../shared/ui";
 import type { Term, TermStatus } from "../../shared/generated";
@@ -209,7 +210,7 @@ function TermForm({
 }
 
 export function AdminTerms() {
-
+  const navigate = useNavigate();
   const cache = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Term | null>(null);
@@ -272,6 +273,51 @@ export function AdminTerms() {
         </button>
       </div>
 
+      {/* Workflow Guide Card */}
+      <div
+        style={{
+          background: "linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%)",
+          border: "1px solid var(--border)",
+          borderRadius: 12,
+          padding: "16px 20px",
+          marginBottom: 20,
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 14 }}>
+          <span>💡 Quy trình vận hành Kỳ học & Cơ sở:</span>
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: 12,
+            fontSize: 13,
+          }}
+        >
+          <div style={{ background: "var(--surface)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
+            <strong>1. Tạo kỳ học & Mở đăng ký sớm</strong>
+            <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 12 }}>
+              Đặt ngày mở đăng ký trước ngày bắt đầu và chuyển trạng thái sang <code>Mở đăng ký</code> để học viên đặt chỗ trước.
+            </p>
+          </div>
+          <div style={{ background: "var(--surface)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
+            <strong>2. Gán lớp tại cơ sở vào kỳ</strong>
+            <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 12 }}>
+              Vào <em>Lịch học</em> tại cơ sở của bạn, khi xếp lịch chọn Kỳ học tương ứng để gắn các buổi học vào kỳ.
+            </p>
+          </div>
+          <div style={{ background: "var(--surface)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
+            <strong>3. Phân công Huấn luyện viên</strong>
+            <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 12 }}>
+              Cấp quyền bộ môn cho HLV tại <em>Người dùng</em>, sau đó vào <em>Lớp học</em> để phân công HLV chính/phụ.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Filters */}
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
@@ -309,39 +355,82 @@ export function AdminTerms() {
         <Empty text="Chưa có kỳ học nào. Nhấn 'Thêm kỳ học' để bắt đầu." />
       ) : (
         <div className="admin-facility-grid">
-          {terms.map((term) => (
-            <article className="panel admin-facility-card" key={term.id}>
-              <div className="panel-heading">
-                <span className="admin-card-icon"><Calendar size={22} /></span>
-                <span className={`badge ${STATUS_BADGE[term.status]}`}>{STATUS_LABELS[term.status]}</span>
-              </div>
-              <h2 style={{ margin: "10px 0 6px", fontSize: 18 }}>{term.name}</h2>
-              <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", fontSize: 13 }}>
-                <dt style={{ color: "var(--muted)", fontWeight: 500 }}>Kỳ học:</dt>
-                <dd style={{ margin: 0 }}>{fmtDate(term.startDate)} → {fmtDate(term.endDate)}</dd>
-                <dt style={{ color: "var(--muted)", fontWeight: 500 }}>Đăng ký:</dt>
-                <dd style={{ margin: 0 }}>{fmtDate(term.registrationStartDate)} → {fmtDate(term.registrationEndDate)}</dd>
-                {term._count && (
-                  <>
-                    <dt style={{ color: "var(--muted)", fontWeight: 500 }}>Buổi học:</dt>
-                    <dd style={{ margin: 0 }}>{term._count.schedules} buổi</dd>
-                  </>
-                )}
-              </dl>
-              <div className="admin-card-footer">
-                <button className="button" onClick={() => setEditing(term)}>
-                  <Pencil size={16} /> Chỉnh sửa
-                </button>
-                <button
-                  className="button danger"
-                  onClick={() => { deleteMutation.reset(); setDeleting(term); }}
-                  disabled={deleteMutation.isPending}
+          {terms.map((term) => {
+            const isEarlyReg =
+              term.status === "OPEN_REGISTRATION" &&
+              new Date(term.startDate).getTime() > Date.now();
+            return (
+              <article className="panel admin-facility-card" key={term.id}>
+                <div className="panel-heading">
+                  <span className="admin-card-icon"><Calendar size={22} /></span>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    {isEarlyReg && (
+                      <span className="badge success" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <Sparkles size={12} /> Đang mở đăng ký sớm
+                      </span>
+                    )}
+                    <span className={`badge ${STATUS_BADGE[term.status]}`}>{STATUS_LABELS[term.status]}</span>
+                  </div>
+                </div>
+                <h2 style={{ margin: "10px 0 6px", fontSize: 18 }}>{term.name}</h2>
+                <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", fontSize: 13 }}>
+                  <dt style={{ color: "var(--muted)", fontWeight: 500 }}>Kỳ học:</dt>
+                  <dd style={{ margin: 0 }}>{fmtDate(term.startDate)} → {fmtDate(term.endDate)}</dd>
+                  <dt style={{ color: "var(--muted)", fontWeight: 500 }}>Đăng ký:</dt>
+                  <dd style={{ margin: 0 }}>{fmtDate(term.registrationStartDate)} → {fmtDate(term.registrationEndDate)}</dd>
+                  {term._count && (
+                    <>
+                      <dt style={{ color: "var(--muted)", fontWeight: 500 }}>Buổi học:</dt>
+                      <dd style={{ margin: 0 }}>{term._count.schedules} buổi</dd>
+                    </>
+                  )}
+                </dl>
+
+                {/* Quick actions for operations */}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    marginTop: 12,
+                    paddingTop: 12,
+                    borderTop: "1px dashed var(--border)",
+                  }}
                 >
-                  <Trash2 size={16} /> Xóa
-                </button>
-              </div>
-            </article>
-          ))}
+                  <button
+                    type="button"
+                    className="button"
+                    style={{ flex: 1, fontSize: 12, padding: "6px 8px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}
+                    onClick={() => navigate("/manage/schedule")}
+                    title="Xếp lịch các lớp học tại cơ sở cho kỳ này"
+                  >
+                    <Clock size={14} /> Xếp lịch
+                  </button>
+                  <button
+                    type="button"
+                    className="button"
+                    style={{ flex: 1, fontSize: 12, padding: "6px 8px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}
+                    onClick={() => navigate("/manage/classes")}
+                    title="Phân công HLV cho các lớp học"
+                  >
+                    <UserCheck size={14} /> Gán HLV
+                  </button>
+                </div>
+
+                <div className="admin-card-footer" style={{ marginTop: 8 }}>
+                  <button className="button" onClick={() => setEditing(term)}>
+                    <Pencil size={16} /> Chỉnh sửa
+                  </button>
+                  <button
+                    className="button danger"
+                    onClick={() => { deleteMutation.reset(); setDeleting(term); }}
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 size={16} /> Xóa
+                  </button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
 
