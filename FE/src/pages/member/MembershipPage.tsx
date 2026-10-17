@@ -3,7 +3,6 @@ import { CancelSubscription } from "../../shared/CancelSubscription";
 import "./membership.css";
 import {
   effectiveSubscription,
-  downgradeReason,
   isEffectiveSubscription,
 } from "../../shared/businessRules";
 import { formatMemberDate } from "../../shared/memberFormat";
@@ -16,6 +15,7 @@ import { sepayApi } from "../../api/sepay.api";
 import { SepayCheckoutModal } from "../../shared/SepayCheckout";
 import type { MembershipPlan, SepayCheckout } from "../../types/member";
 import { CreditCard, Check, QrCode } from "lucide-react";
+import { Modal } from "../../shared/ui";
 import {
   LoadingSpinner,
   EmptyState,
@@ -26,6 +26,9 @@ export function MembershipPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<"current" | "plans">("current");
   const [paymentPlan, setPaymentPlan] = useState<MembershipPlan | null>(null);
+  const [transitionPlan, setTransitionPlan] = useState<MembershipPlan | null>(null);
+  const [upgradeOption, setUpgradeOption] = useState<"immediate" | "scheduled">("immediate");
+  const [customStartDate, setCustomStartDate] = useState<string>("");
   const storageKey = `pulse.pending-checkout.${user?.id}.${getFacilityId()}`;
   const [checkout, setCheckout] = useState<SepayCheckout | null>(() => {
     try {
@@ -39,25 +42,28 @@ export function MembershipPage() {
     if (checkout) sessionStorage.setItem(storageKey, JSON.stringify(checkout));
   }, [checkout, storageKey]);
   const createCheckout = useMutation({
-    mutationFn: (planId: string) => sepayApi.createCheckout(planId),
+    mutationFn: ({ planId, startDate }: { planId: string; startDate?: string }) =>
+      sepayApi.createCheckout(planId, startDate),
     onSuccess: (data) => {
       setCheckout(data);
       setCheckoutOpen(true);
+      setTransitionPlan(null);
     },
     onError: (error) => {
       const pending = sepayApi.pendingCheckoutFromError(error);
       if (pending) {
         setCheckout(pending);
         setCheckoutOpen(true);
+        setTransitionPlan(null);
       }
     },
   });
 
-  const startCheckout = (plan: MembershipPlan) => {
+  const startCheckout = (plan: MembershipPlan, startDate?: string) => {
     setPaymentPlan(plan);
     setCheckout(null);
     createCheckout.reset();
-    createCheckout.mutate(plan.id);
+    createCheckout.mutate({ planId: plan.id, startDate });
   };
 
   const closeCheckout = () => {
@@ -90,7 +96,10 @@ export function MembershipPage() {
 
   const subscriptions = subData?.subscriptions || [];
   const activeSub = effectiveSubscription(subData?.subscriptions || []);
+  const scheduledSub = subscriptions.find((s) => s.status === "SCHEDULED");
   const plans = plansData?.plans || [];
+
+  const rank: Record<string, number> = { FREE: 0, MEMBERSHIP: 1, PREMIUM: 2 };
 
   const daysRemaining = activeSub
     ? Math.max(
@@ -388,6 +397,145 @@ export function MembershipPage() {
             />
           )}
 
+          {/* NEXT UP / SCHEDULED MEMBERSHIP CARD */}
+          {scheduledSub && (
+            <div
+              className="member-scheduled-plan"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.04) 100%)",
+                borderRadius: 20,
+                border: "2px solid #818cf8",
+                padding: "28px 32px",
+                boxShadow: "0 8px 20px -4px rgba(99, 102, 241, 0.15)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  flexWrap: "wrap",
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <span
+                    style={{
+                      backgroundColor: "#4f46e5",
+                      color: "#ffffff",
+                      fontSize: 12,
+                      fontWeight: 800,
+                      padding: "4px 10px",
+                      borderRadius: 6,
+                      textTransform: "uppercase",
+                      letterSpacing: 0.5,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    NEXT UP · SẮP CÓ HIỆU LỰC
+                  </span>
+                  <h3
+                    style={{
+                      fontSize: 24,
+                      fontWeight: 800,
+                      margin: "10px 0 4px",
+                      color: "var(--member-text, #203d31)",
+                    }}
+                  >
+                    {scheduledSub.planNameSnapshot ?? scheduledSub.plan?.name}
+                  </h3>
+                  <p
+                    style={{
+                      margin: 0,
+                      color: "var(--member-muted, #58695f)",
+                      fontSize: 13,
+                    }}
+                  >
+                    Gói tập này đã được thanh toán và lên lịch sẵn. Hệ thống sẽ tự động kích hoạt vào ngày bắt đầu.
+                  </p>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <span
+                    className="badge info"
+                    style={{
+                      backgroundColor: "rgba(99, 102, 241, 0.15)",
+                      color: "#4f46e5",
+                      fontWeight: 700,
+                      padding: "6px 12px",
+                      borderRadius: 8,
+                      fontSize: 13,
+                    }}
+                  >
+                    SCHEDULED
+                  </span>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: 16,
+                  paddingTop: 16,
+                  borderTop: "1px solid rgba(99, 102, 241, 0.15)",
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--member-muted, #58695f)",
+                    }}
+                  >
+                    Hạng gói
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4 }}>
+                    Hạng {scheduledSub.tier}
+                  </div>
+                </div>
+                <div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--member-muted, #58695f)",
+                    }}
+                  >
+                    Ngày kích hoạt dự kiến
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 15,
+                      fontWeight: 700,
+                      marginTop: 4,
+                      color: "#4f46e5",
+                    }}
+                  >
+                    {formatMemberDate(scheduledSub.startDate)}
+                  </div>
+                </div>
+                <div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--member-muted, #58695f)",
+                    }}
+                  >
+                    Ngày hết hạn dự kiến
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4 }}>
+                    {formatMemberDate(scheduledSub.endDate)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* SUBSCRIPTION HISTORY */}
           <div
             style={{
@@ -512,8 +660,31 @@ export function MembershipPage() {
               }}
             >
               {plans.map((p) => {
-                const blockedReason = downgradeReason(activeSub, p);
                 const isPremium = p.tier === "PREMIUM";
+                const isRenewal = Boolean(
+                  activeSub &&
+                    (activeSub.planId === p.id ||
+                      (activeSub.tier === p.tier &&
+                        Number(p.durationDays) ===
+                          Number(
+                            activeSub.durationDaysSnapshot ??
+                              activeSub.plan?.durationDays,
+                          ))),
+                );
+                const isUpgrade = Boolean(
+                  activeSub &&
+                    (rank[p.tier] ?? 0) > (rank[activeSub.tier] ?? 0),
+                );
+                const isDowngrade = Boolean(
+                  activeSub &&
+                    ((rank[p.tier] ?? 0) < (rank[activeSub.tier] ?? 0) ||
+                      (p.tier === activeSub.tier &&
+                        Number(p.durationDays) <
+                          Number(
+                            activeSub.durationDaysSnapshot ??
+                              activeSub.plan?.durationDays,
+                          ))),
+                );
                 const registered = subscriptions.find(
                   (s) => s.planId === p.id && isEffectiveSubscription(s),
                 );
@@ -730,21 +901,51 @@ export function MembershipPage() {
                         disabled={
                           subLoading ||
                           Boolean(subError) ||
-                          Boolean(blockedReason) ||
                           Number(p.price) <= 0 ||
                           createCheckout.isPending
                         }
-                        onClick={() => startCheckout(p)}
+                        onClick={() => {
+                          if (activeSub) {
+                            setTransitionPlan(p);
+                            if (isDowngrade) {
+                              setCustomStartDate(activeSub.endDate.slice(0, 10));
+                            } else if (isUpgrade) {
+                              setUpgradeOption("immediate");
+                              setCustomStartDate(new Date().toISOString().slice(0, 10));
+                            } else {
+                              setCustomStartDate(activeSub.endDate.slice(0, 10));
+                            }
+                          } else {
+                            startCheckout(p);
+                          }
+                        }}
                       >
                         <QrCode size={17} />
                         {createCheckout.isPending && paymentPlan?.id === p.id
                           ? "Đang tạo mã..."
-                          : registered
+                          : isRenewal
                             ? "Gia hạn qua VietQR"
-                            : "Chuyển khoản VietQR"}
+                            : isUpgrade
+                              ? "Nâng cấp qua VietQR"
+                              : isDowngrade
+                                ? "Lên lịch gói (Hạ cấp)"
+                                : "Chuyển khoản VietQR"}
                       </button>
-                      {blockedReason && (
-                        <p className="field-note">{blockedReason}</p>
+                      {isDowngrade && activeSub && (
+                        <p
+                          className="field-note"
+                          style={{ color: "#4f46e5", fontSize: 12 }}
+                        >
+                          Gói sẽ kích hoạt sau ngày {formatMemberDate(activeSub.endDate)}
+                        </p>
+                      )}
+                      {isRenewal && activeSub && (
+                        <p
+                          className="field-note"
+                          style={{ color: "#059669", fontSize: 12 }}
+                        >
+                          Gia hạn tự động nối tiếp sau {formatMemberDate(activeSub.endDate)}
+                        </p>
                       )}
                       <p
                         style={{
@@ -756,9 +957,7 @@ export function MembershipPage() {
                         }}
                       >
                         Quét mã bằng ứng dụng ngân hàng. Sau khi nhận tiền, hệ
-                        thống sẽ kích hoạt gói hoặc thông báo nếu cần đối soát.
-                        Gói mới thay thế gói hiện tại, bắt đầu khi kích hoạt và
-                        không cộng ngày dư.
+                        thống sẽ kích hoạt gói hoặc lên lịch kích hoạt tự động theo lựa chọn của bạn.
                       </p>
                     </div>
                   </div>
@@ -768,6 +967,346 @@ export function MembershipPage() {
           )}
         </div>
       )}
+
+      {/* PLAN TRANSITION & SMART DATE PICKER MODAL */}
+      {transitionPlan && activeSub && (
+        <Modal
+          eyebrow="CHUYỂN ĐỔI / GIA HẠN GÓI"
+          title={
+            activeSub.planId === transitionPlan.id ||
+            (activeSub.tier === transitionPlan.tier &&
+              Number(transitionPlan.durationDays) ===
+                Number(
+                  activeSub.durationDaysSnapshot ?? activeSub.plan?.durationDays,
+                ))
+              ? "Gia hạn gói tập"
+              : (rank[transitionPlan.tier] ?? 0) > (rank[activeSub.tier] ?? 0)
+                ? "Nâng cấp gói tập"
+                : "Lên lịch gói tập tiếp theo (Hạ cấp)"
+          }
+          onClose={() => setTransitionPlan(null)}
+          maxWidth={520}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <div
+              style={{
+                padding: "14px 18px",
+                borderRadius: 12,
+                background: "var(--member-surface-alt, #f8fafc)",
+                border: "1px solid var(--member-border, #e2e8f0)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "var(--member-accent, #376228)",
+                  textTransform: "uppercase",
+                }}
+              >
+                Hạng {transitionPlan.tier}
+              </div>
+              <h4
+                style={{
+                  margin: "4px 0",
+                  fontSize: 18,
+                  color: "var(--member-text, #203d31)",
+                }}
+              >
+                {transitionPlan.name}
+              </h4>
+              <div
+                style={{ fontSize: 13, color: "var(--member-muted, #64748b)" }}
+              >
+                Thời hạn: <strong>{transitionPlan.durationDays} ngày</strong> ·
+                Giá:{" "}
+                <strong>
+                  {Number(transitionPlan.price).toLocaleString("vi-VN")} VNĐ
+                </strong>
+              </div>
+            </div>
+
+            {/* RENEWAL NOTICE */}
+            {(activeSub.planId === transitionPlan.id ||
+              (activeSub.tier === transitionPlan.tier &&
+                Number(transitionPlan.durationDays) ===
+                  Number(
+                    activeSub.durationDaysSnapshot ??
+                      activeSub.plan?.durationDays,
+                  ))) && (
+              <div
+                style={{
+                  background: "rgba(16, 185, 129, 0.08)",
+                  border: "1px solid rgba(16, 185, 129, 0.3)",
+                  borderRadius: 10,
+                  padding: 14,
+                }}
+              >
+                <strong
+                  style={{
+                    color: "#059669",
+                    display: "block",
+                    marginBottom: 4,
+                  }}
+                >
+                  ✓ Tự động gia hạn nối tiếp
+                </strong>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    color: "var(--member-text, #203d31)",
+                  }}
+                >
+                  Gói mới sẽ tự động nối tiếp thời hạn gói hiện tại, kích hoạt
+                  vào ngày <strong>{formatMemberDate(activeSub.endDate)}</strong>
+                  . Bạn không bị mất ngày tập nào.
+                </p>
+              </div>
+            )}
+
+            {/* UPGRADE NOTICE & CHOICE */}
+            {(rank[transitionPlan.tier] ?? 0) >
+              (rank[activeSub.tier] ?? 0) && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 10,
+                    cursor: "pointer",
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    border:
+                      upgradeOption === "immediate"
+                        ? "2px solid #10b981"
+                        : "1px solid var(--member-border, #e2e8f0)",
+                    background:
+                      upgradeOption === "immediate"
+                        ? "rgba(16, 185, 129, 0.04)"
+                        : "transparent",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="upgradeOption"
+                    checked={upgradeOption === "immediate"}
+                    onChange={() => setUpgradeOption("immediate")}
+                    style={{ marginTop: 3 }}
+                  />
+                  <div>
+                    <strong
+                      style={{
+                        color: "var(--member-text, #203d31)",
+                        display: "block",
+                      }}
+                    >
+                      Kích hoạt ngay hôm nay
+                    </strong>
+                    <small style={{ color: "var(--member-muted, #64748b)" }}>
+                      Hưởng ngay quyền lợi hạng {transitionPlan.tier} cao hơn kể
+                      từ hôm nay.
+                    </small>
+                  </div>
+                </label>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 10,
+                    cursor: "pointer",
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    border:
+                      upgradeOption === "scheduled"
+                        ? "2px solid #3b82f6"
+                        : "1px solid var(--member-border, #e2e8f0)",
+                    background:
+                      upgradeOption === "scheduled"
+                        ? "rgba(59, 130, 246, 0.04)"
+                        : "transparent",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="upgradeOption"
+                    checked={upgradeOption === "scheduled"}
+                    onChange={() => setUpgradeOption("scheduled")}
+                    style={{ marginTop: 3 }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <strong
+                      style={{
+                        color: "var(--member-text, #203d31)",
+                        display: "block",
+                      }}
+                    >
+                      Chọn ngày kích hoạt trong tương lai
+                    </strong>
+                    <small style={{ color: "var(--member-muted, #64748b)" }}>
+                      Lên lịch bắt đầu gói nâng cấp vào một ngày cụ thể (từ hôm
+                      nay trở đi).
+                    </small>
+                    {upgradeOption === "scheduled" && (
+                      <div style={{ marginTop: 10 }}>
+                        <input
+                          type="date"
+                          min={new Date().toISOString().slice(0, 10)}
+                          value={
+                            customStartDate ||
+                            new Date().toISOString().slice(0, 10)
+                          }
+                          onChange={(e) => setCustomStartDate(e.target.value)}
+                          style={{
+                            padding: "6px 10px",
+                            borderRadius: 6,
+                            border: "1px solid var(--member-border, #cbd5e1)",
+                            width: "100%",
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </label>
+              </div>
+            )}
+
+            {/* DOWNGRADE NOTICE */}
+            {((rank[transitionPlan.tier] ?? 0) <
+              (rank[activeSub.tier] ?? 0) ||
+              (transitionPlan.tier === activeSub.tier &&
+                Number(transitionPlan.durationDays) <
+                  Number(
+                    activeSub.durationDaysSnapshot ??
+                      activeSub.plan?.durationDays,
+                  ))) && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div
+                  style={{
+                    background: "rgba(99, 102, 241, 0.08)",
+                    border: "1px solid rgba(99, 102, 241, 0.3)",
+                    borderRadius: 10,
+                    padding: 14,
+                  }}
+                >
+                  <strong
+                    style={{
+                      color: "#4f46e5",
+                      display: "block",
+                      marginBottom: 4,
+                    }}
+                  >
+                    📅 Đăng ký gói tiếp theo (SCHEDULED)
+                  </strong>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 13,
+                      color: "var(--member-text, #203d31)",
+                    }}
+                  >
+                    Gói hạ cấp sẽ được lưu ở trạng thái <strong>SCHEDULED</strong>{" "}
+                    và chỉ có hiệu lực sau khi gói hiện tại kết thúc vào ngày{" "}
+                    <strong>{formatMemberDate(activeSub.endDate)}</strong>.
+                  </p>
+                </div>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Ngày bắt đầu kích hoạt:
+                  </label>
+                  <input
+                    type="date"
+                    min={activeSub.endDate.slice(0, 10)}
+                    value={customStartDate || activeSub.endDate.slice(0, 10)}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: 6,
+                      border: "1px solid var(--member-border, #cbd5e1)",
+                      width: "100%",
+                    }}
+                  />
+                  <small
+                    style={{
+                      color: "var(--member-muted, #64748b)",
+                      display: "block",
+                      marginTop: 4,
+                    }}
+                  >
+                    Phải từ ngày kết thúc của gói hiện tại (
+                    {formatMemberDate(activeSub.endDate)}) trở đi.
+                  </small>
+                </div>
+              </div>
+            )}
+
+            {createCheckout.error && (
+              <div className="danger-text" style={{ fontSize: 13 }}>
+                {String(createCheckout.error)}
+              </div>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+                marginTop: 12,
+              }}
+            >
+              <button
+                className="button"
+                onClick={() => setTransitionPlan(null)}
+              >
+                Hủy
+              </button>
+              <button
+                className="button primary"
+                disabled={createCheckout.isPending}
+                onClick={() => {
+                  const isTUpgrade =
+                    (rank[transitionPlan.tier] ?? 0) >
+                    (rank[activeSub.tier] ?? 0);
+                  const isTDowngrade =
+                    (rank[transitionPlan.tier] ?? 0) <
+                      (rank[activeSub.tier] ?? 0) ||
+                    (transitionPlan.tier === activeSub.tier &&
+                      Number(transitionPlan.durationDays) <
+                        Number(
+                          activeSub.durationDaysSnapshot ??
+                            activeSub.plan?.durationDays,
+                        ));
+                  let finalStart: string | undefined;
+                  if (isTUpgrade) {
+                    finalStart =
+                      upgradeOption === "immediate"
+                        ? undefined
+                        : customStartDate;
+                  } else if (isTDowngrade) {
+                    finalStart =
+                      customStartDate || activeSub.endDate.slice(0, 10);
+                  } else {
+                    finalStart = activeSub.endDate.slice(0, 10);
+                  }
+                  startCheckout(transitionPlan, finalStart);
+                }}
+              >
+                {createCheckout.isPending
+                  ? "Đang tạo mã thanh toán..."
+                  : "Tiếp tục tạo VietQR"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       <SepayCheckoutModal
         checkout={checkout}
         open={checkoutOpen}
