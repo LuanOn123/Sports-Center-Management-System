@@ -60,6 +60,13 @@ export const ATTENDANCE = {
   MEMBER_MANUAL_CODE_MAX_FAILURES: 10,
   /** Cửa sổ đếm lần nhập sai của member (phút). */
   MEMBER_MANUAL_CODE_WINDOW_MINUTES: 15,
+  /**
+   * Thời hạn hủy chỗ tối thiểu (phút) trước khi buổi học bắt đầu mà Member được phép tự hủy.
+   * Mặc định 60 phút ở môi trường chạy thực tế, 0 khi ở môi trường test để bảo đảm backward compatibility.
+   */
+  CANCELLATION_CUTOFF_MINUTES: process.env.CANCELLATION_CUTOFF_MINUTES !== undefined
+    ? Number(process.env.CANCELLATION_CUTOFF_MINUTES)
+    : (process.env.NODE_ENV === "test" ? 0 : 60),
 } as const;
 
 export type AttendanceBucketStatus = "NORMAL" | "NOTICE" | "WARNING";

@@ -10,12 +10,13 @@ export const CreateSubscriptionSchema = z.object({
 
 export const RenewSubscriptionSchema = z.object({
   planId: z.string().min(1),
+  startDate: z.string().optional(),
   paymentMethod: z.enum(["CASH", "BANK_TRANSFER"]),
   note: z.string().optional(),
 });
 
 export const UpdateStatusSchema = z.object({
-  status: z.enum(["ACTIVE", "EXPIRED", "CANCELLED", "SUSPENDED"]),
+  status: z.enum(["ACTIVE", "EXPIRED", "CANCELLED", "SUSPENDED", "SCHEDULED"]),
 });
 
 export const CancelSubscriptionSchema = z.object({
@@ -25,7 +26,7 @@ export const CancelSubscriptionSchema = z.object({
 export const SubscriptionQuerySchema = z.object({
   page: z.string().optional(),
   limit: z.string().optional(),
-  status: z.enum(["ACTIVE", "EXPIRED", "CANCELLED", "SUSPENDED"]).optional(),
+  status: z.enum(["ACTIVE", "EXPIRED", "CANCELLED", "SUSPENDED", "SCHEDULED"]).optional(),
 });
 
 export type CreateSubscriptionInput = z.infer<typeof CreateSubscriptionSchema>;

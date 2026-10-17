@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import * as reportsService from "./reports.service.js";
 import { sendSuccess } from "../../utils/response.js";
+import { getStaffFacilityId } from "../../middlewares/facilityScope.js";
 
 export async function getRevenueReport(req: Request, res: Response, next: NextFunction) {
   try {
@@ -25,8 +26,17 @@ export async function getEnrollmentReport(req: Request, res: Response, next: Nex
 }
 export async function getMembershipReport(req: Request, res: Response, next: NextFunction) {
   try {
-    const { startDate, endDate } = req.query as any;
-    const report = await reportsService.getMembershipReport(startDate, endDate);
+    const { startDate, endDate, facilityId } = req.query as any;
+    const callerRole = req.user?.role;
+    let targetFacilityId = facilityId;
+
+    if (callerRole === "MANAGER") {
+      targetFacilityId = await getStaffFacilityId(req.user!.id, "MANAGER");
+    } else if (callerRole === "ADMIN" && !targetFacilityId) {
+      targetFacilityId = "ALL";
+    }
+
+    const report = await reportsService.getMembershipReport(startDate, endDate, targetFacilityId);
     sendSuccess(res, report, "Membership report retrieved successfully");
   } catch (err) { next(err); }
 }

@@ -49,6 +49,27 @@ export async function findActiveSubscription(
   memberProfileId: string,
   now: Date = new Date()
 ) {
+  // Tự động kích hoạt (lazy activation) các gói SCHEDULED đã tới ngày bắt đầu
+  const scheduledReady = await db.membershipSubscription.findFirst({
+    where: {
+      memberId: memberProfileId,
+      status: "SCHEDULED",
+      startDate: { lte: now },
+    },
+    orderBy: { startDate: "asc" },
+  });
+
+  if (scheduledReady) {
+    await db.membershipSubscription.updateMany({
+      where: { memberId: memberProfileId, status: "ACTIVE" },
+      data: { status: "SUSPENDED", suspendedAt: now },
+    });
+    await db.membershipSubscription.update({
+      where: { id: scheduledReady.id },
+      data: { status: "ACTIVE" },
+    });
+  }
+
   return db.membershipSubscription.findFirst({
     where: {
       memberId: memberProfileId,

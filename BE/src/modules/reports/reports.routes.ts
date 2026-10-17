@@ -11,8 +11,8 @@ const router = Router();
 
 router.use(authenticate, authorize("MANAGER"));
 router.use((req, res, next) => {
-  if (req.user?.role === "MANAGER" && req.path !== "/revenue") {
-    res.status(403).json({ success: false, message: "Manager chỉ được xem báo cáo doanh thu cơ sở" });
+  if (req.user?.role === "MANAGER" && req.path !== "/revenue" && req.path !== "/memberships") {
+    res.status(403).json({ success: false, message: "Manager chỉ được xem báo cáo cơ sở" });
     return;
   }
   next();

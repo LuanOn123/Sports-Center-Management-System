@@ -1,8 +1,10 @@
 import { prisma } from "../../config/prisma.js";
+import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { broadcastNotification } from "../notifications/notifications.service.js";
 import type { TransferSchedulesInput } from "./rooms.schema.js";
+import { checkFacilityRoomLimit } from "../facilities/facility-limits.service.js";
 
 export async function listRooms(query: any) {
   const page = Math.max(1, parseInt(query.page ?? "1") || 1);
@@ -27,6 +29,10 @@ export async function listRooms(query: any) {
 }
 
 export async function createRoom(data: any) {
+  const facilityId = data.facilityId || requestContext.getStore()?.facilityId;
+  if (facilityId) {
+    await checkFacilityRoomLimit(facilityId);
+  }
   const existing = await prisma.room.findUnique({ where: { name: data.name } });
   if (existing) throw new AppError("Room with this name already exists", 409);
   return prisma.room.create({ data });

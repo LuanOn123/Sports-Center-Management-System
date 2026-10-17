@@ -70,6 +70,21 @@ export async function flushNotificationOutbox(limit = OUTBOX_BATCH_SIZE): Promis
     if (claimed.count === 0) continue;
 
     try {
+      const userExists = await prisma.user.findUnique({
+        where: { id: row.userId },
+        select: { id: true },
+      });
+      if (!userExists) {
+        await prisma.notificationOutbox.update({
+          where: { id: row.id },
+          data: {
+            status: "FAILED",
+            lastError: "User not found (FK violation avoided)",
+          },
+        });
+        continue;
+      }
+
       await createNotification(
         row.userId,
         row.type as NotificationTypeEnum,
@@ -85,9 +100,12 @@ export async function flushNotificationOutbox(limit = OUTBOX_BATCH_SIZE): Promis
         data: { status: "SENT", sentAt: new Date(), lastError: null },
       });
       sent += 1;
-    } catch (err) {
+    } catch (err: any) {
+      const isFkError =
+        err?.code === "P2003" ||
+        err?.message?.includes("Foreign key constraint violated");
       const attempts = row.attempts + 1;
-      const failed = attempts >= OUTBOX_MAX_ATTEMPTS;
+      const failed = isFkError || attempts >= OUTBOX_MAX_ATTEMPTS;
       await prisma.notificationOutbox.update({
         where: { id: row.id },
         data: {

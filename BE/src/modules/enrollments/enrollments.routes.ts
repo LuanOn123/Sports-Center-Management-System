@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate.js";
 import { authorize } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
-import { CreateEnrollmentSchema, TransferEnrollmentSchema, EnrollmentQuerySchema, EnrollWholeCourseSchema } from "./enrollments.schema.js";
+import { CreateEnrollmentSchema, TransferEnrollmentSchema, EnrollmentQuerySchema, EnrollWholeCourseSchema, RequestEnrollmentLeaveSchema, UpdateEnrollmentHealthNotesSchema } from "./enrollments.schema.js";
 import * as enrollmentsController from "./enrollments.controller.js";
 
 const router = Router();
@@ -344,6 +344,31 @@ router.post(
   authenticate,
   validate(TransferEnrollmentSchema),
   enrollmentsController.transferEnrollment
+);
+
+/**
+ * @swagger
+ * /enrollments/{id}/leave-request:
+ *   post:
+ *     summary: Request excused leave for a booked session (Member only)
+ *     description: Creates a LeaveRequest and notifies Managers to confirm EXCUSED attendance.
+ *     tags: [Enrollments]
+ *     security:
+ *       - BearerAuth: []
+ */
+router.post(
+  "/:id/leave-request",
+  authenticate,
+  authorize("MEMBER"),
+  validate(RequestEnrollmentLeaveSchema),
+  enrollmentsController.requestEnrollmentLeave
+);
+
+router.patch(
+  "/:id/health-notes",
+  authenticate,
+  validate(UpdateEnrollmentHealthNotesSchema),
+  enrollmentsController.updateEnrollmentHealthNotes
 );
 
 export default router;
