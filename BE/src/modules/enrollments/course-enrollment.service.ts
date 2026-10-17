@@ -122,7 +122,7 @@ export async function evaluateCourseEligibility(
   const lastSession = sessions[sessions.length - 1];
   const sessionIds = sessions.map((s) => s.id);
 
-  const [activeSub, quotaUsage, penalty, bookedCounts, myEnrollments, conflicts, courseFacilityId] = await Promise.all([
+  const [activeSub, quotaUsage, penalty, bookedCounts, myEnrollments, conflicts, courseFacilityId, schedulesWithTerms] = await Promise.all([
     findActiveSubscription(db, memberProfileId, now),
     getMemberConcurrentClassQuota(db, memberProfileId, { now }),
     findActivePenalty(db, memberProfileId, cls.id, now),
@@ -162,9 +162,46 @@ export async function evaluateCourseEligibility(
     cls.facilityId
       ? Promise.resolve(cls.facilityId)
       : db.class.findUnique({ where: { id: cls.id }, select: { facilityId: true } }).then((row) => row?.facilityId ?? null),
+    db.classSchedule.findMany({
+      where: { id: { in: sessionIds }, termId: { not: null } },
+      select: { id: true, term: true },
+    }),
   ]);
 
   const blockers: CourseEnrollmentBlocker[] = [];
+
+  // ── Cấp KỲ HỌC: thời gian mở đăng ký & trạng thái kỳ ────────────────────────
+  const termsSeen = new Set<string>();
+  for (const st of schedulesWithTerms) {
+    if (!st.term || termsSeen.has(st.term.id)) continue;
+    termsSeen.add(st.term.id);
+    const term = st.term;
+    if (term.status === "PLANNING") {
+      blockers.push({
+        code: "TERM_REGISTRATION_NOT_OPEN",
+        message: `Kỳ học "${term.name}" đang trong giai đoạn lập kế hoạch, chưa mở đăng ký.`,
+        details: { termId: term.id },
+      });
+    } else if (term.status === "CLOSED") {
+      blockers.push({
+        code: "TERM_CLOSED",
+        message: `Kỳ học "${term.name}" đã kết thúc, không thể đăng ký thêm.`,
+        details: { termId: term.id },
+      });
+    } else if (now < term.registrationStartDate) {
+      blockers.push({
+        code: "TERM_REGISTRATION_NOT_STARTED",
+        message: `Kỳ học "${term.name}" chưa đến thời gian đăng ký. Thời gian mở đăng ký: ${vnDateTime(term.registrationStartDate)}.`,
+        details: { termId: term.id, registrationStartDate: term.registrationStartDate },
+      });
+    } else if (now > term.registrationEndDate) {
+      blockers.push({
+        code: "TERM_REGISTRATION_CLOSED",
+        message: `Kỳ học "${term.name}" đã hết hạn đăng ký vào ngày ${vnDateTime(term.registrationEndDate)}.`,
+        details: { termId: term.id, registrationEndDate: term.registrationEndDate },
+      });
+    }
+  }
 
   // ── Cấp KHÓA: gói tập / tier / hình phạt / quota ──────────────────────────
   if (!activeSub) {
@@ -389,7 +426,11 @@ export interface WholeCourseSessionResult {
  * - Serialize bằng advisory lock đúng thứ tự memberQuota -> memberClass -> schedules
  *   (`lockSchedules` sắp xếp cố định) để không overbooking khi nhiều member cùng đăng ký.
  */
-export async function enrollWholeCourse(classId: string, memberProfileId: string) {
+export async function enrollWholeCourse(
+  classId: string,
+  memberProfileId: string,
+  options: { healthNotes?: string | null; saveToProfile?: boolean } = {}
+) {
   // 0. Member phải tồn tại, đang hoạt động và đúng role MEMBER (giống bookClass).
   const memberProfile = await prisma.memberProfile.findUnique({
     where: { id: memberProfileId },
@@ -495,7 +536,12 @@ export async function enrollWholeCourse(classId: string, memberProfileId: string
           // BR-07: unique (memberId, scheduleId) — kích hoạt lại chỗ đã hủy thay vì tạo mới.
           const reactivated = await tx.enrollment.update({
             where: { id: state.myEnrollment.id },
-            data: { status: "BOOKED", bookedAt: now, cancelledAt: null },
+            data: {
+              status: "BOOKED",
+              bookedAt: now,
+              cancelledAt: null,
+              healthNotes: options.healthNotes !== undefined ? options.healthNotes : undefined,
+            },
             select: { id: true },
           });
           results.push({
@@ -514,6 +560,7 @@ export async function enrollWholeCourse(classId: string, memberProfileId: string
               classId,
               scheduleId: state.scheduleId,
               status: "BOOKED",
+              healthNotes: options.healthNotes ?? null,
             },
             select: { id: true },
           });
@@ -528,6 +575,13 @@ export async function enrollWholeCourse(classId: string, memberProfileId: string
           });
         }
         enrolledNow += 1;
+      }
+
+      if (options.saveToProfile && options.healthNotes) {
+        await tx.memberProfile.update({
+          where: { id: memberProfileId },
+          data: { healthNotes: options.healthNotes },
+        });
       }
 
       return { results, enrolledNow };

@@ -8,15 +8,18 @@ import { createNotification } from "../notifications/notifications.service.js";
 import { enqueueNotification, flushNotificationOutbox } from "../notifications/outbox.service.js";
 import { lockMemberClass, lockMemberQuota, lockSchedule } from "../../utils/dbLocks.js";
 import { findActivePenalty } from "../attendance/attendance-penalties.service.js";
+import { ATTENDANCE } from "../../config/attendance.js";
 import {
   assertConcurrentClassQuota,
   findActiveSubscription,
 } from "./enrollment-quota.service.js";
+import { checkFacilityMemberLimit } from "../facilities/facility-limits.service.js";
 
 export type BookableSchedule = {
   id: string;
   startTime: Date;
   endTime: Date;
+  termId?: string | null;
   class: { id: string; classType: string; capacity: number; facilityId?: string };
 };
 
@@ -100,6 +103,58 @@ export async function assertCanBook(
 
   if (schedule.class.classType === "PREMIUM" && activeSub.tier !== "PREMIUM")
     throw new AppError("Premium membership required to book this class.", 403);
+
+  // Chốt chặn kỳ học (Term/Semester registration period & status):
+  const termId = schedule.termId ?? (await tx.classSchedule.findUnique({
+    where: { id: schedule.id },
+    select: { termId: true },
+  }))?.termId;
+
+  if (termId) {
+    const term = await tx.term.findUnique({ where: { id: termId } });
+    if (term) {
+      const now = new Date();
+      if (term.status === "PLANNING") {
+        throw new AppError(
+          `Kỳ học "${term.name}" đang trong giai đoạn lập kế hoạch, chưa mở đăng ký.`,
+          403,
+          { code: "TERM_REGISTRATION_NOT_OPEN", termId: term.id }
+        );
+      }
+      if (term.status === "CLOSED") {
+        throw new AppError(
+          `Kỳ học "${term.name}" đã kết thúc, không thể đăng ký thêm.`,
+          403,
+          { code: "TERM_CLOSED", termId: term.id }
+        );
+      }
+      if (now < term.registrationStartDate) {
+        const openDate = term.registrationStartDate.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+        throw new AppError(
+          `Kỳ học "${term.name}" chưa đến thời gian đăng ký. Thời gian mở đăng ký: ${openDate}.`,
+          403,
+          { code: "TERM_REGISTRATION_NOT_STARTED", termId: term.id, registrationStartDate: term.registrationStartDate }
+        );
+      }
+      if (now > term.registrationEndDate) {
+        const closeDate = term.registrationEndDate.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+        throw new AppError(
+          `Kỳ học "${term.name}" đã hết hạn đăng ký vào ngày ${closeDate}.`,
+          403,
+          { code: "TERM_REGISTRATION_CLOSED", termId: term.id, registrationEndDate: term.registrationEndDate }
+        );
+      }
+    }
+  }
+
+  const classFacilityId = schedule.class.facilityId ?? (await tx.class.findUnique({
+    where: { id: schedule.class.id },
+    select: { facilityId: true },
+  }))?.facilityId;
+
+  if (classFacilityId) {
+    await checkFacilityMemberLimit(classFacilityId, memberProfileId, tx);
+  }
 
   const removals = await tx.issue.findMany({ where: { facilityId: schedule.class.facilityId, requesterRole: "RECEPTIONIST", status: "RESOLVED", description: { contains: '"type":"ATTENDANCE_VIOLATION"' } }, select: { description: true } });
   if (removals.some(issue => { const report = readAttendanceReport(issue.description); return report?.memberId === memberProfileId && report.classId === schedule.class.id; }))
@@ -213,7 +268,8 @@ export async function assertCanBook(
 export async function bookClass(
   scheduleId: string,
   memberProfileId: string,
-  bookedByRole: string
+  bookedByRole: string,
+  options: { healthNotes?: string | null; saveToProfile?: boolean } = {}
 ) {
   // 0. Verify member profile and role
   const memberProfile = await prisma.memberProfile.findUnique({
@@ -270,7 +326,12 @@ export async function bookClass(
     if (existing) {
       enrolled = await tx.enrollment.update({
         where: { id: existing.id },
-        data: { status: "BOOKED", bookedAt: new Date(), cancelledAt: null },
+        data: {
+          status: "BOOKED",
+          bookedAt: new Date(),
+          cancelledAt: null,
+          healthNotes: options.healthNotes !== undefined ? options.healthNotes : existing.healthNotes,
+        },
         include: {
           schedule: { include: { class: { include: { sports: true } }, room: true } },
           member: { select: { id: true, userId: true } },
@@ -283,11 +344,19 @@ export async function bookClass(
           classId: freshSchedule.classId,
           scheduleId,
           status: "BOOKED",
+          healthNotes: options.healthNotes ?? null,
         },
         include: {
           schedule: { include: { class: { include: { sports: true } }, room: true } },
           member: { select: { id: true, userId: true } },
         },
+      });
+    }
+
+    if (options.saveToProfile && options.healthNotes) {
+      await tx.memberProfile.update({
+        where: { id: memberProfileId },
+        data: { healthNotes: options.healthNotes },
       });
     }
 
@@ -334,6 +403,19 @@ export async function cancelEnrollment(
 
   if (enrollment.schedule.startTime <= new Date())
     throw new AppError("Cannot cancel enrollment for a past or ongoing class", 400);
+
+  // Late cancellation cutoff for MEMBER
+  const cutoffMinutes = ATTENDANCE.CANCELLATION_CUTOFF_MINUTES;
+  if (role === "MEMBER" && cutoffMinutes > 0) {
+    const diffMs = enrollment.schedule.startTime.getTime() - Date.now();
+    if (diffMs < cutoffMinutes * 60 * 1000) {
+      throw new AppError(
+        `Đã quá hạn tự hủy đặt chỗ. Bạn chỉ có thể hủy trước giờ học ít nhất ${cutoffMinutes} phút. Vui lòng liên hệ trung tâm để được hỗ trợ.`,
+        400,
+        { code: "LATE_CANCELLATION_DISALLOWED", cutoffMinutes }
+      );
+    }
+  }
 
   // Phase 2: cancel + promotion trong CÙNG transaction. Lock theo thứ tự chuẩn
   // memberQuota -> memberClass -> schedule (giống booking) để 2 cancel đồng thời
@@ -608,4 +690,115 @@ export async function transferEnrollment(
 
     return transferred;
   });
+}
+
+/**
+ * Member nộp đơn xin nghỉ có phép cho một buổi học đã BOOKED.
+ * Tạo LeaveRequest cho Member, bắn notification outbox cho Manager của cơ sở.
+ */
+export async function requestEnrollmentLeave(
+  enrollmentId: string,
+  userId: string,
+  reason: string
+) {
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { id: enrollmentId },
+    include: {
+      member: true,
+      schedule: { include: { class: true } },
+    },
+  });
+  if (!enrollment) throw new AppError("Enrollment not found", 404);
+  if (enrollment.member.userId !== userId) {
+    throw new AppError("Forbidden: Bạn chỉ có thể xin nghỉ cho buổi học của chính mình", 403);
+  }
+  if (enrollment.status !== "BOOKED") {
+    throw new AppError("Chỉ có thể xin nghỉ cho buổi học đang giữ chỗ (BOOKED)", 400);
+  }
+  if (enrollment.schedule.startTime <= new Date()) {
+    throw new AppError("Không thể xin nghỉ cho buổi học đã hoặc đang diễn ra", 400);
+  }
+  const trimmedReason = reason?.trim();
+  if (!trimmedReason || trimmedReason.length < 3 || trimmedReason.length > 1000) {
+    throw new AppError("Lý do xin nghỉ phải từ 3 đến 1000 ký tự", 400);
+  }
+
+  const facilityId = enrollment.schedule.class.facilityId;
+
+  const leave = await prisma.$transaction(async (tx) => {
+    const created = await tx.leaveRequest.create({
+      data: {
+        facilityId,
+        requesterId: userId,
+        requesterRole: "MEMBER",
+        reason: `[Buổi học: ${enrollment.schedule.class.name}] ${trimmedReason}`,
+        startTime: enrollment.schedule.startTime,
+        endTime: enrollment.schedule.endTime,
+      },
+    });
+
+    const managers = await tx.facilityStaff.findMany({
+      where: { facilityId, role: "MANAGER", isActive: true },
+      select: { userId: true },
+    });
+    for (const m of managers) {
+      await enqueueNotification(tx, {
+        userId: m.userId,
+        type: "LEAVE_REQUEST_SUBMITTED",
+        title: "Đơn xin nghỉ học mới từ hội viên",
+        body: `Hội viên xin nghỉ buổi học "${enrollment.schedule.class.name}". Lý do: ${trimmedReason}`,
+        metadata: {
+          leaveRequestId: created.id,
+          enrollmentId,
+          scheduleId: enrollment.scheduleId,
+          facilityId,
+        },
+      });
+    }
+
+    return created;
+  });
+
+  await flushNotificationOutbox().catch(() => {});
+  return leave;
+}
+
+export async function updateEnrollmentHealthNotes(
+  enrollmentId: string,
+  userId: string,
+  role: string,
+  healthNotes: string | null | undefined,
+  saveToProfile?: boolean
+) {
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { id: enrollmentId },
+    include: { member: true, schedule: true },
+  });
+  if (!enrollment) throw new AppError("Enrollment not found", 404);
+
+  // MEMBER chỉ được cập nhật ghi chú của chính mình
+  if (role === "MEMBER" && enrollment.member.userId !== userId) {
+    throw new AppError("Forbidden: You can only update your own enrollments", 403);
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const updatedEnrollment = await tx.enrollment.update({
+      where: { id: enrollmentId },
+      data: { healthNotes: healthNotes?.trim() || null },
+      include: {
+        schedule: { include: { class: true } },
+      },
+    });
+
+    if (saveToProfile && healthNotes?.trim()) {
+      await tx.memberProfile.update({
+        where: { id: enrollment.memberId },
+        data: { healthNotes: healthNotes.trim() },
+      });
+    }
+
+    return updatedEnrollment;
+  });
+
+  return updated;
 }

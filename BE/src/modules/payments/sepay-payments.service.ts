@@ -194,7 +194,7 @@ function buildSepayCheckoutView(payment: Payment, plan: MembershipPlan | null): 
  * - 409 `SEPAY_PAYMENT_PENDING`: còn giao dịch PENDING cùng gói chưa quá TTL (trả kèm QR để FE tiếp tục).
  * - 503: chưa cấu hình tài khoản nhận tiền (VIETQR_BANK_ID / VIETQR_ACCOUNT_NO).
  */
-export async function createSepayCheckout(userId: string, planId: string) {
+export async function createSepayCheckout(userId: string, planId: string, startDate?: string) {
   const cfg = sepayConfig();
 
   if (!isSepayConfigured()) {
@@ -222,8 +222,13 @@ export async function createSepayCheckout(userId: string, planId: string) {
     );
   }
 
-  // Fail fast: chặn hạ hạng / cùng hạng ít ngày hơn TRƯỚC khi tạo giao dịch.
-  await inspectPlanPurchase(prisma, memberProfile.id, plan);
+  // Fail fast: chặn hạ hạng / ngoài 60 ngày TRƯỚC khi tạo giao dịch.
+  await inspectPlanPurchase(
+    prisma,
+    memberProfile.id,
+    plan,
+    startDate ? new Date(startDate) : undefined,
+  );
 
   const now = new Date();
 
@@ -291,6 +296,7 @@ export async function createSepayCheckout(userId: string, planId: string) {
             transferContent: orderCode,
             bankId: cfg.bankId,
             accountNo: cfg.accountNo,
+            startDate,
           }),
         },
       });
@@ -603,12 +609,16 @@ export async function retrySepayActivation(managerUserId: string, paymentId: str
       });
       if (!member) throw new AppError("Member not found", 500);
 
+      const payloadObj = (fresh.gatewayPayload as any) || {};
+      const requestedStartDate = payloadObj.startDate ? new Date(payloadObj.startDate) : undefined;
+
       const { subscription } = await activateSubscriptionForPayment(tx, {
         memberProfileId: member.id,
         memberUserId: member.userId,
         memberName: member.user.fullName,
         plan,
         paymentId: fresh.id,
+        startDate: requestedStartDate,
         now: new Date(),
         optionSnapshot: {
           planName: fresh.planNameSnapshot,
@@ -1022,12 +1032,16 @@ async function settleSepayTransfer(
 
     let subscriptionId: string;
     try {
+      const payloadObj = (payment.gatewayPayload as any) || {};
+      const requestedStartDate = payloadObj.startDate ? new Date(payloadObj.startDate) : undefined;
+
       const { subscription } = await activateSubscriptionForPayment(tx, {
         memberProfileId: member.id,
         memberUserId: member.userId,
         memberName: member.user.fullName,
         plan,
         paymentId: payment.id,
+        startDate: requestedStartDate,
         now,
         // A07: cấp đúng điều khoản đã bán lúc tạo QR (không đọc plan live).
         optionSnapshot: {

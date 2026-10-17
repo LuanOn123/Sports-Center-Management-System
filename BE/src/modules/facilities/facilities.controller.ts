@@ -15,6 +15,7 @@ import { AppError } from "../../middlewares/errorHandler.js";
 import { Prisma } from "@prisma/client";
 import { assignFacilityManager } from "./facility-manager.service.js";
 import { requestContext } from "../../config/request-context.js";
+import { checkFacilityCoachLimit, getFacilityUsageAndLimits } from "./facility-limits.service.js";
 
 export async function createFacility(
   req: Request,
@@ -143,7 +144,8 @@ export async function getFacilityById(
     sendError(res, "Facility not found", 404);
     return;
   }
-  sendSuccess(res, facility);
+  const usage = await getFacilityUsageAndLimits(facilityId);
+  sendSuccess(res, { ...facility, usage });
 }
 
 export async function updateFacility(
@@ -200,6 +202,9 @@ export async function assignStaff(req: Request, res: Response): Promise<void> {
       () => tx.facilityStaff.findFirst({ where: { userId: data.userId, isActive: true } }),
     );
     if (existing) throw new AppError("Nhân sự đã được phân công vào một cơ sở", 409);
+    if (data.role === "COACH") {
+      await checkFacilityCoachLimit(facilityId, tx);
+    }
     return tx.facilityStaff.upsert({
       where: {
         userId_facilityId_role: {
@@ -252,6 +257,7 @@ export async function createFacilityCoach(req: Request, res: Response): Promise<
   if (!facility || !facility.isActive) {
     throw new AppError("Facility not found or inactive", 404);
   }
+  await checkFacilityCoachLimit(facilityId);
 
   const uniqueSportIds = [...new Set(data.sportIds)];
   const sports = await prisma.sport.findMany({
@@ -454,3 +460,11 @@ export async function createFacilityReceptionist(req: Request, res: Response): P
     throw error;
   }
 }
+
+export async function getFacilityLimits(req: Request, res: Response): Promise<void> {
+  const facilityId = req.user?.role === "MANAGER"
+    ? requestContext.getStore()!.facilityId!
+    : String(req.params.facilityId);
+  sendSuccess(res, await getFacilityUsageAndLimits(facilityId));
+}
+

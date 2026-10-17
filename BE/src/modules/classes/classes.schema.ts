@@ -7,12 +7,20 @@ export const CreateClassSchema = z.object({
   description: z.string().optional(),
   sportIds: z.array(z.string().min(1)).min(1, "Must assign at least one sport"),
   capacity: z.number().int().positive().max(200),
+  minCapacity: z.number().int().positive().max(200).optional().default(1),
   classType: z.enum(["REGULAR", "PREMIUM"]).default("REGULAR"),
   areaType: AreaTypeEnum,
   defaultRoomId: z.string().min(1).optional(),
   attendancePolicy: z.enum(["FIXED", "RECURRING"]).default("RECURRING"),
   plannedSessionCount: z.number().int().positive().max(1000).optional(),
 }).superRefine((data, ctx) => {
+  if (data.minCapacity != null && data.capacity != null && data.minCapacity > data.capacity) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["minCapacity"],
+      message: "Sĩ số tối thiểu (minCapacity) không được lớn hơn sức chứa tối đa (capacity)",
+    });
+  }
   if (data.attendancePolicy === "FIXED" && data.plannedSessionCount == null) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -34,6 +42,7 @@ export const UpdateClassSchema = z.object({
   description: z.string().optional(),
   sportIds: z.array(z.string().min(1)).min(1, "Must assign at least one sport").optional(),
   capacity: z.number().int().positive().max(200).optional(),
+  minCapacity: z.number().int().positive().max(200).optional(),
   classType: z.enum(["REGULAR", "PREMIUM"]).optional(),
   areaType: AreaTypeEnum.optional(),
   defaultRoomId: z.string().min(1).nullable().optional(),
@@ -41,6 +50,13 @@ export const UpdateClassSchema = z.object({
   attendancePolicy: z.enum(["FIXED", "RECURRING"]).optional(),
   plannedSessionCount: z.number().int().positive().max(1000).optional(),
 }).superRefine((data, ctx) => {
+  if (data.minCapacity != null && data.capacity != null && data.minCapacity > data.capacity) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["minCapacity"],
+      message: "Sĩ số tối thiểu (minCapacity) không được lớn hơn sức chứa tối đa (capacity)",
+    });
+  }
   if (data.attendancePolicy === "FIXED" && data.plannedSessionCount == null) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,

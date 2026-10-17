@@ -24,6 +24,7 @@ import {
 import { readAttendanceReport } from "../attendance/reception-attendance.service.js";
 import { enqueueNotification, flushNotificationOutbox } from "../notifications/outbox.service.js";
 import type { NotificationTypeEnum } from "../notifications/notifications.service.js";
+import { assertCanScheduleInTerm } from "../terms/terms.service.js";
 const router = Router();
 const staff = authorize("ADMIN", "MANAGER");
 const quantities = z.object({
@@ -323,9 +324,16 @@ route("get", "/slots", [staff], () =>
 route("post", "/slots", [staff, validate(slotSchema)], (req) =>
   prisma.slot.create({ data: { ...req.body, facilityId: facility() } }),
 );
-route("get", "/schedule-patterns", [staff], () =>
-  prisma.schedulePattern.findMany({ include: { slot: true, class: true } }),
-);
+route("get", "/schedule-patterns", [staff], (req) => {
+  const where: any = {};
+  if (req.query.termId) where.termId = String(req.query.termId);
+  if (req.query.classId) where.classId = String(req.query.classId);
+  return prisma.schedulePattern.findMany({
+    where,
+    include: { slot: true, class: true, term: true },
+    orderBy: { createdAt: "desc" },
+  });
+});
 route(
   "post",
   "/schedule-patterns",
@@ -336,6 +344,7 @@ route(
         classId: z.string(),
         roomId: z.string(),
         slotId: z.string(),
+        termId: z.string().optional(),
         weekdays: z.array(z.number().int().min(1).max(7)).min(1),
         startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -357,6 +366,13 @@ route(
           where: { id: req.body.slotId },
         });
         if (!slot) throw new AppError("Slot not found", 404);
+
+        if (req.body.termId) {
+          const patternStart = new Date(req.body.startDate + "T00:00:00+07:00");
+          const patternEnd = new Date(req.body.endDate + "T23:59:59+07:00");
+          await assertCanScheduleInTerm(req.body.termId, patternStart, patternEnd, tx);
+        }
+
         let sessions;
         try {
           sessions = expandPattern(
@@ -383,6 +399,7 @@ route(
             ...session,
             classId: req.body.classId,
             roomId: req.body.roomId,
+            termId: req.body.termId,
           });
         return { ...pattern, sessionsCreated: sessions.length };
       },
@@ -400,7 +417,7 @@ const interval = z
 route(
   "get",
   "/leave-requests",
-  [authorize("ADMIN", "MANAGER", "COACH", "RECEPTIONIST")],
+  [authorize("ADMIN", "MANAGER", "COACH", "RECEPTIONIST", "MEMBER")],
   async (req) => {
     const coach =
       req.user.role === "COACH"
@@ -413,7 +430,7 @@ route(
     const requests = await prisma.leaveRequest.findMany({
       where: coach
         ? { coachId: coach.id }
-        : req.user.role === "RECEPTIONIST"
+        : req.user.role === "RECEPTIONIST" || req.user.role === "MEMBER"
           ? { requesterId: req.user.id }
           : {},
       orderBy: { createdAt: "desc" },
@@ -559,6 +576,43 @@ route("patch", "/leave-requests/:id", [staff, validate(decision)], (req) =>
           );
         }
       }
+
+      if (req.body.status === "APPROVED" && leave.requesterRole === "MEMBER" && leave.requesterId) {
+        const memberProfile = await tx.memberProfile.findUnique({
+          where: { userId: leave.requesterId },
+        });
+        if (memberProfile) {
+          const matchingSchedules = await tx.classSchedule.findMany({
+            where: {
+              startTime: { gte: leave.startTime, lte: leave.endTime },
+              enrollments: {
+                some: { memberId: memberProfile.id, status: { in: ["BOOKED", "COMPLETED"] } },
+              },
+            },
+          });
+          for (const s of matchingSchedules) {
+            await tx.attendance.upsert({
+              where: {
+                scheduleId_memberId: {
+                  scheduleId: s.id,
+                  memberId: memberProfile.id,
+                },
+              },
+              create: {
+                scheduleId: s.id,
+                memberId: memberProfile.id,
+                status: "EXCUSED",
+                note: `Nghỉ có phép: ${leave.reason}`,
+              },
+              update: {
+                status: "EXCUSED",
+                note: `Nghỉ có phép: ${leave.reason}`,
+              },
+            });
+          }
+        }
+      }
+
       const updatedLeave = await tx.leaveRequest.update({
         where: { id: id(req) },
         data: {

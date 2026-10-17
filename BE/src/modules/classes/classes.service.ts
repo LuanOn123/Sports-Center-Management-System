@@ -1,8 +1,10 @@
 import { prisma } from "../../config/prisma.js";
+import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { broadcastNotification } from "../notifications/notifications.service.js";
 import { evaluateCourseEligibility } from "../enrollments/course-enrollment.service.js";
+import { checkFacilityClassLimit, checkFacilitySportLimit } from "../facilities/facility-limits.service.js";
 
 const classInclude = {
   defaultRoom: true,
@@ -61,9 +63,18 @@ export async function listClasses(query: any) {
 }
 
 export async function createClass(data: any) {
+  const facilityId = data.facilityId || requestContext.getStore()?.facilityId;
+  if (facilityId) {
+    await checkFacilityClassLimit(facilityId);
+  }
+
   const { sportIds, ...restData } = data;
   const sports = await prisma.sport.findMany({ where: { id: { in: sportIds }, isActive: true } });
   if (sports.length !== sportIds.length) throw new AppError("One or more sports not found or inactive", 404);
+
+  if (facilityId) {
+    await checkFacilitySportLimit(facilityId, sportIds);
+  }
 
   // Business rule: TẤT CẢ sport của Class đều phải support Class.areaType.
   assertSportsSupportAreaType(sports, data.areaType);
@@ -160,7 +171,14 @@ export async function updateClass(id: string, data: any) {
     }
   }
 
-  // Tính effectiveAreaType để xử lý partial update (chỉ đổi sportIds hoặc chỉ đổi areaType).
+  const effectiveCapacity = data.capacity ?? cls.capacity;
+  const effectiveMinCapacity = data.minCapacity ?? cls.minCapacity;
+  if (effectiveMinCapacity > effectiveCapacity) {
+    throw new AppError(
+      `Sĩ số tối thiểu (${effectiveMinCapacity}) không được lớn hơn sức chứa tối đa (${effectiveCapacity}) của lớp.`,
+      400
+    );
+  }
   const effectiveAreaType = data.areaType ?? cls.areaType;
   if (data.defaultRoomId !== undefined || data.areaType !== undefined || data.capacity !== undefined) {
     await assertDefaultRoom(data.defaultRoomId === undefined ? cls.defaultRoomId : data.defaultRoomId, effectiveAreaType, data.capacity ?? cls.capacity);
@@ -242,6 +260,9 @@ export async function updateClass(id: string, data: any) {
           { code: "COACH_SPECIALIZATION_REQUIRED", coachId: cm.coachId, missingSportIds: missing }
         );
       }
+    }
+    if (cls.facilityId) {
+      await checkFacilitySportLimit(cls.facilityId, sportIds);
     }
     updateData.sports = { set: sportIds.map((sid: string) => ({ id: sid })) };
   }
@@ -558,6 +579,19 @@ export async function getClassCoursePlan(
       endTime: true,
       status: true,
       roomId: true,
+      termId: true,
+      term: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          registrationStartDate: true,
+          registrationEndDate: true,
+        },
+      },
       room: { select: { id: true, name: true, areaType: true } },
       _count: {
         select: {
@@ -614,6 +648,8 @@ export async function getClassCoursePlan(
       timeLabel: `${vnClock(s.startTime)} – ${vnClock(s.endTime)}`,
       status: s.status,
       room: { id: s.room.id, name: s.room.name, areaType: s.room.areaType },
+      termId: s.termId,
+      term: s.term,
       bookedCount,
       remainingSlots,
       isFull,
@@ -709,6 +745,7 @@ export async function getClassCoursePlan(
               fullSessionCount: sessions.filter((s) => s.isFull).length,
               isFullyBookable: sessions.every((s) => s.isBookable),
             },
+            term: firstSession?.term ?? null,
           },
     sessions,
     registration: memberProfile

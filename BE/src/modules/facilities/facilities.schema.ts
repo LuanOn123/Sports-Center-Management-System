@@ -6,6 +6,11 @@ export const CreateFacilitySchema = z.object({
   address: z.string().min(1, "Address is required"),
   contactInfo: z.string().optional(),
   timezone: z.string().default("Asia/Ho_Chi_Minh"),
+  maxClasses: z.number().int().positive().nullable().optional(),
+  maxRooms: z.number().int().positive().nullable().optional(),
+  maxCoaches: z.number().int().positive().nullable().optional(),
+  maxMembers: z.number().int().positive().nullable().optional(),
+  maxSports: z.number().int().positive().nullable().optional(),
 });
 
 export const UpdateFacilitySchema = CreateFacilitySchema.partial().extend({

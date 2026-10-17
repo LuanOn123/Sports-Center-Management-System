@@ -47,3 +47,10 @@ export async function completeSchedule(req: Request, res: Response, next: NextFu
     sendSuccess(res, schedule, "Schedule marked as completed");
   } catch (err) { next(err); }
 }
+
+export async function getUnderCapacitySchedules(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await schedulesService.getUnderCapacitySchedules(req.query);
+    sendSuccess(res, result, "Under-capacity schedules retrieved successfully");
+  } catch (err) { next(err); }
+}

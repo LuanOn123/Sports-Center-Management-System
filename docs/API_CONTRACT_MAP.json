@@ -898,6 +898,7 @@
       "FE/src/features/manage/config.ts",
       "FE/src/features/manage/ManagerRooms.tsx",
       "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/features/manage/ScheduleForm.tsx",
       "FE/src/features/operations/OperationsPage.tsx",
       "FE/src/shared/forms/SchemaForm.tsx"
     ],
@@ -3358,6 +3359,7 @@
       "FE/src/features/coach/data.ts",
       "FE/src/features/manage/config.ts",
       "FE/src/features/manage/ManagerUsers.tsx",
+      "FE/src/features/manage/ScheduleForm.tsx",
       "FE/src/features/operations/OperationsPage.tsx",
       "FE/src/features/reception/attendance/AttendancePage.tsx",
       "FE/src/shared/forms/SchemaForm.tsx",
@@ -3981,9 +3983,10 @@
     "consumers": [
       "FE/src/features/manage/ActivityPlanner.tsx",
       "FE/src/features/manage/config.ts",
+      "FE/src/features/manage/ScheduleForm.tsx",
       "FE/src/api/classes.api.ts"
     ],
-    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:208",
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:222",
     "handler": "schedulesController.createSchedule",
     "status": "MATCH",
     "request": {
@@ -4033,7 +4036,7 @@
     "consumers": [
       "FE/src/api/classes.api.ts"
     ],
-    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:161",
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:175",
     "handler": "schedulesController.getScheduleById",
     "status": "MATCH",
     "request": null,
@@ -4054,10 +4057,11 @@
     "roles": "Authenticated (service checks ownership)",
     "consumers": [
       "FE/src/features/manage/ResourcePage.tsx",
+      "FE/src/features/manage/ScheduleForm.tsx",
       "FE/src/shared/forms/SchemaForm.tsx",
       "FE/src/api/classes.api.ts"
     ],
-    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:261",
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:275",
     "handler": "schedulesController.updateSchedule",
     "status": "MATCH",
     "request": {
@@ -4109,7 +4113,7 @@
     "consumers": [
       "FE/src/api/classes.api.ts"
     ],
-    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:291",
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:305",
     "handler": "schedulesController.deleteSchedule",
     "status": "MATCH",
     "request": null,
@@ -4133,7 +4137,7 @@
       "FE/src/features/manage/ResourcePage.tsx",
       "FE/src/api/classes.api.ts"
     ],
-    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:318",
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:332",
     "handler": "schedulesController.completeSchedule",
     "status": "MATCH",
     "request": null,
@@ -5618,7 +5622,7 @@
       "FE/src/features/manage/ManagerUsers.tsx",
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:82",
+    "backend": "BE/src/modules/operations/operations.routes.ts:83",
     "handler": "(req) =>\r",
     "status": "MATCH",
     "request": null,
@@ -5657,7 +5661,7 @@
       "FE/src/shared/coachEligibility.ts",
       "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:126",
+    "backend": "BE/src/modules/operations/operations.routes.ts:127",
     "handler": "async (req) => {\r",
     "status": "MATCH",
     "request": null,
@@ -5680,7 +5684,7 @@
       "FE/src/features/operations/OperationsPage.tsx",
       "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:221",
+    "backend": "BE/src/modules/operations/operations.routes.ts:222",
     "handler": "(req) =>\r",
     "status": "MATCH",
     "request": {
@@ -5714,7 +5718,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:130",
+    "backend": "BE/src/modules/operations/operations.routes.ts:131",
     "handler": "async (req) => {\r",
     "status": "MATCH",
     "request": null,
@@ -5777,7 +5781,7 @@
       "FE/src/shared/FacilityBoundary.tsx",
       "FE/src/shared/forms/SchemaForm.tsx"
     ],
-    "backend": "BE/src/modules/facilities/facilities.route.ts:44",
+    "backend": "BE/src/modules/facilities/facilities.route.ts:52",
     "handler": "Controller.createFacility",
     "status": "MATCH",
     "request": {
@@ -5858,7 +5862,7 @@
       "FE/src/features/manage/AdminFacilities.tsx",
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/facilities/facilities.route.ts:53",
+    "backend": "BE/src/modules/facilities/facilities.route.ts:61",
     "handler": "Controller.updateFacility",
     "status": "MATCH",
     "request": {
@@ -5904,7 +5908,7 @@
       "FE/src/features/manage/ManagerUsers.tsx",
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/facilities/facilities.route.ts:63",
+    "backend": "BE/src/modules/facilities/facilities.route.ts:71",
     "handler": "Controller.assignStaff",
     "status": "MATCH",
     "request": {
@@ -6068,7 +6072,7 @@
       "FE/src/features/manage/AdminFacilities.tsx",
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/facilities/facilities.route.ts:73",
+    "backend": "BE/src/modules/facilities/facilities.route.ts:81",
     "handler": "Controller.removeStaff",
     "status": "MATCH",
     "request": null,
@@ -6091,7 +6095,7 @@
       "FE/src/features/operations/OperationsPage.tsx",
       "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:161",
+    "backend": "BE/src/modules/operations/operations.routes.ts:162",
     "handler": "async (req) =>\r",
     "status": "MATCH",
     "request": {
@@ -6133,7 +6137,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:199",
+    "backend": "BE/src/modules/operations/operations.routes.ts:200",
     "handler": "(req) =>\r",
     "status": "MATCH",
     "request": {
@@ -6175,7 +6179,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:320",
+    "backend": "BE/src/modules/operations/operations.routes.ts:321",
     "handler": "() =>\r",
     "status": "MATCH",
     "request": null,
@@ -6196,7 +6200,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:323",
+    "backend": "BE/src/modules/operations/operations.routes.ts:324",
     "handler": "(req) =>\r",
     "status": "MATCH",
     "request": {
@@ -6235,8 +6239,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:326",
-    "handler": "() =>\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:327",
+    "handler": "(req) => {\r",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6256,7 +6260,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:329",
+    "backend": "BE/src/modules/operations/operations.routes.ts:337",
     "handler": "(req) =>\r",
     "status": "MATCH",
     "request": {
@@ -6308,11 +6312,11 @@
     "feature": "leave-requests",
     "method": "GET",
     "path": "/leave-requests",
-    "roles": "ADMIN, MANAGER, COACH, RECEPTIONIST",
+    "roles": "ADMIN, MANAGER, COACH, RECEPTIONIST, MEMBER",
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:400",
+    "backend": "BE/src/modules/operations/operations.routes.ts:417",
     "handler": "async (req) => {\r",
     "status": "MATCH",
     "request": null,
@@ -6333,7 +6337,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:424",
+    "backend": "BE/src/modules/operations/operations.routes.ts:441",
     "handler": "(req) => createStaffLeave(req.user, req.body)",
     "status": "MATCH",
     "request": {
@@ -6374,7 +6378,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:446",
+    "backend": "BE/src/modules/operations/operations.routes.ts:463",
     "handler": "(req) =>\r",
     "status": "MATCH",
     "request": {
@@ -6451,7 +6455,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:622",
+    "backend": "BE/src/modules/operations/operations.routes.ts:676",
     "handler": "async (req) =>\r",
     "status": "MATCH",
     "request": null,
@@ -6472,7 +6476,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:635",
+    "backend": "BE/src/modules/operations/operations.routes.ts:689",
     "handler": "(req) => {\r",
     "status": "MATCH",
     "request": {
@@ -6507,7 +6511,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:682",
+    "backend": "BE/src/modules/operations/operations.routes.ts:736",
     "handler": "async (req) => {\r",
     "status": "MATCH",
     "request": null,
@@ -6528,7 +6532,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:697",
+    "backend": "BE/src/modules/operations/operations.routes.ts:751",
     "handler": "async (req) => {\r",
     "status": "MATCH",
     "request": {
@@ -6563,7 +6567,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:718",
+    "backend": "BE/src/modules/operations/operations.routes.ts:772",
     "handler": "async (req) => {\r",
     "status": "MATCH",
     "request": null,
@@ -6584,7 +6588,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:661",
+    "backend": "BE/src/modules/operations/operations.routes.ts:715",
     "handler": "async (req) => {\r",
     "status": "MATCH",
     "request": {
@@ -6626,7 +6630,7 @@
       "FE/src/features/manage/AuditLogPage.tsx",
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:679",
+    "backend": "BE/src/modules/operations/operations.routes.ts:733",
     "handler": "(req) =>\r",
     "status": "MATCH",
     "request": null,
@@ -6669,7 +6673,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:727",
+    "backend": "BE/src/modules/operations/operations.routes.ts:781",
     "handler": "() =>\r",
     "status": "MATCH",
     "request": null,
@@ -6690,7 +6694,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:735",
+    "backend": "BE/src/modules/operations/operations.routes.ts:789",
     "handler": "async (req) => {\r",
     "status": "MATCH",
     "request": {
@@ -6736,7 +6740,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:781",
+    "backend": "BE/src/modules/operations/operations.routes.ts:835",
     "handler": "(req) =>\r",
     "status": "MATCH",
     "request": {

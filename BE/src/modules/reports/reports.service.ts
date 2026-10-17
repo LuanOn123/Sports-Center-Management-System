@@ -208,26 +208,31 @@ export async function getEnrollmentReport(startDate: string, endDate: string) {
   };
 }
 
-export async function getMembershipReport(startDate: string, endDate: string) {
+export async function getMembershipReport(startDate: string, endDate: string, facilityIdParam?: string) {
   // BR-26: VN timezone boundary
   const start = new Date(`${startDate}T00:00:00+07:00`);
   const end = new Date(`${endDate}T23:59:59.999+07:00`);
   const now = new Date();
   const dateFilter = { createdAt: { gte: start, lte: end } };
-  // Báo cáo theo CƠ SỞ: chỉ đếm gói có ORIGIN facility = facility đang chọn (giữ nguyên
-  // ngữ cảnh cũ khi MembershipSubscription còn bị DAL tự lọc). Doanh thu tính theo Payment
-  // vẫn facility-scoped nên số liệu counts/revenue cùng một cohort.
-  // MF-07: fail-fast — thiếu facility context phải lỗi thay vì âm thầm biến thành báo cáo GLOBAL
-  // (Prisma hiểu `facilityId: undefined` là "không lọc").
-  const originFacilityId = requestContext.getStore()?.facilityId;
-  if (!originFacilityId) throw new AppError("FACILITY_CONTEXT_REQUIRED", 400);
 
-  const [totalSubs, newSubs, byStatus, byTier, revenueAgg] = await Promise.all([
-    prisma.membershipSubscription.count({ where: { facilityId: originFacilityId } }),
-    prisma.membershipSubscription.count({ where: { ...dateFilter, facilityId: originFacilityId } }),
+  const store = requestContext.getStore();
+  const originFacilityId = facilityIdParam || store?.facilityId;
+
+  // MF-07: fail-fast — thiếu facility context phải lỗi nếu không có facilityId và không phải ALL
+  if (!originFacilityId && facilityIdParam !== "ALL") {
+    throw new AppError("FACILITY_CONTEXT_REQUIRED", 400);
+  }
+
+  const isGlobal = originFacilityId === "ALL" || !originFacilityId;
+  const facilityFilter: any = isGlobal ? {} : { facilityId: originFacilityId };
+  const paymentFacilityFilter: any = isGlobal ? {} : { facilityId: originFacilityId };
+
+  const [totalSubs, newSubs, byStatus, byTier, revenueAgg, plans, periodSubs] = await Promise.all([
+    prisma.membershipSubscription.count({ where: facilityFilter }),
+    prisma.membershipSubscription.count({ where: { ...dateFilter, ...facilityFilter } }),
     prisma.membershipSubscription.groupBy({
       by: ["status"],
-      where: { facilityId: originFacilityId },
+      where: facilityFilter,
       _count: true,
     }),
     // BR-19: Count subscriptions currently effective (not just in date range) by tier
@@ -237,7 +242,7 @@ export async function getMembershipReport(startDate: string, endDate: string) {
         status: "ACTIVE",
         startDate: { lte: now },
         endDate: { gte: now },
-        facilityId: originFacilityId,
+        ...facilityFilter,
       },
       _count: true,
     }),
@@ -247,8 +252,24 @@ export async function getMembershipReport(startDate: string, endDate: string) {
         paidAt: { gte: start, lte: end },
         status: "SUCCESS",
         subscriptionId: { not: null },
+        ...paymentFacilityFilter,
       },
       _sum: { amount: true },
+    }),
+    prisma.membershipPlan.findMany({
+      orderBy: { price: "desc" },
+    }),
+    prisma.membershipSubscription.findMany({
+      where: {
+        ...dateFilter,
+        ...facilityFilter,
+      },
+      select: {
+        id: true,
+        planId: true,
+        memberId: true,
+        tier: true,
+      },
     }),
   ]);
 
@@ -258,18 +279,175 @@ export async function getMembershipReport(startDate: string, endDate: string) {
   const tierMap: Record<string, number> = { MEMBERSHIP: 0, PREMIUM: 0 };
   for (const t of byTier) tierMap[t.tier] = t._count;
 
+  // Active subscriptions count per plan
+  const activeSubsByPlan = await prisma.membershipSubscription.groupBy({
+    by: ["planId"],
+    where: {
+      status: "ACTIVE",
+      startDate: { lte: now },
+      endDate: { gte: now },
+      ...facilityFilter,
+    },
+    _count: true,
+  });
+  const activeSubsMap = Object.fromEntries(activeSubsByPlan.map((a) => [a.planId, a._count]));
+
+  // Revenue per plan in the date range
+  const paymentsByPlan = await prisma.payment.groupBy({
+    by: ["planId"],
+    where: {
+      paidAt: { gte: start, lte: end },
+      status: "SUCCESS",
+      planId: { not: null },
+      ...paymentFacilityFilter,
+    },
+    _sum: { amount: true },
+  });
+  const planRevenueMap = Object.fromEntries(paymentsByPlan.map((p) => [p.planId!, Number(p._sum.amount ?? 0)]));
+
+  // Build enrollment correlation for each plan:
+  // "xem bao nhiêu gói được bán (từ gói Membership => biết bao nhiêu người đăng ký khóa đó)"
+  const allSubMemberIds = Array.from(new Set(periodSubs.map((s) => s.memberId)));
+
+  let enrollmentsForSubscribers: Array<{
+    id: string;
+    memberId: string;
+    classId: string;
+    class: {
+      id: string;
+      name: string;
+      classType: string;
+      sports: { name: string }[];
+    };
+  }> = [];
+
+  if (allSubMemberIds.length > 0) {
+    enrollmentsForSubscribers = await prisma.enrollment.findMany({
+      where: {
+        memberId: { in: allSubMemberIds },
+        bookedAt: { gte: start, lte: end },
+        status: { in: ["BOOKED", "COMPLETED"] },
+        ...(isGlobal ? {} : { class: { facilityId: originFacilityId } }),
+      },
+      select: {
+        id: true,
+        memberId: true,
+        classId: true,
+        class: {
+          select: {
+            id: true,
+            name: true,
+            classType: true,
+            sports: { select: { name: true } },
+          },
+        },
+      },
+    });
+  }
+
+  // Pre-index enrollments by memberId for quick lookup per plan
+  const enrollmentsByMember = new Map<string, typeof enrollmentsForSubscribers>();
+  for (const e of enrollmentsForSubscribers) {
+    let list = enrollmentsByMember.get(e.memberId);
+    if (!list) {
+      list = [];
+      enrollmentsByMember.set(e.memberId, list);
+    }
+    list.push(e);
+  }
+
+  const plansBreakdown = plans.map((plan) => {
+    const subsForThisPlan = periodSubs.filter((s) => s.planId === plan.id);
+    const soldCount = subsForThisPlan.length;
+    const planMembers = Array.from(new Set(subsForThisPlan.map((s) => s.memberId)));
+    const uniqueMembersCount = planMembers.length;
+
+    // Collect all enrollments made by members who bought this plan
+    const planEnrollments: typeof enrollmentsForSubscribers = [];
+    for (const mId of planMembers) {
+      const mEnrollments = enrollmentsByMember.get(mId);
+      if (mEnrollments) {
+        planEnrollments.push(...mEnrollments);
+      }
+    }
+
+    const totalClassEnrollments = planEnrollments.length;
+    const enrolledMembersCount = new Set(planEnrollments.map((e) => e.memberId)).size;
+
+    // Group by class to find top enrolled classes
+    const classStatsMap = new Map<
+      string,
+      {
+        classId: string;
+        className: string;
+        classType: string;
+        sports: string[];
+        enrollmentsCount: number;
+        memberIds: Set<string>;
+      }
+    >();
+
+    for (const e of planEnrollments) {
+      let cs = classStatsMap.get(e.classId);
+      if (!cs) {
+        cs = {
+          classId: e.classId,
+          className: e.class.name,
+          classType: e.class.classType,
+          sports: e.class.sports.map((s) => s.name),
+          enrollmentsCount: 0,
+          memberIds: new Set<string>(),
+        };
+        classStatsMap.set(e.classId, cs);
+      }
+      cs.enrollmentsCount++;
+      cs.memberIds.add(e.memberId);
+    }
+
+    const topClasses = Array.from(classStatsMap.values())
+      .map((cs) => ({
+        classId: cs.classId,
+        className: cs.className,
+        classType: cs.classType,
+        sports: cs.sports,
+        enrollmentsCount: cs.enrollmentsCount,
+        uniqueMembersCount: cs.memberIds.size,
+      }))
+      .sort((a, b) => b.enrollmentsCount - a.enrollmentsCount);
+
+    return {
+      planId: plan.id,
+      planName: plan.name,
+      tier: plan.tier,
+      price: Number(plan.price),
+      durationDays: plan.durationDays,
+      maxConcurrentClasses: plan.maxConcurrentClasses,
+      isActive: plan.isActive,
+      soldCount,
+      revenue: planRevenueMap[plan.id] ?? 0,
+      activeSubscribers: activeSubsMap[plan.id] ?? 0,
+      uniqueMembersCount,
+      enrollmentStats: {
+        totalClassEnrollments,
+        enrolledMembersCount,
+        topClasses,
+      },
+    };
+  });
+
   return {
+    facilityId: isGlobal ? "ALL" : originFacilityId,
     totalSubscriptions: totalSubs,
     newSubscriptions: newSubs,
     // MF-06: "đang hiệu lực" phải dùng CÙNG định nghĩa với subscriptionsByTier
-    // (status ACTIVE + startDate <= now <= endDate). Đếm theo `status` thuần túy từng tính cả
-    // gói renewed chưa tới startDate (stacking) và gói quá hạn nhưng chưa được job chuyển EXPIRED.
     activeSubscriptions: byTier.reduce((sum, t) => sum + t._count, 0),
     expiredSubscriptions: statusMap["EXPIRED"] ?? 0,
     cancelledSubscriptions: statusMap["CANCELLED"] ?? 0,
     suspendedSubscriptions: statusMap["SUSPENDED"] ?? 0,
     subscriptionsByTier: tierMap,
+    subscriptionsByStatus: statusMap,
     totalRevenue: Number(revenueAgg._sum.amount ?? 0),
+    plansBreakdown,
   };
 }
 

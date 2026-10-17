@@ -4,7 +4,7 @@ import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { createNotification } from "../notifications/notifications.service.js";
 import { flushNotificationOutbox } from "../notifications/outbox.service.js";
-import { activateSubscriptionForPayment } from "./subscription-purchase.service.js";
+import { activateSubscriptionForPayment, applyPlanSwitchRules } from "./subscription-purchase.service.js";
 import { lockMemberSubscription } from "../../utils/dbLocks.js";
 import type {
   CreateSubscriptionInput,
@@ -56,7 +56,7 @@ export async function createSubscription(
     throw new AppError("Membership plan not found or inactive", 404);
 
   const now = new Date();
-  const startDate = data.startDate ? new Date(data.startDate) : now;
+  const startDate = data.startDate ? new Date(data.startDate) : undefined;
 
   const result = await prisma.$transaction(async (tx) => {
     // BR-25: tên hội viên cho snapshot trên Invoice.
@@ -143,38 +143,26 @@ export async function renewSubscription(
   if (!plan || !plan.isActive)
     throw new AppError("Membership plan not found or inactive", 404);
 
-  // FINAL Policy A: renew = REPLACEMENT — kỳ mới bắt đầu NGAY, không stack sau endDate cũ,
-  // không tạo ACTIVE tương lai; ngày dư gói cũ KHÔNG cộng dồn (chỉ audit qua remainingDays).
   const now = new Date();
-  const startDate = now;
-  const endDate = new Date(startDate);
-  endDate.setDate(endDate.getDate() + plan.durationDays);
+  const requestedStartDate = data.startDate ? new Date(data.startDate) : undefined;
 
   return prisma.$transaction(async (tx) => {
     // Policy A: serialize theo member TRƯỚC mọi đọc/ghi — purchase/renew/webhook-settlement
     // đồng thời cho cùng member chỉ một thắng (cùng key membership:member:<id>).
     await lockMemberSubscription(tx, existing.memberId);
 
-    // Đọc lại trong tx: gói có thể đã bị thay thế/hết hạn trong lúc chờ lock.
-    // Thay thế gói ACTIVE HIỆN CÓ của member (không chỉ gói FREE, không phụ thuộc id cũ
-    // đã bị suspend) — CAS theo (id + ACTIVE) như luồng mua gói.
-    const currentActive = await tx.membershipSubscription.findFirst({
-      where: { memberId: existing.memberId, status: "ACTIVE" },
-      orderBy: { createdAt: "desc" },
-    });
-    if (currentActive) {
-      const suspended = await tx.membershipSubscription.updateMany({
-        where: { id: currentActive.id, status: "ACTIVE" },
-        data: { status: "SUSPENDED", suspendedAt: now },
-      });
-      if (suspended.count !== 1) {
-        throw new AppError(
-          "Gói hiện tại đã thay đổi, vui lòng thử lại.",
-          409,
-          { code: "SUBSCRIPTION_STATE_CHANGED" },
-        );
-      }
-    }
+    const context = await applyPlanSwitchRules(
+      tx,
+      existing.memberId,
+      plan,
+      requestedStartDate,
+      now,
+    );
+
+    const startDate = context.calculatedStartDate;
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + plan.durationDays);
+
     // BR-25: Get member's name for snapshot
     const memberUser = await tx.user.findFirst({
       where: { memberProfile: { id: existing.memberId } },
@@ -192,7 +180,7 @@ export async function renewSubscription(
         tier: plan.tier,
         startDate,
         endDate,
-        status: "ACTIVE",
+        status: context.targetStatus,
         // A07: kỳ mới giữ quota đã bán tại thời điểm gia hạn.
         maxConcurrentClassesSnapshot: plan.maxConcurrentClasses,
       },

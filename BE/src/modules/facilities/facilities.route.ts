@@ -40,6 +40,14 @@ router.get(
   Controller.getFacilityById
 );
 
+// Chi tiết giới hạn & hiện trạng sử dụng tài nguyên của cơ sở
+router.get(
+  "/:facilityId/limits",
+  authenticate,
+  checkFacilityScope,
+  Controller.getFacilityLimits
+);
+
 // ADMIN only
 router.post(
   "/",

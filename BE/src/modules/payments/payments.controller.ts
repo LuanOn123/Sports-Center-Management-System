@@ -35,7 +35,11 @@ export async function updatePaymentStatus(req: Request, res: Response, next: Nex
  */
 export async function sepayCheckout(req: Request, res: Response, next: NextFunction) {
   try {
-    const result = await sepayPaymentsService.createSepayCheckout(req.user!.id, req.body.planId);
+    const result = await sepayPaymentsService.createSepayCheckout(
+      req.user!.id,
+      req.body.planId,
+      req.body.startDate,
+    );
     sendCreated(res, result, "SePay checkout created successfully");
   } catch (err) { next(err); }
 }
