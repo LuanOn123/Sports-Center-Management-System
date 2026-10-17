@@ -184,6 +184,8 @@ async function runTests() {
     console.log(`\nAll ${passed} tests passed successfully!`);
   } finally {
     // Cleanup
+    await prisma.notificationOutbox.deleteMany({ where: { userId: user.id } });
+    await prisma.notification.deleteMany({ where: { userId: user.id } });
     await prisma.membershipSubscription.deleteMany({ where: { memberId: member.id } });
     await prisma.invoice.deleteMany({ where: { memberId: member.id } });
     await prisma.payment.deleteMany({ where: { memberId: member.id } });
