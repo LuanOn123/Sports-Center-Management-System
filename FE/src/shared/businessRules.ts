@@ -62,6 +62,38 @@ export function terminalSessionError(message: string) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Membership transition helpers (ma trận chuyển đổi gói)
+// ---------------------------------------------------------------------------
+
+/** Loại chuyển đổi gói hội viên */
+export type PlanSwitchType = "NEW" | "RENEW_SAME_TIER" | "UPGRADE" | "DOWNGRADE";
+
+/**
+ * Xác định loại chuyển đổi khi hội viên chọn mua một gói mới.
+ * - NEW: chưa có gói hoặc đang ở FREE
+ * - RENEW_SAME_TIER: cùng hạng → BE tự nối tiếp ngày hết hạn
+ * - UPGRADE: lên hạng cao hơn → được chọn kích hoạt ngay hoặc hẹn ngày
+ * - DOWNGRADE: xuống hạng thấp hơn → gói mới chỉ bắt đầu sau khi gói cũ hết
+ */
+export function detectPlanSwitchType(
+  currentActiveSub: { tier?: unknown } | undefined | null,
+  newPlan: { tier: unknown },
+): PlanSwitchType {
+  if (!currentActiveSub || String(currentActiveSub.tier) === "FREE") return "NEW";
+  const TIER_ORDER: Record<string, number> = { FREE: 0, MEMBERSHIP: 1, PREMIUM: 2 };
+  const currentVal = TIER_ORDER[String(currentActiveSub.tier)] ?? 0;
+  const newVal = TIER_ORDER[String(newPlan.tier)] ?? 0;
+  if (newVal === currentVal) return "RENEW_SAME_TIER";
+  if (newVal > currentVal) return "UPGRADE";
+  return "DOWNGRADE";
+}
+
+/**
+ * Trả về lý do cảnh báo (KHÔNG CHẶN) khi mua gói cùng hạng nhưng thời hạn ngắn hơn.
+ * Việc hạ cấp sang tier thấp hơn nay được cho phép (gói mới sẽ bắt đầu sau gói cũ
+ * hết hạn) và KHÔNG còn bị chặn ở đây — dùng detectPlanSwitchType + Smart Date Picker.
+ */
 export function downgradeReason(
   current:
     | {
@@ -73,9 +105,7 @@ export function downgradeReason(
   plan: { tier: unknown; durationDays: unknown },
 ) {
   if (!current) return "";
-  const rank: Record<string, number> = { FREE: 0, MEMBERSHIP: 1, PREMIUM: 2 };
-  if ((rank[String(plan.tier)] ?? 0) < (rank[String(current.tier)] ?? 0))
-    return "Không thể mua gói thấp hơn hạng hiện tại.";
+  // Chỉ còn cảnh báo cho cùng hạng mà thời hạn ngắn hơn (vẫn hiển thị tooltip)
   if (
     plan.tier === current.tier &&
     Number(plan.durationDays) <

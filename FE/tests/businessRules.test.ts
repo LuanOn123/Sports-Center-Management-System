@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import {
   canCompleteSchedule,
   canGenerateAttendanceQr,
+  detectPlanSwitchType,
   effectiveSubscription,
   isEffectiveSubscription,
   paymentTransitions,
@@ -134,9 +135,10 @@ it("checks the sold duration snapshot even after a plan is edited", () => {
   expect(
     downgradeReason(current, { tier: "MEMBERSHIP", durationDays: 90 }),
   ).toBe("");
+  // Cross-tier downgrade is now ALLOWED (Smart Date Picker handles the UI)
   expect(
     downgradeReason(current, { tier: "FREE", durationDays: 3650 }),
-  ).toContain("thấp hơn");
+  ).toBe("");
   expect(
     downgradeReason(
       { ...current, tier: "FREE" },
