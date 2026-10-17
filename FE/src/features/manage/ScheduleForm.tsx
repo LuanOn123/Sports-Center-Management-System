@@ -1,4 +1,4 @@
-import { useState, useId, useMemo } from "react";
+import { useState, useId, useMemo, useEffect } from "react";
 import type { FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Calendar, Check, Clock3, LoaderCircle } from "lucide-react";
@@ -144,6 +144,9 @@ export function ScheduleForm({
   const [classId, setClassId] = useState(initialClassId);
   const [roomId, setRoomId] = useState(initialRoomId);
   const [date, setDate] = useState(initialDate);
+  const [termId, setTermId] = useState<string>(
+    String(initial.termId ?? (initial.term as RecordData)?.id ?? ""),
+  );
   const [selectedShiftIds, setSelectedShiftIds] = useState<string[]>(() => {
     if (matchedInitialShift) return [matchedInitialShift.id];
     return mode === "edit" ? [SCHEDULE_SHIFTS[0].id] : [];
@@ -151,7 +154,7 @@ export function ScheduleForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
 
-  // Fetch classes and rooms
+  // Fetch classes, rooms and terms
   const classesQuery = useQuery({
     queryKey: ["schedule-form", "classes"],
     queryFn: ({ signal }) => allPages<ClassItem>("GET /classes", { signal }),
@@ -161,6 +164,40 @@ export function ScheduleForm({
     queryKey: ["schedule-form", "rooms"],
     queryFn: ({ signal }) => allPages<RoomItem>("GET /rooms", { signal }),
   });
+
+  const termsQuery = useQuery({
+    queryKey: ["schedule-form", "terms"],
+    queryFn: () => api<any>("GET /terms", {}),
+  });
+
+  const currentTermQuery = useQuery({
+    queryKey: ["schedule-form", "current-term"],
+    queryFn: () => api<any>("GET /terms/current", {}),
+  });
+
+  // Default to current term in create mode
+  useEffect(() => {
+    if (mode === "create" && !termId && currentTermQuery.data?.data?.id) {
+      setTermId(String(currentTermQuery.data.data.id));
+    }
+  }, [mode, termId, currentTermQuery.data]);
+
+  const termsList: any[] = useMemo(() => {
+    const raw = termsQuery.data?.data;
+    if (Array.isArray(raw)) return raw;
+    if (raw && Array.isArray((raw as any).terms)) return (raw as any).terms;
+    return [];
+  }, [termsQuery.data]);
+
+  const selectedTerm = termsList.find((t) => String(t.id) === termId);
+  const minTermDate = selectedTerm?.startDate ? String(selectedTerm.startDate).slice(0, 10) : undefined;
+  const maxTermDate = selectedTerm?.endDate ? String(selectedTerm.endDate).slice(0, 10) : undefined;
+
+  const isDateOutsideTerm = Boolean(
+    selectedTerm &&
+      date &&
+      ((minTermDate && date < minTermDate) || (maxTermDate && date > maxTermDate)),
+  );
 
   const allClasses = (classesQuery.data?.data ?? []).filter(
     (c) => c.isActive !== false,
@@ -240,6 +277,14 @@ export function ScheduleForm({
       setError(new Error("Vui lòng chọn ngày hoạt động."));
       return;
     }
+    if (isDateOutsideTerm && selectedTerm) {
+      setError(
+        new Error(
+          `Ngày hoạt động (${formatDisplayDate(date)}) phải nằm trong phạm vi kỳ học "${selectedTerm.name}" (${formatDisplayDate(minTermDate || "")} – ${formatDisplayDate(maxTermDate || "")}).`,
+        ),
+      );
+      return;
+    }
     if (selectedShifts.length === 0) {
       setError(new Error("Vui lòng chọn ít nhất 1 ca giờ hoạt động."));
       return;
@@ -264,7 +309,13 @@ export function ScheduleForm({
           const startTime = new Date(`${date}T${shift.startTime}:00+07:00`).toISOString();
           const endTime = new Date(`${date}T${shift.endTime}:00+07:00`).toISOString();
           await api("POST /class-schedules", {
-            body: { classId, roomId, startTime, endTime },
+            body: {
+              classId,
+              roomId,
+              startTime,
+              endTime,
+              termId: termId || undefined,
+            },
           });
         }
       }
@@ -325,6 +376,31 @@ export function ScheduleForm({
           )}
         </label>
 
+        {/* Term selector */}
+        <label className="wide">
+          Kỳ học (Học kỳ)
+          {termsQuery.isPending ? (
+            <Loading variant="field" text="Đang tải danh sách kỳ học…" />
+          ) : (
+            <select
+              aria-label="Kỳ học"
+              value={termId}
+              onChange={(e) => {
+                setTermId(e.target.value);
+                setError(undefined);
+              }}
+            >
+              <option value="">-- Không áp dụng kỳ học --</option>
+              {termsList.map((t: any) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} ({formatDisplayDate(t.startDate?.slice(0, 10))} – {formatDisplayDate(t.endDate?.slice(0, 10))})
+                  {t.id === currentTermQuery.data?.data?.id ? " [Kỳ hiện tại]" : ""}
+                </option>
+              ))}
+            </select>
+          )}
+        </label>
+
         {/* Component 1: Chọn ngày tháng năm */}
         <div className="schedule-date-block wide">
           <label htmlFor="schedule-date-input">
@@ -337,6 +413,8 @@ export function ScheduleForm({
                 id="schedule-date-input"
                 type="date"
                 required
+                min={minTermDate}
+                max={maxTermDate}
                 aria-label="Ngày hoạt động"
                 className="schedule-date-input"
                 value={date}
@@ -373,6 +451,26 @@ export function ScheduleForm({
           {date && (
             <div className="schedule-date-friendly">
               📅 {formatFriendlyVietnamDate(date)}
+            </div>
+          )}
+          {selectedTerm && (
+            <div
+              className="schedule-term-hint"
+              style={{
+                fontSize: "0.85rem",
+                marginTop: "6px",
+                padding: "6px 10px",
+                borderRadius: "6px",
+                background: isDateOutsideTerm ? "#fef2f2" : "#f0fdf4",
+                color: isDateOutsideTerm ? "#b91c1c" : "#166534",
+                border: `1px solid ${isDateOutsideTerm ? "#fecaca" : "#bbf7d0"}`,
+              }}
+            >
+              {isDateOutsideTerm ? (
+                <span>⚠️ Cảnh báo: Ngày đã chọn nằm ngoài phạm vi kỳ học "{selectedTerm.name}" ({formatDisplayDate(minTermDate || "")} – {formatDisplayDate(maxTermDate || "")}).</span>
+              ) : (
+                <span>✓ Thuộc kỳ học "{selectedTerm.name}" ({formatDisplayDate(minTermDate || "")} – {formatDisplayDate(maxTermDate || "")}).</span>
+              )}
             </div>
           )}
         </div>

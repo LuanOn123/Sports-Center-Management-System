@@ -4,9 +4,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Calendar, Clock, MapPin, Users } from "lucide-react";
 import { classesApi } from "../../api/classes.api";
 import { enrollmentsApi } from "../../api/enrollments.api";
+import { authApi } from "../../api/auth.api";
+import { EnrollConfirmModal } from "../../components/member/EnrollConfirmModal";
 import {
   AlertBanner,
-  ConfirmModal,
   EmptyState,
   LoadingSpinner,
   StatusBadge,
@@ -102,13 +103,21 @@ export function ClassDetailPage() {
     queryFn: () => (id ? classesApi.getCoursePlan(id) : null),
     enabled: Boolean(id),
   });
+  const { data: currentUser } = useQuery({
+    queryKey: ["current-user-me"],
+    queryFn: () => authApi.getMe(),
+  });
   const enrollments = useQuery({
     queryKey: ["my-enrollments", "feedback-eligibility"],
     queryFn: () => enrollmentsApi.getMyEnrollments(),
   });
 
   const enrollCourseMutation = useMutation({
-    mutationFn: () => enrollmentsApi.enrollWholeCourse(id!),
+    mutationFn: (variables?: { healthNotes?: string; saveToProfile?: boolean }) =>
+      enrollmentsApi.enrollWholeCourse(id!, undefined, {
+        healthNotes: variables?.healthNotes || null,
+        saveToProfile: variables?.saveToProfile,
+      }),
     onSuccess: (result) => {
       const { summary } = result;
       setActionSuccess(
@@ -158,6 +167,36 @@ export function ClassDetailPage() {
   const course = plan?.course;
   const registration = plan?.registration;
   const mutationBlockers = courseBlockers(actionError);
+
+  const courseTerm =
+    (plan?.course as any)?.term ||
+    plan?.sessions?.find((s: any) => s.term)?.term;
+
+  const now = Date.now();
+  const isTermPlanning = courseTerm?.status === "PLANNING";
+  const isTermNotStarted = Boolean(
+    courseTerm?.registrationStartDate &&
+      new Date(courseTerm.registrationStartDate).getTime() > now,
+  );
+  const isTermClosed = Boolean(
+    courseTerm?.status === "CLOSED" ||
+      (courseTerm?.registrationEndDate &&
+        new Date(courseTerm.registrationEndDate).getTime() < now),
+  );
+  const isTermBlocked = Boolean(
+    courseTerm && (isTermPlanning || isTermNotStarted || isTermClosed),
+  );
+
+  const daysRemaining =
+    courseTerm?.registrationEndDate && !isTermClosed
+      ? Math.max(
+          0,
+          Math.ceil(
+            (new Date(courseTerm.registrationEndDate).getTime() - now) /
+              (1000 * 60 * 60 * 24),
+          ),
+        )
+      : null;
 
   const blockerActions = (blockers: CourseRegistrationBlocker[]) => {
     const codes = blockers.map((blocker) => blocker.code);
@@ -566,12 +605,59 @@ export function ClassDetailPage() {
                 {blockerList(registration.blockers)}
               </div>
             )}
+            {courseTerm && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {isTermPlanning && (
+                  <AlertBanner
+                    type="warning"
+                    title="Chưa mở cổng đăng ký"
+                    message={`Khóa học thuộc kỳ "${courseTerm.name}" đang lập kế hoạch, chưa mở đăng ký.`}
+                  />
+                )}
+                {isTermNotStarted && (
+                  <AlertBanner
+                    type="info"
+                    title="Chưa tới ngày mở đăng ký"
+                    message={`Kỳ học "${courseTerm.name}" sẽ mở cổng đăng ký từ ngày ${new Date(courseTerm.registrationStartDate).toLocaleDateString("vi-VN")}.`}
+                  />
+                )}
+                {isTermClosed && (
+                  <AlertBanner
+                    type="error"
+                    title="Hết hạn đăng ký"
+                    message={`Đã hết thời hạn đăng ký cho kỳ học "${courseTerm.name}".`}
+                  />
+                )}
+                {!isTermBlocked && (
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 12px",
+                      borderRadius: 8,
+                      backgroundColor: "var(--member-surface-alt, #f0fdf4)",
+                      border: "1px solid var(--member-border, #bbf7d0)",
+                      fontSize: 13,
+                      color: "#166534",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <span>📅 Kỳ học: {courseTerm.name}</span>
+                    {daysRemaining !== null && (
+                      <span>• Cổng đăng ký còn {daysRemaining} ngày</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <button
               className="button primary"
               disabled={
                 enrollCourseMutation.isPending ||
                 !registration ||
                 !registration.eligible ||
+                isTermBlocked ||
                 course.availability.minRemainingSlots === 0
               }
               onClick={() => {
@@ -581,11 +667,17 @@ export function ClassDetailPage() {
               }}
               style={{ alignSelf: "flex-start" }}
             >
-              {!registration ||
-              !registration.eligible ||
-              course.availability.minRemainingSlots === 0
-                ? "Chưa thể đăng ký"
-                : "Đăng ký trọn khóa"}
+              {isTermPlanning
+                ? "Kỳ đang lập kế hoạch"
+                : isTermNotStarted
+                  ? "Chưa mở đăng ký"
+                  : isTermClosed
+                    ? "Đã hết hạn đăng ký"
+                    : !registration ||
+                        !registration.eligible ||
+                        course.availability.minRemainingSlots === 0
+                      ? "Chưa thể đăng ký"
+                      : "Đăng ký trọn khóa"}
             </button>
             <details className="detail-disclosure">
               <summary>Xem {course.totalSessions} buổi học</summary>
@@ -664,19 +756,26 @@ export function ClassDetailPage() {
         )}
       </section>
 
-      <ConfirmModal
+      <EnrollConfirmModal
         isOpen={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        onConfirm={() => enrollCourseMutation.mutate()}
-        title="Xác nhận đăng ký trọn khóa"
-        message={
-          course
-            ? `Bạn sẽ đăng ký khóa "${course.className}" gồm ${course.totalSessions} buổi, từ ${formatMemberDate(course.firstSessionStart)} đến ${formatMemberDate(course.lastSessionEnd)}. Lịch học: ${course.slots.map((slot) => `${slot.weekdayLabel} ${slot.startTime}–${slot.endTime}`).join("; ")}. Học phí theo gói hội viên hiện tại.`
-            : ""
-        }
-        confirmText="Xác nhận đăng ký"
-        cancelText="Để sau"
+        onConfirm={({ healthNotes, saveToProfile }) => {
+          enrollCourseMutation.mutate({ healthNotes, saveToProfile });
+        }}
+        title="Xác nhận đăng ký & Lưu ý thể trạng"
+        classSummary={{
+          name: cls.name,
+          sport: sportNames(cls),
+          sessions: course?.totalSessions,
+          coach: coaches[0]?.coach?.user?.fullName,
+          room: course?.slots[0]?.roomName,
+          time: course?.slots
+            ?.map((s) => `${s.weekdayLabel} ${s.startTime}–${s.endTime}`)
+            .join("; "),
+        }}
+        initialHealthNotes={currentUser?.memberProfile?.healthNotes}
         loading={enrollCourseMutation.isPending}
+        confirmText="Xác nhận đăng ký trọn khóa"
       />
     </div>
   );
