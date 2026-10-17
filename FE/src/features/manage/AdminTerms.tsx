@@ -30,13 +30,34 @@ function fmtDate(d: string) {
 }
 
 type TermFormData = {
+  code: string;
   name: string;
   startDate: string;
   endDate: string;
   registrationStartDate: string;
   registrationEndDate: string;
   status?: TermStatus;
+  description?: string;
 };
+
+/** Convert YYYY-MM-DD → ISO datetime string (start of day UTC) */
+function toISODate(d: string, endOfDay = false): string {
+  if (!d) return "";
+  return `${d}T${endOfDay ? "23:59:59" : "00:00:00"}.000Z`;
+}
+
+/** Auto-generate a code from term name + year, e.g. "KY_THU_2026" */
+function autoCode(name: string, startDate: string): string {
+  const year = startDate ? startDate.slice(0, 4) : String(new Date().getFullYear());
+  const slug = name
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 12);
+  return slug ? `${slug}_${year}` : `TERM_${year}`;
+}
 
 function TermForm({
   initial,
@@ -51,17 +72,24 @@ function TermForm({
   isPending: boolean;
   error: unknown;
 }) {
+  const [code, setCode] = useState(initial?.code ?? "");
   const [name, setName] = useState(initial?.name ?? "");
   const [startDate, setStartDate] = useState(initial?.startDate?.slice(0, 10) ?? "");
   const [endDate, setEndDate] = useState(initial?.endDate?.slice(0, 10) ?? "");
   const [regStart, setRegStart] = useState(initial?.registrationStartDate?.slice(0, 10) ?? "");
   const [regEnd, setRegEnd] = useState(initial?.registrationEndDate?.slice(0, 10) ?? "");
   const [status, setStatus] = useState<TermStatus>(initial?.status ?? "PLANNING");
+  const [description, setDescription] = useState(initial?.description ?? "");
   const [localError, setLocalError] = useState<string>("");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLocalError("");
+    const trimmedCode = code.trim().toUpperCase();
+    if (!trimmedCode || trimmedCode.length < 2) {
+      setLocalError("Mã kỳ học bắt buộc (tối thiểu 2 ký tự).");
+      return;
+    }
     if (!name.trim() || !startDate || !endDate || !regStart || !regEnd) {
       setLocalError("Vui lòng điền đầy đủ các trường bắt buộc.");
       return;
@@ -74,16 +102,59 @@ function TermForm({
       setLocalError("Ngày kết thúc đăng ký phải sau ngày mở đăng ký.");
       return;
     }
-    onSave({ name: name.trim(), startDate, endDate, registrationStartDate: regStart, registrationEndDate: regEnd, status });
+    // Convert date-only strings to full ISO datetime required by BE
+    onSave({
+      code: trimmedCode,
+      name: name.trim(),
+      startDate: toISODate(startDate),
+      endDate: toISODate(endDate, true),
+      registrationStartDate: toISODate(regStart),
+      registrationEndDate: toISODate(regEnd, true),
+      status,
+      description: description.trim() || undefined,
+    });
   }
+
+  const isEditing = Boolean(initial?.code);
 
   return (
     <form className="form-grid" onSubmit={handleSubmit}>
       <fieldset className="form-grid wide" disabled={isPending}>
+        {/* Code */}
+        <label>
+          Mã kỳ học *
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              required
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder="VD: KY_THU_2026"
+              maxLength={20}
+              pattern="[A-Z0-9_]+"
+              title="Chỉ dùng chữ hoa, số và dấu gạch dưới"
+              style={{ flex: 1 }}
+            />
+            {!isEditing && (
+              <button
+                type="button"
+                className="button"
+                style={{ whiteSpace: "nowrap", fontSize: 12, padding: "0 10px" }}
+                onClick={() => setCode(autoCode(name, startDate))}
+              >
+                Tự động
+              </button>
+            )}
+          </div>
+          <span style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+            Chỉ chữ hoa A-Z, số 0-9, dấu _ (tối đa 20 ký tự)
+          </span>
+        </label>
+        {/* Name */}
         <label className="wide">
           Tên kỳ học *
           <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="VD: Kỳ Thu 2026" />
         </label>
+        {/* Term dates */}
         <label>
           Ngày bắt đầu kỳ *
           <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} />
@@ -92,6 +163,7 @@ function TermForm({
           Ngày kết thúc kỳ *
           <input type="date" required value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} />
         </label>
+        {/* Registration window */}
         <label>
           Mở đăng ký từ *
           <input type="date" required value={regStart} onChange={(e) => setRegStart(e.target.value)} />
@@ -100,7 +172,8 @@ function TermForm({
           Đóng đăng ký vào *
           <input type="date" required value={regEnd} min={regStart} onChange={(e) => setRegEnd(e.target.value)} />
         </label>
-        {initial?.status && (
+        {/* Status (edit only) */}
+        {isEditing && (
           <label>
             Trạng thái
             <select value={status} onChange={(e) => setStatus(e.target.value as TermStatus)}>
@@ -110,6 +183,17 @@ function TermForm({
             </select>
           </label>
         )}
+        {/* Description */}
+        <label className="wide">
+          Ghi chú (tùy chọn)
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Mô tả ngắn về kỳ học…"
+            rows={2}
+            maxLength={500}
+          />
+        </label>
       </fieldset>
       {Boolean(localError || error) && (
         <ErrorState error={localError ? new Error(localError) : error} />
@@ -125,6 +209,7 @@ function TermForm({
 }
 
 export function AdminTerms() {
+
   const cache = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Term | null>(null);
