@@ -117,7 +117,6 @@ app.use(v1, (req, res, next) => {
       "subjects",
       "facility-visits",
       "waitlist",
-      "terms",
     ].includes(root) ||
     req.path === "/payments/sepay/webhook"
   )
