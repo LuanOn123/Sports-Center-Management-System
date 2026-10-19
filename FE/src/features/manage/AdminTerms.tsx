@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Calendar, Pencil, Trash2, ChevronDown, Clock, UserCheck, Sparkles, Building2 } from "lucide-react";
+import { Plus, Calendar, Pencil, Trash2, ChevronDown, Clock, UserCheck, Sparkles, Building2, Lock } from "lucide-react";
 import { api } from "../../shared/api";
+import { getFacilityId } from "../../shared/facility";
 import { Empty, ErrorState, Loading, Modal } from "../../shared/ui";
 import type { Term, TermStatus } from "../../shared/generated";
 import "./admin.css";
@@ -64,6 +65,8 @@ function autoCode(name: string, startDate: string): string {
 function TermForm({
   initial,
   facilities,
+  role = "ADMIN",
+  managerFacilityId,
   onSave,
   onCancel,
   isPending,
@@ -71,11 +74,15 @@ function TermForm({
 }: {
   initial?: Partial<TermFormData>;
   facilities?: Array<{ id: string; name: string; code: string }>;
+  role?: "ADMIN" | "MANAGER";
+  managerFacilityId?: string;
   onSave: (data: TermFormData) => void;
   onCancel: () => void;
   isPending: boolean;
   error: unknown;
 }) {
+  const isManager = role === "MANAGER";
+  const defaultFacility = isManager ? (managerFacilityId || getFacilityId() || "") : "";
   const [code, setCode] = useState(initial?.code ?? "");
   const [name, setName] = useState(initial?.name ?? "");
   const [startDate, setStartDate] = useState(initial?.startDate?.slice(0, 10) ?? "");
@@ -83,7 +90,7 @@ function TermForm({
   const [regStart, setRegStart] = useState(initial?.registrationStartDate?.slice(0, 10) ?? "");
   const [regEnd, setRegEnd] = useState(initial?.registrationEndDate?.slice(0, 10) ?? "");
   const [status, setStatus] = useState<TermStatus>(initial?.status ?? "PLANNING");
-  const [facilityId, setFacilityId] = useState<string>(initial?.facilityId ?? "");
+  const [facilityId, setFacilityId] = useState<string>(initial?.facilityId ?? defaultFacility);
   const [description, setDescription] = useState(initial?.description ?? "");
   const [localError, setLocalError] = useState<string>("");
 
@@ -117,7 +124,7 @@ function TermForm({
       registrationEndDate: toISODate(regEnd, true),
       status,
       description: description.trim() || undefined,
-      facilityId: facilityId || null,
+      facilityId: isManager ? (managerFacilityId || getFacilityId() || null) : (facilityId || null),
     });
   }
 
@@ -192,20 +199,41 @@ function TermForm({
         {/* Facility assignment */}
         <label className="wide">
           Áp dụng cho Cơ sở (Chi nhánh)
-          <select
-            value={facilityId}
-            onChange={(e) => setFacilityId(e.target.value)}
-          >
-            <option value="">Toàn hệ thống (Tất cả cơ sở)</option>
-            {facilities?.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name} ({f.code})
-              </option>
-            ))}
-          </select>
-          <span style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-            Chọn một cơ sở cụ thể hoặc để &quot;Toàn hệ thống&quot; để áp dụng cho mọi chi nhánh.
-          </span>
+          {isManager ? (
+            <div
+              style={{
+                padding: "10px 14px",
+                background: "rgba(59, 130, 246, 0.08)",
+                border: "1px solid rgba(59, 130, 246, 0.25)",
+                borderRadius: 8,
+                fontSize: 13,
+                color: "#60a5fa",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <Building2 size={16} />
+              <span>Gán tự động cho Cơ sở bạn quản lý (theo quy định phân quyền Manager).</span>
+            </div>
+          ) : (
+            <>
+              <select
+                value={facilityId}
+                onChange={(e) => setFacilityId(e.target.value)}
+              >
+                <option value="">Toàn hệ thống (Tất cả cơ sở)</option>
+                {facilities?.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name} ({f.code})
+                  </option>
+                ))}
+              </select>
+              <span style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+                Chọn một cơ sở cụ thể hoặc để &quot;Toàn hệ thống&quot; để áp dụng cho mọi chi nhánh.
+              </span>
+            </>
+          )}
         </label>
         {/* Description */}
         <label className="wide">
@@ -232,7 +260,9 @@ function TermForm({
   );
 }
 
-export function AdminTerms() {
+export function AdminTerms({ role = "ADMIN" }: { role?: "ADMIN" | "MANAGER" } = {}) {
+  const isManager = role === "MANAGER";
+  const managerFacilityId = getFacilityId();
   const navigate = useNavigate();
   const cache = useQueryClient();
   const [creating, setCreating] = useState(false);
@@ -252,13 +282,21 @@ export function AdminTerms() {
   const facilities = (facilitiesQuery.data as any)?.data ?? facilitiesQuery.data ?? [];
 
   const termsQuery = useQuery({
-    queryKey: ["admin-terms", yearFilter, statusFilter, facilityFilter],
+    queryKey: ["admin-terms", role, yearFilter, statusFilter, facilityFilter],
     queryFn: ({ signal }) =>
       api<Term[]>("GET /terms", {
         query: {
           ...(yearFilter ? { year: yearFilter } : {}),
           ...(statusFilter ? { status: statusFilter } : {}),
-          ...(facilityFilter ? { facilityId: facilityFilter, exactFacility: "true" } : {}),
+          ...(isManager
+            ? facilityFilter === "system"
+              ? { facilityId: "system", exactFacility: "true" }
+              : facilityFilter === "facility"
+              ? { facilityId: managerFacilityId, exactFacility: "true" }
+              : {}
+            : facilityFilter
+            ? { facilityId: facilityFilter, exactFacility: "true" }
+            : {}),
           limit: "100",
         },
         signal,
@@ -298,9 +336,13 @@ export function AdminTerms() {
     <div className="workflow-page admin-workspace">
       <div className="page-heading">
         <div>
-          <div className="eyebrow">QUẢN LÝ HỌC VỤ</div>
+          <div className="eyebrow">{isManager ? "QUẢN LÝ CƠ SỞ" : "QUẢN LÝ HỌC VỤ"}</div>
           <h1>Kỳ học / Học kỳ</h1>
-          <p>Tạo và quản lý các kỳ học, mở/đóng đăng ký lớp học theo từng kỳ.</p>
+          <p>
+            {isManager
+              ? "Xem các kỳ học áp dụng cho cơ sở của bạn và tạo/quản lý kỳ học cho chi nhánh."
+              : "Tạo và quản lý các kỳ học, mở/đóng đăng ký lớp học theo từng kỳ."}
+          </p>
         </div>
         <button className="button primary" onClick={() => setCreating(true)}>
           <Plus size={18} /> Thêm kỳ học
@@ -378,20 +420,35 @@ export function AdminTerms() {
             ))}
           </select>
         </label>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-          Cơ sở
-          <select
-            value={facilityFilter}
-            onChange={(e) => setFacilityFilter(e.target.value)}
-            style={{ fontSize: 13, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border)" }}
-          >
-            <option value="">Tất cả cơ sở</option>
-            <option value="system">Toàn hệ thống (Chung)</option>
-            {Array.isArray(facilities) && facilities.map((f: any) => (
-              <option key={f.id} value={f.id}>{f.name} ({f.code})</option>
-            ))}
-          </select>
-        </label>
+        {isManager ? (
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+            Phạm vi
+            <select
+              value={facilityFilter}
+              onChange={(e) => setFacilityFilter(e.target.value)}
+              style={{ fontSize: 13, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border)" }}
+            >
+              <option value="">Tất cả (Cơ sở & Hệ thống)</option>
+              <option value="facility">Chỉ kỳ của cơ sở mình</option>
+              <option value="system">Chỉ kỳ chung toàn hệ thống</option>
+            </select>
+          </label>
+        ) : (
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+            Cơ sở
+            <select
+              value={facilityFilter}
+              onChange={(e) => setFacilityFilter(e.target.value)}
+              style={{ fontSize: 13, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border)" }}
+            >
+              <option value="">Tất cả cơ sở</option>
+              <option value="system">Toàn hệ thống (Chung)</option>
+              {Array.isArray(facilities) && facilities.map((f: any) => (
+                <option key={f.id} value={f.id}>{f.name} ({f.code})</option>
+              ))}
+            </select>
+          </label>
+        )}
         <ChevronDown size={16} style={{ color: "var(--muted)", marginLeft: -8 }} />
       </div>
 
@@ -548,7 +605,7 @@ export function AdminTerms() {
                     type="button"
                     className="button"
                     style={{ flex: 1, fontSize: 12, padding: "6px 8px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}
-                    onClick={() => navigate("/admin/schedules")}
+                    onClick={() => navigate(isManager ? "/manager/schedules" : "/admin/schedules")}
                     title="Xếp lịch các lớp học tại cơ sở cho kỳ này"
                   >
                     <Clock size={14} /> Xếp lịch
@@ -557,25 +614,40 @@ export function AdminTerms() {
                     type="button"
                     className="button"
                     style={{ flex: 1, fontSize: 12, padding: "6px 8px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}
-                    onClick={() => navigate("/admin/classes")}
+                    onClick={() => navigate(isManager ? "/manager/classes" : "/admin/classes")}
                     title="Phân công HLV cho các lớp học"
                   >
                     <UserCheck size={14} /> Gán HLV
                   </button>
                 </div>
 
-                <div className="admin-card-footer" style={{ marginTop: 8 }}>
-                  <button className="button" onClick={() => setEditing(term)}>
-                    <Pencil size={16} /> Chỉnh sửa
-                  </button>
-                  <button
-                    className="button danger"
-                    onClick={() => { deleteMutation.reset(); setDeleting(term); }}
-                    disabled={deleteMutation.isPending}
-                  >
-                    <Trash2 size={16} /> Xóa
-                  </button>
-                </div>
+                {(() => {
+                  const isGlobal = !term.facilityId;
+                  const canManage = !isManager || (!isGlobal && term.facilityId === managerFacilityId);
+                  if (!canManage) {
+                    return (
+                      <div className="admin-card-footer" style={{ marginTop: 8, justifyContent: "center" }}>
+                        <span style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                          <Lock size={13} /> Kỳ học toàn hệ thống (Chỉ xem)
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="admin-card-footer" style={{ marginTop: 8 }}>
+                      <button className="button" onClick={() => setEditing(term)}>
+                        <Pencil size={16} /> Chỉnh sửa
+                      </button>
+                      <button
+                        className="button danger"
+                        onClick={() => { deleteMutation.reset(); setDeleting(term); }}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 size={16} /> Xóa
+                      </button>
+                    </div>
+                  );
+                })()}
               </article>
             );
           })}
@@ -584,9 +656,11 @@ export function AdminTerms() {
 
       {/* Create Modal */}
       {creating && (
-        <Modal title="Thêm kỳ học mới" onClose={() => setCreating(false)}>
+        <Modal title={isManager ? "Thêm kỳ học cho cơ sở" : "Thêm kỳ học mới"} onClose={() => setCreating(false)}>
           <TermForm
             facilities={facilities}
+            role={role}
+            managerFacilityId={managerFacilityId}
             onSave={(data) => createMutation.mutate(data)}
             onCancel={() => setCreating(false)}
             isPending={createMutation.isPending}
@@ -601,6 +675,8 @@ export function AdminTerms() {
           <TermForm
             initial={editing}
             facilities={facilities}
+            role={role}
+            managerFacilityId={managerFacilityId}
             onSave={(data) => updateMutation.mutate({ ...data, id: editing.id })}
             onCancel={() => setEditing(null)}
             isPending={updateMutation.isPending}

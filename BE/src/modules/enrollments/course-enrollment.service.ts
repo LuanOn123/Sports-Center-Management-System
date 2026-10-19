@@ -447,7 +447,7 @@ export async function enrollWholeCourse(
   if (!cls) throw new AppError("Class not found", 404);
   if (!cls.isActive) throw new AppError("Class is inactive", 400);
 
-  const sessions = await prisma.classSchedule.findMany({
+  const allFutureSessions = await prisma.classSchedule.findMany({
     where: { classId, status: "SCHEDULED", startTime: { gt: new Date() } },
     orderBy: { startTime: "asc" },
     select: {
@@ -455,12 +455,18 @@ export async function enrollWholeCourse(
       startTime: true,
       endTime: true,
       roomId: true,
+      termId: true,
       room: { select: { id: true, name: true } },
     },
   });
-  if (sessions.length === 0) {
+  if (allFutureSessions.length === 0) {
     throw new AppError("This class has no upcoming sessions to enroll", 400);
   }
+
+  const targetTermId = allFutureSessions.find((s) => s.termId)?.termId;
+  const sessions = targetTermId
+    ? allFutureSessions.filter((s) => s.termId === targetTermId)
+    : allFutureSessions;
 
   const outcome = await prisma.$transaction(
     async (tx) => {

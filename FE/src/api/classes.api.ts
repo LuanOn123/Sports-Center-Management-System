@@ -17,6 +17,7 @@ export interface ClassQuery {
   coachId?: string;
   page?: number;
   limit?: number;
+  termId?: string;
 }
 
 export interface ScheduleQuery {
@@ -44,6 +45,7 @@ export const classesApi = {
     if (query.isActive !== undefined)
       params.append("isActive", String(query.isActive));
     if (query.coachId) params.append("coachId", query.coachId);
+    if (query.termId) params.append("termId", query.termId);
     if (query.page) params.append("page", String(query.page));
     if (query.limit) params.append("limit", String(query.limit));
 

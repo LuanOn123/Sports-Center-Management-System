@@ -1,5 +1,6 @@
 import { sportNames } from "../../shared/sports";
-import { useState, useEffect } from "react";
+import { MemberTermBanner } from "../../shared/MemberTermBanner";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { classesApi } from "../../api/classes.api";
@@ -111,12 +112,6 @@ export function BrowseClassesPage() {
     queryFn: () => api<any>("GET /terms/current", {}),
   });
 
-  useEffect(() => {
-    if (!selectedTerm && currentTermData?.data?.id) {
-      setSelectedTerm(String(currentTermData.data.id));
-    }
-  }, [selectedTerm, currentTermData]);
-
   const termsList: any[] = Array.isArray(termsData?.data)
     ? termsData.data
     : (termsData?.data?.terms ?? []);
@@ -139,6 +134,7 @@ export function BrowseClassesPage() {
       selectedSport,
       selectedType,
       selectedArea,
+      selectedTerm,
       page,
     ],
     queryFn: () =>
@@ -147,6 +143,7 @@ export function BrowseClassesPage() {
         sportId: selectedSport || undefined,
         classType: selectedType || undefined,
         areaType: selectedArea || undefined,
+        termId: selectedTerm || undefined,
         isActive: true,
         page,
         limit: 12,
@@ -156,14 +153,6 @@ export function BrowseClassesPage() {
   const classes = classData?.classes || [];
   const sports = sportsData?.sports || [];
 
-  const openRegTerm = termsList.find(
-    (t: any) =>
-      t.status === "OPEN_REGISTRATION" ||
-      (t.registrationStartDate &&
-        t.registrationEndDate &&
-        new Date(t.registrationStartDate).getTime() <= Date.now() &&
-        new Date(t.registrationEndDate).getTime() >= Date.now()),
-  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -207,65 +196,10 @@ export function BrowseClassesPage() {
         </div>
       </div>
 
-      {/* EARLY REGISTRATION NOTIFICATION BANNER */}
-      {openRegTerm && (
-        <div
-          style={{
-            background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)",
-            borderRadius: 14,
-            padding: "16px 20px",
-            border: "1px solid #bbf7d0",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 14,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
-                backgroundColor: "#16a34a",
-                color: "#ffffff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: 800,
-                fontSize: 18,
-                flexShrink: 0,
-              }}
-            >
-              ⚡
-            </div>
-            <div>
-              <strong style={{ color: "#166534", fontSize: 14, display: "block" }}>
-                Cổng đăng ký sớm đang mở: {openRegTerm.name}
-              </strong>
-              <span style={{ color: "#15803d", fontSize: 13 }}>
-                Đăng ký ngay từ hôm nay để giữ chỗ tốt nhất trước khi khai giảng vào ngày{" "}
-                <strong>{new Date(openRegTerm.startDate).toLocaleDateString("vi-VN")}</strong>.
-              </span>
-            </div>
-          </div>
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: "#166534",
-              backgroundColor: "#dcfce7",
-              padding: "6px 14px",
-              borderRadius: 8,
-              border: "1px solid #86efac",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Hạn đăng ký: {new Date(openRegTerm.registrationEndDate).toLocaleDateString("vi-VN")}
-          </span>
-        </div>
-      )}
+
+      {/* TERM STATUS BANNER — hiển thị trạng thái kỳ học / cổng đăng ký */}
+      <MemberTermBanner variant="full" />
+
 
       <div className="member-sport-tabs" aria-label="Chọn bộ môn">
         <button

@@ -87,4 +87,5 @@ export const ClassQuerySchema = z.object({
   isActive: z.string().optional(),
   coachId: z.string().optional(),
   attendancePolicy: z.enum(["FIXED", "RECURRING"]).optional(),
+  termId: z.string().optional(),
 });

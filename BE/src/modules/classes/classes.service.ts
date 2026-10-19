@@ -50,6 +50,9 @@ export async function listClasses(query: any) {
     where.coaches = { some: { coachId: query.coachId } };
   }
   if (query.attendancePolicy) where.attendancePolicy = query.attendancePolicy;
+  if (query.termId) {
+    where.schedules = { some: { termId: query.termId } };
+  }
 
   const [total, classes] = await Promise.all([
     prisma.class.count({ where }),
@@ -570,7 +573,8 @@ export async function getClassCoursePlan(
   if (!cls) throw new AppError("Class not found", 404);
 
   // Khóa học = toàn bộ buổi SCHEDULED chưa bắt đầu, sắp theo thời gian.
-  const schedules = await prisma.classSchedule.findMany({
+  // Tuân thủ ranh giới Học kỳ (Term): nếu lớp có buổi gắn với kỳ học, gom toàn bộ buổi thuộc cùng Kỳ học gần nhất.
+  const allFutureSchedules = await prisma.classSchedule.findMany({
     where: { classId, status: "SCHEDULED", startTime: { gt: now } },
     orderBy: { startTime: "asc" },
     select: {
@@ -600,6 +604,11 @@ export async function getClassCoursePlan(
       },
     },
   });
+
+  const targetTermId = allFutureSchedules.find((s) => s.termId)?.termId;
+  const schedules = targetTermId
+    ? allFutureSchedules.filter((s) => s.termId === targetTermId)
+    : allFutureSchedules;
 
   const memberProfile =
     actor?.role === "MEMBER"
