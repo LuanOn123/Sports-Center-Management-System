@@ -71,7 +71,7 @@ router.get(
  * @swagger
  * /terms:
  *   post:
- *     summary: Tạo kỳ học mới (Chỉ dành cho ADMIN)
+ *     summary: Tạo kỳ học mới (ADMIN hoặc MANAGER cho cơ sở của mình)
  *     tags: [Terms]
  *     security:
  *       - BearerAuth: []
@@ -79,7 +79,7 @@ router.get(
 router.post(
   "/",
   authenticate,
-  authorizeExact("ADMIN"),
+  authorize("ADMIN", "MANAGER"),
   validate(CreateTermSchema),
   termsController.createTerm
 );
@@ -88,7 +88,7 @@ router.post(
  * @swagger
  * /terms/{id}:
  *   patch:
- *     summary: Cập nhật kỳ học (Chỉ dành cho ADMIN)
+ *     summary: Cập nhật kỳ học (ADMIN hoặc MANAGER của cơ sở sở hữu)
  *     tags: [Terms]
  *     security:
  *       - BearerAuth: []
@@ -96,7 +96,7 @@ router.post(
 router.patch(
   "/:id",
   authenticate,
-  authorizeExact("ADMIN"),
+  authorize("ADMIN", "MANAGER"),
   validate(UpdateTermSchema),
   termsController.updateTerm
 );
@@ -105,7 +105,7 @@ router.patch(
  * @swagger
  * /terms/{id}:
  *   delete:
- *     summary: Xóa kỳ học chưa có lịch học (Chỉ dành cho ADMIN)
+ *     summary: Xóa kỳ học chưa có lịch học (ADMIN hoặc MANAGER của cơ sở sở hữu)
  *     tags: [Terms]
  *     security:
  *       - BearerAuth: []
@@ -113,7 +113,7 @@ router.patch(
 router.delete(
   "/:id",
   authenticate,
-  authorizeExact("ADMIN"),
+  authorize("ADMIN", "MANAGER"),
   termsController.deleteTerm
 );
 

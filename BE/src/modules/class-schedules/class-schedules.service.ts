@@ -275,9 +275,9 @@ export async function createSchedule(data: any) {
 
     let termId = data.termId;
     if (termId) {
-      await assertCanScheduleInTerm(termId, startTime, endTime, tx);
+      await assertCanScheduleInTerm(termId, startTime, endTime, room.facilityId, tx);
     } else {
-      const autoTerm = await findTermForDate(startTime, tx);
+      const autoTerm = await findTermForDate(startTime, room.facilityId, tx);
       if (autoTerm) termId = autoTerm.id;
     }
 
@@ -383,9 +383,9 @@ export async function createActivityPlan(data: any, canCreateSport: boolean) {
 
       let termId = data.termId;
       if (termId) {
-        await assertCanScheduleInTerm(termId, startTime, endTime, tx);
+        await assertCanScheduleInTerm(termId, startTime, endTime, room.facilityId, tx);
       } else {
-        const autoTerm = await findTermForDate(startTime, tx);
+        const autoTerm = await findTermForDate(startTime, room.facilityId, tx);
         if (autoTerm) termId = autoTerm.id;
       }
 
@@ -547,16 +547,17 @@ export async function updateSchedule(id: string, data: any) {
 
   const termTouched = data.termId !== undefined;
   let newTermId: string | null | undefined = undefined;
+  const currentFacilityId = existing.room?.facilityId || existing.class?.facilityId;
   if (termTouched) {
     if (data.termId === null) {
       newTermId = null;
     } else {
-      await assertCanScheduleInTerm(data.termId, startTime, endTime);
+      await assertCanScheduleInTerm(data.termId, startTime, endTime, currentFacilityId);
       newTermId = data.termId;
     }
   } else if (data.startTime || data.endTime) {
     if (existing.termId) {
-      await assertCanScheduleInTerm(existing.termId, startTime, endTime);
+      await assertCanScheduleInTerm(existing.termId, startTime, endTime, currentFacilityId);
     }
   }
 

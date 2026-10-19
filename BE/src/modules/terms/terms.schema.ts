@@ -93,6 +93,7 @@ export const TermQuerySchema = z.object({
   search: z.string().optional(),
   current: z.enum(["true", "false"]).optional(),
   facilityId: z.string().optional(),
+  exactFacility: z.string().optional(),
   year: z.string().optional(),
   page: z.string().optional(),
   limit: z.string().optional(),

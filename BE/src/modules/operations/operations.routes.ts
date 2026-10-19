@@ -370,7 +370,7 @@ route(
         if (req.body.termId) {
           const patternStart = new Date(req.body.startDate + "T00:00:00+07:00");
           const patternEnd = new Date(req.body.endDate + "T23:59:59+07:00");
-          await assertCanScheduleInTerm(req.body.termId, patternStart, patternEnd, tx);
+          await assertCanScheduleInTerm(req.body.termId, patternStart, patternEnd, slot.facilityId, tx);
         }
 
         let sessions;

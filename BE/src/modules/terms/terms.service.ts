@@ -137,6 +137,25 @@ export async function getCurrentTerm(facilityId?: string) {
     ? { OR: [{ facilityId }, { facilityId: null }] }
     : {};
 
+  if (facilityId) {
+    const facilityTerm = await prisma.term.findFirst({
+      where: {
+        facilityId,
+        OR: [
+          { status: "IN_PROGRESS" },
+          { status: "OPEN_REGISTRATION" },
+          { startDate: { lte: now }, endDate: { gte: now } },
+        ],
+      },
+      orderBy: { startDate: "asc" },
+      include: {
+        facility: { select: { id: true, name: true, code: true } },
+        _count: { select: { schedules: true, patterns: true } },
+      },
+    });
+    if (facilityTerm) return facilityTerm;
+  }
+
   const currentTerm = await prisma.term.findFirst({
     where: {
       AND: [
@@ -159,9 +178,22 @@ export async function getCurrentTerm(facilityId?: string) {
   return currentTerm;
 }
 
-export async function updateTerm(id: string, data: any) {
+export async function updateTerm(id: string, data: any, managerFacilityId?: string) {
   const term = await prisma.term.findUnique({ where: { id } });
   if (!term) throw new AppError("Không tìm thấy kỳ học", 404);
+
+  // Business rule for MANAGER role: chỉ được cập nhật kỳ thuộc cơ sở của mình
+  if (managerFacilityId) {
+    if (!term.facilityId) {
+      throw new AppError("Quản lý cơ sở không có quyền chỉnh sửa kỳ học chung của toàn hệ thống.", 403);
+    }
+    if (term.facilityId !== managerFacilityId) {
+      throw new AppError("Quản lý cơ sở không có quyền chỉnh sửa kỳ học của cơ sở khác.", 403);
+    }
+    if (data.facilityId !== undefined && data.facilityId !== managerFacilityId) {
+      throw new AppError("Không được phép chuyển kỳ học sang cơ sở khác hoặc hệ thống chung.", 403);
+    }
+  }
 
   if (data.code && data.code !== term.code) {
     const existing = await prisma.term.findUnique({ where: { code: data.code } });
@@ -211,7 +243,7 @@ export async function updateTerm(id: string, data: any) {
   });
 }
 
-export async function deleteTerm(id: string) {
+export async function deleteTerm(id: string, managerFacilityId?: string) {
   const term = await prisma.term.findUnique({
     where: { id },
     include: {
@@ -219,6 +251,16 @@ export async function deleteTerm(id: string) {
     },
   });
   if (!term) throw new AppError("Không tìm thấy kỳ học", 404);
+
+  // Business rule for MANAGER role: chỉ được xóa kỳ thuộc cơ sở của mình
+  if (managerFacilityId) {
+    if (!term.facilityId) {
+      throw new AppError("Quản lý cơ sở không có quyền xóa kỳ học chung của toàn hệ thống.", 403);
+    }
+    if (term.facilityId !== managerFacilityId) {
+      throw new AppError("Quản lý cơ sở không có quyền xóa kỳ học của cơ sở khác.", 403);
+    }
+  }
 
   if (term._count.schedules > 0 || term._count.patterns > 0) {
     throw new AppError(
@@ -231,14 +273,47 @@ export async function deleteTerm(id: string) {
   return { message: "Xóa kỳ học thành công" };
 }
 
-/** Helper: Tìm kỳ học bao phủ thời điểm chỉ định */
-export async function findTermForDate(date: Date, tx?: any) {
+/** Helper: Tìm kỳ học bao phủ thời điểm chỉ định (ưu tiên kỳ của cơ sở) */
+export async function findTermForDate(
+  date: Date,
+  facilityIdOrTx?: string | any,
+  maybeTx?: any
+) {
+  const facilityId = typeof facilityIdOrTx === "string" ? facilityIdOrTx : undefined;
+  const tx =
+    facilityIdOrTx && typeof facilityIdOrTx === "object" && "$executeRaw" in facilityIdOrTx
+      ? facilityIdOrTx
+      : maybeTx;
   const db = tx ?? prisma;
+
+  if (facilityId) {
+    const facilityTerm = await db.term.findFirst({
+      where: {
+        facilityId,
+        startDate: { lte: date },
+        endDate: { gte: date },
+        status: { not: "CLOSED" },
+      },
+    });
+    if (facilityTerm) return facilityTerm;
+  }
+
+  const facilityWhere = facilityId
+    ? { OR: [{ facilityId }, { facilityId: null }] }
+    : {};
+
   return db.term.findFirst({
     where: {
-      startDate: { lte: date },
-      endDate: { gte: date },
+      AND: [
+        facilityWhere,
+        {
+          startDate: { lte: date },
+          endDate: { gte: date },
+          status: { not: "CLOSED" },
+        },
+      ],
     },
+    orderBy: { startDate: "asc" },
   });
 }
 

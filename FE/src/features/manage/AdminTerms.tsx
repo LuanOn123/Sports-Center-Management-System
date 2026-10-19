@@ -409,24 +409,107 @@ export function AdminTerms() {
               new Date(term.startDate).getTime() > Date.now();
             return (
               <article className="panel admin-facility-card" key={term.id}>
-                <div className="panel-heading">
+                <div className="panel-heading" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 16 }}>
                   <span className="admin-card-icon"><Calendar size={22} /></span>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
                     {term.facility ? (
-                      <span className="badge" style={{ background: "rgba(59, 130, 246, 0.15)", color: "#60a5fa", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                        <Building2 size={12} /> {term.facility.name}
+                      <span
+                        style={{
+                          height: 28,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 5,
+                          padding: "0 10px",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          borderRadius: 6,
+                          background: "rgba(59, 130, 246, 0.12)",
+                          color: "#60a5fa",
+                          border: "1px solid rgba(59, 130, 246, 0.25)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <Building2 size={13} /> {term.facility.name}
                       </span>
                     ) : (
-                      <span className="badge" style={{ background: "rgba(107, 114, 128, 0.15)", color: "#9ca3af", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                        <Building2 size={12} /> Toàn hệ thống
+                      <span
+                        style={{
+                          height: 28,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 5,
+                          padding: "0 10px",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          borderRadius: 6,
+                          background: "rgba(107, 114, 128, 0.12)",
+                          color: "#9ca3af",
+                          border: "1px solid rgba(107, 114, 128, 0.25)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <Building2 size={13} /> Toàn hệ thống
                       </span>
                     )}
-                    {isEarlyReg && (
-                      <span className="badge success" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                        <Sparkles size={12} /> Đang mở đăng ký sớm
+                    {isEarlyReg ? (
+                      <span
+                        style={{
+                          height: 28,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 5,
+                          padding: "0 10px",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          borderRadius: 6,
+                          background: "rgba(16, 185, 129, 0.12)",
+                          color: "#34d399",
+                          border: "1px solid rgba(16, 185, 129, 0.3)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <Sparkles size={13} /> Mở đăng ký sớm
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          height: 28,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 5,
+                          padding: "0 10px",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          borderRadius: 6,
+                          whiteSpace: "nowrap",
+                          ...(term.status === "OPEN_REGISTRATION"
+                            ? {
+                                background: "rgba(16, 185, 129, 0.12)",
+                                color: "#34d399",
+                                border: "1px solid rgba(16, 185, 129, 0.3)",
+                              }
+                            : term.status === "IN_PROGRESS"
+                            ? {
+                                background: "rgba(59, 130, 246, 0.12)",
+                                color: "#60a5fa",
+                                border: "1px solid rgba(59, 130, 246, 0.3)",
+                              }
+                            : term.status === "CLOSED"
+                            ? {
+                                background: "rgba(239, 68, 68, 0.12)",
+                                color: "#f87171",
+                                border: "1px solid rgba(239, 68, 68, 0.3)",
+                              }
+                            : {
+                                background: "rgba(156, 163, 175, 0.12)",
+                                color: "#9ca3af",
+                                border: "1px solid rgba(156, 163, 175, 0.25)",
+                              }),
+                        }}
+                      >
+                        {STATUS_LABELS[term.status]}
                       </span>
                     )}
-                    <span className={`badge ${STATUS_BADGE[term.status]}`}>{STATUS_LABELS[term.status]}</span>
                   </div>
                 </div>
                 <h2 style={{ margin: "10px 0 6px", fontSize: 18 }}>{term.name}</h2>
