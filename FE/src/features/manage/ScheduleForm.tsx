@@ -1,7 +1,7 @@
-import { useState, useId, useMemo, useEffect } from "react";
+import { useState, useId, useMemo, useEffect, useCallback } from "react";
 import type { FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Check, Clock3, LoaderCircle } from "lucide-react";
+import { Calendar, Check, Clock3, LoaderCircle, Repeat, AlertCircle } from "lucide-react";
 import { api, type RecordData } from "../../shared/api";
 import { allPages } from "../../shared/pagedApi";
 import { display } from "../../shared/config";
@@ -24,6 +24,17 @@ export const SCHEDULE_SHIFTS: ScheduleShift[] = [
   { id: "shift-5", name: "Ca 5", startTime: "15:00", endTime: "17:00", label: "15:00 – 17:00" },
   { id: "shift-6", name: "Ca 6", startTime: "17:00", endTime: "19:00", label: "17:00 – 19:00" },
   { id: "shift-7", name: "Ca 7", startTime: "19:00", endTime: "21:00", label: "19:00 – 21:00" },
+];
+
+// Weekday definitions (ISO: 1=Mon..7=Sun)
+const WEEKDAYS = [
+  { iso: 1, label: "T2", fullLabel: "Thứ Hai" },
+  { iso: 2, label: "T3", fullLabel: "Thứ Ba" },
+  { iso: 3, label: "T4", fullLabel: "Thứ Tư" },
+  { iso: 4, label: "T5", fullLabel: "Thứ Năm" },
+  { iso: 5, label: "T6", fullLabel: "Thứ Sáu" },
+  { iso: 6, label: "T7", fullLabel: "Thứ Bảy" },
+  { iso: 7, label: "CN", fullLabel: "Chủ Nhật" },
 ];
 
 interface ClassItem {
@@ -113,6 +124,30 @@ function toVietnamTimePart(isoString?: unknown): string {
   return formatter.format(d);
 }
 
+/** Get ISO weekday (1=Mon..7=Sun) from a YYYY-MM-DD string */
+function getIsoWeekday(dateStr: string): number {
+  const d = new Date(`${dateStr}T12:00:00+07:00`);
+  const dow = d.getDay(); // 0=Sun..6=Sat
+  return dow === 0 ? 7 : dow;
+}
+
+/** Generate all YYYY-MM-DD dates in [fromDate, toDate] that fall on the selected weekdays */
+function generateRecurringDates(fromDate: string, toDate: string, isoWeekdays: number[]): string[] {
+  if (!fromDate || !toDate || isoWeekdays.length === 0) return [];
+  const result: string[] = [];
+  let current = fromDate;
+  // Safety limit: max 366 iterations
+  let safety = 0;
+  while (current <= toDate && safety < 500) {
+    if (isoWeekdays.includes(getIsoWeekday(current))) {
+      result.push(current);
+    }
+    current = addDaysVietnam(current, 1);
+    safety++;
+  }
+  return result;
+}
+
 export function ScheduleForm({
   initial = {},
   mode = "create",
@@ -154,6 +189,12 @@ export function ScheduleForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
 
+  // ── Recurring weekly schedule state ──
+  const [recurringMode, setRecurringMode] = useState(false);
+  const [recurringWeekdays, setRecurringWeekdays] = useState<number[]>([]);
+  const [recurringFrom, setRecurringFrom] = useState<string>("");
+  const [recurringTo, setRecurringTo] = useState<string>("");
+
   // Fetch classes, rooms and terms
   const classesQuery = useQuery({
     queryKey: ["schedule-form", "classes"],
@@ -193,6 +234,14 @@ export function ScheduleForm({
   const minTermDate = selectedTerm?.startDate ? String(selectedTerm.startDate).slice(0, 10) : undefined;
   const maxTermDate = selectedTerm?.endDate ? String(selectedTerm.endDate).slice(0, 10) : undefined;
 
+  // When term changes or recurring mode is enabled, default the date range to term bounds
+  useEffect(() => {
+    if (recurringMode && selectedTerm) {
+      if (!recurringFrom && minTermDate) setRecurringFrom(minTermDate);
+      if (!recurringTo && maxTermDate) setRecurringTo(maxTermDate);
+    }
+  }, [recurringMode, selectedTerm, minTermDate, maxTermDate]);
+
   const isDateOutsideTerm = Boolean(
     selectedTerm &&
       date &&
@@ -220,7 +269,6 @@ export function ScheduleForm({
     if (cls?.defaultRoomId) {
       setRoomId(String(cls.defaultRoomId));
     } else if (cls?.areaType) {
-      // If current room is incompatible, clear or select first compatible room
       const compatible = allRooms.filter((r) => r.areaType === cls.areaType);
       if (!compatible.some((r) => String(r.id) === roomId)) {
         setRoomId(compatible[0]?.id ? String(compatible[0].id) : "");
@@ -230,10 +278,8 @@ export function ScheduleForm({
 
   const toggleShift = (shiftId: string) => {
     if (mode === "edit") {
-      // In edit mode, only one shift is selected
       setSelectedShiftIds([shiftId]);
     } else {
-      // In create mode, can select 1 or multiple shifts
       setSelectedShiftIds((prev) =>
         prev.includes(shiftId)
           ? prev.filter((id) => id !== shiftId)
@@ -252,6 +298,16 @@ export function ScheduleForm({
     setSelectedShiftIds([]);
   };
 
+  const toggleWeekday = useCallback((iso: number) => {
+    setRecurringWeekdays((prev) =>
+      prev.includes(iso) ? prev.filter((d) => d !== iso) : [...prev, iso].sort((a, b) => a - b),
+    );
+    setError(undefined);
+  }, []);
+
+  const selectAllWeekdays = () => setRecurringWeekdays(WEEKDAYS.map((w) => w.iso));
+  const clearWeekdays = () => setRecurringWeekdays([]);
+
   // Compute selected shift objects sorted by time
   const selectedShifts = useMemo(() => {
     return SCHEDULE_SHIFTS.filter((s) => selectedShiftIds.includes(s.id)).sort(
@@ -259,9 +315,29 @@ export function ScheduleForm({
     );
   }, [selectedShiftIds]);
 
+  // Recurring dates preview
+  const recurringDates = useMemo(() => {
+    if (!recurringMode) return [];
+    return generateRecurringDates(recurringFrom, recurringTo, recurringWeekdays);
+  }, [recurringMode, recurringFrom, recurringTo, recurringWeekdays]);
+
+  // Validate recurring range against term
+  const recurringFromOutsideTerm = Boolean(
+    selectedTerm && recurringFrom && minTermDate && maxTermDate &&
+    (recurringFrom < minTermDate || recurringFrom > maxTermDate)
+  );
+  const recurringToOutsideTerm = Boolean(
+    selectedTerm && recurringTo && minTermDate && maxTermDate &&
+    (recurringTo > maxTermDate || recurringTo < minTermDate)
+  );
+
   // Earliest start and latest end for display
   const earliestStart = selectedShifts[0]?.startTime ?? "";
   const latestEnd = selectedShifts[selectedShifts.length - 1]?.endTime ?? "";
+
+  const totalSchedulesToCreate = recurringMode
+    ? recurringDates.length * selectedShifts.length
+    : selectedShifts.length;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -273,21 +349,51 @@ export function ScheduleForm({
       setError(new Error("Vui lòng chọn phòng tập."));
       return;
     }
-    if (!date) {
-      setError(new Error("Vui lòng chọn ngày hoạt động."));
-      return;
-    }
-    if (isDateOutsideTerm && selectedTerm) {
-      setError(
-        new Error(
-          `Ngày hoạt động (${formatDisplayDate(date)}) phải nằm trong phạm vi kỳ học "${selectedTerm.name}" (${formatDisplayDate(minTermDate || "")} – ${formatDisplayDate(maxTermDate || "")}).`,
-        ),
-      );
-      return;
-    }
     if (selectedShifts.length === 0) {
       setError(new Error("Vui lòng chọn ít nhất 1 ca giờ hoạt động."));
       return;
+    }
+
+    if (recurringMode) {
+      // Recurring mode validations
+      if (recurringWeekdays.length === 0) {
+        setError(new Error("Vui lòng chọn ít nhất 1 ngày trong tuần để lặp lịch."));
+        return;
+      }
+      if (!recurringFrom) {
+        setError(new Error("Vui lòng chọn ngày bắt đầu cho lịch lặp."));
+        return;
+      }
+      if (!recurringTo) {
+        setError(new Error("Vui lòng chọn ngày kết thúc cho lịch lặp."));
+        return;
+      }
+      if (recurringFrom > recurringTo) {
+        setError(new Error("Ngày bắt đầu phải trước ngày kết thúc."));
+        return;
+      }
+      if (recurringDates.length === 0) {
+        setError(new Error("Không có ngày nào phù hợp với các ngày trong tuần đã chọn trong khoảng thời gian này."));
+        return;
+      }
+      if (recurringDates.length > 200) {
+        setError(new Error(`Số lịch tạo (${totalSchedulesToCreate}) quá lớn. Vui lòng rút ngắn khoảng thời gian hoặc giảm số ca.`));
+        return;
+      }
+    } else {
+      // Single date mode validations
+      if (!date) {
+        setError(new Error("Vui lòng chọn ngày hoạt động."));
+        return;
+      }
+      if (isDateOutsideTerm && selectedTerm) {
+        setError(
+          new Error(
+            `Ngày hoạt động (${formatDisplayDate(date)}) phải nằm trong phạm vi kỳ học "${selectedTerm.name}" (${formatDisplayDate(minTermDate || "")} – ${formatDisplayDate(maxTermDate || "")}).`,
+          ),
+        );
+        return;
+      }
     }
 
     setBusy(true);
@@ -303,8 +409,25 @@ export function ScheduleForm({
           params: { id: String(initial.id) },
           body: { roomId, startTime, endTime },
         });
+      } else if (recurringMode) {
+        // Create schedules for each date × shift combination
+        for (const dateStr of recurringDates) {
+          for (const shift of selectedShifts) {
+            const startTime = new Date(`${dateStr}T${shift.startTime}:00+07:00`).toISOString();
+            const endTime = new Date(`${dateStr}T${shift.endTime}:00+07:00`).toISOString();
+            await api("POST /class-schedules", {
+              body: {
+                classId,
+                roomId,
+                startTime,
+                endTime,
+                termId: termId || undefined,
+              },
+            });
+          }
+        }
       } else {
-        // Sequentially create schedules to avoid resource advisory lock conflicts
+        // Sequentially create schedules for single date
         for (const shift of selectedShifts) {
           const startTime = new Date(`${date}T${shift.startTime}:00+07:00`).toISOString();
           const endTime = new Date(`${date}T${shift.endTime}:00+07:00`).toISOString();
@@ -387,6 +510,8 @@ export function ScheduleForm({
               value={termId}
               onChange={(e) => {
                 setTermId(e.target.value);
+                setRecurringFrom("");
+                setRecurringTo("");
                 setError(undefined);
               }}
             >
@@ -401,79 +526,246 @@ export function ScheduleForm({
           )}
         </label>
 
-        {/* Component 1: Chọn ngày tháng năm */}
-        <div className="schedule-date-block wide">
-          <label htmlFor="schedule-date-input">
-            Ngày hoạt động <b className="required">*</b>
-          </label>
-          <div className="schedule-date-input-wrap">
-            <div className="schedule-date-icon-box">
-              <Calendar size={18} />
-              <input
-                id="schedule-date-input"
-                type="date"
-                required
-                min={minTermDate}
-                max={maxTermDate}
-                aria-label="Ngày hoạt động"
-                className="schedule-date-input"
-                value={date}
-                onChange={(e) => {
-                  setDate(e.target.value);
-                  setError(undefined);
-                }}
-              />
-            </div>
-            <div className="schedule-date-quick">
-              <button
-                type="button"
-                className="schedule-quick-btn"
-                onClick={() => setDate(getVietnamToday())}
-              >
-                Hôm nay
-              </button>
-              <button
-                type="button"
-                className="schedule-quick-btn"
-                onClick={() => setDate(addDaysVietnam(getVietnamToday(), 1))}
-              >
-                Ngày mai
-              </button>
-              <button
-                type="button"
-                className="schedule-quick-btn"
-                onClick={() => setDate(addDaysVietnam(date || getVietnamToday(), 7))}
-              >
-                +7 ngày
-              </button>
-            </div>
-          </div>
-          {date && (
-            <div className="schedule-date-friendly">
-              📅 {formatFriendlyVietnamDate(date)}
-            </div>
-          )}
-          {selectedTerm && (
-            <div
-              className="schedule-term-hint"
-              style={{
-                fontSize: "0.85rem",
-                marginTop: "6px",
-                padding: "6px 10px",
-                borderRadius: "6px",
-                background: isDateOutsideTerm ? "#fef2f2" : "#f0fdf4",
-                color: isDateOutsideTerm ? "#b91c1c" : "#166534",
-                border: `1px solid ${isDateOutsideTerm ? "#fecaca" : "#bbf7d0"}`,
+        {/* ── Recurring Mode Toggle ── */}
+        {mode === "create" && (
+          <div className="recurring-toggle-block wide">
+            <button
+              type="button"
+              className={`recurring-toggle-btn ${recurringMode ? "active" : ""}`}
+              onClick={() => {
+                setRecurringMode((v) => !v);
+                setError(undefined);
               }}
+              aria-pressed={recurringMode}
             >
-              {isDateOutsideTerm ? (
-                <span>⚠️ Cảnh báo: Ngày đã chọn nằm ngoài phạm vi kỳ học "{selectedTerm.name}" ({formatDisplayDate(minTermDate || "")} – {formatDisplayDate(maxTermDate || "")}).</span>
-              ) : (
-                <span>✓ Thuộc kỳ học "{selectedTerm.name}" ({formatDisplayDate(minTermDate || "")} – {formatDisplayDate(maxTermDate || "")}).</span>
+              <Repeat size={16} />
+              <span>Lịch cố định theo tuần</span>
+              <span className={`recurring-toggle-pill ${recurringMode ? "on" : "off"}`}>
+                {recurringMode ? "BẬT" : "TẮT"}
+              </span>
+            </button>
+            {!recurringMode && (
+              <p className="recurring-hint">
+                Bật để tạo lịch tự động lặp theo ngày trong tuần (ví dụ: mỗi Thứ 2, Thứ 4, Thứ 6) trong một khoảng thời gian.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ── Single Date Mode ── */}
+        {!recurringMode && (
+          <div className="schedule-date-block wide">
+            <label htmlFor="schedule-date-input">
+              Ngày hoạt động <b className="required">*</b>
+            </label>
+            <div className="schedule-date-input-wrap">
+              <div className="schedule-date-icon-box">
+                <Calendar size={18} />
+                <input
+                  id="schedule-date-input"
+                  type="date"
+                  required
+                  min={minTermDate}
+                  max={maxTermDate}
+                  aria-label="Ngày hoạt động"
+                  className="schedule-date-input"
+                  value={date}
+                  onChange={(e) => {
+                    setDate(e.target.value);
+                    setError(undefined);
+                  }}
+                />
+              </div>
+              <div className="schedule-date-quick">
+                <button
+                  type="button"
+                  className="schedule-quick-btn"
+                  onClick={() => setDate(getVietnamToday())}
+                >
+                  Hôm nay
+                </button>
+                <button
+                  type="button"
+                  className="schedule-quick-btn"
+                  onClick={() => setDate(addDaysVietnam(getVietnamToday(), 1))}
+                >
+                  Ngày mai
+                </button>
+                <button
+                  type="button"
+                  className="schedule-quick-btn"
+                  onClick={() => setDate(addDaysVietnam(date || getVietnamToday(), 7))}
+                >
+                  +7 ngày
+                </button>
+              </div>
+            </div>
+            {date && (
+              <div className="schedule-date-friendly">
+                📅 {formatFriendlyVietnamDate(date)}
+              </div>
+            )}
+            {selectedTerm && (
+              <div
+                className="schedule-term-hint"
+                style={{
+                  fontSize: "0.85rem",
+                  marginTop: "6px",
+                  padding: "6px 10px",
+                  borderRadius: "6px",
+                  background: isDateOutsideTerm ? "#fef2f2" : "#f0fdf4",
+                  color: isDateOutsideTerm ? "#b91c1c" : "#166534",
+                  border: `1px solid ${isDateOutsideTerm ? "#fecaca" : "#bbf7d0"}`,
+                }}
+              >
+                {isDateOutsideTerm ? (
+                  <span>⚠️ Cảnh báo: Ngày đã chọn nằm ngoài phạm vi kỳ học "{selectedTerm.name}" ({formatDisplayDate(minTermDate || "")} – {formatDisplayDate(maxTermDate || "")}).</span>
+                ) : (
+                  <span>✓ Thuộc kỳ học "{selectedTerm.name}" ({formatDisplayDate(minTermDate || "")} – {formatDisplayDate(maxTermDate || "")}).</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Recurring Mode: Weekday picker + date range ── */}
+        {recurringMode && mode === "create" && (
+          <div className="recurring-config-block wide">
+            {/* Weekday selector */}
+            <div className="recurring-section">
+              <div className="recurring-section-header">
+                <strong>Ngày trong tuần <b className="required">*</b></strong>
+                <small>Chọn các ngày lịch sẽ lặp lại hàng tuần</small>
+                <div className="recurring-weekday-actions">
+                  <button type="button" className="schedule-quick-btn" onClick={selectAllWeekdays}>Chọn tất cả</button>
+                  <button type="button" className="schedule-quick-btn" onClick={clearWeekdays}>Bỏ chọn</button>
+                </div>
+              </div>
+              <div className="recurring-weekday-grid" role="group" aria-label="Chọn ngày trong tuần">
+                {WEEKDAYS.map((wd) => {
+                  const selected = recurringWeekdays.includes(wd.iso);
+                  return (
+                    <button
+                      key={wd.iso}
+                      type="button"
+                      role="checkbox"
+                      aria-checked={selected}
+                      aria-label={wd.fullLabel}
+                      className={`recurring-weekday-btn ${selected ? "selected" : ""} ${wd.iso >= 6 ? "weekend" : ""}`}
+                      onClick={() => toggleWeekday(wd.iso)}
+                      title={wd.fullLabel}
+                    >
+                      <span className="wd-label">{wd.label}</span>
+                      {selected && <Check size={10} strokeWidth={3} className="wd-check" />}
+                    </button>
+                  );
+                })}
+              </div>
+              {recurringWeekdays.length > 0 && (
+                <div className="recurring-weekday-summary">
+                  Lặp vào: <strong>{recurringWeekdays.map((iso) => WEEKDAYS.find((w) => w.iso === iso)?.fullLabel).join(", ")}</strong>
+                </div>
               )}
             </div>
-          )}
-        </div>
+
+            {/* Date range */}
+            <div className="recurring-section">
+              <div className="recurring-section-header">
+                <strong>Khoảng thời gian áp dụng <b className="required">*</b></strong>
+                {selectedTerm && (
+                  <small>Kỳ học: {formatDisplayDate(minTermDate || "")} – {formatDisplayDate(maxTermDate || "")}</small>
+                )}
+              </div>
+              <div className="recurring-date-range-row">
+                <div className="recurring-date-field">
+                  <label htmlFor="recurring-from-input">Từ ngày</label>
+                  <div className="schedule-date-icon-box">
+                    <Calendar size={16} />
+                    <input
+                      id="recurring-from-input"
+                      type="date"
+                      aria-label="Từ ngày"
+                      className="schedule-date-input"
+                      min={minTermDate}
+                      max={maxTermDate || recurringTo || undefined}
+                      value={recurringFrom}
+                      onChange={(e) => { setRecurringFrom(e.target.value); setError(undefined); }}
+                    />
+                  </div>
+                  {recurringFromOutsideTerm && (
+                    <span className="recurring-date-warn">⚠️ Ngoài kỳ học</span>
+                  )}
+                </div>
+                <span className="recurring-range-sep">→</span>
+                <div className="recurring-date-field">
+                  <label htmlFor="recurring-to-input">Đến ngày</label>
+                  <div className="schedule-date-icon-box">
+                    <Calendar size={16} />
+                    <input
+                      id="recurring-to-input"
+                      type="date"
+                      aria-label="Đến ngày"
+                      className="schedule-date-input"
+                      min={recurringFrom || minTermDate || undefined}
+                      max={maxTermDate}
+                      value={recurringTo}
+                      onChange={(e) => { setRecurringTo(e.target.value); setError(undefined); }}
+                    />
+                  </div>
+                  {recurringToOutsideTerm && (
+                    <span className="recurring-date-warn">⚠️ Ngoài kỳ học</span>
+                  )}
+                </div>
+              </div>
+              {/* Quick fill from term */}
+              {selectedTerm && (
+                <button
+                  type="button"
+                  className="schedule-quick-btn"
+                  style={{ marginTop: "6px" }}
+                  onClick={() => {
+                    if (minTermDate) setRecurringFrom(minTermDate);
+                    if (maxTermDate) setRecurringTo(maxTermDate);
+                  }}
+                >
+                  Dùng toàn bộ kỳ học
+                </button>
+              )}
+            </div>
+
+            {/* Preview panel */}
+            {recurringDates.length > 0 && selectedShifts.length > 0 && (
+              <div className="recurring-preview-panel">
+                <div className="recurring-preview-header">
+                  <Check size={15} />
+                  <span>
+                    Sẽ tạo <strong>{totalSchedulesToCreate} lịch</strong>
+                    {" "}({recurringDates.length} ngày × {selectedShifts.length} ca)
+                  </span>
+                </div>
+                <div className="recurring-preview-dates">
+                  {recurringDates.slice(0, 12).map((d) => (
+                    <span key={d} className="recurring-preview-date-badge">
+                      {formatDisplayDate(d)}
+                    </span>
+                  ))}
+                  {recurringDates.length > 12 && (
+                    <span className="recurring-preview-date-badge more">
+                      +{recurringDates.length - 12} ngày nữa
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {recurringWeekdays.length > 0 && recurringFrom && recurringTo && recurringDates.length === 0 && (
+              <div className="recurring-no-dates-warn">
+                <AlertCircle size={15} />
+                <span>Không có ngày nào khớp với khoảng thời gian và các ngày trong tuần đã chọn.</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Component 2: Các ca giờ hoạt động từ 7:00 đến 21:00 (mỗi ca 2 tiếng) */}
         <div className="schedule-section wide">
@@ -555,35 +847,37 @@ export function ScheduleForm({
           )}
         </div>
 
-        {/* Start / End Summary fields for clear user visibility and test contract */}
-        <div className="schedule-time-overview wide">
-          <label>
-            Bắt đầu <b className="required">*</b>
-            <input
-              type="text"
-              readOnly
-              aria-label="Bắt đầu"
-              value={
-                earliestStart
-                  ? `${formatDisplayDate(date)} ${earliestStart}`
-                  : "Chưa chọn ca giờ"
-              }
-            />
-          </label>
-          <label>
-            Kết thúc <b className="required">*</b>
-            <input
-              type="text"
-              readOnly
-              aria-label="Kết thúc"
-              value={
-                latestEnd
-                  ? `${formatDisplayDate(date)} ${latestEnd}`
-                  : "Chưa chọn ca giờ"
-              }
-            />
-          </label>
-        </div>
+        {/* Start / End Summary fields for clear user visibility */}
+        {!recurringMode && (
+          <div className="schedule-time-overview wide">
+            <label>
+              Bắt đầu <b className="required">*</b>
+              <input
+                type="text"
+                readOnly
+                aria-label="Bắt đầu"
+                value={
+                  earliestStart
+                    ? `${formatDisplayDate(date)} ${earliestStart}`
+                    : "Chưa chọn ca giờ"
+                }
+              />
+            </label>
+            <label>
+              Kết thúc <b className="required">*</b>
+              <input
+                type="text"
+                readOnly
+                aria-label="Kết thúc"
+                value={
+                  latestEnd
+                    ? `${formatDisplayDate(date)} ${latestEnd}`
+                    : "Chưa chọn ca giờ"
+                }
+              />
+            </label>
+          </div>
+        )}
       </fieldset>
 
       {Boolean(error) && (
@@ -608,18 +902,23 @@ export function ScheduleForm({
             busy ||
             classesQuery.isPending ||
             roomsQuery.isPending ||
-            selectedShifts.length === 0
+            selectedShifts.length === 0 ||
+            (recurringMode && recurringWeekdays.length === 0)
           }
         >
           {busy ? (
             <>
               <LoaderCircle size={18} className="spin" />
-              Đang lưu…
+              {recurringMode
+                ? `Đang tạo ${totalSchedulesToCreate} lịch…`
+                : "Đang lưu…"}
             </>
           ) : (
             <>
               <Check size={18} />
-              Lưu thay đổi
+              {recurringMode && totalSchedulesToCreate > 0
+                ? `Tạo ${totalSchedulesToCreate} lịch`
+                : "Lưu thay đổi"}
             </>
           )}
         </button>
