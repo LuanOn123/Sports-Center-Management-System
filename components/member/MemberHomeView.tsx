@@ -89,7 +89,7 @@ export function MemberHomeView({ user, facilityId }: MemberHomeViewProps) {
 
       {later.length > 0 && (
         <View className="mb-lg">
-          <SectionHeader title="Lớp học sắp tới" actionLabel={`Xem tất cả (${upcoming.length})`} onAction={() => router.push(ROUTES.schedule)} />
+          <SectionHeader title="Lớp học sắp tới" actionLabel={`Xem tất cả (${upcoming.length})`} onAction={() => router.push(ROUTES.myClasses)} />
           <View className="gap-sm">
             {later.slice(0, UPCOMING_PREVIEW).map((e) => (
               <Card key={e.id} onPress={() => e.schedule && router.push(ROUTES.scheduleDetail(e.schedule.id))}>

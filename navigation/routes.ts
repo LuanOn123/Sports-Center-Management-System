@@ -20,6 +20,8 @@ export const ROUTES = {
   schedule: '/(tabs)/schedule',
   notifications: '/(tabs)/notifications',
   enrollments: '/(tabs)/enrollments',
+  /** Tab Lịch, mở sẵn phần "Lớp của tôi" */
+  myClasses: { pathname: '/(tabs)/schedule', params: { view: 'classes' } } as Href,
   coachAttendance: '/(tabs)/coach-attendance',
 
   // Màn ngoài tabs
