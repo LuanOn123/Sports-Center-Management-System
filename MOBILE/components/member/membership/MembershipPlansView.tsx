@@ -9,15 +9,17 @@ import { CurrentMembershipCard } from './CurrentMembershipCard';
 import { PendingPaymentCard } from './PendingPaymentCard';
 import { MembershipPlanCard } from './MembershipPlanCard';
 import { SubscriptionHistory } from './SubscriptionHistory';
+import { ScheduledMembershipCard } from './ScheduledMembershipCard';
+import { PlanSwitchSheet } from './PlanSwitchSheet';
 import { CancelSubscriptionModal } from './CancelSubscriptionModal';
 import { useMembershipScreen } from '../../../hooks/member/useMembershipScreen';
 import type { PaymentScope } from '../../../hooks/member/usePayment';
+import type { MembershipPlan } from '../../../lib/types';
 import { ApiError } from '../../../lib/api';
 import { showAlert } from '../../../lib/alert';
 import { Haptic } from '../../../lib/haptics';
 import { Colors } from '../../../constants/theme';
 import { ROUTES } from '../../../navigation/routes';
-import { downgradeReason } from '../../../lib/businessRules';
 import { WorkflowState } from '../../shared/WorkflowScreen';
 
 interface MembershipPlansViewProps {
@@ -28,19 +30,30 @@ interface MembershipPlansViewProps {
 export function MembershipPlansView({ memberId, scope }: MembershipPlansViewProps) {
   const router = useRouter();
   const screen = useMembershipScreen(memberId, scope);
-  const { activeSub, effectiveTier, daysRemaining, plans, subscriptions, pendingPayment, cancel } = screen;
+  const { activeSub, scheduledSub, effectiveTier, daysRemaining, plans, subscriptions, pendingPayment, cancel, switchSheet } = screen;
 
   const openPayment = (paymentId: string) => router.push(ROUTES.payment(paymentId));
 
-  const handleCheckout = (planId: string) => {
-    const plan = plans.find((p) => p.id === planId);
-    if (!plan) return;
+  const checkout = (plan: MembershipPlan, startDate?: string) => {
     Haptic.medium();
     screen.startCheckout(
       plan,
-      (checkout) => openPayment(checkout.paymentId),
+      startDate,
+      (created) => {
+        switchSheet.close();
+        openPayment(created.paymentId);
+      },
       (e) => showAlert('Không tạo được đơn thanh toán', e instanceof ApiError ? e.message : 'Vui lòng thử lại sau.'),
     );
+  };
+
+  // Chưa có gói trả phí → tạo đơn ngay (như web); đã có gói → bảng xác nhận gia hạn / nâng cấp / hạ cấp
+  const handleSelectPlan = (plan: MembershipPlan) => {
+    if (screen.switchTypeFor(plan) === 'NEW') checkout(plan);
+    else {
+      Haptic.light();
+      switchSheet.open(plan);
+    }
   };
 
   const handleGoBack = () => {
@@ -70,6 +83,8 @@ export function MembershipPlansView({ memberId, scope }: MembershipPlansViewProp
           />
         )}
 
+        {scheduledSub && <ScheduledMembershipCard subscription={scheduledSub} />}
+
         {pendingPayment && (
           <PendingPaymentCard checkout={pendingPayment} onPress={() => openPayment(pendingPayment.paymentId)} />
         )}
@@ -84,10 +99,11 @@ export function MembershipPlansView({ memberId, scope }: MembershipPlansViewProp
                 key={plan.id}
                 plan={plan}
                 registered={screen.registeredFor(plan.id)}
-                isCreating={screen.creatingPlanId === plan.id}
+                switchType={screen.switchTypeFor(plan)}
+                hint={screen.hintFor(plan)}
+                isCreating={screen.creatingPlanId === plan.id && !switchSheet.plan}
                 disabled={screen.isCreatingCheckout}
-                blockedReason={downgradeReason(activeSub, plan)}
-                onCheckout={() => handleCheckout(plan.id)}
+                onCheckout={() => handleSelectPlan(plan)}
               />
             ))
           )}
@@ -95,6 +111,14 @@ export function MembershipPlansView({ memberId, scope }: MembershipPlansViewProp
 
         <SubscriptionHistory subscriptions={subscriptions} />
       </ScrollView>
+
+      <PlanSwitchSheet
+        plan={switchSheet.plan}
+        activeSub={activeSub}
+        isCreating={screen.isCreatingCheckout}
+        onConfirm={(startDate) => switchSheet.plan && checkout(switchSheet.plan, startDate)}
+        onClose={switchSheet.close}
+      />
 
       <CancelSubscriptionModal
         visible={cancel.open}

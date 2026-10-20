@@ -134,8 +134,6 @@ test('role guards and membership rules match the web contract', () => {
   auth.assertMobileRole({ role: 'MEMBER' }); auth.assertMobileRole({ role: 'COACH' }); assert.throws(() => auth.assertMobileRole({ role: 'MANAGER' }));
   assert.equal(routes.canAccessRoute('COACH', ['member', 'payments']), false); assert.equal(routes.canAccessRoute('MEMBER', ['coach', 'leave']), false);
   assert.equal(routes.canAccessRoute('MEMBER', ['(tabs)', 'coach-attendance']), false);
-  assert.equal(rules.downgradeReason({ tier: 'PREMIUM', durationDaysSnapshot: 90 }, { tier: 'MEMBERSHIP', durationDays: 90 }), 'Không thể mua gói thấp hơn hạng hiện tại.');
-  assert.equal(rules.downgradeReason({ tier: 'PREMIUM', durationDaysSnapshot: 90 }, { tier: 'PREMIUM', durationDays: 30 }), 'Không thể mua gói ngắn hơn cùng hạng.');
   const now = Date.parse('2026-10-12T00:00:00Z');
   assert.equal(rules.selfCancelRefundEstimate('2026-10-27T00:00:00Z', 100000, now).refundAmount, 0);
   assert.equal(rules.selfCancelRefundEstimate('2026-10-28T00:00:00Z', 100000, now).refundAmount, 30000);
@@ -265,3 +263,40 @@ test('class cards summarise weekly slots and seat availability from the course p
   assert.deepEqual(plan.courseAvailability(course(0, 3), 3), { text: 'Sắp kín · còn 3 chỗ', tone: 'limited' });
   assert.deepEqual(plan.courseAvailability(course(0, 10), 3), { text: 'Còn 10 chỗ trống', tone: 'open' });
 });
+
+test('plan switching follows the BE purchase matrix: renew chains, upgrade now or scheduled, downgrade after expiry', () => {
+  const p = loadApp('http://localhost/api/v1').load('lib/planSwitch');
+  const premium = { tier: 'PREMIUM', durationDaysSnapshot: 90, endDate: '2026-11-20T09:13:00.000Z' };
+  // Loại đổi gói (khớp detectPlanSwitchType của web)
+  assert.equal(p.detectPlanSwitchType(null, { tier: 'PREMIUM', durationDays: 30 }), 'NEW');
+  assert.equal(p.detectPlanSwitchType({ tier: 'FREE' }, { tier: 'MEMBERSHIP', durationDays: 30 }), 'NEW');
+  assert.equal(p.detectPlanSwitchType(premium, { tier: 'PREMIUM', durationDays: 30 }), 'RENEW_SAME_TIER');
+  assert.equal(p.detectPlanSwitchType({ plan: { tier: 'MEMBERSHIP' } }, { tier: 'PREMIUM', durationDays: 30 }), 'UPGRADE');
+  assert.equal(p.detectPlanSwitchType(premium, { tier: 'MEMBERSHIP', durationDays: 90 }), 'DOWNGRADE');
+  // Hạ cấp / gói ngắn hơn KHÔNG còn bị chặn — chỉ giải thích
+  const now = new Date('2026-10-20T03:00:00.000Z'); // 10:00 20/10 giờ VN
+  assert.equal(p.planSwitchHint(premium, { tier: 'MEMBERSHIP', durationDays: 90 }, now), 'Gói sẽ kích hoạt sau ngày 20/11/2026.');
+  assert.equal(p.planSwitchHint(premium, { tier: 'PREMIUM', durationDays: 30 }, now), 'Gia hạn tự động nối tiếp sau 20/11/2026. Gói này ngắn hơn gói bạn đang dùng.');
+  assert.equal(p.planSwitchHint(null, { tier: 'PREMIUM', durationDays: 30 }, now), '');
+  // Khoảng ngày được hẹn (tối đa 60 ngày, giờ VN)
+  assert.deepEqual(p.planStartWindow('UPGRADE', premium, 60, now), { min: { year: 2026, month: 10, day: 21 }, max: { year: 2026, month: 12, day: 19 }, initial: { year: 2026, month: 10, day: 21 } });
+  assert.deepEqual(p.planStartWindow('DOWNGRADE', premium, 60, now), { min: { year: 2026, month: 11, day: 20 }, max: { year: 2027, month: 1, day: 19 }, initial: { year: 2026, month: 11, day: 20 } });
+  assert.equal(p.planStartWindow('RENEW_SAME_TIER', premium, 60, now), null);
+  assert.equal(p.planStartWindow('DOWNGRADE', { tier: 'PREMIUM', endDate: '2026-10-01T00:00:00Z' }, 60, now), null);
+  assert.equal(p.automaticStartDate('RENEW_SAME_TIER', premium, now), premium.endDate);
+  assert.equal(p.automaticStartDate('UPGRADE', premium, now), null);
+  // startDate gửi BE: 00:00 giờ VN; hạ cấp chọn đúng ngày hết hạn thì để BE tự nối tiếp đúng giờ
+  assert.equal(p.checkoutStartDate('UPGRADE', '2026-10-25', premium), '2026-10-24T17:00:00.000Z');
+  assert.equal(p.checkoutStartDate('UPGRADE', undefined, premium), undefined);
+  assert.equal(p.checkoutStartDate('DOWNGRADE', '2026-11-20', premium), undefined);
+  assert.equal(p.checkoutStartDate('DOWNGRADE', '2026-11-25', premium), '2026-11-24T17:00:00.000Z');
+  assert.equal(p.checkoutStartDate('RENEW_SAME_TIER', '2026-11-25', premium), undefined);
+});
+
+test('SePay checkout sends startDate only when the member schedules activation', async () => fixture(async ({ load, requests, handle }) => {
+  const pay = load('services/paymentService');
+  handle(() => ({ data: { paymentId: 'p1' } }));
+  await pay.createSepayCheckout('plan-1');
+  await pay.createSepayCheckout('plan-2', '2026-11-24T17:00:00.000Z');
+  assert.deepEqual(requests.map((r) => r.body), [{ planId: 'plan-1' }, { planId: 'plan-2', startDate: '2026-11-24T17:00:00.000Z' }]);
+}));

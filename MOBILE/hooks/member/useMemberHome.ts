@@ -11,6 +11,7 @@ import { Haptic } from '../../lib/haptics';
 export function useMemberHome(memberId: string | undefined, scope: PaymentScope) {
   const {
     activeSub,
+    scheduledSub,
     status,
     statusLoading,
     refetchSubs,
@@ -39,6 +40,7 @@ export function useMemberHome(memberId: string | undefined, scope: PaymentScope)
 
   return {
     activeSub,
+    scheduledSub,
     status,
     statusLoading,
     pendingPayment,

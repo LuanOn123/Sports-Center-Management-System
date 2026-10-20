@@ -5,3 +5,5 @@ export * from './MembershipPlanCard';
 export * from './PendingPaymentCard';
 export * from './CancelSubscriptionModal';
 export * from './SubscriptionHistory';
+export * from './ScheduledMembershipCard';
+export * from './PlanSwitchSheet';

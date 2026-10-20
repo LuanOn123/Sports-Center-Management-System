@@ -23,6 +23,15 @@ export interface PaymentScope {
 
 export const sepayCheckoutKey = (paymentId: string | undefined) => ['sepay-checkout', paymentId] as const;
 
+/** Ngày kích hoạt đã chọn cho một đơn — BE không trả lại trong đơn, cần nhớ để "Tạo mã mới" giữ đúng ngày */
+const sepayStartDateKey = (paymentId: string | undefined) => ['sepay-start-date', paymentId] as const;
+
+export interface CheckoutRequest {
+  planId: string;
+  /** ISO — chỉ gửi khi hẹn ngày kích hoạt (lib/planSwitch › checkoutStartDate) */
+  startDate?: string;
+}
+
 /** Tiền đã về nhưng gói chưa kích hoạt được — chờ trung tâm đối soát */
 export function requiresReview(checkout: SepayCheckout) {
   return Boolean(checkout.requiresReview || checkout.activationStatus === 'REQUIRES_REVIEW');
@@ -57,17 +66,18 @@ async function clearPending(scope: PaymentScope) {
 export function useStartCheckout(scope: PaymentScope) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (planId: string): Promise<SepayCheckout> => {
+    mutationFn: async ({ planId, startDate }: CheckoutRequest): Promise<SepayCheckout> => {
       try {
-        return (await createSepayCheckout(planId)).data;
+        return (await createSepayCheckout(planId, startDate)).data;
       } catch (e) {
         const pending = pendingCheckoutFromError(e);
         if (pending) return pending;
         throw e;
       }
     },
-    onSuccess: async (checkout) => {
+    onSuccess: async (checkout, { startDate }) => {
       queryClient.setQueryData(sepayCheckoutKey(checkout.paymentId), checkout);
+      queryClient.setQueryData(sepayStartDateKey(checkout.paymentId), startDate ?? null);
       await savePending(scope, checkout.paymentId);
     },
   });
@@ -115,6 +125,7 @@ export type SepayPhase = 'loading' | 'error' | 'review' | 'success' | 'failed' |
  * View chỉ việc render theo `phase`.
  */
 export function useSepayPaymentFlow(paymentId: string | undefined, scope: PaymentScope) {
+  const queryClient = useQueryClient();
   const query = useSepayCheckout(paymentId, scope);
   const startCheckout = useStartCheckout(scope);
   const mockConfirm = useMockConfirmSepay(paymentId);
@@ -140,7 +151,8 @@ export function useSepayPaymentFlow(paymentId: string | undefined, scope: Paymen
   const createNew = (onCreated: (next: SepayCheckout) => void, onError: (e: unknown) => void) => {
     const planId = checkout?.plan?.id;
     if (!planId) return false;
-    startCheckout.mutate(planId, { onSuccess: onCreated, onError });
+    const startDate = queryClient.getQueryData<string | null>(sepayStartDateKey(paymentId)) ?? undefined;
+    startCheckout.mutate({ planId, startDate }, { onSuccess: onCreated, onError });
     return true;
   };
 

@@ -36,6 +36,10 @@ export function useMembershipData(memberId: string | undefined) {
   const plans: MembershipPlan[] = plansQuery.data?.data ?? [];
 
   const activeSub = effectiveSubscription(subscriptions) ?? null;
+  /** Gói đã thanh toán, chờ tới ngày kích hoạt (gần nhất) */
+  const scheduledSub = subscriptions
+    .filter((s) => s.status === 'SCHEDULED')
+    .sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))[0] ?? null;
   const effectiveTier: MembershipTier = activeSub?.tier ?? activeSub?.plan?.tier ?? 'FREE';
   const daysRemaining = activeSub ? daysUntil(activeSub.endDate) : null;
 
@@ -48,6 +52,7 @@ export function useMembershipData(memberId: string | undefined) {
   return {
     /** Gói đang hiệu lực (null nếu chưa có) */
     activeSub,
+    scheduledSub,
     effectiveTier,
     daysRemaining,
     status,

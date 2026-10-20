@@ -71,16 +71,6 @@ export function isPurchasablePlan(plan: { price: string | number }) {
   return Number(plan.price) > 0;
 }
 
-/** Match the web purchase guard; the backend still checks before issuing a QR. */
-export function downgradeReason(current: { tier?: string; durationDaysSnapshot?: number; plan?: { tier?: string; durationDays?: number } } | null | undefined, plan: { tier: string; durationDays: number }) {
-  if (!current) return '';
-  const tier = current.tier ?? current.plan?.tier;
-  const rank: Record<string, number> = { FREE: 0, MEMBERSHIP: 1, PREMIUM: 2 };
-  if ((rank[plan.tier] ?? 0) < (rank[tier ?? 'FREE'] ?? 0)) return 'Không thể mua gói thấp hơn hạng hiện tại.';
-  if (plan.tier === tier && plan.durationDays < Number(current.durationDaysSnapshot ?? current.plan?.durationDays)) return 'Không thể mua gói ngắn hơn cùng hạng.';
-  return '';
-}
-
 /** Ước tính hoàn tiền khi hội viên tự hủy gói */
 export function selfCancelRefundEstimate(endDate: string, amount: number, now = Date.now()) {
   const daysLeft = daysUntil(endDate, now);

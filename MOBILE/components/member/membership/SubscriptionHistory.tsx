@@ -20,7 +20,7 @@ export function SubscriptionHistory({ subscriptions }: { subscriptions: Subscrip
         return (
           <View key={s.id} className="flex-row justify-between items-center py-md border-b border-divider">
             <View className="flex-1 mr-md">
-              <Text className="text-sm font-bevn-semibold text-text-primary mb-0.5">{s.plan?.name ?? 'Gói tập'}</Text>
+              <Text className="text-sm font-bevn-semibold text-text-primary mb-0.5">{s.planNameSnapshot ?? s.plan?.name ?? 'Gói tập'}</Text>
               <Text className="text-xs text-text-muted font-bevn-regular">{formatDate(s.startDate)} → {formatDate(s.endDate)}</Text>
             </View>
             <View className="rounded-full px-sm py-0.5" style={{ backgroundColor: color + '20' }}>

@@ -5,7 +5,11 @@ export type Role = 'MEMBER' | 'COACH' | 'RECEPTIONIST' | 'MANAGER' | 'ADMIN';
 // Mobile chỉ phục vụ 2 role này — các role còn lại dùng bản web.
 export const MOBILE_ROLES: readonly Role[] = ['MEMBER', 'COACH'];
 export type TrainingLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
-export type SubscriptionStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | 'SUSPENDED';
+// SCHEDULED: đã thanh toán, chờ tới ngày kích hoạt (gia hạn nối tiếp / hạ cấp / hẹn ngày nâng cấp)
+export type SubscriptionStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | 'SUSPENDED' | 'SCHEDULED';
+
+/** Loại đổi gói khi hội viên mua gói mới (khớp detectPlanSwitchType của web) */
+export type PlanSwitchType = 'NEW' | 'RENEW_SAME_TIER' | 'UPGRADE' | 'DOWNGRADE';
 export type ScheduleStatus = 'SCHEDULED' | 'CANCELLED' | 'COMPLETED';
 export type EnrollmentStatus = 'BOOKED' | 'CANCELLED' | 'COMPLETED';
 export type PaymentMethod = 'CASH' | 'BANK_TRANSFER';
@@ -92,6 +96,7 @@ export interface Subscription {
   durationDaysSnapshot?: number;
   priceSnapshot?: string | number;
   maxConcurrentClassesSnapshot?: number;
+  planNameSnapshot?: string;
 }
 
 export interface MembershipStatus {
@@ -123,7 +128,7 @@ export interface SepayCheckout {
   plan?: Pick<MembershipPlan, 'id' | 'name' | 'tier' | 'durationDays'>;
   paidAt?: string | null;
   subscriptionId?: string | null;
-  /** Tiền đã về nhưng gói chưa kích hoạt được (vd. hạ hạng) — chờ trung tâm xử lý */
+  /** Tiền đã về nhưng hệ thống không tự kích hoạt được gói — chờ trung tâm đối soát */
   activationStatus?: string;
   requiresReview?: boolean;
   reviewReason?: string | null;
