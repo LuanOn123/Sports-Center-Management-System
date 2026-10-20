@@ -43,7 +43,8 @@ function formatDate(iso: string) {
   return `${weekday}, ${pad2(vietnamDate(d).getUTCDate())}/${pad2(vietnamDate(d).getUTCMonth() + 1)}`;
 }
 
-export function MemberScheduleView() {
+/** Lịch tập theo tuần (web: SchedulePage). `embedded`: nằm trong tab Lịch (ẩn header riêng). */
+export function MemberScheduleView({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
   const [mode, setMode] = useState<'week' | 'list'>('week');
   const [selectedDay, setSelectedDay] = useState(() => new Date());
@@ -147,7 +148,7 @@ export function MemberScheduleView() {
 
   return (
     <View className="flex-1 bg-bg-primary">
-      <ScreenHeader variant="tab" title="Lịch tập" subtitle="Các ca học đã đặt theo tuần" />
+      {!embedded && <ScreenHeader variant="tab" title="Lịch tập" subtitle="Các ca học đã đặt theo tuần" />}
       {/* Mode tabs */}
       <View className="flex-row px-xl pt-xl gap-sm mb-sm">
         <TouchableOpacity

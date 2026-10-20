@@ -21,7 +21,7 @@ import { Avatar } from '../../components/shared/Avatar';
 import { ScreenHeader } from '../../components/shared/ScreenHeader';
 import { useAuth } from '../../context/AuthContext';
 import { api, ApiError } from '../../lib/api';
-import { showAlert, showConfirm } from '../../lib/alert';
+import { showAlert } from '../../lib/alert';
 import { Colors } from '../../constants/theme';
 import { KeyboardAwareView } from '../../components/shared/KeyboardAwareView';
 import { Haptic } from '../../lib/haptics';
@@ -209,15 +209,10 @@ export default function ProfileScreen() {
     },
   });
 
-  const handleLogout = () => {
-    Haptic.warning();
-    showConfirm('Đăng xuất', 'Bạn có chắc muốn đăng xuất?', logout, undefined, 'Đăng xuất', true);
-  };
-
   return (
     <KeyboardAwareView className="flex-1 bg-bg-primary">
       <ScreenHeader
-        title="Hồ sơ cá nhân"
+        title="Thông tin cá nhân"
         subtitle="Thông tin tài khoản & cài đặt bảo mật"
       />
 
@@ -376,10 +371,7 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* Logout */}
-        <TouchableOpacity className="bg-[#FF8D9A15] rounded-lg p-lg items-center border border-[#FF8D9A30]" onPress={handleLogout}>
-          <Text className="text-status-failed font-bold font-bevn-bold text-md">Đăng xuất</Text>
-        </TouchableOpacity>
+        {/* Đăng xuất: nằm ở tab Tài khoản (một lối vào duy nhất) */}
       </ScrollView>
     </KeyboardAwareView>
   );

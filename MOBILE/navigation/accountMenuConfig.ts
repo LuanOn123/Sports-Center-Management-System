@@ -32,7 +32,6 @@ const MEMBER_MENU: AccountMenuGroup[] = [
   {
     title: 'Hoạt động tập luyện',
     items: [
-      { icon: 'event-note', label: 'Lớp của tôi', description: 'Lớp đã đặt, đổi buổi', route: ROUTES.enrollments, color: Colors.feature.violet },
       { icon: 'insights', label: 'Điểm danh & chuyên cần', route: ROUTES.myAttendance, color: Colors.feature.cyan },
       { icon: 'login', label: 'Check-in cơ sở', route: ROUTES.checkin, color: Colors.feature.emerald },
       { icon: 'hourglass-empty', label: 'Danh sách chờ', route: ROUTES.waitlist, color: Colors.feature.violet },
