@@ -20,5 +20,14 @@ export const CLASS_TYPE_FILTERS: (ClassType | undefined)[] = [undefined, 'REGULA
 /** Số khung giờ trong tuần hiện trên thẻ lớp, phần còn lại gộp "+n khung giờ khác" */
 export const CLASS_CARD_SLOT_PREVIEW = 2;
 
+/** Màu nhãn trạng thái từng buổi trong khóa (lib/classPlan › sessionStatusLabel) */
+export const SESSION_TONE_COLOR = {
+  booked: Colors.status.success,
+  completed: Colors.status.scheduled,
+  full: Colors.status.failed,
+  conflict: Colors.status.pending,
+  none: Colors.text.muted,
+} as const;
+
 /** Còn ít chỗ hơn hoặc bằng số này thì báo "Sắp kín" */
 export const LOW_SLOT_THRESHOLD = 3;

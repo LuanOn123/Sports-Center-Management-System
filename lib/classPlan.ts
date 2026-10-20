@@ -19,6 +19,23 @@ export function previewSlots(slots: CoursePlanSlot[] | undefined, limit: number)
   return { shown: list.slice(0, limit), hiddenCount: Math.max(0, list.length - limit) };
 }
 
+export type SessionTone = 'booked' | 'completed' | 'full' | 'conflict' | 'none';
+
+/** Nhãn trạng thái một buổi trong khóa — giống sessionLabel của web (ClassDetailPage) */
+export function sessionStatusLabel(session: CoursePlan['sessions'][number]): { text: string; tone: SessionTone } {
+  if (session.myEnrollmentStatus === 'BOOKED') return { text: 'Đã đặt', tone: 'booked' };
+  if (session.myEnrollmentStatus === 'COMPLETED') return { text: 'Đã hoàn thành', tone: 'completed' };
+  if (session.isFull) return { text: 'Hết chỗ', tone: 'full' };
+  if (session.conflictWith) return { text: `Trùng giờ với ${session.conflictWith.className}`, tone: 'conflict' };
+  return { text: 'Chưa đặt', tone: 'none' };
+}
+
+/** Buổi hết chỗ, còn ở tương lai và mình chưa có chỗ → được vào danh sách chờ (web: WaitlistAction) */
+export function canJoinSessionWaitlist(session: CoursePlan['sessions'][number], now = Date.now()) {
+  return session.isFull && session.status === 'SCHEDULED' && Date.parse(session.startTime) > now
+    && !['BOOKED', 'COMPLETED'].includes(session.myEnrollmentStatus ?? '');
+}
+
 /** Tình trạng chỗ trống của khóa (tính trên các buổi sắp tới BE trả về) */
 export function courseAvailability(course: Course, lowThreshold: number): { text: string; tone: AvailabilityTone } {
   const { fullSessionCount, minRemainingSlots } = course.availability;

@@ -1,18 +1,19 @@
 // components/member/MemberScheduleActions.tsx
-// Hành động của hội viên trên chi tiết buổi học: đặt lịch / đã đặt + tự điểm danh QR
+// Hành động của hội viên trên chi tiết buổi học: đã đặt + tự điểm danh QR / danh sách chờ khi hết chỗ.
+// Hội viên đăng ký theo CẢ KHÓA (như web) — chưa đặt thì dẫn sang trang lớp, không đặt lẻ từng buổi.
 
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon } from '../shared/Icon';
 import { QrScannerModal } from '../shared/QrScannerModal';
-import { useMyEnrollments, useBookSchedule } from '../../hooks/member/useEnrollments';
+import { useMyEnrollments } from '../../hooks/member/useEnrollments';
+import { Button } from '../ui';
 import { useScanAttendance } from '../../hooks/member/useAttendance';
 import { Colors } from '../../constants/theme';
 import { ROUTES } from '../../navigation/routes';
 import { ApiError } from '../../lib/api';
-import { showAlert, showConfirm } from '../../lib/alert';
-import { formatTime, formatWeekdayDate } from '../../lib/format';
+import { showAlert } from '../../lib/alert';
 import type { ScheduleActionsContext } from '../shared/ScheduleDetailView';
 import { WaitlistAction } from './WaitlistAction';
 import { canTakeAttendance } from '../../lib/businessRules';
@@ -24,28 +25,10 @@ export function MemberScheduleActions({ schedule: s, isFull, isPast }: ScheduleA
   const router = useRouter();
   const [showScanner, setShowScanner] = useState(false);
   const { data: enrollmentsData } = useMyEnrollments(undefined, MY_ENROLLMENTS_LIMIT);
-  const book = useBookSchedule();
   const scan = useScanAttendance();
 
-  // CANCELLED vẫn cho đặt lại — BE tự kích hoạt lại (BR-07)
   const isBooked = (enrollmentsData?.data ?? []).some((e) => e.scheduleId === s.id && e.status === 'BOOKED');
-  const disabled = isFull || isPast || book.isPending;
-
-  const handleBook = () => {
-    if (isFull || isPast) return;
-    showConfirm(
-      'Xác nhận đặt lịch',
-      `Đặt lớp "${s.class?.name}" lúc ${formatTime(s.startTime)} ngày ${formatWeekdayDate(s.startTime, 'long')}?`,
-      () =>
-        book.mutate(s.id, {
-          onSuccess: () =>
-            showAlert('Đặt lịch thành công', 'Lịch học đã được thêm vào danh sách của bạn.', () => router.push(ROUTES.schedule)),
-          onError: (e) => showAlert('Lỗi', errorMessage(e, 'Đặt lịch thất bại.')),
-        }),
-      undefined,
-      'Đặt lịch'
-    );
-  };
+  const classId = s.classId ?? s.class?.id;
 
   if (s.status === 'CANCELLED') {
     return (
@@ -70,24 +53,16 @@ export function MemberScheduleActions({ schedule: s, isFull, isPast }: ScheduleA
             <Text className="text-text-inverse text-md font-bevn-bold">{canTakeAttendance(s) ? 'Điểm danh vào lớp' : 'Điểm danh mở trước buổi học 30 phút'}</Text>
           </TouchableOpacity>
         </>
-      ) : isFull && !isPast ? <WaitlistAction scheduleId={s.id} /> : (
-        <TouchableOpacity
-          className="rounded-xl p-lg items-center"
-          style={{ backgroundColor: isFull || isPast ? Colors.bg.elevated : Colors.primary, opacity: book.isPending ? 0.7 : 1 }}
-          onPress={handleBook}
-          disabled={disabled}
-        >
-          {book.isPending ? (
-            <ActivityIndicator color={Colors.text.inverse} />
-          ) : (
-            <View className="flex-row items-center gap-2">
-              <Icon name={isPast ? 'history' : 'event-available'} size={22} color={isFull || isPast ? Colors.text.muted : Colors.text.inverse} />
-              <Text className="text-lg font-bevn-bold" style={{ color: isFull || isPast ? Colors.text.muted : Colors.text.inverse }}>
-                {isPast ? 'Buổi học đã diễn ra' : isFull ? 'Hết chỗ' : 'Đặt lịch học'}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
+      ) : isFull && !isPast ? <WaitlistAction scheduleId={s.id} /> : isPast ? (
+        <View className="flex-row items-center gap-2 rounded-lg p-lg justify-center bg-bg-elevated">
+          <Icon name="history" size={18} color={Colors.text.muted} />
+          <Text className="text-text-muted text-sm font-bevn-medium">Buổi học đã diễn ra</Text>
+        </View>
+      ) : (
+        <View className="bg-bg-surface rounded-lg border border-border p-lg gap-sm">
+          <Text className="text-sm text-text-secondary font-bevn-regular">Lớp được đăng ký theo cả khóa. Mở trang lớp để xem lịch và đăng ký trọn khóa.</Text>
+          {classId && <Button title="Xem lớp & đăng ký" icon="event-available" onPress={() => router.push(ROUTES.classDetail(classId))} />}
+        </View>
       )}
 
       <QrScannerModal

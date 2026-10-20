@@ -1,22 +1,23 @@
 // components/classes/ClassDetailView.tsx
 // Chi tiết lớp theo thứ tự người dùng cần để quyết định: thông tin lớp → lịch học & địa điểm
-// → các buổi sắp tới → huấn luyện viên → đánh giá. Nút "Đăng ký trọn khóa" cố định dưới đáy.
+// → các buổi của khóa (chỉ xem) → huấn luyện viên → đánh giá. Nút "Đăng ký trọn khóa" cố định dưới đáy —
+// hội viên đăng ký theo CẢ KHÓA như web, không đặt lẻ từng buổi.
 // Chỉ hiển thị trường BE thật sự trả về (lớp không có giá riêng — quyền theo gói thành viên).
 
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon } from '../shared/Icon';
 import { Avatar } from '../shared/Avatar';
 import { CoachRating } from '../shared/CoachRating';
 import { WaitlistAction } from '../member/WaitlistAction';
 import { WorkflowScreen, WorkflowCard, WorkflowText, WorkflowButton, WorkflowState } from '../shared/WorkflowScreen';
+import { StatusBadge } from '../ui';
 import { useClassDetail } from '../../hooks/shared/useClassDetail';
-import { CLASS_TYPE_COLOR, CLASS_TYPE_LABEL, LOW_SLOT_THRESHOLD } from '../../constants/classes';
+import { CLASS_TYPE_COLOR, CLASS_TYPE_LABEL, LOW_SLOT_THRESHOLD, SESSION_TONE_COLOR } from '../../constants/classes';
 import { Colors } from '../../constants/theme';
-import { courseAvailability, formatSlot, type AvailabilityTone } from '../../lib/classPlan';
-import { formatDate, formatTime } from '../../lib/format';
-import { showAlert, showConfirm } from '../../lib/alert';
+import { canJoinSessionWaitlist, courseAvailability, formatSlot, sessionStatusLabel, type AvailabilityTone } from '../../lib/classPlan';
+import { formatDate, formatTime, formatWeekdayDate } from '../../lib/format';
 import { ROUTES } from '../../navigation/routes';
 
 const TONE_COLOR: Record<AvailabilityTone, string> = {
@@ -126,17 +127,34 @@ export function ClassDetailView({ id }: { id: string }) {
             </WorkflowCard>
           )}
 
-          {/* 3. Các buổi sắp tới — đặt từng buổi */}
-          {d.sessions.length > 0 && <SectionTitle icon="event">Các buổi sắp tới</SectionTitle>}
-          {d.sessions.map((session) => (
-            <WorkflowCard key={session.id} title={`${formatDate(session.startTime)} · ${formatTime(session.startTime)}–${formatTime(session.endTime)}`}>
-              <WorkflowText>{session.room?.name || 'Phòng tập'} · {session.isFull ? 'Hết chỗ' : `Còn ${session.remainingSlots} chỗ`}</WorkflowText>
-              {session.conflictWith && <WorkflowText>Trùng lịch với lớp {session.conflictWith.className}.</WorkflowText>}
-              {session.myEnrollmentStatus === 'BOOKED' ? <WorkflowButton title="Đã đặt · Xem buổi học" secondary onPress={() => router.push(ROUTES.scheduleDetail(session.id))} />
-                : session.isFull && session.status === 'SCHEDULED' && Date.parse(session.startTime) > Date.now() ? <WaitlistAction scheduleId={session.id} />
-                : <WorkflowButton title={session.canBook ? 'Đặt buổi học' : 'Chưa thể đặt buổi này'} secondary busy={d.book.isPending} disabled={!session.canBook} onPress={() => showConfirm('Đặt buổi học', `Đặt lớp ${value.name} lúc ${formatTime(session.startTime)}?`, () => d.book.mutate(session.id, { onSuccess: () => { void d.plan.refetch(); showAlert('Đặt lịch thành công', 'Đã thêm buổi học vào lịch của bạn.'); }, onError: (e) => showAlert('Không thể đặt buổi học', e.message) }), undefined, 'Đặt lịch')} />}
-            </WorkflowCard>
-          ))}
+          {/* 3. Các buổi của khóa — CHỈ XEM (đăng ký theo cả khóa ở nút dưới đáy, giống web).
+              Thao tác duy nhất theo buổi: vào danh sách chờ khi buổi đã hết chỗ. */}
+          {d.sessions.length > 0 && <SectionTitle icon="event">{`Các buổi của khóa (${d.sessions.length})`}</SectionTitle>}
+          {d.sessions.length > 0 && (
+            <View className="bg-bg-surface rounded-lg border border-border overflow-hidden">
+              {d.sessions.map((session, index) => {
+                const label = sessionStatusLabel(session);
+                const booked = session.myEnrollmentStatus === 'BOOKED';
+                const row = (
+                  <View className={index < d.sessions.length - 1 ? 'px-lg py-md border-b border-divider' : 'px-lg py-md'}>
+                    <View className="flex-row items-center gap-md">
+                      <View className="flex-1">
+                        <Text className="text-sm text-text-primary font-bevn-semibold">{formatWeekdayDate(session.startTime)} · {formatTime(session.startTime)}–{formatTime(session.endTime)}</Text>
+                        <Text className="text-xs text-text-muted font-bevn-regular mt-0.5" numberOfLines={1}>
+                          {session.room?.name || 'Phòng tập'}{session.isFull ? '' : ` · còn ${session.remainingSlots}/${course?.capacity ?? value.capacity} chỗ`}
+                        </Text>
+                      </View>
+                      <StatusBadge label={label.text} color={SESSION_TONE_COLOR[label.tone]} />
+                    </View>
+                    {canJoinSessionWaitlist(session) && <View className="mt-sm"><WaitlistAction scheduleId={session.id} /></View>}
+                  </View>
+                );
+                return booked ? (
+                  <TouchableOpacity key={session.id} onPress={() => router.push(ROUTES.scheduleDetail(session.id))} activeOpacity={0.7}>{row}</TouchableOpacity>
+                ) : <View key={session.id}>{row}</View>;
+              })}
+            </View>
+          )}
         </>}
 
         {/* Buổi dạy sắp tới (HLV) */}
