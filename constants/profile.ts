@@ -47,3 +47,12 @@ export const DEFAULT_BIRTH_AGE = 20;
 export const VN_PHONE_PREFIX = '0';
 export const VN_PHONE_MIN_DIGITS = 10;
 export const VN_PHONE_MAX_DIGITS = 11;
+
+/** Nhãn vai trò hiển thị (hồ sơ, tab Tài khoản) */
+export const ROLE_LABEL: Record<string, string> = {
+  MEMBER: 'Hội viên',
+  COACH: 'Huấn luyện viên',
+  RECEPTIONIST: 'Lễ tân',
+  MANAGER: 'Quản lý',
+  ADMIN: 'Quản trị viên',
+};

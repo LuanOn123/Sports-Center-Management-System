@@ -27,6 +27,7 @@ import { KeyboardAwareView } from '../../components/shared/KeyboardAwareView';
 import { Haptic } from '../../lib/haptics';
 import { CoachSpecializations } from '../../components/coach/CoachSpecializations';
 import { ProfileInfoForm } from '../../components/profile/ProfileInfoForm';
+import { ROLE_LABEL } from '../../constants/profile';
 
 const pwdSchema = z
   .object({
@@ -40,13 +41,6 @@ const pwdSchema = z
   });
 type PwdForm = z.infer<typeof pwdSchema>;
 
-const ROLE_LABEL: Record<string, string> = {
-  MEMBER: 'Hội viên',
-  COACH: 'Huấn luyện viên',
-  RECEPTIONIST: 'Lễ tân',
-  MANAGER: 'Quản lý',
-  ADMIN: 'Quản trị viên',
-};
 const FIELD_SCROLL_OFFSETS: Record<string, number> = {
   fullName: 120,
   phone: 360,

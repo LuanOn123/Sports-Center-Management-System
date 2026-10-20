@@ -83,10 +83,7 @@ export default function ChatTabScreen() {
   // ─── UI ─────────────────────────────────────────────────────────────────────
   return (
     <View className="flex-1 bg-bg-primary">
-      <ScreenHeader
-        title="Tin nhắn"
-        subtitle="Liên lạc với huấn luyện viên & đội ngũ"
-      />
+      <ScreenHeader variant="tab" title="Tin nhắn" subtitle="Liên lạc với huấn luyện viên & đội ngũ" />
 
 
       {/* Tìm kiếm theo tên/email — lọc client-side trên danh sách đã gộp */}

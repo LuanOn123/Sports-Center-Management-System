@@ -14,6 +14,7 @@ export const ROUTES = {
   // Tabs
   home: '/(tabs)',
   chat: '/(tabs)/chat',
+  account: '/(tabs)/account',
   profile: '/(tabs)/profile',
   classes: '/(tabs)/classes',
   schedule: '/(tabs)/schedule',

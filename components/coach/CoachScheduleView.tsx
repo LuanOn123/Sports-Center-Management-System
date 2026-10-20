@@ -37,7 +37,7 @@ export function CoachScheduleView({ coachId }: { coachId: string | undefined }) 
 
   return (
     <View className="flex-1 bg-bg-primary">
-      <ScreenHeader title="Lịch dạy" subtitle="Sắp xếp tuần dạy và theo dõi học viên của từng buổi" />
+      <ScreenHeader variant="tab" title="Lịch dạy" subtitle="Tuần dạy và học viên từng buổi" />
 
       {/* Chuyển tuần */}
       <View className="flex-row items-center justify-between px-xl pt-xl mb-md">

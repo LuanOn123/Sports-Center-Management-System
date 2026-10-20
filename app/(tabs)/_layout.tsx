@@ -1,5 +1,5 @@
 // app/(tabs)/_layout.tsx
-// Quản lý điều hướng Bottom Tab Bar: Trang chủ, Tin nhắn, Hồ sơ
+// Bottom Tab Bar theo vai trò (navigation/tabConfig.ts) — 5 tab hiện, các màn con ẩn khỏi thanh
 
 import React, { useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
@@ -9,7 +9,6 @@ import { Colors } from '../../constants/theme';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
-import { useUnreadNotificationCount } from '../../hooks/shared/useNotifications';
 import { getTabConfigForRole, type MaterialIconName } from '../../navigation';
 
 function TabIcon({ name, color }: { name: MaterialIconName; color: string | any }) {
@@ -37,17 +36,6 @@ function ChatTabIcon({ color }: { color: string | any }) {
     <View className="relative">
       <Icon name="chat" size={22} color={String(color)} />
       <Badge count={data?.data?.unreadCount ?? 0} />
-    </View>
-  );
-}
-
-function NotificationsTabIcon({ color }: { color: string | any }) {
-  const count = useUnreadNotificationCount();
-
-  return (
-    <View className="relative">
-      <Icon name="notifications" size={22} color={String(color)} />
-      <Badge count={count} />
     </View>
   );
 }
@@ -139,8 +127,6 @@ export default function TabLayout() {
             tabBarIcon: ({ color }) =>
               tab.isChat ? (
                 <ChatTabIcon color={color} />
-              ) : tab.isNotifications ? (
-                <NotificationsTabIcon color={color} />
               ) : (
                 <TabIcon name={tab.iconName} color={color} />
               ),

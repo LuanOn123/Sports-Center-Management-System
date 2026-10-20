@@ -13,6 +13,5 @@ export * from './Skeleton';
 export * from './ScreenHeader';
 export * from './InfoBanner';
 export * from './InfoRow';
-export * from './QuickAccessGrid';
 export * from './FilterChip';
 export * from './ScheduleDetailView';
