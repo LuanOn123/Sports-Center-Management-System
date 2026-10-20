@@ -12,6 +12,7 @@ import { Building2, RefreshCw } from "lucide-react";
 import { api } from "../../shared/api";
 import { money } from "../../shared/config";
 import { Empty, ErrorState, Loading } from "../../shared/ui";
+import { FacilityCapacityCard } from "./FacilityCapacityGauges";
 import "./admin.css";
 
 type FacilityMetric = {
@@ -294,6 +295,25 @@ export function AdminDashboard() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                </section>
+                <section className="panel">
+                  <div className="panel-heading">
+                    <div>
+                      <h2>Định mức & Sử dụng tài nguyên cơ sở</h2>
+                      <p>
+                        Kiểm soát giới hạn số lớp, phòng học, HLV, hội viên và bộ môn theo từng cơ sở (Xanh lá &lt;80%, Cam 80-99%, Đỏ &ge;100%).
+                      </p>
+                    </div>
+                  </div>
+                  <div className="facility-capacity-grid">
+                    {data.facilities.map((f) => (
+                      <FacilityCapacityCard
+                        key={f.id}
+                        facilityId={f.id}
+                        facilityName={f.name}
+                      />
+                    ))}
                   </div>
                 </section>
               </>

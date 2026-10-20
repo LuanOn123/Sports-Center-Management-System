@@ -1,8 +1,10 @@
 import { sportNames } from "../../shared/sports";
+import { MemberTermBanner } from "../../shared/MemberTermBanner";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { classesApi } from "../../api/classes.api";
+import { api } from "../../shared/api";
 import type { AreaType } from "../../types/member";
 import {
   Search,
@@ -28,24 +30,64 @@ function CoursePatternSummary({ classId }: { classId: string }) {
         Đang tải lịch học...
       </span>
     );
+  const term =
+    (data?.course as any)?.term ||
+    data?.sessions?.find((s: any) => s.term)?.term;
   const slots = data?.course?.slots || [];
-  if (!slots.length)
+  if (!slots.length && !term)
     return (
       <span style={{ color: "var(--member-muted, #98a2b3)" }}>
         Chưa có lịch học sắp tới
       </span>
     );
-  return slots.slice(0, 4).map((slot) => (
-    <div
-      key={`${slot.weekday}-${slot.startTime}-${slot.roomId}`}
-      style={{ display: "flex", alignItems: "center", gap: 6 }}
-    >
-      <Clock3 size={14} color="var(--member-muted, #58695f)" />
-      <span>
-        {slot.weekdayLabel} · {slot.startTime}–{slot.endTime}
-      </span>
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {term && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          <span
+            style={{
+              alignSelf: "flex-start",
+              fontSize: 11,
+              fontWeight: 700,
+              color: "#15803d",
+              backgroundColor: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+              padding: "2px 8px",
+              borderRadius: 6,
+            }}
+          >
+            📅 {term.name}
+          </span>
+          {term.status === "OPEN_REGISTRATION" && (
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: "#0369a1",
+                backgroundColor: "#f0f9ff",
+                border: "1px solid #bae6fd",
+                padding: "2px 6px",
+                borderRadius: 6,
+              }}
+            >
+              ⚡ Mở đăng ký
+            </span>
+          )}
+        </div>
+      )}
+      {slots.slice(0, 4).map((slot) => (
+        <div
+          key={`${slot.weekday}-${slot.startTime}-${slot.roomId}`}
+          style={{ display: "flex", alignItems: "center", gap: 6 }}
+        >
+          <Clock3 size={14} color="var(--member-muted, #58695f)" />
+          <span>
+            {slot.weekdayLabel} · {slot.startTime}–{slot.endTime}
+          </span>
+        </div>
+      ))}
     </div>
-  ));
+  );
 }
 
 export function BrowseClassesPage() {
@@ -57,7 +99,22 @@ export function BrowseClassesPage() {
     "",
   );
   const [selectedArea, setSelectedArea] = useState<AreaType | "">("");
+  const [selectedTerm, setSelectedTerm] = useState<string>("");
   const [page, setPage] = useState(1);
+
+  // Fetch terms
+  const { data: termsData } = useQuery({
+    queryKey: ["terms-list"],
+    queryFn: () => api<any>("GET /terms", {}),
+  });
+  const { data: currentTermData } = useQuery({
+    queryKey: ["terms-current"],
+    queryFn: () => api<any>("GET /terms/current", {}),
+  });
+
+  const termsList: any[] = Array.isArray(termsData?.data)
+    ? termsData.data
+    : (termsData?.data?.terms ?? []);
 
   // Fetch sports for filtering
   const { data: sportsData } = useQuery({
@@ -77,6 +134,7 @@ export function BrowseClassesPage() {
       selectedSport,
       selectedType,
       selectedArea,
+      selectedTerm,
       page,
     ],
     queryFn: () =>
@@ -85,6 +143,7 @@ export function BrowseClassesPage() {
         sportId: selectedSport || undefined,
         classType: selectedType || undefined,
         areaType: selectedArea || undefined,
+        termId: selectedTerm || undefined,
         isActive: true,
         page,
         limit: 12,
@@ -93,6 +152,7 @@ export function BrowseClassesPage() {
 
   const classes = classData?.classes || [];
   const sports = sportsData?.sports || [];
+
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -135,6 +195,11 @@ export function BrowseClassesPage() {
           </p>
         </div>
       </div>
+
+
+      {/* TERM STATUS BANNER — hiển thị trạng thái kỳ học / cổng đăng ký */}
+      <MemberTermBanner variant="full" />
+
 
       <div className="member-sport-tabs" aria-label="Chọn bộ môn">
         <button
@@ -250,7 +315,27 @@ export function BrowseClassesPage() {
           </select>
         </div>
 
-        {(search || selectedSport || selectedType || selectedArea) && (
+        {/* Filter Term */}
+        <div style={{ flex: "0 1 200px" }}>
+          <select
+            aria-label="Lọc theo kỳ học"
+            value={selectedTerm}
+            onChange={(e) => {
+              setSelectedTerm(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">Tất cả kỳ học</option>
+            {termsList.map((t: any) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+                {t.id === currentTermData?.data?.id ? " (Kỳ hiện tại)" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {(search || selectedSport || selectedType || selectedArea || selectedTerm) && (
           <button
             className="member-button"
             onClick={() => {
@@ -258,6 +343,7 @@ export function BrowseClassesPage() {
               setSelectedSport("");
               setSelectedType("");
               setSelectedArea("");
+              setSelectedTerm("");
               setPage(1);
             }}
             style={{

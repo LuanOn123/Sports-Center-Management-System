@@ -1,10 +1,11 @@
 import { StatusBadge } from "../../shared/StatusBadge";
 import { ClassForm } from "./ClassForm";
+import { ScheduleForm } from "./ScheduleForm";
 import { CoachAssignmentForm } from "./CoachAssignmentForm";
 import { ClassRegistrations, MemberProfile } from "./UserCourseDetails";
 import { ResourceCollection } from "../../shared/ResourceCollection";
 import { CoachFeedback } from "../../shared/CoachFeedback";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -128,6 +129,25 @@ export function ResourcePage({
         ? allPages<RecordData>(listKey, { query: requestQuery, signal })
         : api<RecordData[]>(listKey, { query: requestQuery, signal }),
   });
+  const underCapacityQuery = useQuery({
+    queryKey: ["schedules", "under-capacity", 48],
+    queryFn: () =>
+      api<any>("GET /class-schedules/under-capacity", {
+        query: { hoursAhead: "48" },
+      }),
+    enabled: r.slug === "schedules" && role === "MANAGER",
+    refetchInterval: 60000,
+  });
+  const underCapacitySchedules: any[] = useMemo(() => {
+    return underCapacityQuery.data?.data?.schedules ?? [];
+  }, [underCapacityQuery.data]);
+  const underCapacityMap = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const s of underCapacitySchedules) {
+      map.set(String(s.id), s);
+    }
+    return map;
+  }, [underCapacitySchedules]);
   const readOnly =
     (["ADMIN", "RECEPTIONIST"].includes(role) && r.slug === "schedules") ||
     (role !== "ADMIN" &&
@@ -245,6 +265,27 @@ export function ResourcePage({
           <Repeat2 size={17} />
         </button>
       )}
+      {r.slug === "schedules" &&
+        role === "MANAGER" &&
+        underCapacityMap.has(String(row.id)) &&
+        row.status === "SCHEDULED" && (
+          <button
+            aria-label="Hủy buổi do không đủ sĩ số"
+            title="Hủy buổi do không đủ sĩ số"
+            className="button small danger"
+            style={{ fontSize: "0.75rem", padding: "2px 6px", whiteSpace: "nowrap" }}
+            onClick={() => {
+              const uc = underCapacityMap.get(String(row.id));
+              setBError(undefined);
+              setCancelReason(
+                `Lớp không đạt sĩ số tối thiểu (hiện có ${uc.bookedCount}/${uc.minCapacity} học viên)`,
+              );
+              setModal({ kind: "delete", row });
+            }}
+          >
+            Hủy (thiếu sĩ số)
+          </button>
+        )}
       {contract[remove] && (
         <button
           aria-label={r.slug === "schedules" ? "Hủy lịch" : "Ngừng hoạt động"}
@@ -291,6 +332,60 @@ export function ResourcePage({
           <button className="text-button" onClick={() => setNotice("")}>
             Đóng
           </button>
+        </div>
+      )}
+      {r.slug === "schedules" && role === "MANAGER" && underCapacitySchedules.length > 0 && (
+        <div
+          className="panel"
+          style={{
+            backgroundColor: "#fffbeb",
+            border: "1px solid #fde68a",
+            marginBottom: "16px",
+            padding: "16px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+            <h3 style={{ margin: 0, color: "#92400e", fontSize: "1rem", display: "flex", alignItems: "center", gap: "6px" }}>
+              ⚠️ Buổi học trong 48 giờ tới chưa đủ sĩ số tối thiểu ({underCapacitySchedules.length} buổi)
+            </h3>
+            <span style={{ fontSize: "0.85rem", color: "#b45309" }}>Yêu cầu đạt sĩ số tối thiểu (minCapacity)</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {underCapacitySchedules.map((s: any) => (
+              <div
+                key={s.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  background: "#ffffff",
+                  padding: "10px 14px",
+                  borderRadius: "6px",
+                  border: "1px solid #fef3c7",
+                }}
+              >
+                <div>
+                  <strong>{s.className}</strong> · Phòng {s.roomName} ·{" "}
+                  <span>{new Date(s.startTime).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}</span>
+                  {" — "}
+                  <span style={{ color: "#b45309", fontWeight: 600 }}>
+                    Chưa đủ sĩ số ({s.bookedCount}/{s.minCapacity} học viên · Thiếu {s.shortfall})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="button small danger"
+                  onClick={() => {
+                    setBError(undefined);
+                    setCancelReason(`Lớp không đạt sĩ số tối thiểu (hiện có ${s.bookedCount}/${s.minCapacity} học viên)`);
+                    setModal({ kind: "delete", row: s });
+                  }}
+                >
+                  Hủy buổi do không đủ sĩ số
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
       <section className="panel">
@@ -396,6 +491,7 @@ export function ResourcePage({
             view={calendarView}
             onCursorChange={setCalendarCursor}
             onViewChange={setCalendarView}
+            underCapacityMap={underCapacityMap}
             onSelect={(row) => {
               setDetailTab("overview");
               setModal({ kind: "detail", row });
@@ -436,7 +532,39 @@ export function ResourcePage({
                                 .slice(0, 2)
                                 .toUpperCase()}
                             </span>
-                            <strong>{display(at(row, k))}</strong>
+                            <div>
+                              <strong>{display(at(row, k))}</strong>
+                              {r.slug === "schedules" &&
+                                underCapacityMap.has(String(row.id)) && (
+                                  <div>
+                                    <span
+                                      className="badge warning"
+                                      style={{
+                                        backgroundColor: "#fef3c7",
+                                        color: "#92400e",
+                                        fontSize: "0.72rem",
+                                        padding: "1px 5px",
+                                        borderRadius: "4px",
+                                        fontWeight: 600,
+                                        display: "inline-block",
+                                        marginTop: "2px",
+                                      }}
+                                    >
+                                      ⚠️ Chưa đủ sĩ số (
+                                      {
+                                        underCapacityMap.get(String(row.id))
+                                          .bookedCount
+                                      }
+                                      /
+                                      {
+                                        underCapacityMap.get(String(row.id))
+                                          .minCapacity
+                                      }{" "}
+                                      học viên)
+                                    </span>
+                                  </div>
+                                )}
+                            </div>
                           </div>
                         ) : [
                             "isActive",
@@ -535,6 +663,14 @@ export function ResourcePage({
           {r.slug === "classes" && ["create", "edit"].includes(modal.kind) ? (
             <ClassForm
               initial={modal.kind === "edit" ? modal.row : {}}
+              onSuccess={done}
+              onCancel={() => setModal(null)}
+              onBusyChange={setBusy}
+            />
+          ) : r.slug === "schedules" && ["create", "edit"].includes(modal.kind) ? (
+            <ScheduleForm
+              initial={modal.kind === "edit" ? modal.row : {}}
+              mode={modal.kind as "create" | "edit"}
               onSuccess={done}
               onCancel={() => setModal(null)}
               onBusyChange={setBusy}

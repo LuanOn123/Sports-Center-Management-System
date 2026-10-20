@@ -1,4 +1,4 @@
-﻿import { DistributionChart } from "../../shared/DistributionChart";
+import { DistributionChart } from "../../shared/DistributionChart";
 import { useState } from "react";
 import { BusinessReports } from "./BusinessReports";
 import { useQuery } from "@tanstack/react-query";
@@ -494,6 +494,82 @@ export function Dashboard({ reports = false, base = "/manager" }: { reports?: bo
                   </section>
                 );
               })}
+            </div>
+          )}
+          {reports && (
+            <div className="dashboard-grid">
+              {memberships.data?.data?.plansBreakdown &&
+                memberships.data.data.plansBreakdown.length > 0 && (
+                  <section className="panel">
+                    <div className="panel-heading">
+                      <div>
+                        <h2>Phân bổ theo gói tập</h2>
+                        <p>
+                          Doanh thu và hội viên đang hoạt động theo từng gói dịch vụ.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="table-scroll">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Gói tập</th>
+                            <th>Số lượt mua</th>
+                            <th>Đang kích hoạt</th>
+                            <th>Doanh thu</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {memberships.data.data.plansBreakdown.map((p) => (
+                            <tr key={p.planId}>
+                              <td>
+                                <strong>{p.planName}</strong>
+                              </td>
+                              <td>{p.count}</td>
+                              <td>{p.activeCount}</td>
+                              <td>{money(p.revenue)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                )}
+              {memberships.data?.data?.topClasses &&
+                memberships.data.data.topClasses.length > 0 && (
+                  <section className="panel">
+                    <div className="panel-heading">
+                      <div>
+                        <h2>Lớp học được đăng ký nhiều (Hội viên)</h2>
+                        <p>Các lớp có lượt ghi danh cao nhất từ hội viên.</p>
+                      </div>
+                    </div>
+                    <div className="table-scroll">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Lớp học</th>
+                            <th>Huấn luyện viên</th>
+                            <th>Lượt đăng ký</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {memberships.data.data.topClasses.map((c) => (
+                            <tr key={c.classId}>
+                              <td>
+                                <strong>{c.className}</strong>
+                              </td>
+                              <td>{c.coachName || "Chưa phân công"}</td>
+                              <td>
+                                <span className="badge">{c.count} lượt</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                )}
             </div>
           )}
         </>

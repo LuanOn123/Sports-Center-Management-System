@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Class" ADD COLUMN "minCapacity" INTEGER NOT NULL DEFAULT 1;

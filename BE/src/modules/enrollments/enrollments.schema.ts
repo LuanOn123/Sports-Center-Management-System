@@ -3,6 +3,8 @@ import { z } from "zod";
 export const CreateEnrollmentSchema = z.object({
   scheduleId: z.string().min(1),
   memberId: z.string().optional(), // required when staff/manager books for a member
+  healthNotes: z.string().trim().max(1000, "Ghi chú sức khỏe không quá 1000 ký tự").nullable().optional(),
+  saveToProfile: z.boolean().optional(),
 });
 
 // Chuyển chỗ đặt sang buổi khác (không sửa lịch — chỉ đổi Enrollment).
@@ -22,5 +24,16 @@ export const EnrollmentQuerySchema = z.object({
 export const EnrollWholeCourseSchema = z.object({
   classId: z.string().min(1),
   memberId: z.string().optional(), // required when staff/manager enrolls for a member
+  healthNotes: z.string().trim().max(1000, "Ghi chú sức khỏe không quá 1000 ký tự").nullable().optional(),
+  saveToProfile: z.boolean().optional(),
+});
+
+export const UpdateEnrollmentHealthNotesSchema = z.object({
+  healthNotes: z.string().trim().max(1000, "Ghi chú sức khỏe không quá 1000 ký tự").nullable().optional(),
+  saveToProfile: z.boolean().optional(),
+});
+
+export const RequestEnrollmentLeaveSchema = z.object({
+  reason: z.string().trim().min(3, "Lý do xin nghỉ phải có ít nhất 3 ký tự").max(1000, "Lý do không quá 1000 ký tự"),
 });
 

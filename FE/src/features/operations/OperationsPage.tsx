@@ -45,6 +45,7 @@ const titleOf = (row: RecordData) =>
   String(
     row.name ||
       row.title ||
+      row.fullName ||
       at(row, "user.fullName") ||
       at(row, "class.name") ||
       at(row, "member.user.fullName") ||
@@ -475,10 +476,28 @@ function OperationForm(props: {
         planId: plans
           .filter((p) => p.tier !== "FREE" && p.isActive)
           .map((p) => ({ value: String(p.id), label: titleOf(p) })),
-        memberId: members.map((m) => ({
-          value: String(m.id),
-          label: titleOf((m.user as RecordData) || m),
-        })),
+        memberId: members
+          .filter((m) => (m.user as RecordData)?.isActive !== false)
+          .map((m) => {
+            const user = (m.user as RecordData) || {};
+            const fullName = String(
+              user.fullName ||
+                at(m, "user.fullName") ||
+                m.fullName ||
+                m.name ||
+                "",
+            ).trim();
+            const contact = String(user.phone || user.email || "").trim();
+            const label = fullName
+              ? contact
+                ? `${fullName} · ${contact}`
+                : fullName
+              : contact || titleOf((m.user as RecordData) || m);
+            return {
+              value: String(m.id),
+              label,
+            };
+          }),
       };
     },
   });
@@ -558,17 +577,36 @@ function SlotForm({ onSuccess }: { onSuccess: () => void }) {
 function PatternForm({ onSuccess }: { onSuccess: () => void }) {
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
+  const [selectedTermId, setSelectedTermId] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
   const q = useQuery({
     queryKey: ["pattern-resources"],
     queryFn: async () => {
-      const [classes, rooms, slots] = await Promise.all([
+      const [classes, rooms, slots, termsRes] = await Promise.all([
         allPages("GET /classes"),
         allPages("GET /rooms"),
         api<RecordData[]>("GET /slots"),
+        api<any>("GET /terms", {}),
       ]);
-      return { classes, rooms, slots: slots.data };
+      const terms = Array.isArray(termsRes?.data)
+        ? termsRes.data
+        : (termsRes?.data?.terms ?? []);
+      return { classes, rooms, slots: slots.data, terms };
     },
   });
+
+  const handleTermChange = (termId: string) => {
+    setSelectedTermId(termId);
+    if (!termId || !q.data?.terms) return;
+    const term = q.data.terms.find((t: any) => String(t.id) === termId);
+    if (term) {
+      if (term.startDate) setStartDate(String(term.startDate).slice(0, 10));
+      if (term.endDate) setEndDate(String(term.endDate).slice(0, 10));
+    }
+  };
+
   if (q.isPending) return <Loading />;
   if (q.error) return <ErrorState error={q.error} />;
   return (
@@ -585,8 +623,9 @@ function PatternForm({ onSuccess }: { onSuccess: () => void }) {
               roomId: data.get("roomId"),
               slotId: data.get("slotId"),
               weekdays: data.getAll("weekdays").map(Number),
-              startDate: data.get("startDate"),
-              endDate: data.get("endDate"),
+              startDate: startDate || data.get("startDate"),
+              endDate: endDate || data.get("endDate"),
+              termId: selectedTermId || undefined,
             },
           });
           onSuccess();
@@ -599,6 +638,20 @@ function PatternForm({ onSuccess }: { onSuccess: () => void }) {
     >
       <h2>Tạo các buổi học định kỳ</h2>
       <fieldset disabled={busy}>
+        <label>
+          Kỳ học áp dụng
+          <select
+            value={selectedTermId}
+            onChange={(e) => handleTermChange(e.target.value)}
+          >
+            <option value="">-- Không áp dụng kỳ học (Nhập ngày thủ công) --</option>
+            {q.data.terms.map((t: any) => (
+              <option key={String(t.id)} value={String(t.id)}>
+                {t.name} ({String(t.startDate || "").slice(0, 10)} – {String(t.endDate || "").slice(0, 10)})
+              </option>
+            ))}
+          </select>
+        </label>
         {(
           [
             ["classId", "Lớp học", q.data.classes],
@@ -622,11 +675,23 @@ function PatternForm({ onSuccess }: { onSuccess: () => void }) {
         ))}
         <label>
           Từ ngày
-          <input type="date" name="startDate" required />
+          <input
+            type="date"
+            name="startDate"
+            required
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
         </label>
         <label>
           Đến ngày
-          <input type="date" name="endDate" required />
+          <input
+            type="date"
+            name="endDate"
+            required
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
         </label>
         <div className="operations-actions">
           {[1, 2, 3, 4, 5, 6, 7].map((day) => (

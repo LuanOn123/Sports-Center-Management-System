@@ -63,6 +63,22 @@ async function main() {
   }, LIFECYCLE_INTERVAL_MS);
   lifecycleTimer.unref();
 
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      console.warn(`[Server] Port ${env.PORT} in use, retrying in 1s...`);
+      setTimeout(() => {
+        server.close();
+        server.listen(env.PORT, () => {
+          console.log(`Server health running at http://localhost:${env.PORT}/api/v1/health`);
+          console.log(`Swagger docs at http://localhost:${env.PORT}/api/v1/docs`);
+        });
+      }, 1000);
+    } else {
+      console.error("[Server] Fatal error:", err);
+      process.exit(1);
+    }
+  });
+
   server.listen(env.PORT, () => {
     console.log(`Server health running at http://localhost:${env.PORT}/api/v1/health`);
     console.log(`Swagger docs at http://localhost:${env.PORT}/api/v1/docs`);

@@ -40,6 +40,7 @@ enum MembershipStatus {
   EXPIRED
   CANCELLED
   SUSPENDED
+  SCHEDULED
 }
 
 enum TrainingLevel {
@@ -63,6 +64,13 @@ enum ScheduleStatus {
   SCHEDULED
   CANCELLED
   COMPLETED
+}
+
+enum TermStatus {
+  PLANNING
+  OPEN_REGISTRATION
+  IN_PROGRESS
+  CLOSED
 }
 
 enum EnrollmentStatus {
@@ -173,6 +181,11 @@ model Facility {
   contactInfo String?
   timezone    String   @default("Asia/Ho_Chi_Minh")
   isActive    Boolean  @default(true)
+  maxClasses  Int?
+  maxRooms    Int?
+  maxCoaches  Int?
+  maxMembers  Int?
+  maxSports   Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -187,6 +200,7 @@ model Facility {
   auditLogs AuditLog[]
   staffs      FacilityStaff[]
   visits      FacilityVisit[]
+  terms       Term[]
 }
 
 model FacilityStaff {
@@ -216,6 +230,7 @@ model MemberProfile {
   fitnessGoal        String?
   trainingLevel      TrainingLevel?
   trainingPreference String?
+  healthNotes        String?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
@@ -367,8 +382,9 @@ model Class {
   // Many-to-Many with Sport
   sports Sport[]
 
-  capacity  Int
-  classType ClassType @default(REGULAR)
+  capacity    Int
+  minCapacity Int       @default(1)
+  classType   ClassType @default(REGULAR)
   // Khu vực mà lớp học yêu cầu (POOL | INDOOR | OUTDOOR).
   // Khác với classType (REGULAR | PREMIUM là hạng lớp).
   areaType  AreaType
@@ -415,6 +431,8 @@ model ClassSchedule {
   startTime DateTime
   endTime   DateTime
   status    ScheduleStatus @default(SCHEDULED)
+  termId    String?
+  term      Term?          @relation(fields: [termId], references: [id], onDelete: SetNull)
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
@@ -426,6 +444,34 @@ model ClassSchedule {
   @@index([classId])
   @@index([roomId])
   @@index([startTime, endTime])
+  @@index([termId])
+}
+
+// ─────────────────────────────────────────
+// TERM / SEMESTER
+// ─────────────────────────────────────────
+
+model Term {
+  id                    String            @id @default(uuid())
+  code                  String            @unique
+  name                  String
+  startDate             DateTime
+  endDate               DateTime
+  registrationStartDate DateTime
+  registrationEndDate   DateTime
+  status                TermStatus        @default(PLANNING)
+  description           String?
+  facilityId            String?
+  facility              Facility?         @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  schedules             ClassSchedule[]
+  patterns              SchedulePattern[]
+
+  @@index([status])
+  @@index([startDate, endDate])
+  @@index([facilityId])
 }
 
 // ─────────────────────────────────────────
@@ -441,6 +487,7 @@ model Enrollment {
   scheduleId  String
   schedule    ClassSchedule    @relation(fields: [scheduleId], references: [id])
   status      EnrollmentStatus @default(BOOKED)
+  healthNotes String?
   bookedAt    DateTime         @default(now())
   cancelledAt DateTime?
   createdAt   DateTime         @default(now())
@@ -912,7 +959,11 @@ model SchedulePattern {
   weekdays Int[]
   startDate DateTime
   endDate DateTime
+  termId String?
+  term Term? @relation(fields: [termId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
+
+  @@index([termId])
 }
 model LeaveRequest {
   id String @id @default(uuid())

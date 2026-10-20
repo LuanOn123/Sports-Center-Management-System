@@ -18,6 +18,7 @@ export const UpdatePaymentStatusSchema = z.object({
 /** MEMBER tự tạo giao dịch mua gói qua chuyển khoản VietQR (chỉ nhận planId, không nhận memberId). */
 export const SepayCheckoutSchema = z.object({
   planId: z.string().min(1),
+  startDate: z.string().optional(),
 });
 
 /** DEV/DEMO: mô phỏng SePay gửi webhook "đã thu tiền" (chỉ khi SEPAY_MOCK_MODE=true). */

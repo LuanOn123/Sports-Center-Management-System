@@ -141,6 +141,20 @@ router.get(
 
 /**
  * @swagger
+ * /class-schedules/under-capacity:
+ *   get:
+ *     summary: Get schedules that have not met minCapacity
+ *     tags: [Class Schedules]
+ */
+router.get(
+  "/under-capacity",
+  authenticate,
+  authorizeExact("MANAGER"),
+  schedulesController.getUnderCapacitySchedules
+);
+
+/**
+ * @swagger
  * /class-schedules/{id}:
  *   get:
  *     summary: View schedule details (including enrolled count)

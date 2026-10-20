@@ -140,10 +140,65 @@ export async function closeStaleSepayPendingPayments(
   return { closed };
 }
 
+/**
+ * Tự động kích hoạt các gói SCHEDULED khi đã đến hoặc qua mốc startDate.
+ * Đồng thời chuyển gói ACTIVE cũ (nếu có) sang SUSPENDED.
+ */
+export async function activateScheduledSubscriptions(now: Date = new Date()): Promise<{ activated: number }> {
+  const ready = await prisma.membershipSubscription.findMany({
+    where: { status: "SCHEDULED", startDate: { lte: now } },
+    include: {
+      member: { select: { userId: true } },
+      plan: { select: { name: true, tier: true, durationDays: true } },
+    },
+    orderBy: { startDate: "asc" },
+    take: SUBSCRIPTION_LIFECYCLE.EXPIRE_BATCH,
+  });
+
+  let activated = 0;
+  for (const sub of ready) {
+    const success = await prisma.$transaction(async (tx) => {
+      // Suspend older active subscriptions of this member
+      await tx.membershipSubscription.updateMany({
+        where: { memberId: sub.memberId, status: "ACTIVE" },
+        data: { status: "SUSPENDED", suspendedAt: now },
+      });
+
+      const updated = await tx.membershipSubscription.updateMany({
+        where: { id: sub.id, status: "SCHEDULED" },
+        data: { status: "ACTIVE" },
+      });
+
+      if (updated.count === 0) return false;
+
+      await enqueueNotification(tx, {
+        userId: sub.member.userId,
+        type: "PAYMENT_SUCCESS",
+        title: "Gói tập của bạn đã được kích hoạt hôm nay!",
+        body: `Gói "${sub.plan.name}" (${sub.plan.tier}) của bạn đã chính thức bắt đầu hoạt động. Chúc bạn tập luyện hiệu quả!`,
+        metadata: { subscriptionId: sub.id },
+      });
+
+      return true;
+    });
+
+    if (success) activated++;
+  }
+
+  if (activated > 0) await flushNotificationOutbox().catch(() => {});
+  return { activated };
+}
+
 /** B07 — Một lượt job vòng đời (dùng cho interval trong server.ts và cho e2e). */
 export async function runSubscriptionLifecycleJobs(now: Date = new Date()) {
+  const activated = await activateScheduledSubscriptions(now);
   const expired = await expireStaleSubscriptions(now);
   const reminders = await sendSubscriptionExpiryReminders(now);
   const pendingClosed = await closeStaleSepayPendingPayments(now);
-  return { expired: expired.expired, reminders: reminders.sent, pendingClosed: pendingClosed.closed };
+  return {
+    activated: activated.activated,
+    expired: expired.expired,
+    reminders: reminders.sent,
+    pendingClosed: pendingClosed.closed,
+  };
 }

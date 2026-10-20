@@ -18,6 +18,7 @@ import { ResourcePage } from "./ResourcePage";
 import { ManagerUsers } from "./ManagerUsers";
 import { ManagerRooms } from "./ManagerRooms";
 import { ManagerOverview } from "./ManagerOverview";
+import { AdminTerms } from "./AdminTerms";
 import "./manager.css";
 
 const groups: NavigationGroup[] = [
@@ -25,6 +26,7 @@ const groups: NavigationGroup[] = [
   {
     title: "QUẢN LÝ CƠ SỞ",
     items: [
+      ["terms", "Kỳ học", CalendarDays],
       ["users", "Nhân sự cơ sở", Users],
       ["coaches", "Huấn luyện viên", Dumbbell],
       ["rooms", "Phòng tập", Warehouse],
@@ -79,6 +81,7 @@ export function ManagerLayout({
     >
       <Routes>
         <Route path="/manager/dashboard" element={<ManagerOverview />} />
+        <Route path="/manager/terms" element={<AdminTerms role="MANAGER" />} />
         <Route path="/manager/reports" element={<ManagerOverview reports />} />
         <Route path="/manager/users" element={<ManagerUsers />} />
         <Route

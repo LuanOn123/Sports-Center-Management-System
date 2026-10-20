@@ -5,17 +5,18 @@ const mocks = vi.hoisted(() => ({
     $transaction: vi.fn(),
     $executeRaw: vi.fn(),
     facility: { findUnique: vi.fn(), findMany: vi.fn() },
-    facilityStaff: { findFirst: vi.fn(), updateMany: vi.fn(), upsert: vi.fn() },
+    facilityStaff: { findFirst: vi.fn(), updateMany: vi.fn(), upsert: vi.fn(), groupBy: vi.fn() },
     payment: { groupBy: vi.fn() },
-    membershipSubscription: { findMany: vi.fn() },
+    membershipSubscription: { findMany: vi.fn(), groupBy: vi.fn() },
     enrollment: { findMany: vi.fn() },
     classSchedule: { findMany: vi.fn() },
-    class: { findUnique: vi.fn(), create: vi.fn() },
-    room: { findFirst: vi.fn() },
+    class: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), groupBy: vi.fn() },
+    room: { findFirst: vi.fn(), groupBy: vi.fn() },
     sport: { findMany: vi.fn() },
     memberProfile: { findMany: vi.fn() },
   },
 }));
+
 vi.mock("../../BE/src/config/prisma.js", () => ({ prisma: mocks.db }));
 vi.mock("../../BE/src/models/User.js", () => ({ User: mocks.user }));
 vi.mock("../../BE/src/modules/notifications/notifications.service.js", () => ({
@@ -44,7 +45,13 @@ beforeEach(() => {
   mocks.db.facilityStaff.findFirst.mockResolvedValue(null);
   mocks.db.facilityStaff.updateMany.mockResolvedValue({ count: 1 });
   mocks.db.facilityStaff.upsert.mockResolvedValue({ id: "assigned" });
+  // Default groupBy mocks for getFacilityOverview
+  mocks.db.class.groupBy.mockResolvedValue([]);
+  mocks.db.room.groupBy.mockResolvedValue([]);
+  mocks.db.facilityStaff.groupBy.mockResolvedValue([]);
+  mocks.db.membershipSubscription.groupBy.mockResolvedValue([]);
 });
+
 
 describe("facility manager assignment", () => {
   it("rejects an already assigned manager across facilities before removing the old one", async () => {
@@ -126,6 +133,8 @@ it("global overview deduplicates members and separates refunds and cancelled boo
     { memberId: "m1", status: "CANCELLED", class: { facilityId: "b" } },
   ]);
   mocks.db.classSchedule.findMany.mockResolvedValue([]);
+  mocks.db.class.findMany.mockResolvedValue([]);
+
   const result = await requestContext.run(
     { facilityId: "a", role: "ADMIN" },
     () => getFacilityOverview("2026-10-01", "2026-10-08"),

@@ -43,6 +43,7 @@ export function ClassForm({
   const [search, setSearch] = useState("");
   const [roomId, setRoomId] = useState(String(initial.defaultRoomId ?? ""));
   const [capacity, setCapacity] = useState(String(initial.capacity ?? ""));
+  const [minCapacity, setMinCapacity] = useState(String(initial.minCapacity ?? "1"));
   const [classType, setClassType] = useState(
     String(initial.classType ?? "REGULAR"),
   );
@@ -131,9 +132,14 @@ export function ClassForm({
           return;
         }
         const limit = Math.min(200, room.capacity),
-          count = Number(capacity);
+          count = Number(capacity),
+          minCount = Number(minCapacity);
         if (!Number.isInteger(count) || count < 1 || count > limit) {
           setError(new Error(`Sĩ số phải từ 1 đến ${limit} học viên.`));
+          return;
+        }
+        if (!Number.isInteger(minCount) || minCount < 1 || minCount > count) {
+          setError(new Error(`Sĩ số tối thiểu phải từ 1 đến ${count} (không vượt sĩ số tối đa).`));
           return;
         }
         if (
@@ -153,6 +159,7 @@ export function ClassForm({
           defaultRoomId: room.id,
           areaType: room.areaType,
           capacity: count,
+          minCapacity: minCount,
           classType,
         };
         if (
@@ -317,7 +324,7 @@ export function ClassForm({
           </div>
         )}
         <label>
-          Sĩ số lớp
+          Sĩ số tối đa
           <input
             type="number"
             required
@@ -326,6 +333,20 @@ export function ClassForm({
             value={capacity}
             onChange={(e) => setCapacity(e.target.value)}
           />
+        </label>
+        <label>
+          Sĩ số tối thiểu mở lớp
+          <input
+            type="number"
+            required
+            min={1}
+            max={Number(capacity) || Math.min(200, room?.capacity ?? 200)}
+            value={minCapacity}
+            onChange={(e) => setMinCapacity(e.target.value)}
+          />
+          {Number(minCapacity) > 0 && Number(capacity) > 0 && Number(minCapacity) <= Number(capacity) && (
+            <span className="field-note">Buổi học sẽ bị cảnh báo hủy nếu có ít hơn {minCapacity} học viên</span>
+          )}
         </label>
         <label>
           Loại lớp

@@ -1,12 +1,22 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar, Clock, MapPin, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  MapPin,
+  Users,
+  CalendarDays,
+  Table as TableIcon,
+  LayoutGrid,
+} from "lucide-react";
 import { classesApi } from "../../api/classes.api";
 import { enrollmentsApi } from "../../api/enrollments.api";
+import { authApi } from "../../api/auth.api";
+import { EnrollConfirmModal } from "../../components/member/EnrollConfirmModal";
 import {
   AlertBanner,
-  ConfirmModal,
   EmptyState,
   LoadingSpinner,
   StatusBadge,
@@ -17,6 +27,7 @@ import { ErrorState } from "../../shared/feedback";
 import { formatMemberDate } from "../../shared/memberFormat";
 import { sportNames } from "../../shared/sports";
 import type {
+  CoursePlan,
   CoursePlanSession,
   CourseRegistrationBlocker,
 } from "../../types/member";
@@ -69,6 +80,490 @@ function sessionLabel(session: CoursePlanSession) {
   };
 }
 
+const WEEKDAYS_MAP = [
+  { weekday: 1, label: "Thứ 2", short: "T2" },
+  { weekday: 2, label: "Thứ 3", short: "T3" },
+  { weekday: 3, label: "Thứ 4", short: "T4" },
+  { weekday: 4, label: "Thứ 5", short: "T5" },
+  { weekday: 5, label: "Thứ 6", short: "T6" },
+  { weekday: 6, label: "Thứ 7", short: "T7" },
+  { weekday: 7, label: "Chủ nhật", short: "CN" },
+];
+
+function CourseScheduleTableView({
+  course,
+  sessions,
+}: {
+  course: NonNullable<CoursePlan["course"]>;
+  sessions: CoursePlanSession[];
+}) {
+  const [viewMode, setViewMode] = useState<"table" | "weekly">("table");
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 14,
+        marginTop: 16,
+        padding: "20px 22px",
+        borderRadius: 16,
+        background: "var(--member-surface, #131a26)",
+        border: "1px solid var(--member-border, #263143)",
+      }}
+    >
+      {/* Header with Switcher */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 12,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              background: "rgba(212, 255, 0, 0.1)",
+              border: "1px solid var(--member-accent-border, #526222)",
+              color: "var(--member-accent, #d4ff00)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <CalendarDays size={18} />
+          </div>
+          <div>
+            <strong
+              style={{
+                fontSize: 15,
+                color: "var(--member-text, #f1f4f9)",
+                display: "block",
+              }}
+            >
+              Lịch trình khóa học ({course.totalSessions} buổi)
+            </strong>
+            <span style={{ fontSize: 12, color: "var(--member-muted, #9baac0)" }}>
+              {formatMemberDate(course.firstSessionStart)} → {formatMemberDate(course.lastSessionStart)}
+            </span>
+          </div>
+        </div>
+
+        {/* View Mode Switcher */}
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            padding: 3,
+            borderRadius: 10,
+            background: "var(--member-surface-alt, #0e141e)",
+            border: "1px solid var(--member-border, #263143)",
+            gap: 2,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setViewMode("table")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "7px 14px",
+              borderRadius: 8,
+              border: "none",
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              background: viewMode === "table" ? "var(--member-accent, #d4ff00)" : "transparent",
+              color: viewMode === "table" ? "#000" : "var(--member-muted, #9baac0)",
+            }}
+          >
+            <TableIcon size={14} />
+            Bảng danh sách ({course.totalSessions})
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("weekly")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "7px 14px",
+              borderRadius: 8,
+              border: "none",
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              background: viewMode === "weekly" ? "var(--member-accent, #d4ff00)" : "transparent",
+              color: viewMode === "weekly" ? "#000" : "var(--member-muted, #9baac0)",
+            }}
+          >
+            <LayoutGrid size={14} />
+            Thời khóa biểu tuần
+          </button>
+        </div>
+      </div>
+
+      {/* VIEW 1: TABLE */}
+      {viewMode === "table" && (
+        <div
+          style={{
+            overflowX: "auto",
+            maxHeight: 480,
+            borderRadius: 12,
+            border: "1px solid var(--member-border, #263143)",
+            background: "var(--member-surface-alt, #0e141e)",
+          }}
+        >
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              textAlign: "left",
+              fontSize: 13,
+            }}
+          >
+            <thead
+              style={{
+                position: "sticky",
+                top: 0,
+                background: "var(--member-surface, #131a26)",
+                borderBottom: "1px solid var(--member-border, #263143)",
+                zIndex: 2,
+              }}
+            >
+              <tr>
+                <th style={{ padding: "12px 14px", color: "var(--member-muted, #9baac0)", fontWeight: 700, width: 70 }}>
+                  Buổi
+                </th>
+                <th style={{ padding: "12px 14px", color: "var(--member-muted, #9baac0)", fontWeight: 700 }}>
+                  Thứ & Ngày tập
+                </th>
+                <th style={{ padding: "12px 14px", color: "var(--member-muted, #9baac0)", fontWeight: 700 }}>
+                  Khung giờ
+                </th>
+                <th style={{ padding: "12px 14px", color: "var(--member-muted, #9baac0)", fontWeight: 700 }}>
+                  Phòng tập
+                </th>
+                <th style={{ padding: "12px 14px", color: "var(--member-muted, #9baac0)", fontWeight: 700 }}>
+                  Chỗ trống
+                </th>
+                <th style={{ padding: "12px 14px", color: "var(--member-muted, #9baac0)", fontWeight: 700 }}>
+                  Trạng thái
+                </th>
+                <th style={{ padding: "12px 14px", color: "var(--member-muted, #9baac0)", fontWeight: 700, textAlign: "right" }}>
+                  Thao tác
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sessions.map((session, idx) => {
+                const label = sessionLabel(session);
+                const isOdd = idx % 2 === 1;
+                const availablePct = Math.round((session.remainingSlots / course.capacity) * 100);
+
+                return (
+                  <tr
+                    key={session.id}
+                    style={{
+                      background: isOdd ? "rgba(255, 255, 255, 0.02)" : "transparent",
+                      borderBottom: "1px solid var(--member-border, #263143)",
+                      transition: "background 0.15s ease",
+                    }}
+                  >
+                    <td style={{ padding: "12px 14px" }}>
+                      <span
+                        style={{
+                          fontWeight: 800,
+                          fontSize: 12,
+                          padding: "3px 8px",
+                          borderRadius: 6,
+                          background: "var(--member-surface, #131a26)",
+                          border: "1px solid var(--member-border, #263143)",
+                          color: "var(--member-accent, #d4ff00)",
+                        }}
+                      >
+                        #{String(idx + 1).padStart(2, "0")}
+                      </span>
+                    </td>
+                    <td style={{ padding: "12px 14px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span
+                          style={{
+                            padding: "2px 8px",
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            background: session.weekday === 2 ? "#1e293b" : "#172554",
+                            color: session.weekday === 2 ? "#38bdf8" : "#818cf8",
+                            border: "1px solid rgba(255, 255, 255, 0.08)",
+                          }}
+                        >
+                          {session.weekdayLabel}
+                        </span>
+                        <span style={{ color: "var(--member-text, #f1f4f9)", fontWeight: 600 }}>
+                          {formatMemberDate(session.startTime)}
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "12px 14px" }}>
+                      <div
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          color: "var(--member-text, #f1f4f9)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        <Clock size={14} color="var(--member-accent, #d4ff00)" />
+                        {session.timeLabel}
+                      </div>
+                    </td>
+                    <td style={{ padding: "12px 14px" }}>
+                      <div
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 5,
+                          color: "var(--member-muted, #9baac0)",
+                        }}
+                      >
+                        <MapPin size={13} />
+                        {session.room.name}
+                      </div>
+                    </td>
+                    <td style={{ padding: "12px 14px" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: session.isFull
+                              ? "var(--member-danger, #ff8d9a)"
+                              : "var(--member-success, #64dfb4)",
+                          }}
+                        >
+                          {session.isFull ? "Hết chỗ" : `Còn ${session.remainingSlots}/${course.capacity}`}
+                        </span>
+                        <div
+                          style={{
+                            width: 80,
+                            height: 4,
+                            background: "rgba(255, 255, 255, 0.1)",
+                            borderRadius: 999,
+                            overflow: "hidden",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: `${availablePct}%`,
+                              height: "100%",
+                              background: session.isFull
+                                ? "var(--member-danger, #ff8d9a)"
+                                : "var(--member-success, #64dfb4)",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: "12px 14px" }}>
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "4px 10px",
+                          borderRadius: 999,
+                          color: label.color,
+                          background: label.background,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          border: "1px solid rgba(255, 255, 255, 0.05)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {label.text}
+                      </span>
+                    </td>
+                    <td style={{ padding: "12px 14px", textAlign: "right" }}>
+                      {session.isFull &&
+                        session.status === "SCHEDULED" &&
+                        Date.parse(session.startTime) > Date.now() &&
+                        !["BOOKED", "COMPLETED"].includes(session.myEnrollmentStatus ?? "") && (
+                          <WaitlistAction scheduleId={session.id} />
+                        )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* VIEW 2: WEEKLY TIMETABLE MATRIX */}
+      {viewMode === "weekly" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+              gap: 10,
+            }}
+          >
+            {WEEKDAYS_MAP.map((d) => {
+              const daySlots = course.slots.filter((s) => s.weekday === d.weekday);
+              const hasClass = daySlots.length > 0;
+              return (
+                <div
+                  key={d.weekday}
+                  style={{
+                    borderRadius: 12,
+                    padding: "14px 12px",
+                    background: hasClass
+                      ? "linear-gradient(145deg, rgba(212, 255, 0, 0.08) 0%, rgba(19, 26, 38, 0.9) 100%)"
+                      : "var(--member-surface-alt, #0e141e)",
+                    border: hasClass
+                      ? "1px solid var(--member-accent-border, #526222)"
+                      : "1px dashed var(--member-border, #263143)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                    minHeight: 120,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+                      paddingBottom: 6,
+                    }}
+                  >
+                    <strong
+                      style={{
+                        fontSize: 13,
+                        color: hasClass ? "var(--member-accent, #d4ff00)" : "var(--member-muted, #9baac0)",
+                      }}
+                    >
+                      {d.label}
+                    </strong>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: "2px 6px",
+                        borderRadius: 6,
+                        background: hasClass ? "rgba(212, 255, 0, 0.15)" : "transparent",
+                        color: hasClass ? "var(--member-accent, #d4ff00)" : "var(--member-muted, #667085)",
+                      }}
+                    >
+                      {d.short}
+                    </span>
+                  </div>
+
+                  {hasClass ? (
+                    daySlots.map((slot) => (
+                      <div
+                        key={slot.startTime}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 6,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 5,
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: "var(--member-text, #f1f4f9)",
+                          }}
+                        >
+                          <Clock size={13} color="var(--member-accent, #d4ff00)" />
+                          {slot.startTime}–{slot.endTime}
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            fontSize: 11,
+                            color: "var(--member-muted, #9baac0)",
+                          }}
+                        >
+                          <MapPin size={11} />
+                          {slot.roomName}
+                        </div>
+                        <div
+                          style={{
+                            marginTop: 4,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "#64dfb4",
+                            background: "rgba(100, 223, 180, 0.1)",
+                            padding: "3px 8px",
+                            borderRadius: 6,
+                            alignSelf: "flex-start",
+                            border: "1px solid rgba(100, 223, 180, 0.2)",
+                          }}
+                        >
+                          {slot.sessionCount} buổi tập
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "var(--member-muted, #667085)",
+                        fontStyle: "italic",
+                        paddingTop: 10,
+                        textAlign: "center",
+                      }}
+                    >
+                      Nghỉ tập
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div
+            style={{
+              padding: "10px 14px",
+              borderRadius: 8,
+              background: "var(--member-surface-alt, #0e141e)",
+              border: "1px solid var(--member-border, #263143)",
+              fontSize: 12,
+              color: "var(--member-muted, #9baac0)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span>💡</span>
+            <span>
+              Lớp học diễn ra định kỳ <strong>{course.slots.length} buổi/tuần</strong>.
+              Thời gian học cố định giúp bạn dễ dàng sắp xếp công việc và duy trì thói quen tập luyện đều đặn.
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const cardStyle = {
   background: "var(--member-surface, #ffffff)",
   borderRadius: 20,
@@ -102,13 +597,21 @@ export function ClassDetailPage() {
     queryFn: () => (id ? classesApi.getCoursePlan(id) : null),
     enabled: Boolean(id),
   });
+  const { data: currentUser } = useQuery({
+    queryKey: ["current-user-me"],
+    queryFn: () => authApi.getMe(),
+  });
   const enrollments = useQuery({
     queryKey: ["my-enrollments", "feedback-eligibility"],
     queryFn: () => enrollmentsApi.getMyEnrollments(),
   });
 
   const enrollCourseMutation = useMutation({
-    mutationFn: () => enrollmentsApi.enrollWholeCourse(id!),
+    mutationFn: (variables?: { healthNotes?: string; saveToProfile?: boolean }) =>
+      enrollmentsApi.enrollWholeCourse(id!, undefined, {
+        healthNotes: variables?.healthNotes || null,
+        saveToProfile: variables?.saveToProfile,
+      }),
     onSuccess: (result) => {
       const { summary } = result;
       setActionSuccess(
@@ -158,6 +661,36 @@ export function ClassDetailPage() {
   const course = plan?.course;
   const registration = plan?.registration;
   const mutationBlockers = courseBlockers(actionError);
+
+  const courseTerm =
+    (plan?.course as any)?.term ||
+    plan?.sessions?.find((s: any) => s.term)?.term;
+
+  const now = Date.now();
+  const isTermPlanning = courseTerm?.status === "PLANNING";
+  const isTermNotStarted = Boolean(
+    courseTerm?.registrationStartDate &&
+      new Date(courseTerm.registrationStartDate).getTime() > now,
+  );
+  const isTermClosed = Boolean(
+    courseTerm?.status === "CLOSED" ||
+      (courseTerm?.registrationEndDate &&
+        new Date(courseTerm.registrationEndDate).getTime() < now),
+  );
+  const isTermBlocked = Boolean(
+    courseTerm && (isTermPlanning || isTermNotStarted || isTermClosed),
+  );
+
+  const daysRemaining =
+    courseTerm?.registrationEndDate && !isTermClosed
+      ? Math.max(
+          0,
+          Math.ceil(
+            (new Date(courseTerm.registrationEndDate).getTime() - now) /
+              (1000 * 60 * 60 * 24),
+          ),
+        )
+      : null;
 
   const blockerActions = (blockers: CourseRegistrationBlocker[]) => {
     const codes = blockers.map((blocker) => blocker.code);
@@ -566,12 +1099,59 @@ export function ClassDetailPage() {
                 {blockerList(registration.blockers)}
               </div>
             )}
+            {courseTerm && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {isTermPlanning && (
+                  <AlertBanner
+                    type="warning"
+                    title="Chưa mở cổng đăng ký"
+                    message={`Khóa học thuộc kỳ "${courseTerm.name}" đang lập kế hoạch, chưa mở đăng ký.`}
+                  />
+                )}
+                {isTermNotStarted && (
+                  <AlertBanner
+                    type="info"
+                    title="Chưa tới ngày mở đăng ký"
+                    message={`Kỳ học "${courseTerm.name}" sẽ mở cổng đăng ký từ ngày ${new Date(courseTerm.registrationStartDate).toLocaleDateString("vi-VN")}.`}
+                  />
+                )}
+                {isTermClosed && (
+                  <AlertBanner
+                    type="error"
+                    title="Hết hạn đăng ký"
+                    message={`Đã hết thời hạn đăng ký cho kỳ học "${courseTerm.name}".`}
+                  />
+                )}
+                {!isTermBlocked && (
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 12px",
+                      borderRadius: 8,
+                      backgroundColor: "var(--member-surface-alt, #f0fdf4)",
+                      border: "1px solid var(--member-border, #bbf7d0)",
+                      fontSize: 13,
+                      color: "#166534",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <span>📅 Kỳ học: {courseTerm.name}</span>
+                    {daysRemaining !== null && (
+                      <span>• Cổng đăng ký còn {daysRemaining} ngày</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <button
               className="button primary"
               disabled={
                 enrollCourseMutation.isPending ||
                 !registration ||
                 !registration.eligible ||
+                isTermBlocked ||
                 course.availability.minRemainingSlots === 0
               }
               onClick={() => {
@@ -581,102 +1161,44 @@ export function ClassDetailPage() {
               }}
               style={{ alignSelf: "flex-start" }}
             >
-              {!registration ||
-              !registration.eligible ||
-              course.availability.minRemainingSlots === 0
-                ? "Chưa thể đăng ký"
-                : "Đăng ký trọn khóa"}
+              {isTermPlanning
+                ? "Kỳ đang lập kế hoạch"
+                : isTermNotStarted
+                  ? "Chưa mở đăng ký"
+                  : isTermClosed
+                    ? "Đã hết hạn đăng ký"
+                    : !registration ||
+                        !registration.eligible ||
+                        course.availability.minRemainingSlots === 0
+                      ? "Chưa thể đăng ký"
+                      : "Đăng ký trọn khóa"}
             </button>
-            <details className="detail-disclosure">
-              <summary>Xem {course.totalSessions} buổi học</summary>
-              <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                {plan.sessions.map((session) => {
-                  const label = sessionLabel(session);
-                  return (
-                    <div
-                      key={session.id}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                        gap: 14,
-                        padding: "14px 16px",
-                        border: "1px solid var(--member-border, #e7ece9)",
-                        borderRadius: 12,
-                      }}
-                    >
-                      <div>
-                        <strong
-                          style={{
-                            color: "var(--member-text, #203d31)",
-                            fontSize: 13,
-                          }}
-                        >
-                          <Clock
-                            size={14}
-                            style={{ verticalAlign: "middle" }}
-                          />{" "}
-                          {session.weekdayLabel} · {session.timeLabel}
-                        </strong>
-                        <div
-                          style={{
-                            color: "var(--member-muted, #667085)",
-                            fontSize: 12,
-                            marginTop: 5,
-                          }}
-                        >
-                          {formatMemberDate(session.startTime)} ·{" "}
-                          <MapPin
-                            size={13}
-                            style={{ verticalAlign: "middle" }}
-                          />{" "}
-                          {session.room.name} ·{" "}
-                          {session.isFull
-                            ? "Hết chỗ"
-                            : `Còn ${session.remainingSlots}/${course.capacity}`}
-                        </div>
-                      </div>
-                      <span
-                        style={{
-                          padding: "5px 9px",
-                          borderRadius: 999,
-                          color: label.color,
-                          background: label.background,
-                          fontSize: 12,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {label.text}
-                      </span>
-                      {session.isFull &&
-                        session.status === "SCHEDULED" &&
-                        Date.parse(session.startTime) > Date.now() &&
-                        !["BOOKED", "COMPLETED"].includes(
-                          session.myEnrollmentStatus ?? "",
-                        ) && <WaitlistAction scheduleId={session.id} />}
-                    </div>
-                  );
-                })}
-              </div>
-            </details>
+            {/* BẢNG LỊCH TRÌNH KHÓA HỌC DẠNG BẢNG & MA TRẬN TUẦN TRỰC QUAN */}
+            <CourseScheduleTableView course={course} sessions={plan.sessions} />
           </div>
         )}
       </section>
 
-      <ConfirmModal
+      <EnrollConfirmModal
         isOpen={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        onConfirm={() => enrollCourseMutation.mutate()}
-        title="Xác nhận đăng ký trọn khóa"
-        message={
-          course
-            ? `Bạn sẽ đăng ký khóa "${course.className}" gồm ${course.totalSessions} buổi, từ ${formatMemberDate(course.firstSessionStart)} đến ${formatMemberDate(course.lastSessionEnd)}. Lịch học: ${course.slots.map((slot) => `${slot.weekdayLabel} ${slot.startTime}–${slot.endTime}`).join("; ")}. Học phí theo gói hội viên hiện tại.`
-            : ""
-        }
-        confirmText="Xác nhận đăng ký"
-        cancelText="Để sau"
+        onConfirm={({ healthNotes, saveToProfile }) => {
+          enrollCourseMutation.mutate({ healthNotes, saveToProfile });
+        }}
+        title="Xác nhận đăng ký & Lưu ý thể trạng"
+        classSummary={{
+          name: cls.name,
+          sport: sportNames(cls),
+          sessions: course?.totalSessions,
+          coach: coaches[0]?.coach?.user?.fullName,
+          room: course?.slots[0]?.roomName,
+          time: course?.slots
+            ?.map((s) => `${s.weekdayLabel} ${s.startTime}–${s.endTime}`)
+            .join("; "),
+        }}
+        initialHealthNotes={currentUser?.memberProfile?.healthNotes}
         loading={enrollCourseMutation.isPending}
+        confirmText="Xác nhận đăng ký trọn khóa"
       />
     </div>
   );

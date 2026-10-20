@@ -32,7 +32,7 @@ export type PatchClassesIdRequest = { "name"?: string; "description"?: string; "
 export type PostClassesIdCoachesRequest = { "coachId": string; "isPrimary"?: boolean };
 export type PostClassesIdCoachesSupportRequest = { "coachId": string };
 export type PostClassSchedulesActivityPlanRequest = {  };
-export type PostClassSchedulesRequest = { "classId": string; "roomId": string; "startTime": string; "endTime": string };
+export type PostClassSchedulesRequest = { "classId": string; "roomId": string; "startTime": string; "endTime": string; "termId"?: string };
 export type PatchClassSchedulesIdRequest = { "roomId"?: string; "startTime"?: string; "endTime"?: string; "status"?: "SCHEDULED" | "CANCELLED"; "reason"?: string };
 export type PostChatMessagesRequest = { "receiverId"?: string; "content"?: string; "file"?: string };
 export type PatchChatMessagesReadRequest = { "targetId"?: string };
@@ -58,8 +58,8 @@ export type PostAttendanceReportsRequest = { "memberId": string; "classId": stri
 export type PostAttendanceReportsIdReviewRequest = { "decision": "APPROVE_REMOVAL" | "REJECT"; "response": string };
 export type PutFacilitiesFacilityIdManagerRequest = { "userId": string; "replacedUserId"?: string };
 export type PutCoachesIdSpecializationsRequest = { "sportIds": Array<string> };
-export type PostFacilitiesRequest = { "code": string; "name": string; "address": string; "contactInfo"?: string; "timezone"?: string };
-export type PutFacilitiesFacilityIdRequest = { "code"?: string; "name"?: string; "address"?: string; "contactInfo"?: string; "timezone"?: string; "isActive"?: boolean };
+export type PostFacilitiesRequest = { "code": string; "name": string; "address": string; "contactInfo"?: string; "timezone"?: string; "maxClasses"?: number | null; "maxRooms"?: number | null; "maxCoaches"?: number | null; "maxMembers"?: number | null; "maxSports"?: number | null };
+export type PutFacilitiesFacilityIdRequest = { "code"?: string; "name"?: string; "address"?: string; "contactInfo"?: string; "timezone"?: string; "isActive"?: boolean; "maxClasses"?: number | null; "maxRooms"?: number | null; "maxCoaches"?: number | null; "maxMembers"?: number | null; "maxSports"?: number | null };
 export type PostFacilitiesFacilityIdStaffRequest = { "userId": string; "role": "MANAGER" | "COACH" | "RECEPTIONIST" };
 export type PostFacilitiesFacilityIdCoachesRequest = { "email": string; "fullName": string; "password"?: string; "phone"?: string; "gender"?: "MALE" | "FEMALE" | "OTHER"; "dateOfBirth"?: string; "experienceYears"?: number; "specialization"?: string; "bio"?: string; "sportIds": Array<string> };
 export type PostFacilitiesFacilityIdReceptionistsRequest = { "email": string; "fullName": string; "password"?: string; "phone"?: string; "gender"?: "MALE" | "FEMALE" | "OTHER"; "dateOfBirth"?: string };
@@ -126,5 +126,24 @@ export type InvoiceOk = { "success": boolean; "message": string; "data": { "id":
 export type RevenueReportOk = { "success": boolean; "message": string; "data": { "totalRevenue": number; "refundedAmount": number; "netRevenue": number; "totalPayments": number; "successPayments": number; "refundedPayments": number; "failedPayments": number; "pendingPayments": number; "revenueByMethod": { "CASH": number; "BANK_TRANSFER": number; "SEPAY": number }; "recentPayments": Array<{ "id": string; "amount": string; "status": string; "member": { "user": { "fullName": string } }; "invoice": { "invoiceNumber": string } }> } };
 export type MemberReportOk = { "success": boolean; "message": string; "data": { "totalMembers": number; "newMembers": number; "activeMembers": number; "expiredMembers": number; "membersByTier": { "FREE": number; "MEMBERSHIP": number; "PREMIUM": number } } };
 export type EnrollmentReportOk = { "success": boolean; "message": string; "data": { "totalEnrollments": number; "cancelledEnrollments": number; "topClasses": Array<{ "classId": string; "className": string; "count": number }>; "enrollmentsByClassType": { "REGULAR": number; "PREMIUM": number } } };
-export type MembershipReportOk = { "success": boolean; "message": string; "data": { "totalSubscriptions": number; "newSubscriptions": number; "activeSubscriptions": number; "expiredSubscriptions": number; "cancelledSubscriptions": number; "suspendedSubscriptions": number; "subscriptionsByTier": { "MEMBERSHIP": number; "PREMIUM": number }; "totalRevenue": number } };
+export type MembershipReportOk = { "success": boolean; "message": string; "data": { "totalSubscriptions": number; "newSubscriptions": number; "activeSubscriptions": number; "expiredSubscriptions": number; "cancelledSubscriptions": number; "suspendedSubscriptions": number; "subscriptionsByTier": { "MEMBERSHIP": number; "PREMIUM": number }; "totalRevenue": number; "plansBreakdown"?: Array<{ "planId": string; "planName": string; "count": number; "revenue": number; "activeCount": number }>; "topClasses"?: Array<{ "classId": string; "className": string; "coachName"?: string; "count": number }> } };
 export type SubscriptionLogListOk = { "success": boolean; "message": string; "data": Array<{ "id": string; "action": string; "username": string; "email": string; "planName": string; "planTier": string; "price": number; "paymentStatus": string; "startDate": string; "endDate": string; "purchasedAt": string }>; "pagination": { "page": number; "limit": number; "total": number; "totalPages": number } };
+export type PostTermsRequest = { "name": string; "code"?: string; "startDate": string; "endDate": string; "registrationStartDate": string; "registrationEndDate": string; "status"?: TermStatus; "description"?: string; "facilityId"?: string | null };
+export type PatchTermsIdRequest = { "name"?: string; "code"?: string; "startDate"?: string; "endDate"?: string; "registrationStartDate"?: string; "registrationEndDate"?: string; "status"?: "PLANNING" | "OPEN_REGISTRATION" | "IN_PROGRESS" | "CLOSED"; "description"?: string; "facilityId"?: string | null };
+export type PostEnrollmentsLeaveRequestRequest = { "reason": string };
+export type PatchEnrollmentsIdHealthNotesRequest = { "healthNotes": string | null; "saveToProfile"?: boolean };
+
+export type TermStatus = "PLANNING" | "OPEN_REGISTRATION" | "IN_PROGRESS" | "CLOSED";
+export type Term = { "id": string; "code"?: string; "name": string; "startDate": string; "endDate": string; "registrationStartDate": string; "registrationEndDate": string; "status": TermStatus; "description"?: string | null; "facilityId"?: string | null; "facility"?: { "id": string; "name": string; "code": string } | null; "_count"?: { "schedules": number; "patterns"?: number } };
+export type TermOk = { "success": boolean; "message": string; "data": Term };
+export type TermListOk = { "success": boolean; "message": string; "data": Array<Term>; "pagination"?: { "page": number; "limit": number; "total": number; "totalPages": number } };
+
+export type FacilityLimits = { "maxClasses": number | null; "maxRooms": number | null; "maxCoaches": number | null; "maxMembers": number | null; "maxSports": number | null };
+export type FacilityUsage = { "activeClasses": number; "activeRooms": number; "activeCoaches": number; "activeMembers": number; "activeSports": number; "totalSubscriptions": number; "classUtilization": number | null; "roomUtilization": number | null; "coachUtilization": number | null; "memberUtilization": number | null; "sportUtilization": number | null };
+export type FacilityOverviewRow = { "id": string; "name": string; "code": string; "isActive": boolean; "managers": string[]; "totalRevenue": number; "refundedAmount": number; "netRevenue": number; "members": number; "participants": number; "bookings": number; "cancelledBookings": number; "sessions": number; "scheduledSessions": number; "limits": FacilityLimits; "usage": FacilityUsage };
+export type FacilityOverviewOk = { "success": boolean; "message": string; "data": { "startDate": string; "endDate": string; "facilities": Array<FacilityOverviewRow>; "totalMembers": number; "totalRevenue": number; "refundedAmount": number; "netRevenue": number; "totalBookings": number } };
+
+export type UnderCapacitySchedule = { "id": string; "startTime": string; "endTime": string; "status": string; "enrolled": number; "capacity": number; "minCapacity": number; "class": { "id": string; "name": string; "areaType": string } };
+export type UnderCapacityScheduleListOk = { "success": boolean; "message": string; "data": Array<UnderCapacitySchedule> };
+
+export type MembershipStatusWithScheduled = { "effectiveTier": string; "activeSubscription": { "status": string; "endDate": string; "plan": { "name": string; "tier": string } } | null; "scheduledSubscription"?: { "id": string; "status": "SCHEDULED"; "startDate": string; "endDate": string; "tier": string; "plan": { "name": string; "tier": string } } | null; "daysRemaining": number };

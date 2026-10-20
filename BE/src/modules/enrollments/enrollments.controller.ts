@@ -35,9 +35,12 @@ async function resolveMemberProfileId(req: Request, bodyMemberId?: string): Prom
 
 export async function bookClass(req: Request, res: Response, next: NextFunction) {
   try {
-    const { scheduleId, memberId: bodyMemberId } = req.body;
+    const { scheduleId, memberId: bodyMemberId, healthNotes, saveToProfile } = req.body;
     const memberProfileId = await resolveMemberProfileId(req, bodyMemberId);
-    const enrollment = await enrollmentsService.bookClass(scheduleId, memberProfileId, req.user!.role);
+    const enrollment = await enrollmentsService.bookClass(scheduleId, memberProfileId, req.user!.role, {
+      healthNotes,
+      saveToProfile,
+    });
     sendCreated(res, enrollment, "Class booked successfully");
   } catch (err) {
     next(err);
@@ -50,13 +53,30 @@ export async function bookClass(req: Request, res: Response, next: NextFunction)
  */
 export async function enrollWholeCourse(req: Request, res: Response, next: NextFunction) {
   try {
-    const { classId, memberId: bodyMemberId } = req.body;
+    const { classId, memberId: bodyMemberId, healthNotes, saveToProfile } = req.body;
     const memberProfileId = await resolveMemberProfileId(req, bodyMemberId);
-    const result = await courseEnrollmentService.enrollWholeCourse(classId, memberProfileId);
+    const result = await courseEnrollmentService.enrollWholeCourse(classId, memberProfileId, {
+      healthNotes,
+      saveToProfile,
+    });
     sendCreated(res, result, "Whole course enrolled successfully");
   } catch (err) {
     next(err);
   }
+}
+
+export async function updateEnrollmentHealthNotes(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { healthNotes, saveToProfile } = req.body;
+    const updated = await enrollmentsService.updateEnrollmentHealthNotes(
+      req.params.id as string,
+      req.user!.id,
+      req.user!.role,
+      healthNotes,
+      saveToProfile
+    );
+    sendSuccess(res, updated, "Cập nhật ghi chú sức khỏe thành công");
+  } catch (err) { next(err); }
 }
 
 export async function cancelEnrollment(req: Request, res: Response, next: NextFunction) {
@@ -111,5 +131,16 @@ export async function getMyQuota(req: Request, res: Response, next: NextFunction
   try {
     const quota = await quotaService.getMyConcurrentClassQuota(req.user!.id);
     sendSuccess(res, quota, "Concurrent class quota retrieved successfully");
+  } catch (err) { next(err); }
+}
+
+export async function requestEnrollmentLeave(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await enrollmentsService.requestEnrollmentLeave(
+      req.params.id as string,
+      req.user!.id,
+      req.body.reason
+    );
+    sendCreated(res, result, "Đơn xin nghỉ buổi học đã được gửi tới quản lý cơ sở");
   } catch (err) { next(err); }
 }

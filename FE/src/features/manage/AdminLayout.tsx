@@ -7,10 +7,12 @@ import { ResourcePage } from "./ResourcePage";
 import { resources } from "./config";
 import { AdminDashboard } from "./AdminDashboard";
 import { AdminFacilities } from "./AdminFacilities";
+import { AdminTerms } from "./AdminTerms";
 import { AuditLogPage } from "./AuditLogPage";
 const items = [
   ["dashboard", "Tổng quan"],
   ["facilities", "Cơ sở"],
+  ["terms", "Kỳ học"],
   ["users", "Người dùng"],
   ["membership-plans", "Gói thành viên"],
   ["sports", "Bộ môn"],
@@ -33,6 +35,7 @@ export function AdminLayout(props: PortalProps) {
       <Routes>
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/facilities" element={<AdminFacilities />} />
+        <Route path="/admin/terms" element={<AdminTerms />} />
         <Route path="/admin/audit" element={<AuditLogPage />} />
         {(["leave", "issues"] as const).map((kind) => (
           <Route

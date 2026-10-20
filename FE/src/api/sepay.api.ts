@@ -7,8 +7,11 @@ type PendingCheckoutDetails = Partial<SepayCheckout> & {
 };
 
 export const sepayApi = {
-  createCheckout: (planId: string) =>
-    apiClient.post<SepayCheckout>("/payments/sepay/checkout", { planId }),
+  createCheckout: (planId: string, startDate?: string) =>
+    apiClient.post<SepayCheckout>("/payments/sepay/checkout", {
+      planId,
+      ...(startDate ? { startDate } : {}),
+    }),
 
   getCheckout: (paymentId: string) =>
     apiClient.get<SepayCheckout>(

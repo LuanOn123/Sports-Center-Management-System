@@ -13,17 +13,54 @@ export interface EnrollmentQuery {
 }
 
 export const enrollmentsApi = {
-  async bookClass(scheduleId: string): Promise<Enrollment> {
-    return apiClient.post<Enrollment>("/enrollments", { scheduleId });
+  async bookClass(
+    scheduleId: string,
+    options?: {
+      healthNotes?: string | null;
+      saveToProfile?: boolean;
+      memberId?: string;
+    },
+  ): Promise<Enrollment> {
+    return apiClient.post<Enrollment>("/enrollments", {
+      scheduleId,
+      ...(options?.memberId ? { memberId: options.memberId } : {}),
+      ...(options?.healthNotes !== undefined
+        ? { healthNotes: options.healthNotes }
+        : {}),
+      ...(options?.saveToProfile !== undefined
+        ? { saveToProfile: options.saveToProfile }
+        : {}),
+    });
   },
 
   async enrollWholeCourse(
     classId: string,
     memberId?: string,
+    options?: {
+      healthNotes?: string | null;
+      saveToProfile?: boolean;
+    },
   ): Promise<WholeCourseEnrollmentResult> {
     return apiClient.post<WholeCourseEnrollmentResult>("/enrollments/bulk", {
       classId,
       ...(memberId ? { memberId } : {}),
+      ...(options?.healthNotes !== undefined
+        ? { healthNotes: options.healthNotes }
+        : {}),
+      ...(options?.saveToProfile !== undefined
+        ? { saveToProfile: options.saveToProfile }
+        : {}),
+    });
+  },
+
+  async updateHealthNotes(
+    id: string,
+    healthNotes: string | null,
+    saveToProfile?: boolean,
+  ): Promise<Enrollment> {
+    return apiClient.patch<Enrollment>(`/enrollments/${id}/health-notes`, {
+      healthNotes,
+      saveToProfile: Boolean(saveToProfile),
     });
   },
 

@@ -34,6 +34,7 @@ import aiRoutes from "./modules/ai/ai.routes.js";
 import facilityRoutes from "./modules/facilities/facilities.route.js";
 import facilityVisitRoutes from "./modules/facility-visits/facility-visits.routes.js";
 import waitlistRoutes from "./modules/waitlist/waitlist.routes.js";
+import termRoutes from "./modules/terms/terms.routes.js";
 
 const app = express();
 
@@ -152,6 +153,7 @@ app.use(`${v1}/ai`, aiRoutes);
 app.use(`${v1}/facilities`, facilityRoutes);
 app.use(`${v1}/facility-visits`, facilityVisitRoutes);
 app.use(`${v1}/waitlist`, waitlistRoutes);
+app.use(`${v1}/terms`, termRoutes);
 
 app.use(v1, operationsRoutes);
 

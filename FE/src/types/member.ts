@@ -1,7 +1,7 @@
 export type UserRole = "ADMIN" | "MANAGER" | "COACH" | "RECEPTIONIST" | "STAFF" | "MEMBER";
 export type Gender = "MALE" | "FEMALE" | "OTHER";
 export type MemberTier = "FREE" | "MEMBERSHIP" | "PREMIUM";
-export type MembershipStatus = "ACTIVE" | "EXPIRED" | "CANCELLED" | "SUSPENDED";
+export type MembershipStatus = "ACTIVE" | "EXPIRED" | "CANCELLED" | "SUSPENDED" | "SCHEDULED";
 export type TrainingLevel = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
 export type ClassType = "REGULAR" | "PREMIUM";
 export type AreaType = "POOL" | "INDOOR" | "OUTDOOR";
@@ -16,6 +16,7 @@ export interface MemberProfile {
   fitnessGoal?: string | null;
   trainingLevel?: TrainingLevel | null;
   trainingPreference?: string | null;
+  healthNotes?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -116,6 +117,15 @@ export interface ClassSchedule {
   availableSlots?: number;
   isFull?: boolean;
   canBook?: boolean;
+  termId?: string | null;
+  term?: {
+    id: string;
+    code?: string;
+    name: string;
+    status: string;
+    startDate?: string;
+    endDate?: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -155,6 +165,17 @@ export interface CoursePlanSession {
   isFull: boolean;
   isBookable: boolean;
   canBook: boolean;
+  termId?: string | null;
+  term?: {
+    id: string;
+    code?: string;
+    name: string;
+    status: string;
+    startDate?: string;
+    endDate?: string;
+    registrationStartDate?: string;
+    registrationEndDate?: string;
+  } | null;
   myEnrollmentId: string | null;
   myEnrollmentStatus: EnrollmentStatus | null;
   conflictWith: {

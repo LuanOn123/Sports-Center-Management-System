@@ -1,4 +1,5 @@
 import { effectiveSubscription } from "../../shared/businessRules";
+import { MemberTermBanner } from "../../shared/MemberTermBanner";
 import { formatMemberDate } from "../../shared/memberFormat";
 import { ErrorState } from "../../shared/feedback";
 import { useQuery } from "@tanstack/react-query";
@@ -182,6 +183,9 @@ export function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* TERM STATUS BANNER */}
+      <MemberTermBanner variant="compact" />
 
       {/* 2 MAIN HIGHLIGHT CARDS: MEMBERSHIP & NEXT CLASS */}
       <div

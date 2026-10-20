@@ -12,6 +12,7 @@ import {
   MapPin,
   Users,
   BookOpen,
+  AlertTriangle,
 } from "lucide-react";
 import { api } from "../../shared/api";
 import { Empty, ErrorState, Loading, Modal } from "../../shared/ui";
@@ -497,23 +498,77 @@ function SessionDetails({
               {filtered.map((r) => {
                 const member = obj(r.member),
                   mid = idOf(member) || str(r.memberId, "");
+                const healthNotes = str(r.healthNotes || member.healthNotes);
                 return (
                   <div className="coach-student-row" key={idOf(r)}>
                     <button
                       className="coach-student-link"
                       disabled={!mid}
-                      onClick={() => setStudent({ ...member, id: mid })}
+                      onClick={() =>
+                        setStudent({
+                          ...member,
+                          id: mid,
+                          healthNotes,
+                        })
+                      }
                     >
                       <span className="avatar">
                         {str(obj(member.user).fullName).slice(0, 1)}
                       </span>
                       <span>
-                        <strong>{str(obj(member.user).fullName)}</strong>
+                        <strong
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                          }}
+                        >
+                          {str(obj(member.user).fullName)}
+                          {healthNotes && (
+                            <span
+                              className="badge warning small"
+                              title={`Lưu ý y tế: ${healthNotes}`}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "3px",
+                                fontSize: "11px",
+                                padding: "2px 6px",
+                              }}
+                            >
+                              <AlertTriangle size={12} /> Y tế
+                            </span>
+                          )}
+                        </strong>
                         <small>{str(obj(member.user).email)}</small>
                       </span>
                       <ArrowRight size={18} />
                     </button>
-                    <Badge value={r.status} />
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      {healthNotes && (
+                        <span
+                          className="field-note warning-text"
+                          style={{
+                            margin: 0,
+                            fontSize: "12px",
+                            maxWidth: "180px",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                          title={healthNotes}
+                        >
+                          ⚠️ {healthNotes}
+                        </span>
+                      )}
+                      <Badge value={r.status} />
+                    </div>
                   </div>
                 );
               })}
@@ -548,6 +603,8 @@ function StudentDetails({
   });
   const p = profile.data?.data,
     u = obj(p?.user || member.user);
+  const healthNotes = str(member.healthNotes || p?.healthNotes);
+
   return (
     <Modal
       eyebrow="PULSE / HUẤN LUYỆN VIÊN"
@@ -565,6 +622,42 @@ function StudentDetails({
           <ErrorState error={profile.error} retry={() => profile.refetch()} />
         ) : (
           <>
+            {healthNotes && (
+              <div
+                style={{
+                  margin: "16px 0",
+                  padding: "12px 16px",
+                  borderRadius: "8px",
+                  background: "rgba(245, 158, 11, 0.12)",
+                  border: "1px solid rgba(245, 158, 11, 0.4)",
+                  display: "flex",
+                  gap: "10px",
+                  alignItems: "flex-start",
+                }}
+              >
+                <AlertTriangle
+                  size={20}
+                  style={{
+                    color: "#f59e0b",
+                    flexShrink: 0,
+                    marginTop: "2px",
+                  }}
+                />
+                <div>
+                  <strong style={{ color: "#f59e0b", display: "block" }}>
+                    Cảnh báo y tế / Lưu ý chấn thương:
+                  </strong>
+                  <p
+                    style={{
+                      margin: "4px 0 0",
+                      color: "var(--color-text)",
+                    }}
+                  >
+                    {healthNotes}
+                  </p>
+                </div>
+              </div>
+            )}
             <dl>
               <dt>Họ và tên</dt>
               <dd>{str(u.fullName)}</dd>
@@ -576,6 +669,14 @@ function StudentDetails({
               <dd>{state(p?.trainingLevel)}</dd>
               <dt>Ngày sinh</dt>
               <dd>{fmt(u.dateOfBirth)}</dd>
+              {healthNotes && (
+                <>
+                  <dt>Ghi chú sức khỏe</dt>
+                  <dd style={{ color: "#f59e0b", fontWeight: 500 }}>
+                    {healthNotes}
+                  </dd>
+                </>
+              )}
             </dl>
             <section className="coach-goal">
               <h3>Mục tiêu tập luyện</h3>

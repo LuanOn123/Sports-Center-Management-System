@@ -12,6 +12,8 @@ import {
   getMembershipCoverageIntervals,
   isCoveredAt,
 } from "../attendance/attendance-analytics.service.js";
+import { assertCanScheduleInTerm, findTermForDate } from "../terms/terms.service.js";
+import { checkFacilityClassLimit, checkFacilitySportLimit } from "../facilities/facility-limits.service.js";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
@@ -117,6 +119,7 @@ export async function listSchedules(query: any) {
   const where: any = {};
   if (query.classId) where.classId = query.classId;
   if (query.roomId) where.roomId = query.roomId;
+  if (query.termId) where.termId = query.termId;
   if (query.status) where.status = query.status;
   // Legacy start-time filtering (giữ backward compatibility cho FE hiện tại).
   if (query.startAfter) where.startTime = { ...where.startTime, gte: new Date(query.startAfter) };
@@ -158,6 +161,7 @@ export async function listSchedules(query: any) {
   const include = {
     class: { include: { sports: true } },
     room: true,
+    term: true,
     _count: {
       select: {
         enrollments: {
@@ -215,6 +219,7 @@ function buildWhereSql(where: any): { fragment: Prisma.Sql } {
   if (scopedFacility) conds.push(Prisma.sql`s."classId" IN (SELECT id FROM "Class" WHERE "facilityId" = ${scopedFacility})`);
   if (where.classId) conds.push(Prisma.sql`s."classId" = ${where.classId}`);
   if (where.roomId) conds.push(Prisma.sql`s."roomId" = ${where.roomId}`);
+  if (where.termId) conds.push(Prisma.sql`s."termId" = ${where.termId}`);
   if (where.status) conds.push(Prisma.sql`s."status"::text = ${where.status}`);
   const st = where.startTime;
   if (st?.gte) conds.push(Prisma.sql`s."startTime" >= ${st.gte}`);
@@ -268,9 +273,17 @@ export async function createSchedule(data: any) {
 
     await checkConflicts(tx, data.roomId, data.classId, startTime, endTime);
 
+    let termId = data.termId;
+    if (termId) {
+      await assertCanScheduleInTerm(termId, startTime, endTime, room.facilityId, tx);
+    } else {
+      const autoTerm = await findTermForDate(startTime, room.facilityId, tx);
+      if (autoTerm) termId = autoTerm.id;
+    }
+
     return tx.classSchedule.create({
-      data: { classId: data.classId, roomId: data.roomId, startTime, endTime, status: "SCHEDULED" },
-      include: { class: { include: { sports: true } }, room: true },
+      data: { classId: data.classId, roomId: data.roomId, startTime, endTime, status: "SCHEDULED", termId },
+      include: { class: { include: { sports: true } }, room: true, term: true },
     });
   });
 }
@@ -338,6 +351,12 @@ export async function createActivityPlan(data: any, canCreateSport: boolean) {
       }
     }
 
+    const facilityId = (room as any).facilityId || requestContext.getStore()?.facilityId;
+    if (facilityId) {
+      await checkFacilityClassLimit(facilityId, tx);
+      await checkFacilitySportLimit(facilityId, [sport.id], tx);
+    }
+
     const cls = await tx.class.create({
       data: {
         name: data.class.name,
@@ -361,6 +380,15 @@ export async function createActivityPlan(data: any, canCreateSport: boolean) {
       const startTime = new Date(schedule.startTime);
       const endTime = new Date(schedule.endTime);
       await checkConflicts(tx, room.id, cls.id, startTime, endTime);
+
+      let termId = data.termId;
+      if (termId) {
+        await assertCanScheduleInTerm(termId, startTime, endTime, room.facilityId, tx);
+      } else {
+        const autoTerm = await findTermForDate(startTime, room.facilityId, tx);
+        if (autoTerm) termId = autoTerm.id;
+      }
+
       createdSchedules.push(await tx.classSchedule.create({
         data: {
           classId: cls.id,
@@ -368,6 +396,7 @@ export async function createActivityPlan(data: any, canCreateSport: boolean) {
           startTime,
           endTime,
           status: "SCHEDULED",
+          termId,
         },
       }));
     }
@@ -386,6 +415,7 @@ export async function getScheduleById(id: string) {
     include: {
       class: { include: { sports: true, coaches: { include: { coach: { include: { user: { select: { fullName: true } } } } } } } },
       room: true,
+      term: true,
       _count: { select: { enrollments: { where: { status: { in: ["BOOKED", "COMPLETED"] } } } } },
     },
   });
@@ -515,7 +545,25 @@ export async function updateSchedule(id: string, data: any) {
     throw new AppError("endTime must be strictly greater than startTime", 400);
   }
 
-  const timeOrRoomChanged = Boolean(data.startTime || data.endTime || data.roomId || data.coachId);
+  const termTouched = data.termId !== undefined;
+  let newTermId: string | null | undefined = undefined;
+  const currentFacilityId = existing.room?.facilityId || existing.class?.facilityId;
+  if (termTouched) {
+    if (data.termId === null) {
+      newTermId = null;
+    } else {
+      await assertCanScheduleInTerm(data.termId, startTime, endTime, currentFacilityId);
+      newTermId = data.termId;
+    }
+  } else if (data.startTime || data.endTime) {
+    if (existing.termId) {
+      await assertCanScheduleInTerm(existing.termId, startTime, endTime, currentFacilityId);
+    }
+  }
+
+  const timeOrRoomChanged = Boolean(
+    data.startTime || data.endTime || data.roomId || data.coachId || termTouched
+  );
 
   // Cancel qua PATCH: reuse unified cancel flow, không cho đổi room/time cùng lúc.
   if (data.status === "CANCELLED") {
@@ -543,7 +591,7 @@ export async function updateSchedule(id: string, data: any) {
     return result.updated;
   }
 
-  // Đổi room/time: lock theo SCHEDULE (cùng khoá với booking — A12) rồi tới room/coaches, re-check trong tx.
+  // Đổi room/time/term: lock theo SCHEDULE (cùng khoá với booking — A12) rồi tới room/coaches, re-check trong tx.
   if (timeOrRoomChanged) {
     const updated = await prisma.$transaction(async (tx) => {
       // A12: mọi mutation lịch phải xếp hàng trên cùng advisory lock với booking.
@@ -573,7 +621,13 @@ export async function updateSchedule(id: string, data: any) {
       // A12: CAS trạng thái — lịch vừa bị hủy/hoàn tất trong lúc chờ lock thì không ghi.
       const moved = await tx.classSchedule.updateMany({
         where: { id, status: "SCHEDULED" },
-        data: { startTime, endTime, roomId, ...(data.coachId ? { coachId: data.coachId } : {}) },
+        data: {
+          startTime,
+          endTime,
+          roomId,
+          ...(data.coachId ? { coachId: data.coachId } : {}),
+          ...(termTouched ? { termId: newTermId } : {}),
+        },
       });
       if (moved.count === 0) {
         throw new AppError("Lịch học đã thay đổi trạng thái, vui lòng tải lại.", 409, {
@@ -583,7 +637,7 @@ export async function updateSchedule(id: string, data: any) {
 
       return tx.classSchedule.findUnique({
         where: { id },
-        include: { class: { include: { sports: true } }, room: true },
+        include: { class: { include: { sports: true } }, room: true, term: true },
       });
     });
     if (!updated) throw new AppError("Schedule not found", 404);
@@ -649,7 +703,7 @@ export async function updateSchedule(id: string, data: any) {
   // Không có gì để đổi (ví dụ status=SCHEDULED trong khi đã SCHEDULED): trả hiện tại.
   return prisma.classSchedule.findUnique({
     where: { id },
-    include: { class: { include: { sports: true } }, room: true },
+    include: { class: { include: { sports: true } }, room: true, term: true },
   });
 }
 
@@ -775,4 +829,53 @@ export async function completeSchedule(id: string) {
   scanAttendanceWarnings(schedule.classId).catch(() => {});
 
   return completed;
+}
+
+/**
+ * Rà soát các buổi học sắp diễn ra không đủ sĩ số tối thiểu (minCapacity)
+ * để Quản lý cơ sở xem xét điều phối hoặc quyết định hủy/cho lớp nghỉ.
+ */
+export async function getUnderCapacitySchedules(query: any) {
+  const hoursAhead = parseInt(query.hoursAhead ?? "48", 10) || 48;
+  const now = new Date();
+  const futureLimit = new Date(now.getTime() + hoursAhead * 60 * 60 * 1000);
+
+  const schedules = await prisma.classSchedule.findMany({
+    where: {
+      status: "SCHEDULED",
+      startTime: { gte: now, lte: futureLimit },
+      ...(query.classId ? { classId: query.classId } : {}),
+      ...(query.roomId ? { roomId: query.roomId } : {}),
+    },
+    include: {
+      class: { select: { id: true, name: true, capacity: true, minCapacity: true } },
+      room: { select: { id: true, name: true } },
+      _count: {
+        select: { enrollments: { where: { status: { in: ["BOOKED", "COMPLETED"] } } } },
+      },
+    },
+    orderBy: { startTime: "asc" },
+  });
+
+  const underCapacity = schedules
+    .filter((s) => s._count.enrollments < s.class.minCapacity)
+    .map((s) => ({
+      id: s.id,
+      classId: s.classId,
+      className: s.class.name,
+      roomName: s.room.name,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      status: s.status,
+      bookedCount: s._count.enrollments,
+      minCapacity: s.class.minCapacity,
+      maxCapacity: s.class.capacity,
+      shortfall: s.class.minCapacity - s._count.enrollments,
+    }));
+
+  return {
+    total: underCapacity.length,
+    hoursAhead,
+    schedules: underCapacity,
+  };
 }
