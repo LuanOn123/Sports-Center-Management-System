@@ -47,3 +47,23 @@ export function formatCountdown(remainingMs: number) {
 export function formatVnd(amount: string | number) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(amount));
 }
+
+/** Lời chào theo giờ Việt Nam */
+export function greetingFor(now = new Date()) {
+  const h = vietnamDate(now).getUTCHours();
+  return h < 11 ? 'Chào buổi sáng' : h < 14 ? 'Chào buổi trưa' : h < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
+}
+
+/** Mốc bắt đầu của một buổi so với hiện tại: "Đang diễn ra", "Bắt đầu sau 25 phút", "Hôm nay, 18:00", "Ngày mai, 06:30", "T5, 22/10/2026 · 18:00" */
+export function formatStartsIn(startIso: string, endIso: string, now = new Date()) {
+  const start = Date.parse(startIso);
+  const t = now.getTime();
+  if (t >= start && t <= Date.parse(endIso)) return 'Đang diễn ra';
+  const minutes = Math.ceil((start - t) / 60_000);
+  if (minutes > 0 && minutes < 60) return `Bắt đầu sau ${minutes} phút`;
+  const dayKey = (ms: number) => vietnamDate(new Date(ms)).toISOString().slice(0, 10);
+  if (dayKey(start) === dayKey(t)) return `Hôm nay, ${formatTime(startIso)}`;
+  if (dayKey(start) === dayKey(t + 86_400_000)) return `Ngày mai, ${formatTime(startIso)}`;
+  return `${formatWeekdayDate(startIso)} · ${formatTime(startIso)}`;
+}
+

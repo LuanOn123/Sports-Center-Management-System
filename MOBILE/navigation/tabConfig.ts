@@ -1,7 +1,9 @@
 // navigation/tabConfig.ts
-// Cấu hình thanh điều hướng Bottom Tab Bar
-// Chỉ hiển thị 3 tab chính: Trang chủ, Tin nhắn, Hồ sơ.
-// Các màn hình khác được đăng ký vào Tabs layout nhưng ẩn khỏi thanh điều hướng (visible: false / href: null).
+// Cấu hình thanh điều hướng Bottom Tab Bar theo vai trò (5 tab hiện):
+// - Hội viên: Trang chủ · Khám phá · Lịch · Tin nhắn · Tài khoản
+// - HLV:      Trang chủ · Lịch dạy · Điểm danh · Tin nhắn · Tài khoản
+// Các route khác vẫn nằm trong Tabs (để giữ thanh tab) nhưng ẩn khỏi thanh (visible: false):
+// vào từ Trang chủ / Tài khoản / chuông thông báo. Thứ tự mảng = thứ tự trên thanh tab.
 
 import type { ComponentProps } from 'react';
 import type { MaterialIcons } from '@expo/vector-icons';
@@ -15,66 +17,39 @@ export interface TabItemConfig {
   iconName: MaterialIconName;
   visible: boolean;
   isChat?: boolean;
-  isNotifications?: boolean;
 }
 
+const HOME: TabItemConfig = { name: 'index', title: 'Trang chủ', iconName: 'home', visible: true };
+const CHAT: TabItemConfig = { name: 'chat', title: 'Tin nhắn', iconName: 'chat', visible: true, isChat: true };
+const ACCOUNT: TabItemConfig = { name: 'account', title: 'Tài khoản', iconName: 'person', visible: true };
+// Màn con (ẩn khỏi thanh tab)
+const PROFILE: TabItemConfig = { name: 'profile', title: 'Thông tin cá nhân', iconName: 'person', visible: false };
+const NOTIFICATIONS: TabItemConfig = { name: 'notifications', title: 'Thông báo', iconName: 'notifications', visible: false };
+
 export function getTabConfigForRole(role: Role | undefined): TabItemConfig[] {
-  const isCoach = role === 'COACH';
-
-  return [
-    // ─── 3 TAB CHÍNH HIỂN THỊ DƯỚI BOTTOM BAR ──────────────────────
-    {
-      name: 'index',
-      title: 'Trang chủ',
-      iconName: 'home',
-      visible: true,
-    },
-    {
-      name: 'chat',
-      title: 'Tin nhắn',
-      iconName: 'chat',
-      visible: true,
-      isChat: true,
-    },
-    {
-      name: 'profile',
-      title: 'Hồ sơ',
-      iconName: 'person',
-      visible: true,
-    },
-
-    // ─── CÁC ROUTE PHỤ TRONG TABS (ẨN KHỎI BOTTOM BAR) ───────────
-    {
-      name: 'classes',
-      title: isCoach ? 'Lớp dạy' : 'Khám phá',
-      iconName: isCoach ? 'fitness-center' : 'explore',
-      visible: false,
-    },
-    {
-      name: 'enrollments',
-      title: 'Lớp học',
-      iconName: 'event-note',
-      visible: false,
-    },
-    {
-      name: 'schedule',
-      title: isCoach ? 'Lịch dạy' : 'Lịch tập',
-      iconName: 'today',
-      visible: false,
-    },
-    {
+  if (role === 'COACH') {
+    return [
+      HOME,
+      { name: 'schedule', title: 'Lịch dạy', iconName: 'today', visible: true },
       // Chỉ HLV vào được — chặn ở navigation/routes.ts (canAccessRoute)
-      name: 'coach-attendance',
-      title: 'Điểm danh',
-      iconName: 'check-circle',
-      visible: false,
-    },
-    {
-      name: 'notifications',
-      title: 'Thông báo',
-      iconName: 'notifications',
-      visible: false,
-      isNotifications: true,
-    },
+      { name: 'coach-attendance', title: 'Điểm danh', iconName: 'check-circle', visible: true },
+      CHAT,
+      ACCOUNT,
+      { name: 'classes', title: 'Lớp phụ trách', iconName: 'fitness-center', visible: false },
+      { name: 'enrollments', title: 'Lớp của tôi', iconName: 'event-note', visible: false },
+      PROFILE,
+      NOTIFICATIONS,
+    ];
+  }
+  return [
+    HOME,
+    { name: 'classes', title: 'Khám phá', iconName: 'explore', visible: true },
+    { name: 'schedule', title: 'Lịch', iconName: 'today', visible: true },
+    CHAT,
+    ACCOUNT,
+    { name: 'enrollments', title: 'Lớp của tôi', iconName: 'event-note', visible: false },
+    { name: 'coach-attendance', title: 'Điểm danh', iconName: 'check-circle', visible: false },
+    PROFILE,
+    NOTIFICATIONS,
   ];
 }

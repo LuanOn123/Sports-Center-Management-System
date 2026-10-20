@@ -1,103 +1,48 @@
-import { vietnamDate } from '../../lib/date';
 // components/coach/CoachHomeView.tsx
-// UI Trang chủ dành riêng cho Huấn luyện viên (Coach)
+// Trang chủ Huấn luyện viên: lời chào + chuyên môn, chỉ số nhanh, buổi dạy tiếp theo (điểm danh khi tới giờ),
+// lối tắt, tổng quan tuần dạy, lịch dạy sắp tới. Logic ở hooks/coach/useCoachHome.
 
 import React from 'react';
-import {
-  View, Text, ScrollView, TouchableOpacity,
-  RefreshControl, ActivityIndicator,
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../shared/Icon';
 import { Avatar } from '../shared/Avatar';
 import { Brand } from '../shared/Brand';
 import { FacilityPicker } from '../shared/FacilityPicker';
+import { NotificationBell } from '../shared/NotificationBell';
 import { ClassCardSkeleton } from '../shared/Skeleton';
-import { QuickAccessGrid } from '../shared/QuickAccessGrid';
+import { Button, Card, EmptyState, SectionHeader, ShortcutRow, StatTile } from '../ui';
 import { WeeklyTeachingSummary } from './WeeklyTeachingSummary';
 import { getQuickAccessForRole } from '../../navigation/quickAccessConfig';
 import { useCoachHome } from '../../hooks/coach/useCoachHome';
-import { useUnreadNotificationCount } from '../../hooks/shared/useNotifications';
-import { Colors } from '../../constants/theme';
+import { Colors, Spacing } from '../../constants/theme';
+import { canTakeAttendance } from '../../lib/businessRules';
+import { formatStartsIn, formatTime, formatWeekdayDate, greetingFor } from '../../lib/format';
 import type { User } from '../../lib/types';
 import { ROUTES } from '../../navigation/routes';
 
-const CLASS_TYPE_LABEL: Record<string, string> = {
-  REGULAR: 'Tiêu Chuẩn',
-  PREMIUM: 'Cao Cấp',
-};
+/** Số buổi dạy sắp tới hiện dưới thẻ "Buổi dạy tiếp theo" */
+const UPCOMING_PREVIEW = 4;
 
-// toLocaleDateString('vi-VN', ...) không đáng tin trên RN/Hermes — ICU của máy
-// có thể trả dấu "-" thay vì "/" giữa ngày/tháng. Tự ghép chuỗi cho chắc.
-const WEEKDAY_SHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-function pad2(n: number) {
-  return String(n).padStart(2, '0');
-}
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  return `${WEEKDAY_SHORT[vietnamDate(d).getUTCDay()]}, ${pad2(vietnamDate(d).getUTCDate())}/${pad2(vietnamDate(d).getUTCMonth() + 1)}/${vietnamDate(d).getUTCFullYear()}`;
-}
-
-function formatTime(iso: string) {
-  const d = new Date(iso);
-  return `${pad2(vietnamDate(d).getUTCHours())}:${pad2(vietnamDate(d).getUTCMinutes())}`;
-}
-
-interface CoachHomeViewProps {
-  user: User | null;
-}
-
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-export function CoachHomeView({ user }: CoachHomeViewProps) {
+export function CoachHomeView({ user }: { user: User | null }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const coachId = user?.coachProfile?.id;
-  const unreadNotificationsCount = useUnreadNotificationCount();
-
-  const {
-    coachClasses,
-    teachingSchedules,
-    isLoading,
-    classesLoading,
-    onRefresh,
-  } = useCoachHome(coachId);
+  const { coachClasses, teachingSchedules, isLoading, onRefresh } = useCoachHome(coachId);
+  const [next, ...later] = teachingSchedules;
 
   return (
     <ScrollView
       className="flex-1 bg-bg-primary"
-      contentContainerStyle={{
-        paddingHorizontal: 20,
-        paddingTop: Math.max(insets.top, 16) + 10,
-        paddingBottom: 32,
-      }}
+      contentContainerStyle={{ paddingHorizontal: Spacing.xl, paddingTop: Math.max(insets.top, 16) + 8, paddingBottom: Spacing.xxxl }}
       refreshControl={<RefreshControl refreshing={false} onRefresh={onRefresh} tintColor={Colors.primary} />}
     >
-      {/* Top Bar Header */}
       <View className="flex-row justify-between items-center mb-lg">
         <Brand size="sm" align="flex-start" />
-        <View className="flex-row items-center gap-3">
-          {/* Nút thông báo */}
-          <TouchableOpacity
-            onPress={() => router.push(ROUTES.notifications)}
-            className="w-10 h-10 rounded-full bg-bg-surface border border-border justify-center items-center relative"
-            activeOpacity={0.7}
-          >
-            <Icon name="notifications-none" size={22} color={Colors.text.primary} />
-            {unreadNotificationsCount > 0 && (
-              <View className="absolute -top-1 -right-1 bg-status-expired rounded-full min-w-[18px] h-[18px] justify-center items-center px-1 border-2 border-bg-surface">
-                <Text className="text-[10px] font-bevn-bold text-white">
-                  {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          {/* Avatar Profile */}
-          <TouchableOpacity
-            onPress={() => router.push(ROUTES.profile)}
-            activeOpacity={0.7}
-          >
+        <View className="flex-row items-center gap-sm">
+          <NotificationBell />
+          <TouchableOpacity onPress={() => router.push(ROUTES.account)} activeOpacity={0.7} accessibilityLabel="Tài khoản">
             <Avatar uri={user?.avatarUrl} name={user?.fullName} size={40} />
           </TouchableOpacity>
         </View>
@@ -105,167 +50,76 @@ export function CoachHomeView({ user }: CoachHomeViewProps) {
 
       <FacilityPicker />
 
-      {/* Greeting */}
-      <View className="mb-xl">
-        <View className="flex-row items-center gap-1 bg-[#D4FF0020] px-sm py-[3px] rounded-full self-start mb-xs">
-          <Icon name="sports" size={14} color={Colors.primary} />
-          <Text className="text-xs font-bold font-bevn-bold text-primary tracking-wide">HUẤN LUYỆN VIÊN</Text>
-        </View>
-        <Text className="text-xl font-bold font-bevn-bold text-text-primary">Xin chào, HLV {user?.fullName}</Text>
-        <Text className="text-sm text-text-secondary mt-0.5 font-bevn-regular">
-          {user?.coachProfile?.specialization
-            ? `Chuyên môn: ${user.coachProfile.specialization}`
-            : 'Quản lý lịch dạy và các lớp học phụ trách'}
+      <View className="mb-lg">
+        <Text className="text-xxl font-bevn-bold text-text-primary" numberOfLines={1}>{greetingFor()}, HLV {user?.fullName?.split(' ').pop()}</Text>
+        <Text className="text-sm text-text-secondary font-bevn-regular mt-0.5" numberOfLines={1}>
+          {user?.coachProfile?.specialization ? `Chuyên môn: ${user.coachProfile.specialization}` : formatWeekdayDate(new Date().toISOString(), 'long')}
         </Text>
       </View>
 
-      {/* Stats overview */}
-      <View className="flex-row gap-md mb-lg">
-        <View className="flex-1 bg-bg-surface rounded-lg p-lg border border-border">
-          <Icon name="class" size={20} color={Colors.primary} style={{ marginBottom: 4 }} />
-          <Text className="text-xs text-text-muted font-bevn-regular uppercase tracking-wide">Lớp phụ trách</Text>
-          <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mt-0.5">{coachClasses.length} lớp</Text>
-        </View>
-        <View className="flex-1 bg-bg-surface rounded-lg p-lg border border-border">
-          <Icon name="event-available" size={20} color="#64DFB4" style={{ marginBottom: 4 }} />
-          <Text className="text-xs text-text-muted font-bevn-regular uppercase tracking-wide">Lịch dạy sắp tới</Text>
-          <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mt-0.5">{teachingSchedules.length} buổi</Text>
-        </View>
-        {Boolean(user?.coachProfile?.experienceYears) && (
-          <View className="flex-1 bg-bg-surface rounded-lg p-lg border border-border">
-            <Icon name="workspace-premium" size={20} color="#F5CB65" style={{ marginBottom: 4 }} />
-            <Text className="text-xs text-text-muted font-bevn-regular uppercase tracking-wide">Kinh nghiệm</Text>
-            <Text className="text-sm font-semibold font-bevn-semibold text-text-primary mt-0.5">{user?.coachProfile?.experienceYears} năm</Text>
-          </View>
-        )}
+      <View className="flex-row gap-sm mb-lg">
+        <StatTile label="Lớp phụ trách" value={coachClasses.length} color={Colors.primary} />
+        <StatTile label="Buổi sắp tới" value={teachingSchedules.length} color={Colors.status.scheduled} />
+        {Boolean(user?.coachProfile?.experienceYears) && <StatTile label="Năm kinh nghiệm" value={user!.coachProfile!.experienceYears!} color={Colors.tier.PREMIUM} />}
       </View>
 
-      {/* ─── TRUY CẬP NHANH (QUICK ACCESS CHO HLV) — ĐƯỢC ĐẶT LÊN TRÊN LỊCH DẠY ─── */}
-      <QuickAccessGrid items={getQuickAccessForRole('COACH')} />
+      {isLoading ? (
+        <View className="mb-lg"><ClassCardSkeleton /></View>
+      ) : !next ? (
+        <View className="mb-lg">
+          <EmptyState icon="event-available" title="Chưa có buổi dạy sắp tới" actionLabel="Xem lớp phụ trách" onAction={() => router.push(ROUTES.classes)} />
+        </View>
+      ) : (
+        <Card accent={Colors.primary} className="mb-lg" onPress={() => router.push(ROUTES.scheduleDetail(next.id))}>
+          <View className="flex-row items-center justify-between">
+            <Text className="text-xs text-text-muted font-bevn-semibold uppercase tracking-wide">Buổi dạy tiếp theo</Text>
+            <Text className="text-xs text-primary font-bevn-semibold">{formatStartsIn(next.startTime, next.endTime)}</Text>
+          </View>
+          <Text className="text-xl font-bevn-bold text-text-primary mt-xs" numberOfLines={1}>{next.class?.name ?? 'Lớp học'}</Text>
+          <View className="flex-row items-center gap-md mt-xs mb-md">
+            <Text className="text-sm text-text-secondary font-bevn-regular">{formatTime(next.startTime)}–{formatTime(next.endTime)}</Text>
+            {Boolean(next.room) && <Text className="flex-1 text-sm text-text-secondary font-bevn-regular" numberOfLines={1}>{next.room!.name}</Text>}
+            <View className="flex-row items-center gap-1">
+              <Icon name="people" size={15} color={Colors.text.secondary} />
+              <Text className="text-sm text-text-secondary font-bevn-regular">{next._count?.enrollments ?? 0}{next.class?.capacity ? `/${next.class.capacity}` : ''}</Text>
+            </View>
+          </View>
+          {canTakeAttendance(next) ? (
+            <Button title="Điểm danh học viên" icon="check-circle" onPress={() => router.push(ROUTES.coachAttendanceFor(next.id))} />
+          ) : (
+            <Button title="Xem buổi dạy" variant="secondary" onPress={() => router.push(ROUTES.scheduleDetail(next.id))} />
+          )}
+        </Card>
+      )}
+
+      <ShortcutRow items={getQuickAccessForRole('COACH')} />
+
       {coachId && <WeeklyTeachingSummary coachId={coachId} />}
 
-      {/* ─── LỊCH DẠY SẮP TỚI ─── */}
-      <View className="mb-xl">
-        <View className="flex-row justify-between items-center mb-md">
-          <Text className="text-lg font-bold font-bevn-bold text-text-primary">Lịch dạy sắp tới</Text>
-          <TouchableOpacity onPress={() => router.push(ROUTES.coachAttendance)} className="flex-row items-center gap-1">
-            <Text className="text-sm text-primary font-bevn-medium">Điểm danh</Text>
-            <Icon name="arrow-forward" size={16} color={Colors.primary} />
-          </TouchableOpacity>
-        </View>
-
-        {isLoading ? (
-          <View className="mt-sm">
-            <ClassCardSkeleton />
-          </View>
-        ) : teachingSchedules.length === 0 ? (
-          <View className="bg-bg-surface rounded-xl p-xxxl items-center border border-border">
-            <Icon name="event-available" size={44} color={Colors.text.muted} style={{ marginBottom: 12 }} />
-            <Text className="text-text-muted text-sm font-bevn-regular mb-lg">Chưa có lịch dạy sắp tới</Text>
-            <TouchableOpacity className="bg-primary rounded-md px-xl py-sm" onPress={() => router.push(ROUTES.classes)}>
-              <Text className="text-text-inverse font-bold font-bevn-bold">Xem danh sách lớp</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          teachingSchedules.slice(0, 5).map((s) => (
-            <TouchableOpacity
-              key={s.id}
-              className="bg-bg-surface rounded-lg p-lg mb-md border border-border shadow-sm"
-              onPress={() => router.push(ROUTES.scheduleDetail(s.id))}
-              activeOpacity={0.8}
-            >
-              <View className="flex-row justify-between items-center mb-xs">
-                <View className="bg-[#D4FF0018] px-sm py-0.5 rounded-sm">
-                  <Text className="text-xs font-semibold font-bevn-semibold text-primary">{s.class?.sports?.map((sp) => sp.name).join(', ') || 'Môn thể thao'}</Text>
-                </View>
-                <View className="flex-row items-center gap-1">
-                  <Icon name="schedule" size={13} color={Colors.primary} />
-                  <Text className="text-xs text-primary font-semibold font-bevn-semibold">
-                    {formatTime(s.startTime)} – {formatTime(s.endTime)}
-                  </Text>
-                </View>
-              </View>
-
-              <Text className="text-md font-bold font-bevn-bold text-text-primary my-1">{s.class?.name ?? 'Lớp học'}</Text>
-
-              <View className="flex-row items-center flex-wrap gap-md mt-xs">
-                <View className="flex-row items-center gap-1">
-                  <Icon name="today" size={14} color={Colors.text.secondary} />
-                  <Text className="text-xs text-text-secondary font-bevn-regular">{formatDate(s.startTime)}</Text>
-                </View>
-                {Boolean(s.room) && (
-                  <View className="flex-row items-center gap-1">
-                    <Icon name="place" size={14} color={Colors.text.secondary} />
-                    <Text className="text-xs text-text-secondary font-bevn-regular">{s.room!.name}</Text>
+      {later.length > 0 && (
+        <View className="mb-lg">
+          <SectionHeader title="Lịch dạy sắp tới" actionLabel="Lịch dạy" onAction={() => router.push(ROUTES.schedule)} />
+          <View className="gap-sm">
+            {later.slice(0, UPCOMING_PREVIEW).map((s) => (
+              <Card key={s.id} onPress={() => router.push(ROUTES.scheduleDetail(s.id))}>
+                <View className="flex-row items-center gap-md">
+                  <View className="items-center w-14">
+                    <Text className="text-md font-bevn-bold text-text-primary">{formatTime(s.startTime)}</Text>
+                    <Text className="text-xs text-text-muted font-bevn-regular">{formatWeekdayDate(s.startTime).split(',')[0]}</Text>
                   </View>
-                )}
-                <View className="flex-row items-center gap-1">
-                  <Icon name="people" size={14} color={Colors.primary} />
-                  <Text className="text-xs font-semibold text-primary font-bevn-semibold">
-                    {s._count?.enrollments ?? 0}{s.class?.capacity ? `/${s.class.capacity}` : ''} học viên
-                  </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-      </View>
-
-      {/* ─── LỚP HỌC PHỤ TRÁCH ─── */}
-      <View className="mb-xl">
-        <View className="flex-row justify-between items-center mb-md">
-          <Text className="text-lg font-bold font-bevn-bold text-text-primary">Lớp học phụ trách</Text>
-          <TouchableOpacity onPress={() => router.push(ROUTES.classes)} className="flex-row items-center gap-1">
-            <Text className="text-sm text-primary font-bevn-medium">Tất cả lớp</Text>
-            <Icon name="arrow-forward" size={16} color={Colors.primary} />
-          </TouchableOpacity>
-        </View>
-
-        {classesLoading ? (
-          <ActivityIndicator color={Colors.primary} style={{ marginTop: 16 }} />
-        ) : coachClasses.length === 0 ? (
-          <View className="bg-bg-surface rounded-xl p-xxxl items-center border border-border">
-            <Icon name="school" size={44} color={Colors.text.muted} style={{ marginBottom: 12 }} />
-            <Text className="text-text-muted text-sm font-bevn-regular">Chưa được phân công lớp học nào</Text>
-          </View>
-        ) : (
-          coachClasses.map((c) => (
-            <TouchableOpacity
-              key={c.id}
-              className="bg-bg-surface rounded-lg p-lg mb-sm flex-row items-center justify-between border border-border"
-              onPress={() => router.push(ROUTES.classDetail(c.id))}
-              activeOpacity={0.8}
-            >
-              <View className="flex-1 mr-sm">
-                <View className="flex-row items-center justify-between mb-1">
-                  <Text className="text-md font-semibold font-bevn-semibold text-text-primary flex-1 mr-sm">{c.name}</Text>
-                  <View className="bg-bg-elevated px-sm py-0.5 rounded-full border border-border">
-                    <Text className="text-[10px] text-text-secondary font-bevn-medium">
-                      {CLASS_TYPE_LABEL[c.classType] ?? c.classType}
+                  <View className="flex-1 border-l-2 pl-md" style={{ borderLeftColor: Colors.primary }}>
+                    <Text className="text-md font-bevn-semibold text-text-primary" numberOfLines={1}>{s.class?.name ?? 'Lớp học'}</Text>
+                    <Text className="text-xs text-text-muted font-bevn-regular" numberOfLines={1}>
+                      {formatWeekdayDate(s.startTime)}{s.room ? ` · ${s.room.name}` : ''} · {s._count?.enrollments ?? 0} học viên
                     </Text>
                   </View>
+                  <Icon name="chevron-right" size={18} color={Colors.text.muted} />
                 </View>
-                {c.description ? (
-                  <Text className="text-xs text-text-muted font-bevn-regular mb-xs" numberOfLines={2}>{c.description}</Text>
-                ) : null}
-                <View className="flex-row items-center gap-sm">
-                  {Boolean(c.sports?.length) && (
-                    <View className="flex-row items-center gap-[3px]">
-                      <Icon name="fitness-center" size={12} color={Colors.text.secondary} />
-                      <Text className="text-xs text-text-secondary font-bevn-regular">{c.sports!.map((s) => s.name).join(', ')}</Text>
-                    </View>
-                  )}
-                  <View className="flex-row items-center gap-[3px]">
-                    <Icon name="group" size={12} color={Colors.text.secondary} />
-                    <Text className="text-xs text-text-secondary font-bevn-regular">Sức chứa: {c.capacity} học viên</Text>
-                  </View>
-                </View>
-              </View>
-              <Icon name="chevron-right" size={24} color={Colors.text.muted} />
-            </TouchableOpacity>
-          ))
-        )}
-      </View>
+              </Card>
+            ))}
+          </View>
+        </View>
+      )}
     </ScrollView>
   );
 }

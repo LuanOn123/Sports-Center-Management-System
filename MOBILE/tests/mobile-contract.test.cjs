@@ -300,3 +300,37 @@ test('SePay checkout sends startDate only when the member schedules activation',
   await pay.createSepayCheckout('plan-2', '2026-11-24T17:00:00.000Z');
   assert.deepEqual(requests.map((r) => r.body), [{ planId: 'plan-1' }, { planId: 'plan-2', startDate: '2026-11-24T17:00:00.000Z' }]);
 }));
+
+test('navigation: 5 tabs per role, every tab file registered, shortcuts and account menu never duplicate a tab', () => {
+  const app = loadApp('http://localhost/api/v1');
+  const tabs = app.load('navigation/tabConfig'); const quick = app.load('navigation/quickAccessConfig');
+  const menu = app.load('navigation/accountMenuConfig'); const { ROUTES, canAccessRoute } = app.load('navigation/routes');
+  const visible = (role) => tabs.getTabConfigForRole(role).filter((t) => t.visible).map((t) => t.name);
+  assert.deepEqual(visible('MEMBER'), ['index', 'classes', 'schedule', 'chat', 'account']);
+  assert.deepEqual(visible('COACH'), ['index', 'schedule', 'coach-attendance', 'chat', 'account']);
+  const files = fs.readdirSync(path.resolve(__dirname, '../app/(tabs)')).filter((f) => f.endsWith('.tsx') && f !== '_layout.tsx').map((f) => f.replace('.tsx', '')).sort();
+  for (const role of ['MEMBER', 'COACH']) {
+    assert.deepEqual(tabs.getTabConfigForRole(role).map((t) => t.name).sort(), files, role + ' must register every (tabs) route');
+    const tabRoutes = visible(role).map((name) => name === 'index' ? ROUTES.home : '/(tabs)/' + name).concat(ROUTES.notifications);
+    for (const item of quick.getQuickAccessForRole(role)) assert.ok(!tabRoutes.includes(item.route), role + ' shortcut duplicates a tab: ' + item.label);
+    assert.ok(quick.getQuickAccessForRole(role).length <= 4);
+    const items = menu.getAccountMenuForRole(role).flatMap((g) => g.items);
+    assert.equal(new Set(items.map((i) => JSON.stringify(i.route))).size, items.length, role + ' account menu has duplicate routes');
+    for (const item of items) {
+      const segments = String(item.route).split('/').filter(Boolean);
+      assert.ok(canAccessRoute(role, segments), role + ' cannot open ' + item.label);
+    }
+  }
+});
+
+test('home formatters: greeting by Vietnam hour and "starts in" labels', () => {
+  const f = loadApp('http://localhost/api/v1').load('lib/format');
+  assert.equal(f.greetingFor(new Date('2026-10-20T01:00:00Z')), 'Chào buổi sáng');   // 08:00 VN
+  assert.equal(f.greetingFor(new Date('2026-10-20T12:00:00Z')), 'Chào buổi tối');    // 19:00 VN
+  const now = new Date('2026-10-20T03:00:00Z'); // 10:00 VN
+  assert.equal(f.formatStartsIn('2026-10-20T03:25:00Z', '2026-10-20T04:25:00Z', now), 'Bắt đầu sau 25 phút');
+  assert.equal(f.formatStartsIn('2026-10-20T02:30:00Z', '2026-10-20T03:30:00Z', now), 'Đang diễn ra');
+  assert.equal(f.formatStartsIn('2026-10-20T11:00:00Z', '2026-10-20T12:30:00Z', now), 'Hôm nay, 18:00');
+  assert.equal(f.formatStartsIn('2026-10-20T23:30:00Z', '2026-10-21T00:30:00Z', now), 'Ngày mai, 06:30');
+  assert.equal(f.formatStartsIn('2026-10-22T11:00:00Z', '2026-10-22T12:00:00Z', now), 'T5, 22/10/2026 · 18:00');
+});

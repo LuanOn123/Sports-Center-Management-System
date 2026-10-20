@@ -5,7 +5,7 @@ import { useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { useMembershipData } from './useMembership';
 import { usePendingPayment, type PaymentScope } from './usePayment';
-import { useUpcomingEnrollments } from './useEnrollments';
+import { useMyQuota, useUpcomingEnrollments } from './useEnrollments';
 import { Haptic } from '../../lib/haptics';
 
 export function useMemberHome(memberId: string | undefined, scope: PaymentScope) {
@@ -19,6 +19,8 @@ export function useMemberHome(memberId: string | undefined, scope: PaymentScope)
   } = useMembershipData(memberId);
 
   const { pendingPayment, refetchPending } = usePendingPayment(scope);
+  // Số lớp đang giữ chỗ / giới hạn theo gói (3 hoặc 6) — GET /enrollments/my/quota
+  const quota = useMyQuota();
 
   const {
     upcoming,
@@ -35,12 +37,13 @@ export function useMemberHome(memberId: string | undefined, scope: PaymentScope)
 
   const onRefresh = async () => {
     Haptic.light();
-    await Promise.all([refreshMembership(), refetchEnroll(), refetchPending()]);
+    await Promise.all([refreshMembership(), refetchEnroll(), refetchPending(), quota.refetch()]);
   };
 
   return {
     activeSub,
     scheduledSub,
+    quota: quota.data,
     status,
     statusLoading,
     pendingPayment,

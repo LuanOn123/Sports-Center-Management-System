@@ -147,10 +147,7 @@ export function MemberScheduleView() {
 
   return (
     <View className="flex-1 bg-bg-primary">
-      <ScreenHeader
-        title="Lịch tập cá nhân"
-        subtitle="Thời khóa biểu các ca học đã đặt của bạn theo tuần"
-      />
+      <ScreenHeader variant="tab" title="Lịch tập" subtitle="Các ca học đã đặt theo tuần" />
       {/* Mode tabs */}
       <View className="flex-row px-xl pt-xl gap-sm mb-sm">
         <TouchableOpacity

@@ -30,8 +30,10 @@ export function ClassesExploreView() {
 
   return (
     <View className="flex-1 bg-bg-primary">
+      {/* Hội viên: tab Khám phá; HLV: màn con "Lớp phụ trách" mở từ Tài khoản / Trang chủ */}
       <ScreenHeader
-        title={isCoach ? 'Lớp dạy' : 'Khám phá'}
+        variant={isCoach ? 'stack' : 'tab'}
+        title={isCoach ? 'Lớp phụ trách' : 'Khám phá'}
         subtitle={isCoach ? 'Các lớp bạn đang phụ trách' : 'Tìm và đăng ký lớp tập phù hợp'}
       />
 
