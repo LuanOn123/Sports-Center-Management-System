@@ -2,7 +2,7 @@
 // Nhãn/biểu tượng hạng hội viên và tham số chính sách gói tập (khớp BE / FE web)
 
 import type { MaterialIconName } from '../navigation/tabConfig';
-import type { MembershipTier, SubscriptionStatus } from '../lib/types';
+import type { MembershipTier, PlanSwitchType, SubscriptionStatus } from '../lib/types';
 import { Colors } from './theme';
 
 // Nhãn giống FE web (FE/src/shared/config.ts)
@@ -17,6 +17,7 @@ export const SUBSCRIPTION_STATUS_LABEL: Record<SubscriptionStatus, string> = {
   EXPIRED: 'Hết hạn',
   CANCELLED: 'Đã hủy',
   SUSPENDED: 'Đã thay thế / ngừng quyền lợi',
+  SCHEDULED: 'Đã lên lịch',
 };
 
 export const SUBSCRIPTION_STATUS_COLOR: Record<SubscriptionStatus, string> = {
@@ -24,6 +25,26 @@ export const SUBSCRIPTION_STATUS_COLOR: Record<SubscriptionStatus, string> = {
   EXPIRED: Colors.status.expired,
   CANCELLED: Colors.status.cancelled,
   SUSPENDED: Colors.status.suspended,
+  SCHEDULED: Colors.status.scheduled,
+};
+
+/** Hẹn ngày kích hoạt gói tối đa bao nhiêu ngày (BE: MAX_SCHEDULE_DAYS trong subscription-purchase) */
+export const PLAN_SCHEDULE_MAX_DAYS = 60;
+
+/** Nút mua trên thẻ gói theo loại đổi gói (web MembershipPage) */
+export const PLAN_SWITCH_BUTTON_LABEL: Record<PlanSwitchType, string> = {
+  NEW: 'Chuyển khoản VietQR',
+  RENEW_SAME_TIER: 'Gia hạn qua VietQR',
+  UPGRADE: 'Nâng cấp qua VietQR',
+  DOWNGRADE: 'Lên lịch gói (Hạ cấp)',
+};
+
+/** Tiêu đề bảng xác nhận đổi gói */
+export const PLAN_SWITCH_TITLE: Record<PlanSwitchType, string> = {
+  NEW: 'Đăng ký gói tập',
+  RENEW_SAME_TIER: 'Gia hạn gói tập',
+  UPGRADE: 'Nâng cấp gói tập',
+  DOWNGRADE: 'Lên lịch gói tập tiếp theo (Hạ cấp)',
 };
 
 /** Số dòng lịch sử đăng ký hiển thị trên màn Gói */

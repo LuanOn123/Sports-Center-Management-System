@@ -5,25 +5,28 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Icon } from '../../shared/Icon';
 import { Colors } from '../../../constants/theme';
-import { TIER_ICON, TIER_LABEL } from '../../../constants/membership';
+import { PLAN_SWITCH_BUTTON_LABEL, TIER_ICON, TIER_LABEL } from '../../../constants/membership';
 import { formatDate, formatVnd } from '../../../lib/format';
 import { isPurchasablePlan, planDailyPrice } from '../../../lib/businessRules';
-import type { MembershipPlan, Subscription } from '../../../lib/types';
+import type { MembershipPlan, PlanSwitchType, Subscription } from '../../../lib/types';
 
 interface MembershipPlanCardProps {
   plan: MembershipPlan;
-  /** Gói hiệu lực đúng plan này (nếu có) — đổi nút thành "Gia hạn" */
+  /** Gói hiệu lực đúng plan này (nếu có) — hiện nhãn "Đang sử dụng" */
   registered?: Subscription;
+  /** Mua gói này là gia hạn / nâng cấp / hạ cấp so với gói hiện tại (lib/planSwitch) */
+  switchType: PlanSwitchType;
+  /** Giải thích dưới nút (nối tiếp sau ngày…, gói ngắn hơn…) — không chặn mua */
+  hint?: string;
   isCreating: boolean;
   disabled: boolean;
-  blockedReason?: string;
   onCheckout: () => void;
 }
 
-export function MembershipPlanCard({ plan, registered, isCreating, disabled, blockedReason, onCheckout }: MembershipPlanCardProps) {
+export function MembershipPlanCard({ plan, registered, switchType, hint, isCreating, disabled, onCheckout }: MembershipPlanCardProps) {
   const tierColor = Colors.tier[plan.tier];
   const dailyPrice = planDailyPrice(plan);
-  const canBuy = isPurchasablePlan(plan) && !disabled && !blockedReason;
+  const canBuy = isPurchasablePlan(plan) && !disabled;
 
   return (
     <View className="bg-bg-surface rounded-xl p-xl mb-md border" style={{ borderColor: registered ? Colors.primary : Colors.border }}>
@@ -62,13 +65,13 @@ export function MembershipPlanCard({ plan, registered, isCreating, disabled, blo
         {isCreating ? (
           <ActivityIndicator color={Colors.text.inverse} size="small" />
         ) : (
-          <Icon name="qr-code-scanner" size={17} color={Colors.text.inverse} />
+          <Icon name={switchType === 'DOWNGRADE' ? 'event-available' : 'qr-code-scanner'} size={17} color={Colors.text.inverse} />
         )}
         <Text className="text-text-inverse font-bevn-bold text-md">
-          {isCreating ? 'Đang tạo mã...' : registered ? 'Gia hạn qua VietQR' : 'Chuyển khoản VietQR'}
+          {isCreating ? 'Đang tạo mã...' : PLAN_SWITCH_BUTTON_LABEL[switchType]}
         </Text>
       </TouchableOpacity>
-      {blockedReason && <Text className="text-xs text-status-pending font-bevn-regular mt-sm">{blockedReason}</Text>}
+      {Boolean(hint) && <Text className="text-xs text-status-scheduled font-bevn-regular mt-sm">{hint}</Text>}
       <Text className="text-xs text-text-muted font-bevn-regular text-center mt-sm">
         Quét mã bằng ứng dụng ngân hàng. Sau khi nhận tiền, hệ thống sẽ kích hoạt gói hoặc thông báo nếu cần đối soát.
       </Text>

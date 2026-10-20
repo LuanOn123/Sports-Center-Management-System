@@ -7,6 +7,7 @@ import {
   useMembershipData, useCancelSubscription, estimateSelfCancelRefund, findRegisteredSubscription,
 } from './useMembership';
 import { usePendingPayment, useStartCheckout, type PaymentScope } from './usePayment';
+import { detectPlanSwitchType, planSwitchHint } from '../../lib/planSwitch';
 import type { MembershipPlan, SepayCheckout } from '../../lib/types';
 
 export function useMembershipScreen(memberId: string | undefined, scope: PaymentScope) {
@@ -18,6 +19,8 @@ export function useMembershipScreen(memberId: string | undefined, scope: Payment
   const cancelMutation = useCancelSubscription();
 
   const [cancelOpen, setCancelOpen] = useState(false);
+  /** Gói đang xem trong bảng xác nhận đổi gói (gia hạn / nâng cấp / hạ cấp) */
+  const [switchPlan, setSwitchPlan] = useState<MembershipPlan | null>(null);
   const [cancelReason, setCancelReason] = useState('');
 
   useFocusEffect(
@@ -31,21 +34,28 @@ export function useMembershipScreen(memberId: string | undefined, scope: Payment
     await Promise.all([refreshMembership(), refetchPending()]);
   };
 
-  // ─── Thanh toán (web: startCheckout — bấm là tạo đơn ngay, không hỏi xác nhận) ─
+  // ─── Thanh toán ─────────────────────────────────────────────────────────────
+  /** Tạo đơn VietQR; `startDate` chỉ có khi hội viên hẹn ngày kích hoạt */
   const startCheckout = (
     plan: MembershipPlan,
+    startDate: string | undefined,
     onCreated: (checkout: SepayCheckout) => void,
     onError: (e: unknown) => void,
   ) => {
     checkoutMutation.reset();
-    checkoutMutation.mutate(plan.id, { onSuccess: onCreated, onError });
+    checkoutMutation.mutate({ planId: plan.id, startDate }, { onSuccess: onCreated, onError });
   };
+
+  /** Loại đổi gói khi mua plan này so với gói đang dùng (giống web) */
+  const switchTypeFor = (plan: MembershipPlan) => detectPlanSwitchType(activeSub, plan);
+  /** Dòng giải thích dưới nút mua (nối tiếp sau ngày…, gói ngắn hơn…) */
+  const hintFor = (plan: MembershipPlan) => planSwitchHint(activeSub, plan);
 
   /** Gói hội viên đang dùng đúng plan này → nút "Gia hạn" (khớp planId như web) */
   const registeredFor = (planId: string) => findRegisteredSubscription(subscriptions, planId);
 
   /** Đang tạo đơn cho plan nào (để hiện "Đang tạo mã...") */
-  const creatingPlanId = checkoutMutation.isPending ? checkoutMutation.variables : undefined;
+  const creatingPlanId = checkoutMutation.isPending ? checkoutMutation.variables?.planId : undefined;
 
   // ─── Hủy gói ────────────────────────────────────────────────────────────────
   const openCancel = () => {
@@ -73,6 +83,13 @@ export function useMembershipScreen(memberId: string | undefined, scope: Payment
     creatingPlanId,
     isCreatingCheckout: checkoutMutation.isPending,
     registeredFor,
+    switchTypeFor,
+    hintFor,
+    switchSheet: {
+      plan: switchPlan,
+      open: (plan: MembershipPlan) => setSwitchPlan(plan),
+      close: () => setSwitchPlan(null),
+    },
     cancel: {
       open: cancelOpen,
       reason: cancelReason,

@@ -4,9 +4,12 @@
 import { api, ApiError } from '../lib/api';
 import type { SepayCheckout, SepayMockConfirmResult } from '../lib/types';
 
-/** POST /payments/sepay/checkout — tạo đơn VietQR (PENDING) cho gói đã chọn */
-export const createSepayCheckout = (planId: string) =>
-  api.post<SepayCheckout>('/payments/sepay/checkout', { planId });
+/**
+ * POST /payments/sepay/checkout — tạo đơn VietQR (PENDING) cho gói đã chọn.
+ * `startDate` (ISO, tuỳ chọn): ngày kích hoạt hẹn trước khi nâng cấp / hạ cấp — không gửi thì BE tự quyết.
+ */
+export const createSepayCheckout = (planId: string, startDate?: string) =>
+  api.post<SepayCheckout>('/payments/sepay/checkout', { planId, ...(startDate ? { startDate } : {}) });
 
 /** GET /payments/sepay/:id — trạng thái đơn (BE tự đối soát với SePay khi poll) */
 export const getSepayCheckout = (paymentId: string) =>

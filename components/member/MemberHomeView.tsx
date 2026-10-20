@@ -42,6 +42,7 @@ export function MemberHomeView({ user, facilityId }: MemberHomeViewProps) {
 
   const {
     status,
+    scheduledSub,
     statusLoading,
     pendingPayment,
     upcoming,
@@ -50,6 +51,16 @@ export function MemberHomeView({ user, facilityId }: MemberHomeViewProps) {
   } = useMemberHome(memberId, { userId: user?.id, facilityId });
 
   const effectiveTier: MembershipTier = (status?.effectiveTier ?? 'FREE') as MembershipTier;
+
+  // Gói tiếp theo đã thanh toán, chờ ngày kích hoạt (SCHEDULED)
+  const scheduledLine = scheduledSub ? (
+    <View className="flex-row items-center gap-1.5">
+      <Icon name="event-available" size={16} color={Colors.status.scheduled} />
+      <Text className="flex-1 text-sm font-bevn-medium text-status-scheduled" numberOfLines={1}>
+        Gói tiếp theo: {scheduledSub.planNameSnapshot ?? scheduledSub.plan?.name ?? 'Gói tập'} · từ {formatDate(scheduledSub.startDate)}
+      </Text>
+    </View>
+  ) : null;
 
   return (
     <ScrollView
@@ -142,6 +153,7 @@ export function MemberHomeView({ user, facilityId }: MemberHomeViewProps) {
                 </Text>
               </View>
             )}
+            {scheduledLine}
           </View>
         </View>
       ) : (
@@ -161,6 +173,7 @@ export function MemberHomeView({ user, facilityId }: MemberHomeViewProps) {
           {!statusLoading && (
             <Text className="text-sm text-text-muted font-bevn-regular">Chưa có gói hội viên đang hoạt động</Text>
           )}
+          {scheduledLine && <View className="mt-sm">{scheduledLine}</View>}
         </View>
       )}
 
