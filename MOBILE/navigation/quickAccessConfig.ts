@@ -1,6 +1,6 @@
 // navigation/quickAccessConfig.ts
-// 4 lối tắt trên Trang chủ theo vai trò — KHÔNG trùng với tab (Khám phá, Lịch, Tin nhắn, Tài khoản)
-// hay chuông thông báo; phần còn lại nằm trong menu Tài khoản (navigation/accountMenuConfig.ts).
+// 4 lối tắt trên Trang chủ theo vai trò — KHÔNG trùng với tab (Khám phá, Lịch, Tin nhắn, Tài khoản),
+// chuông thông báo hay thẻ trên Trang chủ (thẻ gói đã mở Gói thành viên); phần còn lại nằm trong menu Tài khoản (navigation/accountMenuConfig.ts).
 // Tương ứng "Thao tác nhanh" trên Trang chủ web.
 
 import type { Href } from 'expo-router';
@@ -18,8 +18,8 @@ export interface QuickAccessItem {
 
 const MEMBER_ITEMS: QuickAccessItem[] = [
   { icon: 'login', label: 'Check-in', route: ROUTES.checkin, color: Colors.feature.emerald },
-  { icon: 'workspace-premium', label: 'Gói tập', route: ROUTES.membershipPlans, color: Colors.feature.amber },
   { icon: 'insights', label: 'Chuyên cần', route: ROUTES.myAttendance, color: Colors.feature.cyan },
+  { icon: 'receipt-long', label: 'Hóa đơn', route: ROUTES.payments, color: Colors.feature.amber },
   { icon: 'auto-awesome', label: 'Trợ lý AI', route: ROUTES.aiAssistant, color: Colors.feature.violet },
 ];
 

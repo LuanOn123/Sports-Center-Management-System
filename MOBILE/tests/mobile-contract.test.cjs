@@ -334,3 +334,20 @@ test('home formatters: greeting by Vietnam hour and "starts in" labels', () => {
   assert.equal(f.formatStartsIn('2026-10-20T23:30:00Z', '2026-10-21T00:30:00Z', now), 'Ngày mai, 06:30');
   assert.equal(f.formatStartsIn('2026-10-22T11:00:00Z', '2026-10-22T12:00:00Z', now), 'T5, 22/10/2026 · 18:00');
 });
+
+test('class sessions are view-only like the web: status labels and waitlist only when full', () => {
+  const app = loadApp('http://localhost/api/v1');
+  const plan = app.load('lib/classPlan'); const quick = app.load('navigation/quickAccessConfig'); const { ROUTES } = app.load('navigation/routes');
+  const s = (over) => ({ id: 's', startTime: '2099-01-01T10:00:00Z', endTime: '2099-01-01T11:00:00Z', status: 'SCHEDULED', remainingSlots: 3, isFull: false, isBookable: true, canBook: true, myEnrollmentStatus: null, conflictWith: null, ...over });
+  assert.deepEqual(plan.sessionStatusLabel(s({ myEnrollmentStatus: 'BOOKED' })), { text: 'Đã đặt', tone: 'booked' });
+  assert.deepEqual(plan.sessionStatusLabel(s({ myEnrollmentStatus: 'COMPLETED' })), { text: 'Đã hoàn thành', tone: 'completed' });
+  assert.deepEqual(plan.sessionStatusLabel(s({ isFull: true })), { text: 'Hết chỗ', tone: 'full' });
+  assert.deepEqual(plan.sessionStatusLabel(s({ conflictWith: { className: 'Yoga' } })), { text: 'Trùng giờ với Yoga', tone: 'conflict' });
+  assert.deepEqual(plan.sessionStatusLabel(s({})), { text: 'Chưa đặt', tone: 'none' });
+  assert.equal(plan.canJoinSessionWaitlist(s({ isFull: true })), true);
+  assert.equal(plan.canJoinSessionWaitlist(s({ isFull: true, myEnrollmentStatus: 'BOOKED' })), false);
+  assert.equal(plan.canJoinSessionWaitlist(s({ isFull: true, startTime: '2000-01-01T00:00:00Z' })), false);
+  assert.equal(plan.canJoinSessionWaitlist(s({})), false);
+  // Thẻ gói trên Trang chủ đã mở Gói thành viên → không có lối tắt trùng
+  assert.ok(!quick.getQuickAccessForRole('MEMBER').some((i) => i.route === ROUTES.membershipPlans));
+});

@@ -84,6 +84,8 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      // Quay lại theo lịch sử: Tài khoản → Thông tin cá nhân → (back) về Tài khoản, không nhảy về Trang chủ
+      backBehavior="history"
       screenOptions={{
         headerShown: false,
         tabBarHideOnKeyboard: true,   // Android: hides natively

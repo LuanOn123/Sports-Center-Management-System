@@ -75,14 +75,17 @@ export default function NotificationsScreen() {
         title="Thông báo"
         subtitle="Cập nhật và tin tức từ trung tâm"
         rightAction={
+          // Nút icon vừa ô 40×40 của header (nút chữ cũ bị bóp méo)
           hasUnread ? (
             <TouchableOpacity
-              className="px-sm py-1 rounded-full border border-primary"
+              accessibilityRole="button"
+              accessibilityLabel="Đánh dấu tất cả đã đọc"
+              className="w-10 h-10 rounded-full items-center justify-center bg-bg-elevated"
               onPress={handleMarkAllRead}
               disabled={isMarkingAllRead}
               activeOpacity={0.7}
             >
-              <Text className="text-xs text-primary font-bevn-semibold">Đọc hết</Text>
+              {isMarkingAllRead ? <ActivityIndicator size="small" color={Colors.primary} /> : <Icon name="done-all" size={20} color={Colors.primary} />}
             </TouchableOpacity>
           ) : undefined
         }

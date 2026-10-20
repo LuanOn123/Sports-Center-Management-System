@@ -1,6 +1,6 @@
 // hooks/shared/useClassDetail.ts
 // Logic màn chi tiết lớp: thông tin lớp, kế hoạch khóa (hội viên), buổi dạy sắp tới (HLV),
-// đăng ký trọn khóa / đặt từng buổi — giống ClassDetailPage web.
+// đăng ký trọn khóa — giống ClassDetailPage web (không đặt lẻ từng buổi).
 
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
@@ -8,7 +8,7 @@ import { apiRequest } from '../../lib/api';
 import { allPages } from '../../lib/pagedApi';
 import type { Class, ClassSchedule } from '../../lib/types';
 import { useCoursePlan } from './useClasses';
-import { useBookSchedule, useEnrollWholeCourse } from '../member/useEnrollments';
+import { useEnrollWholeCourse } from '../member/useEnrollments';
 
 /** Lý do chặn đăng ký liên quan gói thành viên → gợi ý xem gói */
 const MEMBERSHIP_BLOCKER = /SUBSCRIPTION|TIER|MEMBERSHIP/;
@@ -30,7 +30,6 @@ export function useClassDetail(id: string) {
     queryFn: ({ signal }) => allPages<ClassSchedule>('/class-schedules', { classId: id, status: 'SCHEDULED', startAfter: new Date().toISOString() }, signal),
   });
   const bulk = useEnrollWholeCourse();
-  const book = useBookSchedule();
 
   const registration = plan.data?.data.registration ?? null;
 
@@ -41,7 +40,6 @@ export function useClassDetail(id: string) {
     plan,
     coachSessions,
     bulk,
-    book,
     value: cls.data?.data,
     course: plan.data?.data.course ?? null,
     sessions: plan.data?.data.sessions ?? [],
