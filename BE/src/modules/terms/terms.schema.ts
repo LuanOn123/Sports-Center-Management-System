@@ -47,6 +47,13 @@ export const CreateTermSchema = z
         message: "Ngày đóng cổng đăng ký phải sau ngày mở cổng đăng ký",
       });
     }
+    if (regEnd > end) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["registrationEndDate"],
+        message: "Ngày đóng đăng ký không được sau ngày kết thúc kỳ học",
+      });
+    }
   });
 
 export const UpdateTermSchema = z
@@ -83,6 +90,15 @@ export const UpdateTermSchema = z
           code: z.ZodIssueCode.custom,
           path: ["registrationEndDate"],
           message: "Ngày đóng cổng đăng ký phải sau ngày mở cổng đăng ký",
+        });
+      }
+    }
+    if (data.endDate && data.registrationEndDate) {
+      if (new Date(data.registrationEndDate) > new Date(data.endDate)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["registrationEndDate"],
+          message: "Ngày đóng đăng ký không được sau ngày kết thúc kỳ học",
         });
       }
     }
