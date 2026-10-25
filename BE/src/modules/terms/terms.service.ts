@@ -169,7 +169,11 @@ export async function getCurrentTerm(facilityId?: string) {
         },
       ],
     },
-    orderBy: { startDate: "asc" },
+    orderBy: [
+      // Ưu tiên kỳ toàn hệ thống (facilityId = null) khi không có facilityId cụ thể
+      { facilityId: "asc" },
+      { startDate: "asc" },
+    ],
     include: {
       facility: { select: { id: true, name: true, code: true } },
       _count: { select: { schedules: true, patterns: true } },
