@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 import { env } from "../../config/env.js";
 import { ATTENDANCE } from "../../config/attendance.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
-import { createNotification } from "../notifications/notifications.service.js";
+import { notifyViaOutbox } from "../notifications/outbox.service.js";
 import { computeAttendanceBuckets } from "./attendance-analytics.service.js";
 import { expireStalePenalties } from "./attendance-penalties.service.js";
 
@@ -484,17 +484,30 @@ export async function scanAttendanceWarnings(classId?: string, now = new Date())
   for (const bucket of advisoryBuckets) {
     if (!bucket.memberUserId) continue;
     // Trạng thái tư vấn gần nhất ĐÃ thông báo cho (member × class).
-    const lastNotified = await prisma.notification.findFirst({
-      where: {
-        userId: bucket.memberUserId,
-        type: "ATTENDANCE_WARNING",
-        metadata: { path: ["classId"], equals: bucket.classId },
-      },
-      orderBy: { createdAt: "desc" },
-      select: { metadata: true },
-    });
+    // G10: thông báo đi qua OUTBOX ⇒ bản ghi còn chờ gửi (PENDING/SENDING) cũng tính là "đã báo".
+    const dedupeWhere = {
+      userId: bucket.memberUserId,
+      type: "ATTENDANCE_WARNING" as const,
+      metadata: { path: ["classId"], equals: bucket.classId },
+    };
+    const [lastNotified, lastQueued] = await Promise.all([
+      prisma.notification.findFirst({
+        where: dedupeWhere,
+        orderBy: { createdAt: "desc" },
+        select: { metadata: true, createdAt: true },
+      }),
+      prisma.notificationOutbox.findFirst({
+        where: { ...dedupeWhere, status: { in: ["PENDING", "SENDING"] } },
+        orderBy: { createdAt: "desc" },
+        select: { metadata: true, createdAt: true },
+      }),
+    ]);
+    const latest =
+      lastQueued && (!lastNotified || lastQueued.createdAt > lastNotified.createdAt)
+        ? lastQueued
+        : lastNotified;
     const lastState =
-      (lastNotified?.metadata as { state?: string } | null)?.state ?? null;
+      (latest?.metadata as { state?: string } | null)?.state ?? null;
 
     if (lastState === bucket.status) {
       skippedDuplicate++;
@@ -508,7 +521,7 @@ export async function scanAttendanceWarnings(classId?: string, now = new Date())
           `được phép vắng tối đa ${(bucket as { allowedAbsences: number }).allowedAbsences} buổi, ` +
           `bạn đã vắng ${(bucket as { currentAbsences: number }).currentAbsences} buổi.`
         : "";
-    await createNotification(
+    await notifyViaOutbox(
       bucket.memberUserId,
       "ATTENDANCE_WARNING",
       isWarning

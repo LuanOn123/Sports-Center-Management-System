@@ -211,7 +211,7 @@ router.get("/:id/course-plan", authenticate, classesController.getClassCoursePla
 router.post(
   "/",
   authenticate,
-  authorize("MANAGER", "RECEPTIONIST"),
+  authorize("MANAGER"),
   validate(CreateClassSchema),
   classesController.createClass
 );
@@ -266,7 +266,7 @@ router.post(
 router.patch(
   "/:id",
   authenticate,
-  authorize("MANAGER", "RECEPTIONIST"),
+  authorize("MANAGER"),
   validate(UpdateClassSchema),
   classesController.updateClass
 );
@@ -294,7 +294,7 @@ router.patch(
 router.delete(
   "/:id",
   authenticate,
-  authorize("MANAGER", "RECEPTIONIST"),
+  authorize("MANAGER"),
   classesController.deleteClass
 );
 

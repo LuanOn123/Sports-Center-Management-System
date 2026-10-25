@@ -33,8 +33,11 @@ export async function createRoom(data: any) {
   if (facilityId) {
     await checkFacilityRoomLimit(facilityId);
   }
-  const existing = await prisma.room.findUnique({ where: { name: data.name } });
-  if (existing) throw new AppError("Room with this name already exists", 409);
+  // G5: tên phòng chỉ cần duy nhất TRONG một cơ sở (@@unique([facilityId, name])).
+  const existing = await prisma.room.findFirst({
+    where: { name: data.name, facilityId: facilityId ?? "legacy-main" },
+  });
+  if (existing) throw new AppError("Room with this name already exists in this facility", 409);
   return prisma.room.create({ data });
 }
 
@@ -50,6 +53,12 @@ export async function getRoomById(id: string) {
 export async function updateRoom(id: string, data: any) {
   const room = await prisma.room.findUnique({ where: { id } });
   if (!room) throw new AppError("Room not found", 404);
+  if (data.name !== undefined && data.name !== room.name) {
+    const duplicate = await prisma.room.findFirst({
+      where: { name: data.name, facilityId: room.facilityId, id: { not: id } },
+    });
+    if (duplicate) throw new AppError("Room with this name already exists in this facility", 409);
+  }
   if (data.isActive === false && room.isActive === true) {
     const scheduled = await prisma.classSchedule.count({
       where: {

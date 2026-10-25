@@ -298,7 +298,7 @@ async function main() {
 
   // ─── ROOMS ───────────────────────────────────────────
   const room1 = await prisma.room.upsert({
-    where: { name: "Phòng Yoga A" },
+    where: { facilityId_name: { facilityId: "legacy-main", name: "Phòng Yoga A" } },
     update: { areaType: AreaType.INDOOR },
     create: {
       name: "Phòng Yoga A",
@@ -310,7 +310,7 @@ async function main() {
   });
 
   const room2 = await prisma.room.upsert({
-    where: { name: "Phòng HIIT B" },
+    where: { facilityId_name: { facilityId: "legacy-main", name: "Phòng HIIT B" } },
     update: { areaType: AreaType.INDOOR },
     create: {
       name: "Phòng HIIT B",
@@ -322,7 +322,7 @@ async function main() {
   });
 
   const room3 = await prisma.room.upsert({
-    where: { name: "Hồ Bơi" },
+    where: { facilityId_name: { facilityId: "legacy-main", name: "Hồ Bơi" } },
     update: { areaType: AreaType.POOL },
     create: {
       name: "Hồ Bơi",
