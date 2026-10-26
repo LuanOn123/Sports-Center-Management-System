@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { getStaffFacilityId } from "../../middlewares/facilityScope.js";
+import { ATTENDANCE } from "../../config/attendance.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { lockMemberClass, lockMemberQuota } from "../../utils/dbLocks.js";
 import {
@@ -51,9 +52,9 @@ export type ReceptionAttendanceStatus = "NORMAL" | "WARNING" | "VIOLATION";
 export function classifyReceptionAttendance(
   absenceRate: number,
 ): ReceptionAttendanceStatus {
-  return absenceRate >= 30
+  return absenceRate >= ATTENDANCE.RECEPTION_VIOLATION_ABSENCE_PERCENT
     ? "VIOLATION"
-    : absenceRate >= 20
+    : absenceRate >= ATTENDANCE.RECEPTION_WARNING_ABSENCE_PERCENT
       ? "WARNING"
       : "NORMAL";
 }
@@ -68,9 +69,9 @@ export function attendanceSummary(sessions: { state: string }[]) {
   // Classify using integer products, before rounding the presentation value.
   const status: ReceptionAttendanceStatus = !totalRelevantClassSessions
     ? "NORMAL"
-    : absentCount * 100 >= totalRelevantClassSessions * 30
+    : absentCount * 100 >= totalRelevantClassSessions * ATTENDANCE.RECEPTION_VIOLATION_ABSENCE_PERCENT
       ? "VIOLATION"
-      : absentCount * 100 >= totalRelevantClassSessions * 20
+      : absentCount * 100 >= totalRelevantClassSessions * ATTENDANCE.RECEPTION_WARNING_ABSENCE_PERCENT
         ? "WARNING"
         : "NORMAL";
   return {
@@ -345,7 +346,7 @@ export async function sendReceptionAttendanceWarning(
     const facilityId = await lockPair(tx, user, pair);
     const detail = await getReceptionAttendanceDetail(user, pair);
     if (detail.summary.status === "NORMAL")
-      throw new AppError("Hội viên chưa đạt ngưỡng cảnh báo 20%", 400);
+      throw new AppError(`Hội viên chưa đạt ngưỡng cảnh báo ${ATTENDANCE.RECEPTION_WARNING_ABSENCE_PERCENT}%`, 400);
     if (detail.warnings.length)
       return {
         alreadySent: true,
@@ -385,7 +386,7 @@ export async function submitAttendanceViolationReport(
     const facilityId = await lockPair(tx, user, body);
     const detail = await getReceptionAttendanceDetail(user, body);
     if (detail.summary.status !== "VIOLATION")
-      throw new AppError("Chỉ báo cáo khi tỷ lệ vắng đạt từ 30%", 400);
+      throw new AppError(`Chỉ báo cáo khi tỷ lệ vắng đạt từ ${ATTENDANCE.RECEPTION_VIOLATION_ABSENCE_PERCENT}%`, 400);
     if (
       detail.reports.some((r) =>
         ["OPEN", "IN_PROGRESS", "RESOLVED"].includes(r.status),
@@ -459,7 +460,7 @@ export async function reviewAttendanceViolationReport(
       detail.summary.status !== "VIOLATION"
     )
       throw new AppError(
-        "Điểm danh đã thay đổi; hội viên không còn vi phạm 30%. Hãy từ chối báo cáo và kiểm tra lại.",
+        `Điểm danh đã thay đổi; hội viên không còn vi phạm ${ATTENDANCE.RECEPTION_VIOLATION_ABSENCE_PERCENT}%. Hãy từ chối báo cáo và kiểm tra lại.`,
         409,
       );
     const future =

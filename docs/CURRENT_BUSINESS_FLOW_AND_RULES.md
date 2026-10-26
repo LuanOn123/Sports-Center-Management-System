@@ -22,6 +22,37 @@
 
 # SECTION 1 — MEMBERSHIP POLICY A
 
+## 1.00 CẬP NHẬT 25/10/2026 — Ma trận mua gói & trạng thái `SCHEDULED` (thay thế phần mâu thuẫn bên dưới)
+
+> Code hiện tại (`subscription-purchase.service.ts` → `inspectPlanPurchase`, migration `20261016223500_add_membership_status_scheduled`) **đã thay đổi** so với Policy A gốc mô tả ở §1.0–§1.7. Khi hai phần mâu thuẫn, **mục này là nguồn đúng**. `[CODE-VERIFIED]`; test mới `tests/business-gaps.integration.ts` (`npm run test:business-gaps`) — chưa có kết quả chạy.
+
+Enum `MembershipStatus` = `ACTIVE | SCHEDULED | SUSPENDED | EXPIRED | CANCELLED`. `SCHEDULED` = gói **đã thanh toán, chờ tới `startDate`** mới cấp quyền.
+
+| Trường hợp (so với gói ACTIVE hiện có) | Kết quả | Gói cũ |
+| --- | --- | --- |
+| Chưa có gói trả phí (không có / chỉ FREE), không hẹn ngày | ACTIVE ngay | FREE → SUSPENDED |
+| Chưa có gói trả phí, hẹn ngày tương lai (≤ 60 ngày) | SCHEDULED tại ngày hẹn | FREE giữ ACTIVE tới ngày kích hoạt |
+| Nâng hạng, không hẹn ngày | ACTIVE ngay | SUSPENDED |
+| Nâng hạng, hẹn ngày (≤ 60 ngày) | SCHEDULED | chạy tiếp tới ngày kích hoạt |
+| Cùng hạng, gói cũ còn hạn | SCHEDULED, `startDate = endDate` gói cũ (nối tiếp) | chạy hết hạn |
+| Hạ hạng, gói cũ còn hạn | SCHEDULED, ngày kích hoạt ≥ `endDate` gói cũ và ≤ `endDate` + 60 ngày | chạy hết hạn |
+| Gói cũ đã hết hạn (mọi hạng) | ACTIVE ngay | — |
+
+Áp dụng chung cho quầy (`POST /subscriptions`), gia hạn (`POST /subscriptions/:id/renew`, cùng `applyPlanSwitchRules`), đơn quầy và SePay. **Vẫn giữ:** 1 member ≤ 1 ACTIVE; không cộng ngày dư; không resume trạng thái cuối.
+
+**Kích hoạt (job 15 phút, `activateScheduledSubscriptions`):** trong transaction có `lockMemberSubscription` → CAS `SCHEDULED → ACTIVE` (chỉ khi `startDate ≤ now`) → các gói ACTIVE khác của member → SUSPENDED → outbox thông báo. Claim trước rồi mới suspend: gói SCHEDULED đã bị hủy thì không đụng gói ACTIVE (G2).
+
+**Hủy gói SCHEDULED (G3):** Member (`PATCH /subscriptions/:id/cancel`) hoặc Manager (`PATCH /subscriptions/:id/status {CANCELLED}`) → CANCELLED, **hoàn 100%** payment gốc (chưa cấp quyền ngày nào), invoice → CANCELLED, không đụng booking (quyền đặt chỗ chỉ đến từ gói ACTIVE). Lock + CAS theo SCHEDULED; nếu job vừa kích hoạt → 409 `SUBSCRIPTION_STATE_CHANGED`. Mọi chuyển SCHEDULED sang trạng thái khác CANCELLED bằng tay → 400 `SUBSCRIPTION_SCHEDULED_TRANSITION_FORBIDDEN`.
+
+**Hủy gói ACTIVE** (Member 30% / Manager prorated) nay cũng chạy dưới `lockMemberSubscription` + CAS theo ACTIVE (409 khi trạng thái đã đổi), và thông báo ghi **outbox trong cùng transaction** (G10) thay cho fire-and-forget.
+
+**Các thay đổi khác cùng đợt (25/10/2026):**
+- G5: `Room.name` unique theo `(facilityId, name)` — migration `20261025000000_room_name_unique_per_facility`.
+- G6: tạo/sửa/xóa Class chỉ MANAGER (+ADMIN); RECEPTIONIST chỉ còn xem và xem danh sách đăng ký.
+- G8: ngưỡng giám sát của lễ tân (vắng ≥ 20% cảnh báo, ≥ 30% báo cáo vi phạm) chuyển vào `ATTENDANCE.RECEPTION_*_ABSENCE_PERCENT`.
+- G10: thông báo hình phạt / khiếu nại / gỡ phạt / cảnh báo chuyên cần đi qua outbox (`notifyViaOutbox`); dedupe cảnh báo tính cả bản ghi outbox đang chờ.
+- G7 (giữ nguyên, quy định vận hành): cơ sở phải có Manager mới xếp lịch/gán HLV được — ADMIN không làm thay các endpoint `authorizeExact`.
+
 ## 1.0 State machine & ý nghĩa trạng thái
 
 Enum `MembershipStatus` (schema): `ACTIVE | SUSPENDED | EXPIRED | CANCELLED`. `[CODE-VERIFIED]`
@@ -202,10 +233,10 @@ Mọi đường hủy (Member/Manager/payment-refund) đều hủy enrollment `B
 | --- | --- | --- | --- |
 | INV-1 | 1 member ≤ 1 subscription `ACTIVE` | advisory lock + CAS suspend + cùng transaction (KHÔNG có unique index) | `[VERIFIED]` policy-a concurrent purchases |
 | INV-2 | `SUSPENDED/EXPIRED/CANCELLED → ACTIVE` = 400 `SUBSCRIPTION_RESUME_FORBIDDEN` | 3 nhánh chặn trong `updateSubscriptionStatus` | `[VERIFIED]` policy-a (3 checks) |
-| INV-3 | Không cộng ngày dư (carry-over), không stack, không ACTIVE tương lai | `endDate = start + durationDays` với `start = now`; `remainingDays` audit-only | `[VERIFIED]` policy-a (FREE & paid carry-over, renew no-stacking) |
+| INV-3 | **[CẬP NHẬT: có gói SCHEDULED tương lai — xem §1.00]** Không cộng ngày dư (carry-over), không stack, không ACTIVE tương lai | `endDate = start + durationDays` với `start = now`; `remainingDays` audit-only | `[VERIFIED]` policy-a (FREE & paid carry-over, renew no-stacking) |
 | INV-4 | FREE luôn trả `remainingDays = 0` khi bị thay thế | `inspectPlanPurchase`: `tier !== "FREE" && endDate > now` mới tính | `[VERIFIED]` sepay H, policy-a |
 | INV-5 | Replacement nguyên tử (không nửa vời) | cùng `$transaction`: suspend + create + payment + invoice + outbox | `[VERIFIED]` policy-a/sepay |
-| INV-6 | Không hạ hạng; cùng hạng không mua gói ít ngày hơn gói đã bán | `inspectPlanPurchase` → 400 | `[CODE-VERIFIED]` |
+| INV-6 | **[LỖI THỜI — hạ hạng/cùng hạng nay thành SCHEDULED, xem §1.00]** Không hạ hạng; cùng hạng không mua gói ít ngày hơn gói đã bán | `inspectPlanPurchase` → 400 | `[CODE-VERIFIED]` |
 | INV-7 | Quota đã bán snapshot theo kỳ (`maxConcurrentClassesSnapshot`) | ghi lúc cấp/SEPAY checkout A07 | `[CODE-VERIFIED]` (test quota có cover snapshot plan live ở mức độ nào thì xem §4) |
 | INV-8 | FREE contribute 0 giá trị tiền (price 0, không sinh revenue) | `planAmount = 0`; checkout chặn `plan.tier === FREE` | `[CODE-VERIFIED]` + `[VERIFIED]` sepay E (chặn gói FREE) |
 
@@ -862,7 +893,7 @@ Mua gói ở A  ──►  Membership = GLOBAL (entitlement)
 | BR-A03 | Không resume trạng thái terminal | `SUSPENDED/EXPIRED/CANCELLED → ACTIVE` = 400 `SUBSCRIPTION_RESUME_FORBIDDEN` | `[VERIFIED]` policy-a (3 checks) | `PATCH /subscriptions/:id/status` |
 | BR-A04 | Hết hạn gói trả phí | Lazy (resolver theo endDate) + job 15′ → `EXPIRED`; không hồi sinh; member book/check-in/scan → 403 | `[VERIFIED]` policy-a + lifecycle | `findActiveSubscription`, `expireStaleSubscriptions` |
 | BR-A05 | FREE behavior | Cấp khi register/Manager tạo MEMBER; 3650 ngày; quota 0 (chặn book, VẪN check-in được); facilityId null; login tự phục hồi khi thiếu ACTIVE | `[VERIFIED]` quota 12, sepay E; check-in `[CODE-VERIFIED]` | `ensureActiveFreeSubscription`, `auth.service.ts` (MF-08) |
-| BR-A06 | Hạ hạng / gói ít ngày | Tier mới < tier hiện tại → 400; cùng tier, `durationDays < gói đã bán` → 400 (chạy lúc checkout + lại trong tx) | `[CODE-VERIFIED]` | `inspectPlanPurchase` |
+| BR-A06 | **[LỖI THỜI — xem §1.00]** Hạ hạng / gói ít ngày | Tier mới < tier hiện tại → 400; cùng tier, `durationDays < gói đã bán` → 400 (chạy lúc checkout + lại trong tx) | `[CODE-VERIFIED]` | `inspectPlanPurchase` |
 | BR-A07 | Snapshot offer | Price/tier/duration/quota snapshot lúc tạo đơn (SePay) — plan sửa trong lúc chờ CK không đổi điều khoản bán | `[VERIFIED]` sepay K | `Payment.planNameSnapshot/...`, `optionSnapshot` |
 | BR-A08 | Hủy gói Member | Chỉ gói của mình + ACTIVE; >15 ngày → hoàn 30%, ≤15 → 0; hủy booking tương lai GLOBAL; refund ghi ở payment ORIGIN | `[VERIFIED]` cross-facility-cancel Case5/6 | `PATCH /subscriptions/:id/cancel` |
 | BR-A09 | Hủy gói Manager | Prorated `min(round(amount/soldDuration × daysLeft), amount)`; hủy booking GLOBAL; invoice → CANCELLED | `[VERIFIED]` Case5b (REFUNDED); formula `[CODE-VERIFIED]` | `updateSubscriptionStatus` |
@@ -890,11 +921,11 @@ Phân loại: **IMPLEMENTED** (code có, hành vi có thật) · **VERIFIED** (�
 
 | # | Hạn chế | Loại | Chi tiết |
 | --- | --- | --- | --- |
-| L1 | **Waitlist không có test BE** | IMPLEMENTED / **NOT VERIFIED** | Join/leave/promotion/position được code đầy đủ (§3.7) nhưng grep toàn `BE/tests/*` không có dấu vết `waitlist/WAITING/PROMOTED`. Rủi ro hồi sinh khi refactor. |
-| L2 | **Check-in (`FacilityVisit`) không có test BE** | IMPLEMENTED / **NOT VERIFIED** | Tương tự L1 — không test nào chạm `check-in`/`FacilityVisit`. |
+| L1 | **Waitlist không có test BE** (25/10: đã viết `tests/business-gaps.integration.ts`, chưa chạy) | IMPLEMENTED / **NOT VERIFIED** | Join/leave/promotion/position được code đầy đủ (§3.7) nhưng grep toàn `BE/tests/*` không có dấu vết `waitlist/WAITING/PROMOTED`. Rủi ro hồi sinh khi refactor. |
+| L2 | **Check-in (`FacilityVisit`) không có test BE** (25/10: đã viết `tests/business-gaps.integration.ts`, chưa chạy) | IMPLEMENTED / **NOT VERIFIED** | Tương tự L1 — không test nào chạm `check-in`/`FacilityVisit`. |
 | L3 | **`cross-facility-cancel` Case3 flaky (17/18 ở lần chạy 7/10)** | TEST-ONLY | Assertion `pastAfter[0].status === "BOOKED" && pastAfter[1].status === "COMPLETED"` với `orderBy: {id: "asc"}` trên **UUID ngẫu nhiên** → thứ tự ngẫu nhiên mỗi lần tạo fixture; lần chạy trước PASS, lần 7/10 FAIL với đúng dữ liệu `{COMPLETED, BOOKED}` (hai trạng thái ĐÚNG, chỉ thứ tự đảo). **Không phải lỗi nghiệp vụ** (booking quá khứ vẫn được giữ nguyên cả hai trạng thái). Cần sửa assertion (so set/thứ tự theo id đã biết) — nằm ngoài phạm vi tài liệu này. |
 | L4 | **Warning scan + no-show khi complete + `GET /reports/attendance` + `ATTENDANCE_POLICY_LOCKED` chưa có test** | IMPLEMENTED / **NOT VERIFIED** | §2.1, §2.4, §2.5 — hành vi chỉ có code. |
-| L5 | **Notification không guaranteed delivery** | IMPLEMENTED (giới hạn thiết kế) | Warning/penalty/hủy gói dùng direct create + `.catch` → mất được nếu process chết; outbox có retry 10 lần nhưng `FAILED` là chốt cuối (không worker hồi sinh). KHÔNG tuyên bố "đảm bảo nhận được". |
+| L5 | **Notification không guaranteed delivery** (25/10: hủy gói, phạt, cảnh báo đã chuyển sang outbox) | IMPLEMENTED (giới hạn thiết kế) | Warning/penalty/hủy gói dùng direct create + `.catch` → mất được nếu process chết; outbox có retry 10 lần nhưng `FAILED` là chốt cuối (không worker hồi sinh). KHÔNG tuyên bố "đảm bảo nhận được". |
 | L6 | **Comment/code lệch ở revenue report (C11)** | DISCREPANCY (comment) | `reports.service.ts`: comment field `refundedAmount` ghi *"tổng payment REFUNDED theo `paidAt`"* nhưng **code lọc `refundedAt` trong kỳ** — test lifecycle §4 xác nhận hành vi theo `refundedAt` (delta 200k). `[CODE-VERIFIED]` |
 | L7 | **`API_CONTRACT_MAP.json` còn nhãn `status: "MISMATCH"` ở `GET /reports/attendance`** | DISCREPANCY (metadata) | Enum đã đúng `NORMAL/NOTICE/WARNING`; nhãn MISMATCH giữ để đánh dấu tham chiếu dòng cũ — cần dọn ở lần cập nhật bản đồ contract kế tiếp. Runtime không bị ảnh hưởng. |
 | L8 | **`docs/POLICY_A_MEMBERSHIP_LIFECYCLE.md` ghi "không tạo fallback subscription"** | DISCREPANCY (phạm vi câu chữ) | **RUNTIME:** câu này ĐÚNG với **job lifecycle** (không hồi sinh/không tạo fallback); nhưng **MF-08 login** gọi `ensureActiveFreeSubscription` bất kỳ lần đăng nhập MEMBER nào → member không còn ACTIVE sẽ được cấp **FREE ACTIVE mới**. Hai luồng khác nhau — tài liệu cũ không mô tả luồng login. `[CODE-VERIFIED]` |

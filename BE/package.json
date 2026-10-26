@@ -46,6 +46,7 @@
     "test:final:member-facility": "tsx tests/final-member-facility.integration.ts",
     "test:policy-a:membership": "tsx tests/policy-a-membership.integration.ts",
     "test:matrix:membership": "tsx tests/subscription-matrix.integration.ts",
+    "test:business-gaps": "tsx tests/business-gaps.integration.ts",
     "test:captcha": "tsx --test tests/turnstile.integration.test.ts"
   },
   "dependencies": {

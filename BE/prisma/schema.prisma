@@ -353,7 +353,8 @@ model Room {
   facilityId String @default("legacy-main")
   facility Facility @relation(fields: [facilityId], references: [id])
   id        String   @id @default(uuid())
-  name      String   @unique
+  /// G5: tên phòng duy nhất TRONG một cơ sở — hai cơ sở được cùng có "Phòng A".
+  name      String
   capacity  Int
   location  String?
   areaType  AreaType
@@ -364,6 +365,8 @@ model Room {
   capabilities RoomCapability[]
   schedules ClassSchedule[]
     defaultClasses Class[] @relation("ClassDefaultRoom")
+
+  @@unique([facilityId, name])
 }
 
 // ─────────────────────────────────────────

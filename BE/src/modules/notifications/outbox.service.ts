@@ -44,6 +44,30 @@ export async function enqueueNotification(db: DbClient, input: OutboxNotificatio
 }
 
 /**
+ * G10 — Thay cho `createNotification(...)` fire-and-forget ở luồng KHÔNG có transaction riêng:
+ * ghi OUTBOX (bền, worker retry tối đa `OUTBOX_MAX_ATTEMPTS` lần) rồi flush ngay.
+ * Cùng chữ ký với `createNotification` để đổi tại chỗ.
+ */
+export async function notifyViaOutbox(
+  userId: string,
+  type: NotificationTypeEnum,
+  title: string,
+  body: string,
+  options?: { reason?: string; metadata?: Record<string, unknown> },
+) {
+  const row = await enqueueNotification(prisma, {
+    userId,
+    type,
+    title,
+    body,
+    reason: options?.reason,
+    metadata: options?.metadata,
+  });
+  await flushNotificationOutbox().catch(() => {});
+  return row;
+}
+
+/**
  * F01 — Gửi các notification đang PENDING (gọi NGAY sau commit của luồng nghiệp vụ + worker định kỳ).
  *
  * An toàn khi nhiều worker/instance chạy song song: mỗi bản ghi được CLAIM bằng

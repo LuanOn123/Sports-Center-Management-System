@@ -4,13 +4,12 @@ import { AppError } from "../../middlewares/errorHandler.js";
 import { ATTENDANCE, addDays } from "../../config/attendance.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { lockMemberClass, lockMemberQuota, lockSchedules } from "../../utils/dbLocks.js";
-import { createNotification } from "../notifications/notifications.service.js";
+import { notifyViaOutbox } from "../notifications/outbox.service.js";
 import { buildPenaltyReason, computeAttendanceBuckets } from "./attendance-analytics.service.js";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
 const fmt = (d: Date) => d.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
-
 /** APPLIED đã quá blockedUntil -> EXPIRED (giữ lịch sử, không xoá). */
 export async function expireStalePenalties(now = new Date()) {
   return prisma.attendancePenalty.updateMany({
@@ -185,8 +184,8 @@ export async function applyPenalty(input: {
     });
   });
 
-  // Notification (reuse helper) — fire-and-forget
-  createNotification(
+  // G10: notification qua OUTBOX (có retry) — không chặn response nếu gửi lỗi
+  notifyViaOutbox(
     penalty.member.user.id,
     "ATTENDANCE_PENALTY",
     `Hình phạt chuyên cần: ${penalty.class.name}`,
@@ -292,7 +291,7 @@ export async function appealPenalty(penaltyId: string, memberUserId: string, rea
   });
 
   if (penalty.decidedBy) {
-    createNotification(
+    notifyViaOutbox(
       penalty.decidedBy,
       "GENERAL",
       `Khiếu nại hình phạt chuyên cần: ${penalty.class.name}`,
@@ -429,7 +428,7 @@ export async function revokePenalty(
     };
   });
 
-  createNotification(
+  notifyViaOutbox(
     result.memberUserId,
     "ATTENDANCE_PENALTY_REVOKED",
     `Đã gỡ hình phạt chuyên cần: ${result.className}`,

@@ -3,7 +3,7 @@ import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { createNotification } from "../notifications/notifications.service.js";
-import { flushNotificationOutbox } from "../notifications/outbox.service.js";
+import { enqueueNotification, flushNotificationOutbox } from "../notifications/outbox.service.js";
 import { activateSubscriptionForPayment, applyPlanSwitchRules } from "./subscription-purchase.service.js";
 import { lockMemberSubscription } from "../../utils/dbLocks.js";
 import type {
@@ -301,6 +301,75 @@ export async function getSubscriptionById(id: string) {
   return sub;
 }
 
+/**
+ * G3 — Hủy gói SCHEDULED (đã thanh toán, CHƯA tới ngày kích hoạt).
+ * Gói chưa cấp quyền ngày nào ⇒ hoàn 100% số tiền đã thu, áp dụng như nhau cho
+ * Member tự hủy và Manager hủy. Không đụng booking: quyền đặt chỗ chỉ đến từ gói ACTIVE.
+ * Cùng lock với purchase/renew/job kích hoạt + CAS theo SCHEDULED: nếu job vừa kích hoạt
+ * gói thì trả 409 để client tải lại (khi đó áp dụng luật hủy gói ACTIVE).
+ */
+async function cancelScheduledSubscription(
+  sub: {
+    id: string;
+    memberId: string;
+    plan: { name: string };
+    member: { userId: string };
+    payments: { id: string; amount: unknown; facilityId: string | null }[];
+  },
+  cancelledBy: "MEMBER" | "MANAGER",
+  reason?: string,
+) {
+  const now = new Date();
+  const originalPayment = sub.payments[0];
+  const refundAmount = originalPayment ? Math.round(Number(originalPayment.amount)) : 0;
+  const willRefund = refundAmount > 0;
+
+  await prisma.$transaction(async (tx) => {
+    await lockMemberSubscription(tx, sub.memberId);
+    const changed = await tx.membershipSubscription.updateMany({
+      where: { id: sub.id, status: "SCHEDULED" },
+      data: { status: "CANCELLED", cancelledAt: now },
+    });
+    if (changed.count !== 1)
+      throw new AppError("Gói tập đã thay đổi trạng thái, vui lòng tải lại.", 409, {
+        code: "SUBSCRIPTION_STATE_CHANGED",
+      });
+
+    if (willRefund && originalPayment) {
+      await requestContext.run(
+        { ...requestContext.getStore(), facilityId: originalPayment.facilityId ?? undefined },
+        () =>
+          tx.payment.update({
+            where: { id: originalPayment.id },
+            data: {
+              status: "REFUNDED",
+              refundedAmount: refundAmount,
+              refundedAt: now,
+              note: `Hoàn 100% do hủy gói chưa kích hoạt (${cancelledBy === "MEMBER" ? "hội viên tự hủy" : "quản lý hủy"}). Lý do: ${reason ?? "Không có"}`,
+            },
+          }),
+      );
+      await tx.invoice.updateMany({
+        where: { paymentId: originalPayment.id, status: "ISSUED" },
+        data: { status: "CANCELLED" },
+      });
+    }
+
+    await enqueueNotification(tx, {
+      userId: sub.member.userId,
+      type: willRefund ? "PAYMENT_REFUNDED" : "SUBSCRIPTION_CANCELLED",
+      title: "Gói tập chờ kích hoạt đã bị hủy",
+      body: willRefund
+        ? `Gói "${sub.plan.name}" (chưa kích hoạt) đã bị hủy. Bạn được hoàn 100%: ${refundAmount.toLocaleString("vi-VN")}đ. Vui lòng liên hệ quầy lễ tân để nhận hoàn tiền.`
+        : `Gói "${sub.plan.name}" (chưa kích hoạt) đã bị hủy.`,
+      metadata: { subscriptionId: sub.id, cancelledBy },
+    });
+  });
+  await flushNotificationOutbox().catch(() => {});
+
+  return { subscriptionId: sub.id, status: "CANCELLED", daysLeft: 0, refundAmount, willRefund };
+}
+
 export async function updateSubscriptionStatus(id: string, status: string) {
   const now = new Date();
 
@@ -368,6 +437,19 @@ export async function updateSubscriptionStatus(id: string, status: string) {
     );
   }
 
+  // G3: gói SCHEDULED chỉ được hủy (hoàn 100%) — kích hoạt là việc của job theo startDate.
+  if (sub.status === "SCHEDULED") {
+    if (status === "CANCELLED") {
+      const result = await cancelScheduledSubscription(sub, "MANAGER");
+      return { ...(await getSubscriptionById(id)), ...result };
+    }
+    throw new AppError(
+      "Gói đang chờ kích hoạt (SCHEDULED) chỉ có thể hủy; hệ thống tự kích hoạt khi tới ngày bắt đầu.",
+      400,
+      { code: "SUBSCRIPTION_SCHEDULED_TRANSITION_FORBIDDEN" },
+    );
+  }
+
   // ── PRORATED REFUND khi Manager hủy ──────────────────────────────────────
   let refundAmount = 0;
   let willRefund = false;
@@ -397,11 +479,16 @@ export async function updateSubscriptionStatus(id: string, status: string) {
     }
 
     await prisma.$transaction(async (tx) => {
-      // 1. Cập nhật trạng thái subscription
-      await tx.membershipSubscription.update({
-        where: { id },
+      // 1. Cập nhật trạng thái subscription — cùng lock với purchase/renew/job, CAS theo ACTIVE.
+      await lockMemberSubscription(tx, sub.memberId);
+      const changed = await tx.membershipSubscription.updateMany({
+        where: { id, status: "ACTIVE" },
         data: updateData,
       });
+      if (changed.count !== 1)
+        throw new AppError("Gói tập đã thay đổi trạng thái, vui lòng tải lại.", 409, {
+          code: "SUBSCRIPTION_STATE_CHANGED",
+        });
 
       // 2. Tự động hủy toàn bộ lịch học tương lai của member.
       // Membership là GLOBAL ⇒ side-effect hủy booking phải chạy trên TOÀN BỘ cơ sở.
@@ -438,24 +525,25 @@ export async function updateSubscriptionStatus(id: string, status: string) {
             }),
         );
       }
-    });
 
-    // 4. Gửi notifications
-    if (willRefund) {
-      createNotification(
-        sub.member.userId,
-        "PAYMENT_REFUNDED",
-        "Hoàn tiền gói tập",
-        `Gói "${sub.plan.name}" đã bị hủy bởi quản lý. Số tiền hoàn: ${refundAmount.toLocaleString("vi-VN")}đ (${daysLeft} ngày còn lại / ${originalPayment?.durationDaysSnapshot ?? Math.max(1, Math.round((sub.endDate.getTime() - sub.startDate.getTime()) / 86400000))} ngày). Vui lòng ra quầy lễ tân để nhận hoàn tiền.`,
-      ).catch(() => {});
-    } else {
-      createNotification(
-        sub.member.userId,
-        "SUBSCRIPTION_CANCELLED",
-        "Gói tập của bạn đã bị hủy",
-        `Gói "${sub.plan.name}" đã bị hủy bởi quản lý. Gói của bạn đã hết thời hạn nên không phát sinh hoàn tiền. Các lịch học tương lai đã tự động bị hủy. Nếu có thắc mắc, vui lòng liên hệ nhân viên.`,
-      ).catch(() => {});
-    }
+      // 4. G10: thông báo ghi OUTBOX trong cùng transaction (gửi sau commit, có retry).
+      await enqueueNotification(tx, willRefund
+        ? {
+            userId: sub.member.userId,
+            type: "PAYMENT_REFUNDED",
+            title: "Hoàn tiền gói tập",
+            body: `Gói "${sub.plan.name}" đã bị hủy bởi quản lý. Số tiền hoàn: ${refundAmount.toLocaleString("vi-VN")}đ (${daysLeft} ngày còn lại / ${originalPayment?.durationDaysSnapshot ?? Math.max(1, Math.round((sub.endDate.getTime() - sub.startDate.getTime()) / 86400000))} ngày). Vui lòng ra quầy lễ tân để nhận hoàn tiền.`,
+            metadata: { subscriptionId: id },
+          }
+        : {
+            userId: sub.member.userId,
+            type: "SUBSCRIPTION_CANCELLED",
+            title: "Gói tập của bạn đã bị hủy",
+            body: `Gói "${sub.plan.name}" đã bị hủy bởi quản lý. Gói của bạn đã hết thời hạn nên không phát sinh hoàn tiền. Các lịch học tương lai đã tự động bị hủy. Nếu có thắc mắc, vui lòng liên hệ nhân viên.`,
+            metadata: { subscriptionId: id },
+          });
+    });
+    await flushNotificationOutbox().catch(() => {});
 
     // Trả về kết quả có thêm thông tin refund
     const result = await prisma.membershipSubscription.findUnique({
@@ -533,6 +621,15 @@ export async function cancelSubscriptionBySelf(
   if (!sub) throw new AppError("Subscription not found", 404);
   if (sub.member.userId !== userId)
     throw new AppError("Forbidden: not your subscription", 403);
+  if (sub.status === "SCHEDULED") {
+    const result = await cancelScheduledSubscription(sub, "MEMBER", reason);
+    return {
+      ...result,
+      message: result.willRefund
+        ? `Hủy thành công. Hoàn 100% (${result.refundAmount.toLocaleString("vi-VN")}đ) vì gói chưa kích hoạt.`
+        : "Hủy thành công gói chưa kích hoạt.",
+    };
+  }
   if (sub.status !== "ACTIVE")
     throw new AppError(
       `Không thể hủy gói đang ở trạng thái ${sub.status}`,
@@ -554,12 +651,21 @@ export async function cancelSubscriptionBySelf(
       : 0;
   const willRefund = refundAmount > 0;
 
+  const refundMsg = willRefund
+    ? `Bạn sẽ được hoàn ${refundAmount.toLocaleString("vi-VN")}đ (30% giá trị gói) vì còn ${daysLeft} ngày sử dụng (> 15 ngày). Vui lòng liên hệ nhân viên để nhận hoàn tiền.`
+    : `Gói của bạn còn ${daysLeft} ngày (≤ 15 ngày) nên không đủ điều kiện hoàn tiền theo chính sách.`;
+
   await prisma.$transaction(async (tx) => {
-    // 1. Hủy subscription (A10: lưu mốc hủy cho entitlement lịch sử)
-    await tx.membershipSubscription.update({
-      where: { id: subscriptionId },
+    // 1. Hủy subscription (A10: lưu mốc hủy cho entitlement lịch sử) — lock + CAS theo ACTIVE.
+    await lockMemberSubscription(tx, sub.memberId);
+    const changed = await tx.membershipSubscription.updateMany({
+      where: { id: subscriptionId, status: "ACTIVE" },
       data: { status: "CANCELLED", cancelledAt: now },
     });
+    if (changed.count !== 1)
+      throw new AppError("Gói tập đã thay đổi trạng thái, vui lòng tải lại.", 409, {
+        code: "SUBSCRIPTION_STATE_CHANGED",
+      });
 
     // 2. Hủy tất cả booking tương lai trên MỌI cơ sở (Membership là GLOBAL).
     // Chỉ bỏ scope cho câu updateMany này; where giới hạn memberId + BOOKED + tương lai.
@@ -594,19 +700,17 @@ export async function cancelSubscriptionBySelf(
           }),
       );
     }
+
+    // 4. G10: thông báo ghi OUTBOX trong cùng transaction (gửi sau commit, có retry).
+    await enqueueNotification(tx, {
+      userId,
+      type: "SUBSCRIPTION_CANCELLED",
+      title: "Gói tập đã được hủy",
+      body: `Gói "${sub.plan.name}" đã bị hủy thành công. ${refundMsg} Các lịch học sắp tới cũng đã tự động bị hủy.`,
+      metadata: { subscriptionId },
+    });
   });
-
-  // 4. Gửi notifications
-  const refundMsg = willRefund
-    ? `Bạn sẽ được hoàn ${refundAmount.toLocaleString("vi-VN")}đ (30% giá trị gói) vì còn ${daysLeft} ngày sử dụng (> 15 ngày). Vui lòng liên hệ nhân viên để nhận hoàn tiền.`
-    : `Gói của bạn còn ${daysLeft} ngày (≤ 15 ngày) nên không đủ điều kiện hoàn tiền theo chính sách.`;
-
-  createNotification(
-    userId,
-    "SUBSCRIPTION_CANCELLED",
-    "Gói tập đã được hủy",
-    `Gói "${sub.plan.name}" đã bị hủy thành công. ${refundMsg} Các lịch học sắp tới cũng đã tự động bị hủy.`,
-  ).catch(() => {});
+  await flushNotificationOutbox().catch(() => {});
 
   return {
     subscriptionId,
