@@ -27,6 +27,14 @@ export const ATTENDANCE = {
   WARN_THRESHOLD: 80,
   /** 70% <= rate < 80% -> NOTICE; rate < 70% -> WARNING (lớp định kỳ, advisory, không tự phạt). */
   RELEASE_THRESHOLD: 70,
+  /**
+   * G8 — Ngưỡng giám sát của LỄ TÂN (tính theo % VẮNG trên các buổi được tính, bỏ EXCUSED).
+   * Thang đo riêng với ngưỡng advisory ở trên (tính theo % CÓ MẶT) — gom về đây để chỉnh một nơi.
+   * - vắng >= WARNING  → lễ tân được gửi cảnh báo cho hội viên.
+   * - vắng >= VIOLATION → lễ tân được gửi báo cáo vi phạm để Manager duyệt.
+   */
+  RECEPTION_WARNING_ABSENCE_PERCENT: 20,
+  RECEPTION_VIOLATION_ABSENCE_PERCENT: 30,
   /** Tỷ lệ vắng cho phép của lớp CỐ ĐỊNH (20% tổng số buổi kế hoạch). */
   ABSENCE_ALLOWANCE_PERCENT: 20,
   /** Thời hạn chặn đặt lại Class sau khi áp dụng penalty. */

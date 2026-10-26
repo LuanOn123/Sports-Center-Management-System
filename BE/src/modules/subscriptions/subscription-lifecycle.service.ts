@@ -2,6 +2,7 @@ import { prisma } from "../../config/prisma.js";
 import { SUBSCRIPTION_LIFECYCLE } from "../../config/membership.js";
 import { sepayConfig } from "../../config/sepay.js";
 import { enqueueNotification, flushNotificationOutbox } from "../notifications/outbox.service.js";
+import { lockMemberSubscription } from "../../utils/dbLocks.js";
 
 /** B07 — nhịp chạy job vòng đời gói (15 phút). */
 export const LIFECYCLE_INTERVAL_MS = 15 * 60 * 1000;
@@ -158,18 +159,23 @@ export async function activateScheduledSubscriptions(now: Date = new Date()): Pr
   let activated = 0;
   for (const sub of ready) {
     const success = await prisma.$transaction(async (tx) => {
-      // Suspend older active subscriptions of this member
-      await tx.membershipSubscription.updateMany({
-        where: { memberId: sub.memberId, status: "ACTIVE" },
-        data: { status: "SUSPENDED", suspendedAt: now },
-      });
+      // G2: cùng lock với purchase/renew/webhook/cancel → giữ bất biến 1 member ≤ 1 ACTIVE
+      // khi job chạy song song với giao dịch mua/hủy của chính hội viên đó.
+      await lockMemberSubscription(tx, sub.memberId);
 
+      // Claim gói SCHEDULED TRƯỚC: nếu đã bị hủy/kích hoạt bởi thao tác khác thì
+      // không đụng tới gói ACTIVE hiện tại (tránh suspend nhầm rồi commit).
       const updated = await tx.membershipSubscription.updateMany({
-        where: { id: sub.id, status: "SCHEDULED" },
+        where: { id: sub.id, status: "SCHEDULED", startDate: { lte: now } },
         data: { status: "ACTIVE" },
       });
 
       if (updated.count === 0) return false;
+
+      await tx.membershipSubscription.updateMany({
+        where: { memberId: sub.memberId, status: "ACTIVE", id: { not: sub.id } },
+        data: { status: "SUSPENDED", suspendedAt: now },
+      });
 
       await enqueueNotification(tx, {
         userId: sub.member.userId,

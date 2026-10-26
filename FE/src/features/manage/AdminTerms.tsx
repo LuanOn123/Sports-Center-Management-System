@@ -28,6 +28,7 @@ function fmtDate(d: string) {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+    timeZone: "Asia/Ho_Chi_Minh",
   });
 }
 
@@ -46,7 +47,7 @@ type TermFormData = {
 /** Convert YYYY-MM-DD → ISO datetime string (start of day UTC) */
 function toISODate(d: string, endOfDay = false): string {
   if (!d) return "";
-  return `${d}T${endOfDay ? "23:59:59" : "00:00:00"}.000Z`;
+  return new Date(`${d}T${endOfDay ? "23:59:59" : "00:00:00"}+07:00`).toISOString();
 }
 
 /** Auto-generate a code from term name + year, e.g. "KY_THU_2026" */
