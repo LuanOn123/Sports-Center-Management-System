@@ -1,0 +1,82 @@
+.coach-change-list {
+  display: grid;
+  gap: 20px;
+}
+.coach-change-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.coach-change-filters button[aria-pressed="true"] {
+  border-color: var(--member-accent, #d4ff00);
+  color: var(--member-accent, #d4ff00);
+}
+.coach-change-card {
+  padding: 24px;
+}
+.coach-change-card-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.coach-change-card-heading > div {
+  flex: 1;
+  min-width: min(240px, 100%);
+}
+.coach-change-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  color: var(--member-accent, #d4ff00);
+  background: var(--member-surface-alt, #0e141e);
+}
+.coach-change-card h2 {
+  font-size: 18px;
+  margin: 0 0 9px;
+}
+.coach-change-card-heading p {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: 0;
+  color: var(--member-muted, #9baac0);
+  font-size: 12px;
+}
+.coach-change-card dl {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+  margin: 22px 0;
+}
+.coach-change-card dt {
+  color: var(--member-muted, #9baac0);
+  font-size: 11px;
+  margin-bottom: 7px;
+}
+.coach-change-card dd {
+  margin: 0;
+  font-size: 13px;
+}
+.coach-change-reason,
+.coach-change-info {
+  padding: 16px;
+  border: 1px solid var(--member-border, #263143);
+  border-radius: 12px;
+  background: var(--member-surface-alt, #0e141e);
+  white-space: pre-line;
+  line-height: 1.7;
+  font-size: 13px;
+}
+.coach-change-form > .modal-footer {
+  position: sticky;
+  bottom: 0;
+  margin: 0;
+  z-index: 2;
+}
+.coach-change-error {
+  padding: 0 24px 20px;
+}

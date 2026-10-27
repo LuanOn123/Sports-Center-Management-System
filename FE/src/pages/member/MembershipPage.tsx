@@ -24,10 +24,13 @@ import {
 
 export function MembershipPage() {
   const { user } = useAuth();
-  const [tab, setTab] = useState<"current" | "plans">("current");
   const [paymentPlan, setPaymentPlan] = useState<MembershipPlan | null>(null);
-  const [transitionPlan, setTransitionPlan] = useState<MembershipPlan | null>(null);
-  const [upgradeOption, setUpgradeOption] = useState<"immediate" | "scheduled">("immediate");
+  const [transitionPlan, setTransitionPlan] = useState<MembershipPlan | null>(
+    null,
+  );
+  const [upgradeOption, setUpgradeOption] = useState<"immediate" | "scheduled">(
+    "immediate",
+  );
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const storageKey = `pulse.pending-checkout.${user?.id}.${getFacilityId()}`;
   const [checkout, setCheckout] = useState<SepayCheckout | null>(() => {
@@ -42,8 +45,13 @@ export function MembershipPage() {
     if (checkout) sessionStorage.setItem(storageKey, JSON.stringify(checkout));
   }, [checkout, storageKey]);
   const createCheckout = useMutation({
-    mutationFn: ({ planId, startDate }: { planId: string; startDate?: string }) =>
-      sepayApi.createCheckout(planId, startDate),
+    mutationFn: ({
+      planId,
+      startDate,
+    }: {
+      planId: string;
+      startDate?: string;
+    }) => sepayApi.createCheckout(planId, startDate),
     onSuccess: (data) => {
       setCheckout(data);
       setCheckoutOpen(true);
@@ -97,7 +105,9 @@ export function MembershipPage() {
   const subscriptions = subData?.subscriptions || [];
   const activeSub = effectiveSubscription(subData?.subscriptions || []);
   const scheduledSub = subscriptions.find((s) => s.status === "SCHEDULED");
-  const plans = plansData?.plans || [];
+  const plans = (plansData?.plans || []).filter(
+    (plan) => plan.tier !== "FREE" && Number(plan.price) > 0,
+  );
 
   const rank: Record<string, number> = { FREE: 0, MEMBERSHIP: 1, PREMIUM: 2 };
 
@@ -150,823 +160,775 @@ export function MembershipPage() {
           </p>
         </div>
 
-        {activeSub && (
+        {activeSub && activeSub.tier !== "FREE" && (
           <CancelSubscription subscription={activeSub} role="MEMBER" />
         )}
-        {/* TABS */}
-        <div
-          style={{
-            display: "flex",
-            backgroundColor: "var(--member-surface-alt, #f2f5f3)",
-            borderRadius: 8,
-            padding: 3,
-          }}
-        >
-          <button
-            className="member-button"
-            onClick={() => setTab("current")}
-            style={{
-              border: "none",
-              background:
-                tab === "current"
-                  ? "var(--member-surface, #ffffff)"
-                  : "transparent",
-              color:
-                tab === "current"
-                  ? "var(--member-text, #203d31)"
-                  : "var(--member-muted, #58695f)",
-              fontWeight: 700,
-              fontSize: 13,
-              padding: "8px 16px",
-              borderRadius: 6,
-              cursor: "pointer",
-            }}
-          >
-            Gói của tôi
-          </button>
-          <button
-            className="member-button"
-            onClick={() => setTab("plans")}
-            style={{
-              border: "none",
-              background:
-                tab === "plans"
-                  ? "var(--member-surface, #ffffff)"
-                  : "transparent",
-              color:
-                tab === "plans"
-                  ? "var(--member-text, #203d31)"
-                  : "var(--member-muted, #58695f)",
-              fontWeight: 700,
-              fontSize: 13,
-              padding: "8px 16px",
-              borderRadius: 6,
-              cursor: "pointer",
-            }}
-          >
-            Bảng giá các gói
-          </button>
-        </div>
+        <a className="button" href="#membership-plans">
+          Xem bảng giá các gói
+        </a>
       </div>
 
-      {tab === "current" ? (
-        /* CURRENT MEMBERSHIP TAB */
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {subLoading ? (
-            <LoadingSpinner text="Đang kiểm tra gói hội viên..." />
-          ) : subError ? (
-            <ErrorState error={subError} />
-          ) : activeSub ? (
-            /* ACTIVE MEMBERSHIP HERO */
+      {/* GÓI ĐANG DÙNG */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        {subLoading ? (
+          <LoadingSpinner text="Đang kiểm tra gói hội viên..." />
+        ) : subError ? (
+          <ErrorState error={subError} />
+        ) : activeSub?.tier === "FREE" ? (
+          <section
+            className="membership-free-summary"
+            aria-label="Gói hiện tại"
+          >
+            <div>
+              <span className="membership-eyebrow">GÓI HIỆN TẠI</span>
+              <h2>Tài khoản Free</h2>
+              <p>
+                Được cấp tự động khi tạo tài khoản. Bạn có thể check-in cơ sở;
+                gói Free chưa bao gồm quyền đăng ký lớp học.
+              </p>
+            </div>
+            <a className="button primary" href="#membership-plans">
+              Khám phá gói tập
+            </a>
+          </section>
+        ) : activeSub ? (
+          /* ACTIVE MEMBERSHIP HERO */
+          <div
+            className="member-active-plan"
+            style={{
+              background:
+                "linear-gradient(135deg, var(--member-surface, #203d31) 0%, var(--member-surface-alt, #152720) 100%)",
+              borderRadius: 20,
+              padding: "32px",
+              color: "var(--member-text, #ffffff)",
+              boxShadow: "0 10px 25px -5px rgba(32, 61, 49, 0.2)",
+            }}
+          >
             <div
-              className="member-active-plan"
               style={{
-                background:
-                  "linear-gradient(135deg, var(--member-surface, #203d31) 0%, var(--member-surface-alt, #152720) 100%)",
-                borderRadius: 20,
-                padding: "32px",
-                color: "var(--member-text, #ffffff)",
-                boxShadow: "0 10px 25px -5px rgba(32, 61, 49, 0.2)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+                gap: 12,
+                marginBottom: 16,
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  flexWrap: "wrap",
-                  gap: 12,
-                  marginBottom: 16,
-                }}
-              >
-                <div>
+              <div>
+                <span
+                  style={{
+                    backgroundColor: "var(--member-accent, #d3f879)",
+                    color: "var(--member-ink, #203d31)",
+                    fontSize: 12,
+                    fontWeight: 800,
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  GÓI ĐANG HOẠT ĐỘNG
+                </span>
+                <h2
+                  style={{
+                    fontSize: 28,
+                    fontWeight: 800,
+                    margin: "12px 0 6px",
+                    color: "var(--member-text, #ffffff)",
+                  }}
+                >
+                  {activeSub.planNameSnapshot ?? activeSub.plan?.name}
+                </h2>
+                <p
+                  style={{
+                    margin: 0,
+                    color: "var(--member-muted, #b2c5bc)",
+                    fontSize: 14,
+                  }}
+                >
+                  {activeSub.plan?.description ||
+                    "Quyền lợi có hiệu lực tại mọi cơ sở. Giới hạn lớp được tính chung trên toàn hệ thống."}
+                </p>
+              </div>
+
+              <div style={{ textAlign: "right" }}>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "var(--member-muted, #b2c5bc)",
+                    marginBottom: 4,
+                  }}
+                >
+                  Thời hạn còn lại
+                </div>
+                <div
+                  style={{
+                    fontSize: 32,
+                    fontWeight: 800,
+                    color: "var(--member-accent, #d3f879)",
+                  }}
+                >
+                  {daysRemaining}{" "}
                   <span
                     style={{
-                      backgroundColor: "var(--member-accent, #d3f879)",
-                      color: "var(--member-ink, #203d31)",
-                      fontSize: 12,
-                      fontWeight: 800,
-                      padding: "4px 10px",
-                      borderRadius: 6,
-                      textTransform: "uppercase",
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    GÓI ĐANG HOẠT ĐỘNG
-                  </span>
-                  <h2
-                    style={{
-                      fontSize: 28,
-                      fontWeight: 800,
-                      margin: "12px 0 6px",
+                      fontSize: 16,
+                      fontWeight: 600,
                       color: "var(--member-text, #ffffff)",
                     }}
                   >
-                    {activeSub.planNameSnapshot ?? activeSub.plan?.name}
-                  </h2>
-                  <p
-                    style={{
-                      margin: 0,
-                      color: "var(--member-muted, #b2c5bc)",
-                      fontSize: 14,
-                    }}
-                  >
-                    {activeSub.plan?.description ||
-                      (activeSub.tier === "FREE"
-                        ? "Có thể check-in vào cơ sở; gói FREE không cấp quyền đặt lớp."
-                        : "Quyền lợi có hiệu lực tại mọi cơ sở. Quota lớp được tính chung trên toàn hệ thống.")}
-                  </p>
-                </div>
-
-                <div style={{ textAlign: "right" }}>
-                  <div
-                    style={{
-                      fontSize: 13,
-                      color: "var(--member-muted, #b2c5bc)",
-                      marginBottom: 4,
-                    }}
-                  >
-                    Thời hạn còn lại
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 32,
-                      fontWeight: 800,
-                      color: "var(--member-accent, #d3f879)",
-                    }}
-                  >
-                    {daysRemaining}{" "}
-                    <span
-                      style={{
-                        fontSize: 16,
-                        fontWeight: 600,
-                        color: "var(--member-text, #ffffff)",
-                      }}
-                    >
-                      ngày
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                  gap: 16,
-                  paddingTop: 24,
-                  borderTop: "1px solid rgba(255, 255, 255, 0.12)",
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "var(--member-muted, #8ca89b)",
-                    }}
-                  >
-                    Hạng hội viên
-                  </div>
-                  <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
-                    Hạng {activeSub.tier}
-                  </div>
-                </div>
-                <div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "var(--member-muted, #8ca89b)",
-                    }}
-                  >
-                    Ngày bắt đầu
-                  </div>
-                  <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
-                    {formatMemberDate(activeSub.startDate)}
-                  </div>
-                </div>
-                <div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "var(--member-muted, #8ca89b)",
-                    }}
-                  >
-                    Ngày kết thúc
-                  </div>
-                  <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
-                    {formatMemberDate(activeSub.endDate)}
-                  </div>
-                </div>
-                <div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "var(--member-muted, #8ca89b)",
-                    }}
-                  >
-                    Trạng thái
-                  </div>
-                  <div style={{ marginTop: 4 }}>
-                    <StatusBadge status={activeSub.status} />
-                  </div>
+                    ngày
+                  </span>
                 </div>
               </div>
             </div>
-          ) : (
-            <EmptyState
-              icon={<CreditCard size={40} />}
-              title="Bạn chưa có gói hội viên đang kích hoạt"
-              description="Hãy xem Bảng giá các gói để đăng ký gói tập luyện phù hợp với mục tiêu của bạn."
-              action={
-                <button
-                  className="member-button member-button-primary"
-                  onClick={() => setTab("plans")}
-                  style={{
-                    padding: "10px 20px",
-                    backgroundColor: "var(--member-surface-alt, #203d31)",
-                    color: "var(--member-text, #ffffff)",
-                    borderRadius: 8,
-                    border: "none",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                >
-                  Xem các gói tập ngay
-                </button>
-              }
-            />
-          )}
 
-          {/* NEXT UP / SCHEDULED MEMBERSHIP CARD */}
-          {scheduledSub && (
             <div
-              className="member-scheduled-plan"
               style={{
-                background:
-                  "linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.04) 100%)",
-                borderRadius: 20,
-                border: "2px solid #818cf8",
-                padding: "28px 32px",
-                boxShadow: "0 8px 20px -4px rgba(99, 102, 241, 0.15)",
-                display: "flex",
-                flexDirection: "column",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
                 gap: 16,
+                paddingTop: 24,
+                borderTop: "1px solid rgba(255, 255, 255, 0.12)",
               }}
             >
+              <div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--member-muted, #8ca89b)",
+                  }}
+                >
+                  Hạng hội viên
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
+                  Hạng {activeSub.tier}
+                </div>
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--member-muted, #8ca89b)",
+                  }}
+                >
+                  Ngày bắt đầu
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
+                  {formatMemberDate(activeSub.startDate)}
+                </div>
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--member-muted, #8ca89b)",
+                  }}
+                >
+                  Ngày kết thúc
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
+                  {formatMemberDate(activeSub.endDate)}
+                </div>
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--member-muted, #8ca89b)",
+                  }}
+                >
+                  Trạng thái
+                </div>
+                <div style={{ marginTop: 4 }}>
+                  <StatusBadge status={activeSub.status} />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <EmptyState
+            icon={<CreditCard size={40} />}
+            title="Bạn chưa có gói hội viên đang kích hoạt"
+            description="Hãy xem Bảng giá các gói để đăng ký gói tập luyện phù hợp với mục tiêu của bạn."
+            action={
+              <button
+                className="member-button member-button-primary"
+                onClick={() =>
+                  document
+                    .getElementById("membership-plans")
+                    ?.scrollIntoView({ block: "start" })
+                }
+                style={{
+                  padding: "10px 20px",
+                  backgroundColor: "var(--member-surface-alt, #203d31)",
+                  color: "var(--member-text, #ffffff)",
+                  borderRadius: 8,
+                  border: "none",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Xem các gói tập ngay
+              </button>
+            }
+          />
+        )}
+
+        {/* NEXT UP / SCHEDULED MEMBERSHIP CARD */}
+        {scheduledSub && (
+          <div
+            className="member-scheduled-plan"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.04) 100%)",
+              borderRadius: 20,
+              border: "2px solid #818cf8",
+              padding: "28px 32px",
+              boxShadow: "0 8px 20px -4px rgba(99, 102, 241, 0.15)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+                gap: 12,
+              }}
+            >
+              <div>
+                <span
+                  style={{
+                    backgroundColor: "#4f46e5",
+                    color: "#ffffff",
+                    fontSize: 12,
+                    fontWeight: 800,
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  NEXT UP · SẮP CÓ HIỆU LỰC
+                </span>
+                <h3
+                  style={{
+                    fontSize: 24,
+                    fontWeight: 800,
+                    margin: "10px 0 4px",
+                    color: "var(--member-text, #203d31)",
+                  }}
+                >
+                  {scheduledSub.planNameSnapshot ?? scheduledSub.plan?.name}
+                </h3>
+                <p
+                  style={{
+                    margin: 0,
+                    color: "var(--member-muted, #58695f)",
+                    fontSize: 13,
+                  }}
+                >
+                  Gói tập này đã được thanh toán và lên lịch sẵn. Hệ thống sẽ tự
+                  động kích hoạt vào ngày bắt đầu.
+                </p>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <span
+                  className="badge info"
+                  style={{
+                    backgroundColor: "rgba(99, 102, 241, 0.15)",
+                    color: "#4f46e5",
+                    fontWeight: 700,
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    fontSize: 13,
+                  }}
+                >
+                  SCHEDULED
+                </span>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: 16,
+                paddingTop: 16,
+                borderTop: "1px solid rgba(99, 102, 241, 0.15)",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--member-muted, #58695f)",
+                  }}
+                >
+                  Hạng gói
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4 }}>
+                  Hạng {scheduledSub.tier}
+                </div>
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--member-muted, #58695f)",
+                  }}
+                >
+                  Ngày kích hoạt dự kiến
+                </div>
+                <div
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 700,
+                    marginTop: 4,
+                    color: "#4f46e5",
+                  }}
+                >
+                  {formatMemberDate(scheduledSub.startDate)}
+                </div>
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--member-muted, #58695f)",
+                  }}
+                >
+                  Ngày hết hạn dự kiến
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4 }}>
+                  {formatMemberDate(scheduledSub.endDate)}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      <section
+        id="membership-plans"
+        aria-label="Bảng giá các gói"
+        style={{ display: "flex", flexDirection: "column", gap: 20 }}
+      >
+        <div className="membership-pricing-heading">
+          <div>
+            <h2>Bảng giá các gói tập</h2>
+            <p>So sánh quyền lợi và chọn gói phù hợp với lịch tập của bạn.</p>
+          </div>
+          <span>
+            <QrCode size={18} aria-hidden="true" /> Thanh toán VietQR
+          </span>
+        </div>
+        {plansLoading ? (
+          <LoadingSpinner text="Đang tải danh sách gói tập..." />
+        ) : plansError ? (
+          <ErrorState error={plansError} />
+        ) : plans.length === 0 ? (
+          <EmptyState title="Hiện chưa có gói tập nào mở bán" />
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
+              gap: 24,
+            }}
+          >
+            {plans.map((p) => {
+              const isPremium = p.tier === "PREMIUM";
+              const isRenewal = Boolean(
+                activeSub &&
+                (activeSub.planId === p.id ||
+                  (activeSub.tier === p.tier &&
+                    Number(p.durationDays) ===
+                      Number(
+                        activeSub.durationDaysSnapshot ??
+                          activeSub.plan?.durationDays,
+                      ))),
+              );
+              const isUpgrade = Boolean(
+                activeSub && (rank[p.tier] ?? 0) > (rank[activeSub.tier] ?? 0),
+              );
+              const isDowngrade = Boolean(
+                activeSub &&
+                ((rank[p.tier] ?? 0) < (rank[activeSub.tier] ?? 0) ||
+                  (p.tier === activeSub.tier &&
+                    Number(p.durationDays) <
+                      Number(
+                        activeSub.durationDaysSnapshot ??
+                          activeSub.plan?.durationDays,
+                      ))),
+              );
+              const registered = subscriptions.find(
+                (s) => s.planId === p.id && isEffectiveSubscription(s),
+              );
+              const priceFormatted = Number(p.price).toLocaleString("vi-VN");
+
+              return (
+                <div
+                  key={p.id}
+                  className={`membership-plan-card ${isPremium ? "premium" : ""}`}
+                  style={{
+                    backgroundColor: "var(--member-surface, #ffffff)",
+                    borderRadius: 18,
+                    border: isPremium
+                      ? "2px solid var(--member-text, #203d31)"
+                      : "1px solid var(--member-border, #e7ece9)",
+                    padding: 28,
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    position: "relative",
+                    boxShadow: isPremium
+                      ? "0 10px 25px -5px rgba(32, 61, 49, 0.12)"
+                      : "0 2px 4px rgba(0, 0, 0, 0.02)",
+                  }}
+                >
+                  {isPremium && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: -12,
+                        right: 24,
+                        backgroundColor: "var(--member-surface-alt, #203d31)",
+                        color: "var(--member-accent, #d3f879)",
+                        fontSize: 11,
+                        fontWeight: 800,
+                        padding: "3px 12px",
+                        borderRadius: 999,
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      TRẢI NGHIỆM PREMIUM
+                    </span>
+                  )}
+
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "var(--member-accent, #376228)",
+                        marginBottom: 6,
+                      }}
+                    >
+                      HẠNG {p.tier}
+                    </div>
+                    <h3
+                      style={{
+                        fontSize: 22,
+                        fontWeight: 800,
+                        color: "var(--member-text, #203d31)",
+                        margin: "0 0 8px",
+                      }}
+                    >
+                      {p.name}
+                    </h3>
+                    {registered && (
+                      <p className="membership-daily">
+                        <Check size={14} /> Đang sử dụng · đến{" "}
+                        {formatMemberDate(registered.endDate)}
+                      </p>
+                    )}
+                    {Number(p.price) > 0 && p.durationDays > 0 && (
+                      <div className="membership-daily">
+                        Khoảng{" "}
+                        <strong>
+                          {Math.round(
+                            Number(p.price) / p.durationDays,
+                          ).toLocaleString("vi-VN")}{" "}
+                          đ/ngày
+                        </strong>{" "}
+                        · {p.durationDays} ngày tập luyện
+                      </div>
+                    )}
+                    <p
+                      style={{
+                        fontSize: 13,
+                        color: "var(--member-muted, #667085)",
+                        lineHeight: 1.65,
+                        whiteSpace: "pre-line",
+                        margin: "0 0 20px",
+                      }}
+                    >
+                      {p.description ||
+                        "Gói tập toàn diện giúp học viên thoải mái trải nghiệm cơ sở vật chất và các lớp học chuyên sâu."}
+                    </p>
+
+                    <div style={{ marginBottom: 24 }}>
+                      <span
+                        style={{
+                          fontSize: 32,
+                          fontWeight: 900,
+                          color: "var(--member-text, #203d31)",
+                        }}
+                      >
+                        {priceFormatted}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 14,
+                          color: "var(--member-muted, #58695f)",
+                          marginLeft: 4,
+                        }}
+                      >
+                        VNĐ / {p.durationDays} ngày
+                      </span>
+                    </div>
+
+                    {/* Benefits */}
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                        fontSize: 13,
+                        color: "var(--member-text, #344054)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <Check
+                          size={16}
+                          color="var(--member-success, #267346)"
+                        />
+                        <span>
+                          Thời hạn sử dụng:{" "}
+                          <strong>{p.durationDays} ngày</strong>
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <Check
+                          size={16}
+                          color="var(--member-success, #267346)"
+                        />
+                        <span>
+                          Quyền đặt lịch lớp học:{" "}
+                          <strong>
+                            {p.maxConcurrentClasses ??
+                              (p.tier === "FREE"
+                                ? 0
+                                : p.tier === "PREMIUM"
+                                  ? 6
+                                  : 3)}{" "}
+                            lớp song song trên mọi cơ sở
+                          </strong>
+                        </span>
+                      </div>
+                      {isPremium && (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          <Check
+                            size={16}
+                            color="var(--member-success, #267346)"
+                          />
+                          <span>
+                            Mở khóa toàn bộ các lớp{" "}
+                            <strong>Premium Class ★</strong>
+                          </span>
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <Check
+                          size={16}
+                          color="var(--member-success, #267346)"
+                        />
+                        <span>
+                          Quyền lợi áp dụng tại mọi cơ sở trong hệ thống
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 28,
+                      paddingTop: 18,
+                      borderTop: "1px solid var(--member-surface-alt, #f2f5f3)",
+                    }}
+                  >
+                    <button
+                      className="button primary"
+                      style={{ width: "100%", justifyContent: "center" }}
+                      disabled={
+                        subLoading ||
+                        Boolean(subError) ||
+                        Number(p.price) <= 0 ||
+                        createCheckout.isPending
+                      }
+                      onClick={() => {
+                        if (activeSub) {
+                          setTransitionPlan(p);
+                          if (isDowngrade) {
+                            setCustomStartDate(activeSub.endDate.slice(0, 10));
+                          } else if (isUpgrade) {
+                            setUpgradeOption("immediate");
+                            setCustomStartDate(
+                              new Date().toISOString().slice(0, 10),
+                            );
+                          } else {
+                            setCustomStartDate(activeSub.endDate.slice(0, 10));
+                          }
+                        } else {
+                          startCheckout(p);
+                        }
+                      }}
+                    >
+                      <QrCode size={17} />
+                      {createCheckout.isPending && paymentPlan?.id === p.id
+                        ? "Đang tạo mã..."
+                        : isRenewal
+                          ? "Gia hạn qua VietQR"
+                          : isUpgrade
+                            ? "Nâng cấp qua VietQR"
+                            : isDowngrade
+                              ? "Lên lịch gói (Hạ cấp)"
+                              : "Chuyển khoản VietQR"}
+                    </button>
+                    {isDowngrade && activeSub && (
+                      <p
+                        className="field-note"
+                        style={{ color: "#4f46e5", fontSize: 12 }}
+                      >
+                        Gói sẽ kích hoạt sau ngày{" "}
+                        {formatMemberDate(activeSub.endDate)}
+                      </p>
+                    )}
+                    {isRenewal && activeSub && (
+                      <p
+                        className="field-note"
+                        style={{ color: "#059669", fontSize: 12 }}
+                      >
+                        Gia hạn tự động nối tiếp sau{" "}
+                        {formatMemberDate(activeSub.endDate)}
+                      </p>
+                    )}
+                    <p
+                      style={{
+                        textAlign: "center",
+                        fontSize: 11,
+                        color: "var(--member-muted, #667085)",
+                        lineHeight: 1.4,
+                        margin: "10px 0 0",
+                      }}
+                    >
+                      Quét mã bằng ứng dụng ngân hàng. Sau khi nhận tiền, hệ
+                      thống sẽ kích hoạt gói hoặc lên lịch kích hoạt tự động
+                      theo lựa chọn của bạn.
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <p className="field-note">
+          Giới hạn lớp được tính chung trên toàn hệ thống. Nhiều buổi thuộc cùng
+          một lớp chỉ tính là một lớp. Đăng ký phụ thuộc vào chỗ trống, lịch học
+          và thời hạn gói.
+        </p>
+      </section>
+
+      {/* SUBSCRIPTION HISTORY */}
+      <details
+        style={{
+          background: "var(--member-surface, #ffffff)",
+          borderRadius: 16,
+          border: "1px solid var(--member-border, #e7ece9)",
+          padding: 24,
+        }}
+      >
+        <summary
+          style={{
+            fontSize: 16,
+            fontWeight: 700,
+            color: "var(--member-text, #203d31)",
+            margin: "0 0 16px",
+          }}
+        >
+          Lịch sử các gói hội viên
+        </summary>
+
+        {subscriptions.length === 0 ? (
+          <div style={{ color: "var(--member-muted, #58695f)", fontSize: 13 }}>
+            Chưa có lịch sử đăng ký gói nào.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {subscriptions.map((sub) => (
               <div
+                key={sub.id}
                 style={{
                   display: "flex",
+                  alignItems: "center",
                   justifyContent: "space-between",
-                  alignItems: "flex-start",
+                  padding: "12px 16px",
+                  borderRadius: 10,
+                  backgroundColor: "var(--member-surface-alt, #f9fbfa)",
+                  border: "1px solid var(--member-border, #edf2ee)",
                   flexWrap: "wrap",
                   gap: 12,
                 }}
               >
                 <div>
-                  <span
+                  <div
                     style={{
-                      backgroundColor: "#4f46e5",
-                      color: "#ffffff",
-                      fontSize: 12,
-                      fontWeight: 800,
-                      padding: "4px 10px",
-                      borderRadius: 6,
-                      textTransform: "uppercase",
-                      letterSpacing: 0.5,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
-                    NEXT UP · SẮP CÓ HIỆU LỰC
-                  </span>
-                  <h3
-                    style={{
-                      fontSize: 24,
-                      fontWeight: 800,
-                      margin: "10px 0 4px",
+                      fontWeight: 700,
+                      fontSize: 14,
                       color: "var(--member-text, #203d31)",
                     }}
                   >
-                    {scheduledSub.planNameSnapshot ?? scheduledSub.plan?.name}
-                  </h3>
-                  <p
-                    style={{
-                      margin: 0,
-                      color: "var(--member-muted, #58695f)",
-                      fontSize: 13,
-                    }}
-                  >
-                    Gói tập này đã được thanh toán và lên lịch sẵn. Hệ thống sẽ tự động kích hoạt vào ngày bắt đầu.
-                  </p>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <span
-                    className="badge info"
-                    style={{
-                      backgroundColor: "rgba(99, 102, 241, 0.15)",
-                      color: "#4f46e5",
-                      fontWeight: 700,
-                      padding: "6px 12px",
-                      borderRadius: 8,
-                      fontSize: 13,
-                    }}
-                  >
-                    SCHEDULED
-                  </span>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                  gap: 16,
-                  paddingTop: 16,
-                  borderTop: "1px solid rgba(99, 102, 241, 0.15)",
-                }}
-              >
-                <div>
+                    {sub.planNameSnapshot ?? sub.plan?.name ?? "Gói tập"} (
+                    {sub.tier})
+                  </div>
                   <div
                     style={{
                       fontSize: 12,
                       color: "var(--member-muted, #58695f)",
+                      marginTop: 2,
                     }}
                   >
-                    Hạng gói
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4 }}>
-                    Hạng {scheduledSub.tier}
+                    {formatMemberDate(sub.startDate)} -{" "}
+                    {formatMemberDate(sub.endDate)}
                   </div>
                 </div>
-                <div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "var(--member-muted, #58695f)",
-                    }}
-                  >
-                    Ngày kích hoạt dự kiến
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 15,
-                      fontWeight: 700,
-                      marginTop: 4,
-                      color: "#4f46e5",
-                    }}
-                  >
-                    {formatMemberDate(scheduledSub.startDate)}
-                  </div>
-                </div>
-                <div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "var(--member-muted, #58695f)",
-                    }}
-                  >
-                    Ngày hết hạn dự kiến
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4 }}>
-                    {formatMemberDate(scheduledSub.endDate)}
-                  </div>
-                </div>
+                <StatusBadge status={sub.status} />
               </div>
-            </div>
-          )}
-
-          {/* SUBSCRIPTION HISTORY */}
-          <div
-            style={{
-              background: "var(--member-surface, #ffffff)",
-              borderRadius: 16,
-              border: "1px solid var(--member-border, #e7ece9)",
-              padding: 24,
-            }}
-          >
-            <h3
-              style={{
-                fontSize: 16,
-                fontWeight: 700,
-                color: "var(--member-text, #203d31)",
-                margin: "0 0 16px",
-              }}
-            >
-              Lịch sử các gói hội viên
-            </h3>
-
-            {subscriptions.length === 0 ? (
-              <div
-                style={{ color: "var(--member-muted, #58695f)", fontSize: 13 }}
-              >
-                Chưa có lịch sử đăng ký gói nào.
-              </div>
-            ) : (
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: 10 }}
-              >
-                {subscriptions.map((sub) => (
-                  <div
-                    key={sub.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "12px 16px",
-                      borderRadius: 10,
-                      backgroundColor: "var(--member-surface-alt, #f9fbfa)",
-                      border: "1px solid var(--member-border, #edf2ee)",
-                      flexWrap: "wrap",
-                      gap: 12,
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          fontWeight: 700,
-                          fontSize: 14,
-                          color: "var(--member-text, #203d31)",
-                        }}
-                      >
-                        {sub.planNameSnapshot ?? sub.plan?.name ?? "Gói tập"} (
-                        {sub.tier})
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: "var(--member-muted, #58695f)",
-                          marginTop: 2,
-                        }}
-                      >
-                        {formatMemberDate(sub.startDate)} -{" "}
-                        {formatMemberDate(sub.endDate)}
-                      </div>
-                    </div>
-                    <StatusBadge status={sub.status} />
-                  </div>
-                ))}
-              </div>
-            )}
+            ))}
           </div>
-        </div>
-      ) : (
-        /* MEMBERSHIP PLANS TAB */
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <section className="membership-hero">
-            <div>
-              <span className="membership-eyebrow">PULSE MEMBERSHIP</span>
-              <h2>
-                Đầu tư cho sức khỏe.
-                <br />
-                Bắt đầu từ hôm nay.
-              </h2>
-              <p>
-                Chọn gói phù hợp với nhịp sống của bạn và dành thời gian cho một
-                cơ thể khỏe hơn mỗi ngày.
-              </p>
-              <div className="membership-trust">
-                <span>
-                  <Check size={16} /> Thanh toán VietQR
-                </span>
-                <span>
-                  <Check size={16} /> Theo dõi gói trực tuyến
-                </span>
-              </div>
-            </div>
-            <div className="membership-hero-mark" aria-hidden="true">
-              <CreditCard size={68} />
-              <span>
-                MOVE.
-                <br />
-                GROW.
-                <br />
-                REPEAT.
-              </span>
-            </div>
-          </section>
-          {plansLoading ? (
-            <LoadingSpinner text="Đang tải danh sách gói tập..." />
-          ) : plansError ? (
-            <ErrorState error={plansError} />
-          ) : plans.length === 0 ? (
-            <EmptyState title="Hiện chưa có gói tập nào mở bán" />
-          ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-                gap: 24,
-              }}
-            >
-              {plans.map((p) => {
-                const isPremium = p.tier === "PREMIUM";
-                const isRenewal = Boolean(
-                  activeSub &&
-                    (activeSub.planId === p.id ||
-                      (activeSub.tier === p.tier &&
-                        Number(p.durationDays) ===
-                          Number(
-                            activeSub.durationDaysSnapshot ??
-                              activeSub.plan?.durationDays,
-                          ))),
-                );
-                const isUpgrade = Boolean(
-                  activeSub &&
-                    (rank[p.tier] ?? 0) > (rank[activeSub.tier] ?? 0),
-                );
-                const isDowngrade = Boolean(
-                  activeSub &&
-                    ((rank[p.tier] ?? 0) < (rank[activeSub.tier] ?? 0) ||
-                      (p.tier === activeSub.tier &&
-                        Number(p.durationDays) <
-                          Number(
-                            activeSub.durationDaysSnapshot ??
-                              activeSub.plan?.durationDays,
-                          ))),
-                );
-                const registered = subscriptions.find(
-                  (s) => s.planId === p.id && isEffectiveSubscription(s),
-                );
-                const priceFormatted = Number(p.price).toLocaleString("vi-VN");
-
-                return (
-                  <div
-                    key={p.id}
-                    className={`membership-plan-card ${isPremium ? "premium" : ""}`}
-                    style={{
-                      backgroundColor: "var(--member-surface, #ffffff)",
-                      borderRadius: 18,
-                      border: isPremium
-                        ? "2px solid var(--member-text, #203d31)"
-                        : "1px solid var(--member-border, #e7ece9)",
-                      padding: 28,
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      position: "relative",
-                      boxShadow: isPremium
-                        ? "0 10px 25px -5px rgba(32, 61, 49, 0.12)"
-                        : "0 2px 4px rgba(0, 0, 0, 0.02)",
-                    }}
-                  >
-                    {isPremium && (
-                      <span
-                        style={{
-                          position: "absolute",
-                          top: -12,
-                          right: 24,
-                          backgroundColor: "var(--member-surface-alt, #203d31)",
-                          color: "var(--member-accent, #d3f879)",
-                          fontSize: 11,
-                          fontWeight: 800,
-                          padding: "3px 12px",
-                          borderRadius: 999,
-                          letterSpacing: 0.5,
-                        }}
-                      >
-                        TRẢI NGHIỆM PREMIUM
-                      </span>
-                    )}
-
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 700,
-                          color: "var(--member-accent, #376228)",
-                          marginBottom: 6,
-                        }}
-                      >
-                        HẠNG {p.tier}
-                      </div>
-                      <h3
-                        style={{
-                          fontSize: 22,
-                          fontWeight: 800,
-                          color: "var(--member-text, #203d31)",
-                          margin: "0 0 8px",
-                        }}
-                      >
-                        {p.name}
-                      </h3>
-                      {registered && (
-                        <p className="membership-daily">
-                          <Check size={14} /> Đang sử dụng · đến{" "}
-                          {formatMemberDate(registered.endDate)}
-                        </p>
-                      )}
-                      {Number(p.price) > 0 && p.durationDays > 0 && (
-                        <div className="membership-daily">
-                          Khoảng{" "}
-                          <strong>
-                            {Math.round(
-                              Number(p.price) / p.durationDays,
-                            ).toLocaleString("vi-VN")}{" "}
-                            đ/ngày
-                          </strong>{" "}
-                          · {p.durationDays} ngày tập luyện
-                        </div>
-                      )}
-                      <p
-                        style={{
-                          fontSize: 13,
-                          color: "var(--member-muted, #667085)",
-                          lineHeight: 1.5,
-                          margin: "0 0 20px",
-                        }}
-                      >
-                        {p.description ||
-                          "Gói tập toàn diện giúp học viên thoải mái trải nghiệm cơ sở vật chất và các lớp học chuyên sâu."}
-                      </p>
-
-                      <div style={{ marginBottom: 24 }}>
-                        <span
-                          style={{
-                            fontSize: 32,
-                            fontWeight: 900,
-                            color: "var(--member-text, #203d31)",
-                          }}
-                        >
-                          {priceFormatted}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 14,
-                            color: "var(--member-muted, #58695f)",
-                            marginLeft: 4,
-                          }}
-                        >
-                          VNĐ / {p.durationDays} ngày
-                        </span>
-                      </div>
-
-                      {/* Benefits */}
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 10,
-                          fontSize: 13,
-                          color: "var(--member-text, #344054)",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                          }}
-                        >
-                          <Check
-                            size={16}
-                            color="var(--member-success, #267346)"
-                          />
-                          <span>
-                            Thời hạn sử dụng:{" "}
-                            <strong>{p.durationDays} ngày</strong>
-                          </span>
-                        </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                          }}
-                        >
-                          <Check
-                            size={16}
-                            color="var(--member-success, #267346)"
-                          />
-                          <span>
-                            Quyền đặt lịch lớp học:{" "}
-                            <strong>
-                              {p.maxConcurrentClasses ??
-                                (p.tier === "FREE"
-                                  ? 0
-                                  : p.tier === "PREMIUM"
-                                    ? 6
-                                    : 3)}{" "}
-                              lớp song song trên mọi cơ sở
-                            </strong>
-                          </span>
-                        </div>
-                        {isPremium && (
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                            }}
-                          >
-                            <Check
-                              size={16}
-                              color="var(--member-success, #267346)"
-                            />
-                            <span>
-                              Mở khóa toàn bộ các lớp{" "}
-                              <strong>Premium Class ★</strong>
-                            </span>
-                          </div>
-                        )}
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                          }}
-                        >
-                          <Check
-                            size={16}
-                            color="var(--member-success, #267346)"
-                          />
-                          <span>
-                            Sử dụng tủ đồ, phòng tắm nước nóng miễn phí
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        marginTop: 28,
-                        paddingTop: 18,
-                        borderTop:
-                          "1px solid var(--member-surface-alt, #f2f5f3)",
-                      }}
-                    >
-                      <button
-                        className="button primary"
-                        style={{ width: "100%", justifyContent: "center" }}
-                        disabled={
-                          subLoading ||
-                          Boolean(subError) ||
-                          Number(p.price) <= 0 ||
-                          createCheckout.isPending
-                        }
-                        onClick={() => {
-                          if (activeSub) {
-                            setTransitionPlan(p);
-                            if (isDowngrade) {
-                              setCustomStartDate(activeSub.endDate.slice(0, 10));
-                            } else if (isUpgrade) {
-                              setUpgradeOption("immediate");
-                              setCustomStartDate(new Date().toISOString().slice(0, 10));
-                            } else {
-                              setCustomStartDate(activeSub.endDate.slice(0, 10));
-                            }
-                          } else {
-                            startCheckout(p);
-                          }
-                        }}
-                      >
-                        <QrCode size={17} />
-                        {createCheckout.isPending && paymentPlan?.id === p.id
-                          ? "Đang tạo mã..."
-                          : isRenewal
-                            ? "Gia hạn qua VietQR"
-                            : isUpgrade
-                              ? "Nâng cấp qua VietQR"
-                              : isDowngrade
-                                ? "Lên lịch gói (Hạ cấp)"
-                                : "Chuyển khoản VietQR"}
-                      </button>
-                      {isDowngrade && activeSub && (
-                        <p
-                          className="field-note"
-                          style={{ color: "#4f46e5", fontSize: 12 }}
-                        >
-                          Gói sẽ kích hoạt sau ngày {formatMemberDate(activeSub.endDate)}
-                        </p>
-                      )}
-                      {isRenewal && activeSub && (
-                        <p
-                          className="field-note"
-                          style={{ color: "#059669", fontSize: 12 }}
-                        >
-                          Gia hạn tự động nối tiếp sau {formatMemberDate(activeSub.endDate)}
-                        </p>
-                      )}
-                      <p
-                        style={{
-                          textAlign: "center",
-                          fontSize: 11,
-                          color: "var(--member-muted, #667085)",
-                          lineHeight: 1.4,
-                          margin: "10px 0 0",
-                        }}
-                      >
-                        Quét mã bằng ứng dụng ngân hàng. Sau khi nhận tiền, hệ
-                        thống sẽ kích hoạt gói hoặc lên lịch kích hoạt tự động theo lựa chọn của bạn.
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </details>
 
       {/* PLAN TRANSITION & SMART DATE PICKER MODAL */}
       {transitionPlan && activeSub && (
@@ -977,7 +939,8 @@ export function MembershipPage() {
             (activeSub.tier === transitionPlan.tier &&
               Number(transitionPlan.durationDays) ===
                 Number(
-                  activeSub.durationDaysSnapshot ?? activeSub.plan?.durationDays,
+                  activeSub.durationDaysSnapshot ??
+                    activeSub.plan?.durationDays,
                 ))
               ? "Gia hạn gói tập"
               : (rank[transitionPlan.tier] ?? 0) > (rank[activeSub.tier] ?? 0)
@@ -1059,16 +1022,18 @@ export function MembershipPage() {
                   }}
                 >
                   Gói mới sẽ tự động nối tiếp thời hạn gói hiện tại, kích hoạt
-                  vào ngày <strong>{formatMemberDate(activeSub.endDate)}</strong>
-                  . Bạn không bị mất ngày tập nào.
+                  vào ngày{" "}
+                  <strong>{formatMemberDate(activeSub.endDate)}</strong>. Bạn
+                  không bị mất ngày tập nào.
                 </p>
               </div>
             )}
 
             {/* UPGRADE NOTICE & CHOICE */}
-            {(rank[transitionPlan.tier] ?? 0) >
-              (rank[activeSub.tier] ?? 0) && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {(rank[transitionPlan.tier] ?? 0) > (rank[activeSub.tier] ?? 0) && (
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 12 }}
+              >
                 <label
                   style={{
                     display: "flex",
@@ -1172,15 +1137,16 @@ export function MembershipPage() {
             )}
 
             {/* DOWNGRADE NOTICE */}
-            {((rank[transitionPlan.tier] ?? 0) <
-              (rank[activeSub.tier] ?? 0) ||
+            {((rank[transitionPlan.tier] ?? 0) < (rank[activeSub.tier] ?? 0) ||
               (transitionPlan.tier === activeSub.tier &&
                 Number(transitionPlan.durationDays) <
                   Number(
                     activeSub.durationDaysSnapshot ??
                       activeSub.plan?.durationDays,
                   ))) && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 14 }}
+              >
                 <div
                   style={{
                     background: "rgba(99, 102, 241, 0.08)",
@@ -1205,8 +1171,9 @@ export function MembershipPage() {
                       color: "var(--member-text, #203d31)",
                     }}
                   >
-                    Gói hạ cấp sẽ được lưu ở trạng thái <strong>SCHEDULED</strong>{" "}
-                    và chỉ có hiệu lực sau khi gói hiện tại kết thúc vào ngày{" "}
+                    Gói hạ cấp sẽ được lưu ở trạng thái{" "}
+                    <strong>SCHEDULED</strong> và chỉ có hiệu lực sau khi gói
+                    hiện tại kết thúc vào ngày{" "}
                     <strong>{formatMemberDate(activeSub.endDate)}</strong>.
                   </p>
                 </div>

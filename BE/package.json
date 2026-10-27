@@ -5,6 +5,7 @@
   "description": "Sports Center Management System Backend",
   "main": "dist/server.js",
   "scripts": {
+    "test:coach-changes": "tsx --test tests/coach-changes.test.ts",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",

@@ -21,8 +21,8 @@ export function FacilityCapacityCard({ facilityId, facilityName }: Props) {
     queryKey: ["facility-limits", facilityId],
     queryFn: ({ signal }) =>
       api<{ limits: FacilityLimits; usage: FacilityUsage }>(
-        `GET /facilities/${facilityId}/limits`,
-        { signal },
+        "GET /facilities/{facilityId}/limits",
+        { params: { facilityId }, signal },
       ),
   });
 

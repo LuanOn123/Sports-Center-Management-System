@@ -28,6 +28,11 @@ const quantities = object({
   },
 });
 const entries: [string, string, string, any?][] = [
+  ["get", "/coach-change-requests", "Danh sách yêu cầu đổi HLV theo buổi"],
+  ["get", "/coach-change-requests/sessions", "Buổi học coach có thể đề nghị đổi HLV"],
+  ["post", "/coach-change-requests", "Coach gửi yêu cầu đổi HLV", object({ scheduleId: text, reason: { ...text, minLength: 3, maxLength: 1000 } })],
+  ["get", "/coach-change-requests/{id}/candidates", "Quản lý chọn HLV thay thế phù hợp"],
+  ["patch", "/coach-change-requests/{id}", "Quản lý duyệt hoặc từ chối đổi HLV", object({ status: enumOf("APPROVED", "REJECTED"), reason: { ...text, minLength: 3, maxLength: 1000 }, coachId: text }, ["status", "reason"])],
   [
     "get",
     "/attendance/monitoring",

@@ -1346,6 +1346,7 @@ const FACILITY_SCOPE_ROOTS = new Set([
   "coaches",
   "issues",
   "leave-requests",
+  "coach-change-requests",
   "audit-logs",
   "slots",
   "schedule-patterns",

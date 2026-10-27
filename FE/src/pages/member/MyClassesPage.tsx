@@ -1,8 +1,9 @@
+import "../../shared/member-status.css";
 import { sportNames } from "../../shared/sports";
 import { formatMemberDate } from "../../shared/memberFormat";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { enrollmentsApi } from "../../api/enrollments.api";
 import { classesApi } from "../../api/classes.api";
 import type { Enrollment, EnrollmentStatus } from "../../types/member";
@@ -83,9 +84,16 @@ export function MyClassesPage() {
       queryClient.invalidateQueries({ queryKey: ["member-schedule"] });
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : "Không thể hủy đăng ký ca học này.";
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Không thể hủy đăng ký ca học này.";
       // Handle late cancellation explicitly
-      if (msg.toLowerCase().includes("late_cancellation") || msg.toLowerCase().includes("late cancellation") || msg.toLowerCase().includes("60")) {
+      if (
+        msg.toLowerCase().includes("late_cancellation") ||
+        msg.toLowerCase().includes("late cancellation") ||
+        msg.toLowerCase().includes("60")
+      ) {
         setMessage({
           type: "error",
           text: "Đã quá hạn tự hủy đặt chỗ (chỉ được hủy trước giờ học ít nhất 60 phút). Vui lòng liên hệ trực tiếp lễ tân cơ sở nếu bạn có việc đột xuất.",
@@ -119,7 +127,8 @@ export function MyClassesPage() {
     onError: (err: unknown) => {
       setMessage({
         type: "error",
-        text: err instanceof Error ? err.message : "Không thể gửi đơn xin nghỉ.",
+        text:
+          err instanceof Error ? err.message : "Không thể gửi đơn xin nghỉ.",
       });
       setLeaveOpen(false);
     },
@@ -209,45 +218,49 @@ export function MyClassesPage() {
       {message && <AlertBanner type={message.type} message={message.text} />}
 
       {quota.isSuccess && (
-        <section className="panel" aria-label="Hạn mức lớp học">
-          <div className="panel-heading">
-            <div>
-              <h2>Hạn mức lớp đang giữ</h2>
-              <p>
-                {quota.data.used}/{quota.data.limit} lớp · còn{" "}
-                {quota.data.remaining} lớp với gói{" "}
-                {quota.data.tier || "chưa kích hoạt"}
-              </p>
-            </div>
-            <span className="badge">
-              {quota.data.hasActiveSubscription
-                ? "Đang hiệu lực"
-                : "Cần mua gói"}
-            </span>
-          </div>
-          <div
-            role="progressbar"
-            aria-label="Mức sử dụng hạn mức lớp"
-            aria-valuemin={0}
-            aria-valuemax={Math.max(1, quota.data.limit)}
-            aria-valuenow={quota.data.used}
-            style={{
-              height: 8,
-              borderRadius: 99,
-              background: "var(--member-border, #e7ece9)",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                height: "100%",
-                width: `${quota.data.limit ? Math.min(100, (quota.data.used / quota.data.limit) * 100) : 100}%`,
-                background: quota.data.remaining
-                  ? "var(--member-accent, #376228)"
-                  : "var(--member-warning, #d97706)",
-              }}
-            />
-          </div>
+        <section
+          className="member-class-access"
+          aria-label="Quyền đăng ký lớp học"
+        >
+          {!quota.data.hasActiveSubscription || quota.data.limit === 0 ? (
+            <>
+              <div>
+                <h2>Mở quyền đăng ký lớp học</h2>
+                <p>
+                  {quota.data.tier === "FREE"
+                    ? "Tài khoản Free chưa bao gồm lớp học. Chọn gói Membership hoặc Premium để bắt đầu đăng ký."
+                    : "Bạn cần một gói tập còn hiệu lực để đăng ký lớp học."}
+                </p>
+              </div>
+              <Link className="button primary" to="/member/membership">
+                Xem các gói tập
+              </Link>
+            </>
+          ) : (
+            <>
+              <div className="member-class-access-copy">
+                <h2>Quyền đăng ký lớp học</h2>
+                <p>
+                  {quota.data.remaining > 0
+                    ? "Bạn có thể đăng ký thêm " +
+                      quota.data.remaining +
+                      " lớp khác nhau."
+                    : "Bạn đã đăng ký đủ số lớp của gói hiện tại. Hãy hoàn thành hoặc hủy lớp chưa bắt đầu trước khi đăng ký lớp mới."}
+                </p>
+                <small>
+                  Mỗi lớp có nhiều buổi vẫn chỉ tính là một lớp. Giới hạn áp
+                  dụng chung tại mọi cơ sở.
+                </small>
+              </div>
+              <div className="member-class-count">
+                <strong>
+                  {quota.data.used}
+                  <span> / {quota.data.limit}</span>
+                </strong>
+                <span>Lớp đang đăng ký</span>
+              </div>
+            </>
+          )}
         </section>
       )}
 
@@ -501,7 +514,14 @@ export function MyClassesPage() {
                 </div>
 
                 {/* ACTION BUTTONS */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    flexWrap: "wrap",
+                  }}
+                >
                   <button
                     className="member-button"
                     onClick={() => navigate(`/member/classes/${item.classId}`)}
@@ -583,9 +603,24 @@ export function MyClassesPage() {
 
       {/* LATE CANCELLATION INFO */}
       {activeTab === "BOOKED" && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: 10, backgroundColor: "#fffbeb", border: "1px solid #fde68a", fontSize: 12, color: "#92400e" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "10px 16px",
+            borderRadius: 10,
+            backgroundColor: "#fffbeb",
+            border: "1px solid #fde68a",
+            fontSize: 12,
+            color: "#92400e",
+          }}
+        >
           <AlertTriangle size={14} />
-          <span>Chỉ được hủy đặt chỗ trước giờ học <strong>ít nhất 60 phút</strong>. Sau thời hạn này, hãy gửi đơn xin nghỉ cho Quản lý duyệt.</span>
+          <span>
+            Chỉ được hủy đặt chỗ trước giờ học <strong>ít nhất 60 phút</strong>.
+            Sau thời hạn này, hãy gửi đơn xin nghỉ cho Quản lý duyệt.
+          </span>
         </div>
       )}
 
@@ -597,12 +632,27 @@ export function MyClassesPage() {
           onClose={() => setLeaveOpen(false)}
           maxWidth={560}
         >
-          <p style={{ marginBottom: 8, fontSize: 14, color: "var(--member-muted, #58695f)" }}>
-            Lý do xin nghỉ sẽ được gửi tới Quản lý để duyệt chuyên cần.
-            Lớp: <strong>{selectedEnrollment.schedule?.class?.name}</strong>
+          <p
+            style={{
+              marginBottom: 8,
+              fontSize: 14,
+              color: "var(--member-muted, #58695f)",
+            }}
+          >
+            Lý do xin nghỉ sẽ được gửi tới Quản lý để duyệt chuyên cần. Lớp:{" "}
+            <strong>{selectedEnrollment.schedule?.class?.name}</strong>
           </p>
           <label style={{ display: "block" }}>
-            <span style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>Lý do xin nghỉ *</span>
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                display: "block",
+                marginBottom: 6,
+              }}
+            >
+              Lý do xin nghỉ *
+            </span>
             <textarea
               rows={4}
               maxLength={1000}
@@ -610,9 +660,24 @@ export function MyClassesPage() {
               value={leaveReason}
               onChange={(e) => setLeaveReason(e.target.value)}
               placeholder="Ví dụ: Bị bệnh, có công việc đột xuất..."
-              style={{ width: "100%", resize: "vertical", padding: "10px", borderRadius: 8, border: "1px solid var(--member-border, #d0d7d3)", fontSize: 13 }}
+              style={{
+                width: "100%",
+                resize: "vertical",
+                padding: "10px",
+                borderRadius: 8,
+                border: "1px solid var(--member-border, #d0d7d3)",
+                fontSize: 13,
+              }}
             />
-            <span style={{ fontSize: 11, color: leaveReason.length < 3 ? "#d92d20" : "#58695f", display: "block", textAlign: "right", marginTop: 4 }}>
+            <span
+              style={{
+                fontSize: 11,
+                color: leaveReason.length < 3 ? "#d92d20" : "#58695f",
+                display: "block",
+                textAlign: "right",
+                marginTop: 4,
+              }}
+            >
               {leaveReason.length}/1000 ký tự
             </span>
           </label>
@@ -620,10 +685,18 @@ export function MyClassesPage() {
             <ErrorState error={leaveMutation.error} />
           )}
           <div className="modal-footer">
-            <button className="button" disabled={leaveMutation.isPending} onClick={() => setLeaveOpen(false)}>Đóng</button>
+            <button
+              className="button"
+              disabled={leaveMutation.isPending}
+              onClick={() => setLeaveOpen(false)}
+            >
+              Đóng
+            </button>
             <button
               className="button primary"
-              disabled={leaveReason.trim().length < 3 || leaveMutation.isPending}
+              disabled={
+                leaveReason.trim().length < 3 || leaveMutation.isPending
+              }
               onClick={() => leaveMutation.mutate(selectedEnrollment.id)}
             >
               {leaveMutation.isPending ? "Đang gửi..." : "Gửi đơn xin nghỉ"}

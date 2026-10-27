@@ -20,6 +20,7 @@ import { ManagerRooms } from "./ManagerRooms";
 import { ManagerOverview } from "./ManagerOverview";
 import { AdminTerms } from "./AdminTerms";
 import "./manager.css";
+import { CoachChangesPage } from "../operations/CoachChangesPage";
 
 const groups: NavigationGroup[] = [
   { title: "TỔNG QUAN", items: [["dashboard", "Tổng quan", LayoutDashboard]] },
@@ -37,7 +38,8 @@ const groups: NavigationGroup[] = [
   {
     title: "ĐIỀU PHỐI",
     items: [
-      ["leave", "Nghỉ phép", CalendarDays],
+      ["coach-changes", "Đổi HLV theo buổi", CalendarDays],
+      ["leave", "Nghỉ học & nhân sự", CalendarDays],
       ["issues", "Yêu cầu hỗ trợ", ClipboardList],
     ],
   },
@@ -81,6 +83,7 @@ export function ManagerLayout({
     >
       <Routes>
         <Route path="/manager/dashboard" element={<ManagerOverview />} />
+        <Route path="/manager/coach-changes" element={<CoachChangesPage role="MANAGER" />} />
         <Route path="/manager/terms" element={<AdminTerms role="MANAGER" />} />
         <Route path="/manager/reports" element={<ManagerOverview reports />} />
         <Route path="/manager/users" element={<ManagerUsers />} />

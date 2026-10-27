@@ -7,6 +7,7 @@ import { createNotification } from "../notifications/notifications.service.js";
 import { findActivePenalty } from "../attendance/attendance-penalties.service.js";
 import {
   CONCURRENT_CLASS_LIMIT_CODE,
+  concurrentClassLimitMessage,
   findActiveSubscription,
   getMemberConcurrentClassQuota,
 } from "./enrollment-quota.service.js";
@@ -256,9 +257,7 @@ export async function evaluateCourseEligibility(
   ) {
     blockers.push({
       code: CONCURRENT_CLASS_LIMIT_CODE,
-      message:
-        `Bạn đã đạt giới hạn ${quotaUsage.limit} lớp học song song của gói ` +
-        `${quotaUsage.tier ?? "hiện tại"}. Vui lòng hủy hoặc chuyển một lớp đang đặt trước khi đăng ký khóa mới.`,
+      message: concurrentClassLimitMessage(quotaUsage.tier, quotaUsage.limit),
       details: {
         tier: quotaUsage.tier,
         limit: quotaUsage.limit,

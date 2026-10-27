@@ -14,6 +14,11 @@ const NO_ACTIVE_SUBSCRIPTION_QUOTA = 0;
 /** Error code cho 403 khi vượt quota lớp học song song. */
 export const CONCURRENT_CLASS_LIMIT_CODE = "CONCURRENT_CLASS_LIMIT_REACHED";
 
+export function concurrentClassLimitMessage(tier: string | null, limit: number): string {
+  if (tier === "FREE") return "Tài khoản Free chưa bao gồm quyền đăng ký lớp học. Vui lòng chọn gói Membership hoặc Premium để tham gia.";
+  return `Bạn đã đạt giới hạn ${limit} lớp học song song của gói ${tier ?? "hiện tại"}. Vui lòng hủy một lớp chưa bắt đầu hoặc chờ hoàn thành lớp đang học trước khi đăng ký lớp mới.`;
+}
+
 export interface ConcurrentClassUsage {
   classId: string;
   className: string;
@@ -191,8 +196,7 @@ export async function assertConcurrentClassQuota(
   if (alreadyHoldingClass || quota.used < quota.limit) return quota;
 
   throw new AppError(
-    `Bạn đã đạt giới hạn ${quota.limit} lớp học song song của gói ${quota.tier ?? "hiện tại"}. ` +
-      `Vui lòng hủy hoặc chuyển một lớp đang đặt trước khi đăng ký lớp mới.`,
+    concurrentClassLimitMessage(quota.tier, quota.limit),
     403,
     {
       code: CONCURRENT_CLASS_LIMIT_CODE,

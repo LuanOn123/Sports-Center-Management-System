@@ -64,11 +64,14 @@ for (const width of [320, 390, 1440]) {
       });
     });
     await page.goto("/member/membership");
-    await page.getByRole("button", { name: "Mở điểm danh nhanh" }).click();
+    await page.getByRole("button", { name: "Mở tiện ích nhanh" }).click();
+    await page.getByRole("button", { name: "Điểm danh", exact: true }).click();
     await expect(page.getByText("Sẵn sàng cho buổi tập?")).toBeVisible();
     await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Mở tiện ích nhanh" }).click();
+    await page.getByRole("button", { name: "Tin nhắn", exact: true }).click();
     await page
-      .getByRole("button", { name: "Mở tin nhắn", exact: true })
+      .getByRole("button", { name: "Phòng chung", exact: true })
       .click();
     const input = page.getByRole("textbox", { name: "Nội dung", exact: true });
     await expect(input).toBeInViewport();
@@ -118,5 +121,6 @@ for (const width of [320, 390, 1440]) {
     await page.keyboard.press("Escape");
     await expect(viewer).not.toBeVisible();
     await expect(thumbnail).toBeFocused();
+    await page.screenshot({ path: `artifacts/chat-redesign-${width}.png` });
   });
 }

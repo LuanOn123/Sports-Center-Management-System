@@ -18,6 +18,8 @@ async function adminFixture(page: Page) {
       staffs: [
         {
           userId: "old-manager",
+          role: "MANAGER",
+          isActive: true,
           user: { fullName: "Quản lý cũ", email: "old@example.test" },
         },
       ],
