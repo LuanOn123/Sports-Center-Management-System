@@ -393,63 +393,83 @@ test('enrollment quota banner: FREE or no plan is locked like the web, otherwise
   assert.equal(plan.quotaBannerKind({ hasActiveSubscription: true, limit: 2, remaining: 0 }), 'full');
 });
 
-test('late term registration: a plan with at least 50% of its purchased days left still enrolls after the deadline', () => {
+test('50% membership rule: a plan with at least half its duration left can enroll a term that outlasts the plan', () => {
   const app = loadApp('http://localhost/api/v1');
-  const t = app.load('lib/termRegistration'); const { LATE_REGISTRATION_MIN_REMAINING_RATIO } = app.load('constants/terms');
+  const t = app.load('lib/termRegistration'); const c = app.load('constants/terms');
   const DAY = 86_400_000; const now = Date.parse('2026-11-10T05:00:00Z');
   const iso = (ms) => new Date(ms).toISOString();
-  const term = (over) => ({ name: 'Kỳ Thu 2026', status: 'IN_PROGRESS', endDate: iso(now + 60 * DAY), registrationStartDate: iso(now - 40 * DAY), registrationEndDate: iso(now - 5 * DAY), ...over });
-  // Gói 180 ngày: còn ≥ 90 ngày thì đủ, 89 thì không (ví dụ của yêu cầu)
-  const plan = (daysLeft, over) => ({ tier: 'MEMBERSHIP', startDate: iso(now - (180 - daysLeft) * DAY), endDate: iso(now + daysLeft * DAY), durationDaysSnapshot: 180, ...over });
-  assert.equal(LATE_REGISTRATION_MIN_REMAINING_RATIO, 0.5);
-  assert.deepEqual(t.lateRegistration(plan(90), now), { allowed: true, remainingDays: 90, totalDays: 180, requiredDays: 90 });
-  assert.equal(t.lateRegistration(plan(120), now).allowed, true);
-  assert.equal(t.lateRegistration(plan(89), now).allowed, false);
-  assert.equal(t.lateRegistration(plan(0), now).allowed, false);
-  // Số ngày hiển thị và phép so sánh dùng chung một con số (còn 89,5 ngày hiển thị 90 → đủ)
-  assert.equal(t.lateRegistration(plan(89.5), now).allowed, true);
-  // Tổng thời hạn: snapshot lúc mua > thời hạn gói > khoảng ngày; số lẻ làm tròn lên (gói 45 ngày cần ≥ 23)
-  assert.equal(t.purchasedDays({ ...plan(10), durationDaysSnapshot: undefined, plan: { durationDays: 30 } }), 30);
-  assert.equal(t.purchasedDays({ startDate: iso(now), endDate: iso(now + 45 * DAY) }), 45);
-  assert.equal(t.lateRegistration({ startDate: iso(now - 22 * DAY), endDate: iso(now + 23 * DAY), tier: 'MEMBERSHIP' }, now).requiredDays, 23);
-  // Gói FREE / chưa có gói không có thời hạn đã mua → không đủ điều kiện
-  assert.equal(t.lateRegistration(plan(150, { tier: 'FREE' }), now), null);
-  assert.equal(t.lateRegistration(null, now), null);
+  // Gói 180 ngày bắt đầu cách đây (180 - daysLeft) ngày; còn ≥ 90 ngày là đủ (ví dụ của yêu cầu)
+  const plan = (daysLeft, over) => ({ tier: 'MEMBERSHIP', status: 'ACTIVE', startDate: iso(now - (180 - daysLeft) * DAY), endDate: iso(now + daysLeft * DAY), ...over });
+  assert.equal(c.TERM_MEMBERSHIP_MIN_REMAINING_RATIO, 0.5);
+  assert.equal(c.TERM_MEMBERSHIP_POLICY, 'HALF_REMAINING_TERM_V1');
 
-  // Giai đoạn đăng ký khớp web MemberTermBanner
+  // Tỷ lệ tính theo mili-giây như BE: đúng 50% đạt, thiếu 1 ms thì không
+  assert.equal(t.membershipRemainingRatio(plan(90), now), 0.5);
+  assert.ok(t.membershipRemainingRatio({ ...plan(90), endDate: iso(now + 90 * DAY - 1) }, now) < 0.5);
+  assert.ok(t.membershipRemainingRatio(plan(120), now) > 0.5);
+  // Gói chưa bắt đầu / đã hết hạn / không còn hiệu lực / ngày sai → 0 (BE: remainingMembershipRatio)
+  assert.equal(t.membershipRemainingRatio(plan(0), now), 0);
+  assert.equal(t.membershipRemainingRatio({ ...plan(90), startDate: iso(now + DAY) }, now), 0);
+  assert.equal(t.membershipRemainingRatio({ ...plan(90), status: 'CANCELLED' }, now), 0);
+  assert.equal(t.membershipRemainingRatio({ ...plan(90), endDate: 'không phải ngày' }, now), 0);
+  assert.equal(t.membershipRemainingRatio({ tier: 'MEMBERSHIP', startDate: iso(now), endDate: iso(now) }, now), 0);
+
+  // Dòng giải thích ở thẻ gói đang dùng: phần trăm làm tròn xuống, không bao giờ báo đủ khi chưa đủ
+  const enough = t.membershipHalfHint(plan(100), now);
+  assert.deepEqual([enough.enough, enough.tone, enough.percent], [true, 'success', 55]);
+  assert.match(enough.text, /^Còn 55% thời hạn gói — đủ điều kiện \(≥ 50%\) đăng ký trọn kỳ học/);
+  const short = t.membershipHalfHint(plan(40), now);
+  assert.deepEqual([short.enough, short.tone, short.percent], [false, 'warning', 22]);
+  assert.match(short.text, /cần còn ít nhất 50% để đăng ký trọn kỳ học vượt hạn gói/);
+  const edge = t.membershipHalfHint({ ...plan(90), endDate: iso(now + 90 * DAY - 1) }, now);
+  assert.deepEqual([edge.enough, edge.percent], [false, 49]);
+  assert.equal(t.membershipHalfHint(plan(150, { tier: 'FREE' }), now), null); // FREE không có thời hạn mua
+  assert.equal(t.membershipHalfHint(null, now), null);
+
+  // Banner khi BE xác nhận quyền học trọn kỳ: cùng lời với web, ngày theo giờ Việt Nam
+  const coverage = { policy: 'HALF_REMAINING_TERM_V1', validUntil: '2027-01-15T16:59:59.000Z', qualifiedAt: iso(now), subscriptionEndDate: '2026-12-20T16:59:59.000Z' };
+  const note = t.membershipCoverageNotice(coverage);
+  assert.equal(note.title, 'Đủ điều kiện thời hạn cho trọn kỳ');
+  assert.equal(note.message, 'Gói còn ít nhất 50% thời hạn tại thời điểm xét đăng ký. Quyền học áp dụng cho lớp trong kỳ này đến 15/01/2027, kể cả khi gói hết hạn ngày 20/12/2026. Ngày hết hạn gói không thay đổi.');
+  assert.equal(t.membershipCoverageNotice(null), null);
+  assert.equal(t.membershipCoverageNotice({ ...coverage, policy: 'OTHER_POLICY' }), null);
+
+  // Giai đoạn đăng ký khớp web MemberTermBanner; hết hạn đăng ký là hết — gói còn bao nhiêu cũng không nới được
+  const term = (over) => ({ name: 'Kỳ Thu 2026', status: 'IN_PROGRESS', endDate: iso(now + 60 * DAY), registrationStartDate: iso(now - 40 * DAY), registrationEndDate: iso(now - 5 * DAY), ...over });
   assert.equal(t.termPhase(term({ status: 'CLOSED' }), now), 'ended');
   assert.equal(t.termPhase(term({ status: 'PLANNING' }), now), 'planning');
   assert.equal(t.termPhase(term({ registrationStartDate: iso(now + DAY) }), now), 'upcoming');
   assert.equal(t.termPhase(term({ registrationEndDate: iso(now + 3 * DAY) }), now), 'open');
   assert.equal(t.termPhase(term(), now), 'closed');
-  assert.match(t.termNotice(term({ registrationEndDate: iso(now + 3 * DAY) }), null, now).message, /còn 3 ngày/);
+  const open = t.termNotice(term({ registrationEndDate: iso(now + 3 * DAY) }), now);
+  assert.match(open.message, /còn 3 ngày/); assert.equal(open.coversBlocker, false);
+  const closed = t.termNotice(term(), now);
+  assert.deepEqual([closed.phase, closed.tone, closed.coversBlocker], ['closed', 'warning', true]);
+  assert.equal(closed.message, 'Đã hết hạn đăng ký ngày 05/11/2026.');
+  assert.ok(!/50%|muộn/i.test(closed.message), 'quá hạn đăng ký không có ngoại lệ theo gói');
 
-  // Quá hạn + gói đủ 50% → "Đăng ký muộn"; chưa đủ hoặc chưa có gói → cảnh báo + gợi ý xem gói, và giải thích thay dòng chặn của BE
-  const ok = t.termNotice(term(), plan(100), now); // Khám phá: chưa xét khóa cụ thể
-  assert.deepEqual([ok.late, ok.tone, ok.suggestPlans], [true, 'success', false]); assert.match(ok.message, /100\/180 ngày/);
-  const low = t.termNotice(term(), plan(40), now, true);
-  assert.deepEqual([low.late, low.tone, low.suggestPlans, low.coversBlocker], [false, 'warning', true, true]); assert.match(low.message, /cần còn ít nhất 90 ngày/);
-  const none = t.termNotice(term(), null, now, true);
-  assert.deepEqual([none.late, none.suggestPlans, none.coversBlocker], [false, true, true]);
-  // BE là nguồn chính thức: BE chặn thì không báo "vẫn đăng ký được" (giữ lý do của BE); BE cho phép thì tin BE
-  const blocked = t.termNotice(term(), plan(100), now, true);
-  assert.deepEqual([blocked.late, blocked.tone, blocked.coversBlocker], [false, 'warning', false]);
-  const allowed = t.termNotice(term(), plan(40), now, false);
-  assert.deepEqual([allowed.late, allowed.tone], [true, 'success']);
-  assert.equal(t.termNotice(term({ status: 'CLOSED' }), plan(100), now, true).phase, 'ended');
+  // Chỉ mã theo giai đoạn kỳ học bị ẩn khi thẻ kỳ học đã nói đủ; lý do gói hết hạn trước khóa của BE luôn hiện nguyên văn
+  for (const code of ['TERM_REGISTRATION_NOT_OPEN', 'TERM_REGISTRATION_NOT_STARTED', 'TERM_REGISTRATION_CLOSED', 'TERM_CLOSED']) assert.ok(c.TERM_STAGE_BLOCKER_CODES.includes(code), code);
+  assert.ok(!c.TERM_STAGE_BLOCKER_CODES.includes('SUBSCRIPTION_ENDS_BEFORE_COURSE_END'));
 
-  // Gợi ý ở thẻ gói đang dùng
-  assert.match(t.lateRegistrationHint(t.lateRegistration(plan(100), now)).text, /đủ điều kiện — còn 100\/180 ngày, cần ≥ 90/);
-  assert.equal(t.lateRegistrationHint(t.lateRegistration(plan(40), now)).tone, 'warning');
-  assert.equal(t.lateRegistrationHint(null), null);
-
-  // Nút cố định dưới đáy: đủ khóa > đăng ký > xem gói (thiếu gói hoặc hết hạn đăng ký kỳ học) > chưa thể
-  const { courseFooterKind } = app.load('lib/classPlan'); const base = { isFullyRegistered: false, eligible: false, needsMembership: false, termSuggestsPlans: false };
+  // Nút cố định dưới đáy: đủ khóa > đăng ký > xem gói (thiếu hoặc hết hạn gói) > chưa thể
+  const { courseFooterKind } = app.load('lib/classPlan'); const base = { isFullyRegistered: false, eligible: false, needsMembership: false };
   assert.equal(courseFooterKind({ ...base, isFullyRegistered: true, eligible: true }), 'registered');
   assert.equal(courseFooterKind({ ...base, eligible: true }), 'enroll');
   assert.equal(courseFooterKind({ ...base, needsMembership: true }), 'plans');
-  assert.equal(courseFooterKind({ ...base, termSuggestsPlans: true }), 'plans');
   assert.equal(courseFooterKind(base), 'blocked');
+});
+
+test('class detail shows the BE membership coverage banner and never promises registration after the deadline', () => {
+  const read = (file) => fs.readFileSync(path.resolve(__dirname, '..', file), 'utf8');
+  // Banner dựa trên registration.membershipCoverage do BE trả (không tự suy ra ở client)
+  assert.match(read('hooks/shared/useClassDetail.ts'), /membershipCoverageNotice\(registration\?\.membershipCoverage\)/);
+  assert.match(read('components/classes/ClassDetailView.tsx'), /d\.coverage && <MembershipCoverageNotice/);
+  assert.match(read('components/member/membership/CurrentMembershipCard.tsx'), /membershipHalfHint\(activeSub\)/);
+  // Web/BE không có "đăng ký muộn" sau hạn đăng ký kỳ học nên mobile không được hứa điều đó
+  for (const file of ['components/classes/ClassDetailView.tsx', 'components/classes/TermNoticeCard.tsx', 'components/classes/MembershipCoverageNotice.tsx', 'constants/terms.ts', 'lib/termRegistration.ts', 'hooks/member/useEnrollments.ts', 'hooks/shared/useClassDetail.ts']) {
+    assert.ok(!/đăng ký muộn/i.test(read(file)), `${file} không hứa đăng ký muộn`);
+  }
 });
 
 test('FREE plan has no cancel action: only paid subscriptions can be self-cancelled', () => {
@@ -555,7 +575,7 @@ test('class card shows the class own term and its registration phase (no stray b
   const app = loadApp('http://localhost/api/v1'); const t = app.load('lib/termRegistration'); const DAY = 86_400_000; const now = Date.parse('2026-10-27T08:00:00Z');
   const term = (over) => ({ name: 'Kỳ Mùa Đông 2026', status: 'OPEN_REGISTRATION', endDate: new Date(now + 90 * DAY).toISOString(), registrationStartDate: new Date(now - 5 * DAY).toISOString(), registrationEndDate: new Date(now + 19 * DAY).toISOString(), ...over });
   assert.deepEqual(t.termTag(term(), now), { name: 'Kỳ Mùa Đông 2026', label: 'Đang mở đăng ký', tone: 'success' });
-  // Đã quá hạn chỉ nêu "Đã đóng đăng ký" — đăng ký muộn chỉ nói ở chi tiết lớp (BE xác nhận), tránh hứa nhầm trên thẻ
+  // Đã quá hạn chỉ nêu "Đã đóng đăng ký" — gói còn bao nhiêu cũng không nới được hạn đăng ký của kỳ
   assert.deepEqual([t.termTag(term({ registrationEndDate: new Date(now - DAY).toISOString() }), now).label, t.termTag(term({ registrationEndDate: new Date(now - DAY).toISOString() }), now).tone], ['Đã đóng đăng ký', 'warning']);
   assert.equal(t.termTag(term({ registrationStartDate: new Date(now + DAY).toISOString() }), now).label, 'Sắp mở đăng ký');
   assert.equal(t.termTag(term({ status: 'PLANNING' }), now).tone, 'info');

@@ -489,6 +489,14 @@ export interface Term {
   registrationEndDate: string;
 }
 
+/** BE xác nhận quyền học trọn kỳ vượt hạn gói (HALF_REMAINING_TERM_V1): gói còn ≥ 50% thời hạn lúc đăng ký */
+export interface MembershipCoverage {
+  policy: string;
+  validUntil: string;
+  qualifiedAt: string;
+  subscriptionEndDate: string;
+}
+
 export interface CoursePlan {
   course: null | {
     term?: Term | null;
@@ -498,6 +506,8 @@ export interface CoursePlan {
   };
   registration: null | {
     eligible: boolean; blockers: Array<{ code: string; message: string; sessionId?: string }>;
+    /** Có khi gói hết hạn trước buổi cuối của khóa nhưng còn ≥ 50% thời hạn lúc đăng ký */
+    membershipCoverage?: MembershipCoverage | null;
     registeredSessions: number; remainingSessionsToRegister: number; isFullyRegistered: boolean;
   };
   sessions: Array<{
