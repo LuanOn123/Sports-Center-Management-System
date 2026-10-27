@@ -1,3 +1,4 @@
+import { AreaTypePicker } from "../../shared/forms/AreaTypePicker";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -447,19 +448,12 @@ export function ActivityPlanner({
                       onChange={(event) => setSportName(event.target.value)}
                     />
                   </label>
-                  <label>
-                    Loại khu vực <b className="required">*</b>
-                    <select
-                      value={sportAreaType}
-                      onChange={(event) =>
-                        setSportAreaType(event.target.value as AreaType)
-                      }
-                    >
-                      <option value="INDOOR">Trong nhà</option>
-                      <option value="OUTDOOR">Ngoài trời</option>
-                      <option value="POOL">Hồ bơi</option>
-                    </select>
-                  </label>
+                  <AreaTypePicker
+                    required
+                    label="Loại khu vực"
+                    value={sportAreaType}
+                    onChange={(next) => setSportAreaType(next as AreaType)}
+                  />
                   <label className="wide">
                     Mô tả bộ môn
                     <textarea
@@ -547,20 +541,14 @@ export function ActivityPlanner({
                   <option value="PREMIUM">Cao cấp</option>
                 </select>
               </label>
-              <label>
-                Khu vực
-                <select
-                  value={areaType}
-                  onChange={(event) => {
-                    setAreaType(event.target.value as AreaType);
-                    setRoomId("");
-                  }}
-                >
-                  <option value="INDOOR">Trong nhà</option>
-                  <option value="OUTDOOR">Ngoài trời</option>
-                  <option value="POOL">Hồ bơi</option>
-                </select>
-              </label>
+              <AreaTypePicker
+                label="Khu vực"
+                value={areaType}
+                onChange={(next) => {
+                  setAreaType(next as AreaType);
+                  setRoomId("");
+                }}
+              />
               <label>
                 Sức chứa
                 <input

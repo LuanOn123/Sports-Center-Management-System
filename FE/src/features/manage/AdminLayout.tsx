@@ -9,6 +9,7 @@ import { AdminDashboard } from "./AdminDashboard";
 import { AdminFacilities } from "./AdminFacilities";
 import { AdminTerms } from "./AdminTerms";
 import { AuditLogPage } from "./AuditLogPage";
+import { CoachChangesPage } from "../operations/CoachChangesPage";
 const items = [
   ["dashboard", "Tổng quan"],
   ["facilities", "Cơ sở"],
@@ -19,7 +20,8 @@ const items = [
   ["rooms", "Phòng tập"],
   ["classes", "Lớp học"],
   ["schedules", "Lịch hoạt động"],
-  ["leave", "Nghỉ phép"],
+  ["coach-changes", "Đổi HLV theo buổi"],
+  ["leave", "Nghỉ học & nhân sự"],
   ["issues", "Yêu cầu hỗ trợ"],
   ["audit", "Nhật ký hoạt động"],
   ["profile", "Tài khoản của tôi"],
@@ -34,6 +36,7 @@ export function AdminLayout(props: PortalProps) {
     >
       <Routes>
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/coach-changes" element={<CoachChangesPage role="ADMIN" />} />
         <Route path="/admin/facilities" element={<AdminFacilities />} />
         <Route path="/admin/terms" element={<AdminTerms />} />
         <Route path="/admin/audit" element={<AuditLogPage />} />

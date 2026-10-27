@@ -13,6 +13,7 @@ export const facilityRoots = new Set([
   "FacilityVisit",
   "Issue",
   "LeaveRequest",
+  "CoachChangeRequest",
   "Slot",
   "SchedulePattern",
   "AuditLog",

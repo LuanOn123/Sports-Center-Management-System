@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { ScanLine } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Modal } from "./ui";
@@ -7,22 +8,28 @@ import { ScanAttendanceQr } from "./QrAttendance";
 export function AttendanceShortcut({
   role,
   base,
+  launcher,
 }: {
   role: string;
   base: string;
+  launcher?: (launch: () => void) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   if (role !== "MEMBER") return null;
   return (
     <>
-      <button
-        className="attendance-shortcut"
-        onClick={() => setOpen(true)}
-        aria-label="Mở điểm danh nhanh"
-      >
-        <ScanLine size={22} />
-        Điểm danh
-      </button>
+      {launcher ? (
+        launcher(() => setOpen(true))
+      ) : (
+        <button
+          className="attendance-shortcut"
+          onClick={() => setOpen(true)}
+          aria-label="Mở điểm danh nhanh"
+        >
+          <ScanLine size={22} />
+          Điểm danh
+        </button>
+      )}
       {open && (
         <Modal title="Điểm danh nhanh" onClose={() => setOpen(false)}>
           <div className="attendance-quick-intro">

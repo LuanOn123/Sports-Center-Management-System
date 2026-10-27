@@ -1,4 +1,5 @@
 import { Avatar } from "./Avatar";
+import type { ReactNode } from "react";
 import { ProtectedAttachment } from "./ProtectedAttachment";
 import {
   useEffect,
@@ -19,8 +20,7 @@ import {
   Search,
   Send,
   Users,
-  Wifi,
-  WifiOff,
+  ArrowLeft,
   X,
 } from "lucide-react";
 import {
@@ -47,9 +47,15 @@ type Notification = {
   createdAt: string;
 };
 
-export function getNotificationCta(n: Notification, role?: string): { label: string; to: string } | null {
+export function getNotificationCta(
+  n: Notification,
+  role?: string,
+): { label: string; to: string } | null {
   const type = String(n.type || "");
   const meta = n.metadata || {};
+  if (type.startsWith("COACH_CHANGE_") && ["COACH", "MANAGER", "ADMIN"].includes(role || "")) {
+    return { label: "Xem yêu cầu đổi HLV", to: `/${role!.toLowerCase()}/coach-changes` };
+  }
   if (type.startsWith("LEAVE_REQUEST_")) {
     if (role === "MANAGER") {
       const leaveId = String(meta.leaveRequestId || meta.id || "");
@@ -71,7 +77,11 @@ export function getNotificationCta(n: Notification, role?: string): { label: str
       };
     }
   }
-  if (type.includes("SCHEDULE") || type === "COACH_CHANGED" || type === "UPCOMING_CLASS") {
+  if (
+    type.includes("SCHEDULE") ||
+    type === "COACH_CHANGED" ||
+    type === "UPCOMING_CLASS"
+  ) {
     if (role === "MEMBER") {
       return {
         label: "Xem lịch tập",
@@ -94,7 +104,13 @@ export function getNotificationCta(n: Notification, role?: string): { label: str
   return null;
 }
 
-export function NotificationBell({ base, role }: { base: string; role?: string }) {
+export function NotificationBell({
+  base,
+  role,
+}: {
+  base: string;
+  role?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -266,7 +282,13 @@ export function NotificationBell({ base, role }: { base: string; role?: string }
                       )}
                       <p>{item.body}</p>
                       {item.reason && (
-                        <p style={{ fontStyle: "italic", opacity: 0.85, fontSize: "0.85rem" }}>
+                        <p
+                          style={{
+                            fontStyle: "italic",
+                            opacity: 0.85,
+                            fontSize: "0.85rem",
+                          }}
+                        >
                           Lý do: {item.reason}
                         </p>
                       )}
@@ -398,7 +420,10 @@ export function Notifications({ role }: { role: string }) {
             <NotificationBody text={n.body} />
             {n.reason && <p>Lý do: {n.reason}</p>}
             <small>{display(n.createdAt)}</small>
-            <div className="workflow-actions" style={{ marginTop: "10px", gap: "8px" }}>
+            <div
+              className="workflow-actions"
+              style={{ marginTop: "10px", gap: "8px" }}
+            >
               {(() => {
                 const cta = getNotificationCta(n, role);
                 return cta ? (
@@ -546,7 +571,15 @@ type ConversationItem = {
   latestMessage?: Message;
 };
 
-export function FloatingChat({ userId }: { userId: string }) {
+export function FloatingChat({
+  userId,
+  launcher,
+  onUnreadCountChange,
+}: {
+  userId: string;
+  launcher?: (launch: () => void, unreadCount: number) => ReactNode;
+  onUnreadCountChange?: (count: number) => void;
+}) {
   const [open, setOpen] = useState(false);
   const cache = useQueryClient();
   const unread = useQuery({
@@ -576,48 +609,61 @@ export function FloatingChat({ userId }: { userId: string }) {
     };
   }, [cache]);
   const unreadCount = unread.data?.data.unreadCount || 0;
+  useEffect(() => {
+    onUnreadCountChange?.(unreadCount);
+  }, [unreadCount, onUnreadCountChange]);
   return (
-    <div className={`floating-chat ${open ? "open" : ""}`}>
-      {open && (
-        <section className="floating-chat-panel" aria-label="Cửa sổ tin nhắn">
-          <header className="floating-chat-header">
-            <div>
-              <MessageCircle size={19} />
-              <strong>Tin nhắn</strong>
-            </div>
-            <button
-              type="button"
-              className="icon-button"
-              aria-label="Đóng tin nhắn"
-              onClick={() => setOpen(false)}
-            >
-              <X size={18} />
-            </button>
-          </header>
-          <Chat userId={userId} compact />
-        </section>
-      )}
-      <button
-        type="button"
-        className={`floating-chat-button ${unreadCount ? "has-unread attention" : ""}`}
-        aria-label={
-          open
-            ? "Đóng tin nhắn"
-            : unreadCount
-              ? `${unreadCount} tin nhắn chưa đọc`
-              : "Mở tin nhắn"
-        }
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-      >
-        {open ? <X size={24} /> : <MessageCircle size={25} />}
-        {!open && unreadCount > 0 && (
-          <span className="utility-badge">
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
+    <>
+      {launcher?.(() => setOpen((value) => !value), unreadCount)}
+      <div className={`floating-chat ${open ? "open" : ""}`}>
+        {open && (
+          <section className="floating-chat-panel" aria-label="Cửa sổ tin nhắn">
+            <header className="floating-chat-header">
+              <div>
+                <span className="chat-brand-icon">
+                  <MessageCircle size={21} />
+                </span>
+                <span className="chat-header-title">
+                  <strong>Tin nhắn Pulse</strong>
+                  <small>Kết nối với đội ngũ của bạn</small>
+                </span>
+              </div>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Đóng tin nhắn"
+                onClick={() => setOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </header>
+            <Chat userId={userId} compact />
+          </section>
         )}
-      </button>
-    </div>
+        {!launcher && (
+          <button
+            type="button"
+            className={`floating-chat-button ${unreadCount ? "has-unread attention" : ""}`}
+            aria-label={
+              open
+                ? "Đóng tin nhắn"
+                : unreadCount
+                  ? `${unreadCount} tin nhắn chưa đọc`
+                  : "Mở tin nhắn"
+            }
+            aria-expanded={open}
+            onClick={() => setOpen((value) => !value)}
+          >
+            {open ? <X size={24} /> : <MessageCircle size={25} />}
+            {!open && unreadCount > 0 && (
+              <span className="utility-badge">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </button>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -634,7 +680,7 @@ export function Chat({
   userId: string;
   compact?: boolean;
 }) {
-  const [target, setTarget] = useState("");
+  const [target, setTarget] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [connected, setConnected] = useState(false);
   const [online, setOnline] = useState<Set<string>>(new Set());
@@ -647,6 +693,7 @@ export function Chat({
   });
   const conversations = useQuery({
     queryKey: ["chat", "conversations"],
+    refetchInterval: connected ? false : 15000,
     queryFn: ({ signal }) =>
       api<ConversationItem[]>("GET /chat/conversations", {
         signal,
@@ -702,129 +749,176 @@ export function Chat({
     (conversations.data?.data || []).map((item) => [item.user.id, item]),
   );
   const orderedContacts = useMemo(() => {
-    const rows = contacts.data?.data || [];
-    return [...rows]
-      .filter((contact) =>
-        `${contact.fullName} ${contact.email || ""}`
-          .toLocaleLowerCase("vi")
-          .includes(search.trim().toLocaleLowerCase("vi")),
+    const byId = new Map(
+      (contacts.data?.data || []).map((contact) => [contact.id, contact]),
+    );
+    for (const item of conversations.data?.data || [])
+      byId.set(item.user.id, item.user);
+    const history = new Map(
+      (conversations.data?.data || []).map((item) => [item.user.id, item]),
+    );
+    const query = search.trim().toLocaleLowerCase("vi");
+    return [...byId.values()]
+      .filter(
+        (contact) =>
+          (query || history.get(contact.id)?.latestMessage) &&
+          (contact.fullName + " " + (contact.email || ""))
+            .toLocaleLowerCase("vi")
+            .includes(query),
       )
       .sort((a, b) => {
-        const aTime = Date.parse(
-          conversationById.get(a.id)?.latestMessage?.createdAt || "",
-        );
-        const bTime = Date.parse(
-          conversationById.get(b.id)?.latestMessage?.createdAt || "",
-        );
-        return (
-          (Number.isFinite(bTime) ? bTime : 0) -
-          (Number.isFinite(aTime) ? aTime : 0)
-        );
+        const first = history.get(a.id),
+          second = history.get(b.id);
+        const unread =
+          Number(Boolean(second?.unreadCount)) -
+          Number(Boolean(first?.unreadCount));
+        if (unread) return unread;
+        const timeA = Date.parse(first?.latestMessage?.createdAt || "") || 0;
+        const timeB = Date.parse(second?.latestMessage?.createdAt || "") || 0;
+        return timeB - timeA || a.fullName.localeCompare(b.fullName, "vi");
       });
   }, [contacts.data, conversations.data, search]);
-  const selectedContact = contacts.data?.data.find(
-    (item) => item.id === target,
-  );
+  const selectedContact =
+    contacts.data?.data.find((item) => item.id === target) ||
+    conversationById.get(target || "")?.user;
+  const selectConversation = (id: string) => setTarget(id);
   return (
-    <div className={`workflow-page chat-page ${compact ? "compact" : ""}`}>
+    <div className={"workflow-page chat-page " + (compact ? "compact" : "")}>
       {!compact && (
         <div className="page-heading">
           <div>
             <h1>Tin nhắn</h1>
-            <p>
-              Trao đổi tức thời với đội ngũ và huấn luyện viên của trung tâm.
-            </p>
+            <p>Trao đổi với đội ngũ và huấn luyện viên của trung tâm.</p>
           </div>
-          <span
-            className={`chat-connection ${connected ? "online" : ""}`}
-            role="status"
-          >
-            {connected ? <Wifi size={16} /> : <WifiOff size={16} />}
-            {connected ? "Đang kết nối realtime" : "Đang kết nối lại…"}
-          </span>
         </div>
       )}
-      {compact && (
-        <span
-          className={`chat-connection ${connected ? "online" : ""}`}
-          role="status"
-        >
-          {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
-          {connected ? "Realtime" : "Đang kết nối lại…"}
-        </span>
-      )}
-      {contacts.isPending ? (
-        <Loading variant="field" />
-      ) : contacts.error ? (
-        <ErrorState error={contacts.error} retry={() => contacts.refetch()} />
-      ) : contacts.isError ? null : (
-        <div className="chat-shell panel">
-          <aside className="chat-sidebar" aria-label="Danh sách trò chuyện">
-            <div className="chat-sidebar-head">
-              <label>
-                Cuộc trò chuyện
-                <select
-                  value={target}
-                  onChange={(event) => setTarget(event.target.value)}
-                >
-                  <option value="">Phòng chung · tất cả thành viên</option>
-                  {contacts.data.data.map((contact) => (
-                    <option value={contact.id} key={contact.id}>
-                      {contact.fullName} · {display(contact.role)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="chat-search">
-                <Search size={16} />
-                <input
-                  aria-label="Tìm người nhắn tin"
-                  placeholder="Tìm người…"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                />
-              </div>
+      <div
+        className="chat-shell panel"
+        data-conversation-open={target !== null}
+      >
+        <aside className="chat-sidebar" aria-label="Danh sách trò chuyện">
+          <div className="chat-sidebar-head">
+            <h2>Cuộc trò chuyện</h2>
+            <div className="chat-search">
+              <Search size={17} aria-hidden="true" />
+              <input
+                aria-label="Tìm cuộc trò chuyện"
+                placeholder="Tìm tên hoặc email…"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
             </div>
-            <button
-              className={`chat-contact ${target === "" ? "active" : ""}`}
-              onClick={() => setTarget("")}
-            >
-              <span className="chat-avatar group">
-                <Users size={18} />
-              </span>
-              <span>
-                <strong>Phòng chung</strong>
-                <small>Không gian trao đổi của trung tâm</small>
-              </span>
-            </button>
-            {orderedContacts.map((contact) => {
-              const item = conversationById.get(contact.id);
-              return (
-                <div
-                  className={`chat-contact ${target === contact.id ? "active" : ""}`}
-                  key={contact.id}
-                >
-                  <span className="chat-avatar">
-                    <Avatar user={contact} />
-                    <i className={online.has(contact.id) ? "online" : ""} />
-                  </span>
+          </div>
+          <div className="chat-contact-list">
+            {contacts.isPending || conversations.isPending ? (
+              <Loading variant="field" />
+            ) : contacts.error ? (
+              <ErrorState
+                error={contacts.error}
+                retry={() => contacts.refetch()}
+              />
+            ) : conversations.error ? (
+              <ErrorState
+                error={conversations.error}
+                retry={() => conversations.refetch()}
+              />
+            ) : (
+              <>
+                {orderedContacts.length === 0 && (
+                  <p className="chat-list-hint">
+                    {search.trim()
+                      ? "Không tìm thấy người phù hợp."
+                      : "Chưa có cuộc trò chuyện riêng. Tìm tên để bắt đầu nhắn tin."}
+                  </p>
+                )}
+                {orderedContacts.map((contact) => {
+                  const item = conversationById.get(contact.id);
+                  const latest = item?.latestMessage;
+                  return (
+                    <button
+                      type="button"
+                      key={contact.id}
+                      aria-label={contact.fullName}
+                      className={
+                        "chat-contact chat-conversation-row " +
+                        (target === contact.id ? "active " : "") +
+                        (item?.unreadCount ? "unread" : "")
+                      }
+                      onClick={() => selectConversation(contact.id)}
+                    >
+                      <span className="chat-avatar">
+                        <Avatar user={contact} interactive={false} />
+                        <i className={online.has(contact.id) ? "online" : ""} />
+                      </span>
+                      <span className="chat-contact-copy">
+                        <strong>{contact.fullName}</strong>
+                        <small>
+                          {latest
+                            ? (latest.senderId === userId ? "Bạn: " : "") +
+                              (latest.content ||
+                                (latest.fileUrl
+                                  ? "Đã gửi tệp đính kèm"
+                                  : "Tin nhắn mới"))
+                            : "Bắt đầu cuộc trò chuyện"}
+                        </small>
+                      </span>
+                      <span className="chat-contact-meta">
+                        {latest && (
+                          <time dateTime={latest.createdAt}>
+                            {new Date(latest.createdAt).toLocaleDateString(
+                              "vi-VN",
+                            ) === new Date().toLocaleDateString("vi-VN")
+                              ? new Date(latest.createdAt).toLocaleTimeString(
+                                  "vi-VN",
+                                  { hour: "2-digit", minute: "2-digit" },
+                                )
+                              : new Date(latest.createdAt).toLocaleDateString(
+                                  "vi-VN",
+                                  { day: "2-digit", month: "2-digit" },
+                                )}
+                          </time>
+                        )}
+                        {Boolean(item?.unreadCount) && (
+                          <b
+                            className="chat-unread"
+                            aria-label={
+                              item!.unreadCount + " tin nhắn chưa đọc"
+                            }
+                          >
+                            {item!.unreadCount > 99 ? "99+" : item!.unreadCount}
+                          </b>
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+                {(!search.trim() ||
+                  "phòng chung".includes(
+                    search.trim().toLocaleLowerCase("vi"),
+                  )) && (
                   <button
                     type="button"
-                    className="chat-contact-select"
-                    onClick={() => setTarget(contact.id)}
+                    aria-label="Phòng chung"
+                    className={
+                      "chat-contact chat-conversation-row " +
+                      (target === "" ? "active" : "")
+                    }
+                    onClick={() => selectConversation("")}
                   >
-                    <strong>{contact.fullName}</strong>
-                    <small>
-                      {item?.latestMessage?.content || display(contact.role)}
-                    </small>
+                    <span className="chat-avatar group">
+                      <Users size={20} />
+                    </span>
+                    <span className="chat-contact-copy">
+                      <strong>Phòng chung</strong>
+                      <small>Không gian trao đổi của trung tâm</small>
+                    </span>
                   </button>
-                  {item?.unreadCount ? (
-                    <b className="chat-unread">{item.unreadCount}</b>
-                  ) : null}
-                </div>
-              );
-            })}
-          </aside>
+                )}
+              </>
+            )}
+          </div>
+        </aside>
+        {target !== null ? (
           <Conversation
             key={target}
             target={target}
@@ -834,12 +928,24 @@ export function Chat({
             isTyping={target ? typing.has(target) : false}
             socket={socketRef.current}
             connected={connected}
+            onBack={compact ? () => setTarget(null) : undefined}
           />
-        </div>
-      )}
+        ) : (
+          !compact && (
+            <div className="chat-welcome">
+              <span>
+                <MessageCircle size={30} />
+              </span>
+              <h3>Tin nhắn của bạn</h3>
+              <p>Chọn cuộc trò chuyện hoặc tìm tên để bắt đầu.</p>
+            </div>
+          )
+        )}
+      </div>
     </div>
   );
 }
+
 function Conversation({
   target,
   userId,
@@ -848,7 +954,9 @@ function Conversation({
   isTyping,
   socket,
   connected,
+  onBack,
 }: {
+  onBack?: () => void;
   target: string;
   userId: string;
   contact?: Contact;
@@ -962,6 +1070,16 @@ function Conversation({
   return (
     <section className="chat-conversation">
       <header className="chat-conversation-head">
+        {onBack && (
+          <button
+            type="button"
+            className="icon-button chat-back"
+            aria-label="Quay lại cuộc trò chuyện"
+            onClick={onBack}
+          >
+            <ArrowLeft size={20} />
+          </button>
+        )}
         <span className={`chat-avatar ${target ? "" : "group"}`}>
           {target ? (
             contact ? (
@@ -1008,7 +1126,19 @@ function Conversation({
         ) : messages.error ? (
           <ErrorState error={messages.error} retry={() => messages.refetch()} />
         ) : !messages.data.data.length ? (
-          <Empty text="Chưa có tin nhắn." />
+          <div className="chat-welcome">
+            <span>
+              <MessageCircle size={30} aria-hidden="true" />
+            </span>
+            <h3>Bắt đầu cuộc trò chuyện</h3>
+            <p>
+              Chia sẻ câu hỏi, lịch tập hoặc gửi lời chào đến{" "}
+              {target
+                ? contact?.fullName || "người nhận"
+                : "mọi người trong trung tâm"}
+              .
+            </p>
+          </div>
         ) : (
           messages.data.data.map((m, index) => (
             <article

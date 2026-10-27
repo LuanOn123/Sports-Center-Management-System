@@ -1,4 +1,5 @@
 import { Avatar } from "./Avatar";
+import { ProfileMenu } from "./ProfileMenu";
 import { useEffect, useId, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
@@ -25,14 +26,9 @@ import type { LucideIcon } from "lucide-react";
 import { useSidebar } from "./useSidebar";
 import { Brand } from "./Brand";
 import type { ProfileOk } from "./generated";
-import {
-  Chat,
-  FloatingChat,
-  NotificationBell,
-  Notifications,
-} from "./Communication";
+import { Chat, NotificationBell, Notifications } from "./Communication";
 import { Policies } from "./Policies";
-import { AttendanceShortcut } from "./AttendanceShortcut";
+import { QuickActions } from "./QuickActions";
 import { HelpPanel } from "./HelpPanel";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { FacilityPicker } from "./FacilityBoundary";
@@ -110,6 +106,13 @@ export function PortalLayout({
           location.pathname === `${base}/${path}` ||
           location.pathname.startsWith(`${base}/${path}/`),
       )?.[1] ||
+    {
+      payments: "Thanh toán & hóa đơn",
+      support: "Yêu cầu hỗ trợ",
+      attendance: "Điểm danh",
+      checkin: "Check-in cơ sở",
+      profile: "Hồ sơ cá nhân",
+    }[location.pathname.split("/").pop() || ""] ||
     "Tài khoản";
   useEffect(() => {
     document.title = `${pageTitle} · Pulse Sports Center`;
@@ -211,28 +214,32 @@ export function PortalLayout({
             <FacilityPicker />
             <HelpPanel role={user.role} base={base} />
             <NotificationBell base={base} role={user.role} />
-            <div className="profile-link">
-              {location.pathname === `${base}/profile` ? (
-                <>
-                  <div>
-                    <strong>{user.fullName}</strong>
-                    <small>{title}</small>
-                  </div>
-                  <Avatar user={user} interactive={true} />
-                </>
-              ) : (
-                <Link
-                  to={base + "/profile"}
-                  aria-label={`Tài khoản của ${user.fullName}`}
-                >
-                  <div>
-                    <strong>{user.fullName}</strong>
-                    <small>{title}</small>
-                  </div>
-                  <Avatar user={user} interactive={false} />
-                </Link>
-              )}
-            </div>
+            {user.role === "MEMBER" ? (
+              <ProfileMenu user={user} base={base} />
+            ) : (
+              <div className="profile-link">
+                {location.pathname === `${base}/profile` ? (
+                  <>
+                    <div>
+                      <strong>{user.fullName}</strong>
+                      <small>{title}</small>
+                    </div>
+                    <Avatar user={user} interactive={true} />
+                  </>
+                ) : (
+                  <Link
+                    to={base + "/profile"}
+                    aria-label={`Tài khoản của ${user.fullName}`}
+                  >
+                    <div>
+                      <strong>{user.fullName}</strong>
+                      <small>{title}</small>
+                    </div>
+                    <Avatar user={user} interactive={false} />
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
         </header>
         <main id="main-content" tabIndex={-1}>
@@ -251,8 +258,7 @@ export function PortalLayout({
           © {new Date().getFullYear()} Pulse Sports Center
         </footer>
       </div>
-      <FloatingChat userId={user.id} />
-      <AttendanceShortcut role={user.role} base={base} />
+      <QuickActions userId={user.id} role={user.role} base={base} />
     </div>
   );
 }

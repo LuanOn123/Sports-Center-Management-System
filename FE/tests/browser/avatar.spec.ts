@@ -10,6 +10,10 @@ for (const [role, path] of [
   test(`avatar upload controls: ${role}`, async ({ page }) => {
     await setup(page, role);
     await page.goto(`/${path}/profile`);
+    if (role === "MEMBER")
+      await page
+        .getByRole("button", { name: "Chỉnh sửa hồ sơ", exact: true })
+        .click();
     const editor = page.getByRole("region", { name: "Cập nhật ảnh đại diện" });
     await expect(editor).toBeVisible();
     await editor.locator('input[type="file"]').setInputFiles({

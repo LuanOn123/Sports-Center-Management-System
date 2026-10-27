@@ -42,7 +42,6 @@ test("keeps tracking a checkout after closing and reloading", async ({
     }),
   );
   await page.goto("/member/membership");
-  await page.getByRole("button", { name: "Bảng giá các gói" }).click();
   await page
     .getByRole("button", { name: "Chuyển khoản VietQR", exact: true })
     .first()
@@ -81,7 +80,6 @@ for (const result of ["SUCCESS", "FAILED"] as const) {
     );
 
     await page.goto("/member/membership");
-    await page.getByRole("button", { name: "Bảng giá các gói" }).click();
     await page
       .locator('button:has-text("Chuyển khoản VietQR"):not([disabled])')
       .first()
@@ -116,7 +114,6 @@ test("member reopens an existing pending SePay checkout from 409 details", async
   );
 
   await page.goto("/member/membership");
-  await page.getByRole("button", { name: "Bảng giá các gói" }).click();
   await page
     .locator('button:has-text("Chuyển khoản VietQR"):not([disabled])')
     .first()
@@ -147,7 +144,6 @@ test("member sees the counter-payment fallback when SePay is not configured", as
   );
 
   await page.goto("/member/membership");
-  await page.getByRole("button", { name: "Bảng giá các gói" }).click();
   await page
     .locator('button:has-text("Chuyển khoản VietQR"):not([disabled])')
     .first()
@@ -188,7 +184,6 @@ test("received funds require review until activation succeeds", async ({
     }),
   );
   await page.goto("/member/membership");
-  await page.getByRole("button", { name: "Bảng giá các gói" }).click();
   await page
     .locator('button:has-text("Chuyển khoản VietQR"):not([disabled])')
     .first()

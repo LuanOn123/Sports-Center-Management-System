@@ -1,0 +1,13 @@
+Edit this exact architecture diagram by translating ALL remaining Vietnamese text into English. Preserve the layout, white background, sage green headings and arrows, dark rounded cards, logos, all technical connections and arrow directions, aspect ratio and professional typography. Change only text, making spacing adjustments only to fit longer English text. All text in the result must be English. Exact replacements:
+"TECH STACK & KIẾN TRÚC WEB" -> "TECH STACK & WEB ARCHITECTURE"
+"Modular Monolith · Một backend chia module" -> "Modular Monolith · One backend organized into modules"
+"DỊCH VỤ BÊN NGOÀI" -> "EXTERNAL SERVICES"
+PostgreSQL caption "Nghiệp vụ + bản chiếu định danh" -> "Business data + identity projections"
+MongoDB caption "Định danh gốc · Hồ sơ · Refresh token" -> "Identity source of truth · Profiles · Refresh tokens"
+Replace the entire bottom footer with two English notes separated by a vertical divider:
+"Identity synchronization via backend services: MongoDB → PostgreSQL."
+"Web architecture shown; Mobile shares the same backend. Other integrations: Email · Turnstile."
+Keep all existing English labels and technology names unchanged, including FRONTEND · SPA, React + TypeScript + Vite, Socket.IO Client, TanStack Query, HTTP data fetching, HTTP / REST + JWT, Socket.IO + JWT, WebSocket / polling, BACKEND · NODE.JS + EXPRESS + TYPESCRIPT, REST API, JWT · Role · Facility scope, Socket.IO Server, Prisma ORM, Mongoose, API / SDK, SePay webhook, SQL, NOSQL, PostgreSQL, MongoDB, Cloudinary, SePay, Groq AI.
+Critical invariants: Socket.IO Client ↔ Socket.IO Server; Prisma → PostgreSQL; Mongoose → MongoDB; solid downward API/SDK call to external services; dashed upward SePay webhook to backend. Do not move, reroute, remove or reverse any arrows. No additional elements or explanation outside diagram. Make translated captions and footer fully legible without clipping; footer may wrap cleanly into two lines if needed.
+
+Final title correction: Replace only the top title with TECHNOLOGY STACK AND SYSTEM ARCHITECTURE. Preserve all other content. Created with the built-in imagegen tool.

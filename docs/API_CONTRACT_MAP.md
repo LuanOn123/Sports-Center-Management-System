@@ -47,11 +47,11 @@ Generated from live checkout route AST and FE operations. MATCH means method/pat
 | payments | Authenticated (service checks ownership) | features/reception/payments/PaymentsPage.tsx | /payments/sepay/webhook | POST | BE/src/modules/payments/payments.routes.ts:394 | MATCH |
 | payments | MEMBER, MANAGER, RECEPTIONIST, ADMIN | api/sepay.api.ts<br>shared/api.ts<br>features/reception/payments/PaymentsPage.tsx | /payments/sepay/mock-confirm | POST | BE/src/modules/payments/payments.routes.ts:450 | MATCH |
 | payments | Authenticated (service checks ownership) | features/reception/payments/PaymentsPage.tsx | /payments/sepay/{id} | GET | BE/src/modules/payments/payments.routes.ts:521 | MATCH |
-| notifications | Authenticated (service checks ownership) | shared/Communication.tsx | /notifications | GET | BE/src/modules/notifications/notifications.routes.ts:63 | MATCH |
-| notifications | Authenticated (service checks ownership) | shared/Communication.tsx | /notifications/unread-count | GET | BE/src/modules/notifications/notifications.routes.ts:79 | MATCH |
-| notifications | Authenticated (service checks ownership) | shared/Communication.tsx | /notifications/mark-all-read | PATCH | BE/src/modules/notifications/notifications.routes.ts:95 | MATCH |
-| notifications | Authenticated (service checks ownership) | shared/Communication.tsx | /notifications/{id}/read | PATCH | BE/src/modules/notifications/notifications.routes.ts:120 | MATCH |
-| notifications | MANAGER, RECEPTIONIST, ADMIN | shared/Communication.tsx | /notifications/trigger-upcoming-reminders | POST | BE/src/modules/notifications/notifications.routes.ts:137 | MATCH |
+| notifications | Authenticated (service checks ownership) | shared/Communication.tsx | /notifications | GET | BE/src/modules/notifications/notifications.routes.ts:64 | MATCH |
+| notifications | Authenticated (service checks ownership) | shared/Communication.tsx | /notifications/unread-count | GET | BE/src/modules/notifications/notifications.routes.ts:80 | MATCH |
+| notifications | Authenticated (service checks ownership) | shared/Communication.tsx | /notifications/mark-all-read | PATCH | BE/src/modules/notifications/notifications.routes.ts:96 | MATCH |
+| notifications | Authenticated (service checks ownership) | shared/Communication.tsx | /notifications/{id}/read | PATCH | BE/src/modules/notifications/notifications.routes.ts:121 | MATCH |
+| notifications | MANAGER, RECEPTIONIST, ADMIN | shared/Communication.tsx | /notifications/trigger-upcoming-reminders | POST | BE/src/modules/notifications/notifications.routes.ts:138 | MATCH |
 | membership-plans | Public | api/membership.api.ts<br>features/manage/config.ts<br>features/operations/OperationsPage.tsx<br>features/reception/membership/MembershipPage.tsx | /membership-plans | GET | BE/src/modules/membership-plans/membership-plans.routes.ts:29 | MATCH |
 | membership-plans | ADMIN | features/manage/config.ts<br>api/membership.api.ts | /membership-plans | POST | BE/src/modules/membership-plans/membership-plans.routes.ts:92 | MATCH |
 | membership-plans | Public | api/membership.api.ts | /membership-plans/{id} | GET | BE/src/modules/membership-plans/membership-plans.routes.ts:49 | MATCH |
@@ -81,13 +81,13 @@ Generated from live checkout route AST and FE operations. MATCH means method/pat
 | enrollments | Authenticated (service checks ownership) | features/reception/classes/ClassesPage.tsx<br>api/enrollments.api.ts | /enrollments/{id} | DELETE | BE/src/modules/enrollments/enrollments.routes.ts:287 | MATCH |
 | enrollments | Authenticated (service checks ownership) | api/enrollments.api.ts | /enrollments/{id}/transfer | POST | BE/src/modules/enrollments/enrollments.routes.ts:342 | MATCH |
 | coaches | Authenticated (service checks ownership) | features/manage/config.ts<br>shared/coachEligibility.ts<br>shared/forms/SchemaForm.tsx<br>features/manage/ResourcePage.tsx | /coaches | GET | BE/src/modules/coaches/coaches.routes.ts:53 | MATCH |
-| coaches | Authenticated (service checks ownership) | features/manage/ManagerUsers.tsx<br>features/manage/ResourcePage.tsx | /coaches/{id} | GET | BE/src/modules/coaches/coaches.routes.ts:82 | MATCH |
+| coaches | Authenticated (service checks ownership) | features/manage/ManagerUsers.tsx<br>shared/CoachProfileDialog.tsx<br>features/manage/ResourcePage.tsx | /coaches/{id} | GET | BE/src/modules/coaches/coaches.routes.ts:82 | MATCH |
 | coaches | Authenticated (service checks ownership) | features/manage/ManagerUsers.tsx<br>features/manage/ResourcePage.tsx | /coaches/{id} | PATCH | BE/src/modules/coaches/coaches.routes.ts:129 | MATCH |
 | classes | Authenticated (service checks ownership) | features/coach/data.ts<br>features/manage/config.ts<br>features/manage/ManagerUsers.tsx<br>features/manage/ScheduleForm.tsx<br>features/operations/OperationsPage.tsx<br>features/reception/attendance/AttendancePage.tsx<br>shared/forms/SchemaForm.tsx<br>api/classes.api.ts | /classes | GET | BE/src/modules/classes/classes.routes.ts:87 | MATCH |
-| classes | MANAGER, RECEPTIONIST, ADMIN | features/manage/ActivityPlanner.tsx<br>features/manage/ClassForm.tsx<br>features/manage/config.ts<br>shared/forms/SchemaForm.tsx<br>api/classes.api.ts | /classes | POST | BE/src/modules/classes/classes.routes.ts:211 | MATCH |
+| classes | MANAGER, ADMIN | features/manage/ActivityPlanner.tsx<br>features/manage/ClassForm.tsx<br>features/manage/config.ts<br>shared/forms/SchemaForm.tsx<br>api/classes.api.ts | /classes | POST | BE/src/modules/classes/classes.routes.ts:211 | MATCH |
 | classes | Authenticated (service checks ownership) | features/manage/ClassForm.tsx<br>shared/coachEligibility.ts<br>api/classes.api.ts | /classes/{id} | GET | BE/src/modules/classes/classes.routes.ts:113 | MATCH |
-| classes | MANAGER, RECEPTIONIST, ADMIN | features/manage/ClassForm.tsx<br>shared/forms/SchemaForm.tsx<br>api/classes.api.ts | /classes/{id} | PATCH | BE/src/modules/classes/classes.routes.ts:266 | MATCH |
-| classes | MANAGER, RECEPTIONIST, ADMIN | api/classes.api.ts | /classes/{id} | DELETE | BE/src/modules/classes/classes.routes.ts:294 | MATCH |
+| classes | MANAGER, ADMIN | features/manage/ClassForm.tsx<br>shared/forms/SchemaForm.tsx<br>api/classes.api.ts | /classes/{id} | PATCH | BE/src/modules/classes/classes.routes.ts:266 | MATCH |
+| classes | MANAGER, ADMIN | api/classes.api.ts | /classes/{id} | DELETE | BE/src/modules/classes/classes.routes.ts:294 | MATCH |
 | classes | Authenticated (service checks ownership) | api/classes.api.ts | /classes/{id}/course-plan | GET | BE/src/modules/classes/classes.routes.ts:151 | MATCH |
 | classes | Authenticated (service checks ownership) | features/manage/ActivityPlanner.tsx<br>features/manage/CoachAssignmentForm.tsx<br>api/classes.api.ts | /classes/{id}/coaches | POST | BE/src/modules/classes/classes.routes.ts:338 | MATCH |
 | classes | Authenticated (service checks ownership) | features/manage/ActivityPlanner.tsx<br>features/manage/CoachAssignmentForm.tsx<br>api/classes.api.ts | /classes/{id}/coaches/support | POST | BE/src/modules/classes/classes.routes.ts:385 | MATCH |
@@ -138,37 +138,37 @@ Generated from live checkout route AST and FE operations. MATCH means method/pat
 | classes | MANAGER, RECEPTIONIST, ADMIN | features/manage/UserCourseDetails.tsx<br>api/classes.api.ts | /classes/{id}/registrations | GET | BE/src/modules/classes/classes.routes.ts:17 | MATCH |
 | reports | MANAGER, ADMIN | features/manage/AdminDashboard.tsx | /reports/facilities | GET | BE/src/modules/reports/reports.routes.ts:20 | MATCH |
 | facilities | ADMIN | features/manage/AdminFacilities.tsx<br>features/operations/OperationsPage.tsx | /facilities/{facilityId}/manager | PUT | BE/src/modules/facilities/facilities.route.ts:10 | MATCH |
-| staff-candidates | Authenticated (service checks ownership) | features/manage/AdminFacilities.tsx<br>features/manage/ManagerUsers.tsx<br>features/operations/OperationsPage.tsx | /staff-candidates | GET | BE/src/modules/operations/operations.routes.ts:83 | MATCH |
-| coaches | Authenticated (service checks ownership) | features/coach/CoachProfile.tsx<br>features/manage/ManagerUsers.tsx<br>features/operations/OperationsPage.tsx<br>shared/coachEligibility.ts<br>features/manage/ResourcePage.tsx | /coaches/{id}/specializations | GET | BE/src/modules/operations/operations.routes.ts:127 | MATCH |
-| coaches | Authenticated (service checks ownership) | features/manage/ManagerUsers.tsx<br>features/operations/OperationsPage.tsx<br>features/manage/ResourcePage.tsx | /coaches/{id}/specializations | PUT | BE/src/modules/operations/operations.routes.ts:222 | MATCH |
-| leave-requests | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /leave-requests/{id}/affected | GET | BE/src/modules/operations/operations.routes.ts:131 | MATCH |
+| staff-candidates | Authenticated (service checks ownership) | features/manage/AdminFacilities.tsx<br>features/manage/ManagerUsers.tsx<br>features/operations/OperationsPage.tsx | /staff-candidates | GET | BE/src/modules/operations/operations.routes.ts:86 | MATCH |
+| coaches | Authenticated (service checks ownership) | features/coach/CoachProfile.tsx<br>features/manage/ManagerUsers.tsx<br>features/operations/OperationsPage.tsx<br>shared/coachEligibility.ts<br>features/manage/ResourcePage.tsx | /coaches/{id}/specializations | GET | BE/src/modules/operations/operations.routes.ts:130 | MATCH |
+| coaches | Authenticated (service checks ownership) | features/manage/ManagerUsers.tsx<br>features/operations/OperationsPage.tsx<br>features/manage/ResourcePage.tsx | /coaches/{id}/specializations | PUT | BE/src/modules/operations/operations.routes.ts:231 | MATCH |
+| leave-requests | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /leave-requests/{id}/affected | GET | BE/src/modules/operations/operations.routes.ts:140 | MATCH |
 | facilities | Authenticated (service checks ownership) | features/manage/AdminFacilities.tsx<br>features/manage/AdminTerms.tsx<br>features/manage/AuditLogPage.tsx<br>features/operations/OperationsPage.tsx<br>shared/api.ts<br>shared/FacilityBoundary.tsx<br>shared/forms/SchemaForm.tsx | /facilities | GET | BE/src/modules/facilities/facilities.route.ts:33 | MATCH |
-| facilities | ADMIN | features/manage/AdminFacilities.tsx<br>features/operations/OperationsPage.tsx<br>shared/api.ts<br>shared/FacilityBoundary.tsx<br>shared/forms/SchemaForm.tsx | /facilities | POST | BE/src/modules/facilities/facilities.route.ts:52 | MATCH |
+| facilities | ADMIN | features/manage/FacilityEditor.tsx<br>features/operations/OperationsPage.tsx<br>shared/api.ts<br>shared/FacilityBoundary.tsx<br>shared/forms/SchemaForm.tsx | /facilities | POST | BE/src/modules/facilities/facilities.route.ts:52 | MATCH |
 | facilities | Authenticated (service checks ownership) | features/manage/ManagerUsers.tsx<br>features/operations/OperationsPage.tsx | /facilities/{facilityId} | GET | BE/src/modules/facilities/facilities.route.ts:36 | MATCH |
-| facilities | ADMIN | features/manage/AdminFacilities.tsx<br>features/operations/OperationsPage.tsx | /facilities/{facilityId} | PUT | BE/src/modules/facilities/facilities.route.ts:61 | MATCH |
+| facilities | ADMIN | features/manage/FacilityEditor.tsx<br>features/operations/OperationsPage.tsx | /facilities/{facilityId} | PUT | BE/src/modules/facilities/facilities.route.ts:61 | MATCH |
 | facilities | ADMIN, MANAGER | features/manage/AdminFacilities.tsx<br>features/manage/ManagerUsers.tsx<br>features/operations/OperationsPage.tsx | /facilities/{facilityId}/staff | POST | BE/src/modules/facilities/facilities.route.ts:71 | MATCH |
 | facilities | ADMIN, MANAGER | features/manage/AdminFacilities.tsx<br>features/manage/ManagerUsers.tsx<br>features/operations/OperationsPage.tsx | /facilities/{facilityId}/coaches | POST | BE/src/modules/facilities/facilities.route.ts:13 | MATCH |
 | facilities | ADMIN, MANAGER | features/manage/ManagerUsers.tsx<br>features/operations/OperationsPage.tsx | /facilities/{facilityId}/receptionists | POST | BE/src/modules/facilities/facilities.route.ts:23 | MATCH |
 | facilities | ADMIN, MANAGER | features/manage/AdminFacilities.tsx<br>features/operations/OperationsPage.tsx | /facilities/{facilityId}/staff/{userId}/{role} | DELETE | BE/src/modules/facilities/facilities.route.ts:81 | MATCH |
-| rooms | Authenticated (service checks ownership) | features/manage/ManagerRooms.tsx<br>features/operations/OperationsPage.tsx<br>features/manage/ResourcePage.tsx | /rooms/{id}/capabilities | PUT | BE/src/modules/operations/operations.routes.ts:162 | MATCH |
-| subjects | ADMIN | features/operations/OperationsPage.tsx | /subjects/{id}/requirements | PUT | BE/src/modules/operations/operations.routes.ts:200 | MATCH |
-| slots | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /slots | GET | BE/src/modules/operations/operations.routes.ts:321 | MATCH |
-| slots | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /slots | POST | BE/src/modules/operations/operations.routes.ts:324 | MATCH |
-| schedule-patterns | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /schedule-patterns | GET | BE/src/modules/operations/operations.routes.ts:327 | MATCH |
-| schedule-patterns | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /schedule-patterns | POST | BE/src/modules/operations/operations.routes.ts:337 | MATCH |
-| leave-requests | ADMIN, MANAGER, COACH, RECEPTIONIST, MEMBER | features/operations/OperationsPage.tsx | /leave-requests | GET | BE/src/modules/operations/operations.routes.ts:417 | MATCH |
-| leave-requests | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /leave-requests | POST | BE/src/modules/operations/operations.routes.ts:441 | MATCH |
-| leave-requests | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /leave-requests/{id} | PATCH | BE/src/modules/operations/operations.routes.ts:463 | MATCH |
-| issues | MEMBER, COACH, MANAGER, RECEPTIONIST, ADMIN | features/operations/OperationsPage.tsx | /issues | GET | BE/src/modules/operations/operations.routes.ts:676 | MATCH |
-| issues | MEMBER, COACH, RECEPTIONIST, MANAGER, ADMIN | features/operations/OperationsPage.tsx | /issues | POST | BE/src/modules/operations/operations.routes.ts:689 | MATCH |
-| issues | MEMBER, COACH, MANAGER, RECEPTIONIST, ADMIN | features/operations/OperationsPage.tsx | /issues/{id} | GET | BE/src/modules/operations/operations.routes.ts:736 | MATCH |
-| issues | MEMBER | features/operations/OperationsPage.tsx | /issues/{id} | PUT | BE/src/modules/operations/operations.routes.ts:751 | MATCH |
-| issues | MEMBER | features/operations/OperationsPage.tsx | /issues/{id} | DELETE | BE/src/modules/operations/operations.routes.ts:772 | MATCH |
-| issues | ADMIN, MANAGER, RECEPTIONIST | features/operations/OperationsPage.tsx | /issues/{id} | PATCH | BE/src/modules/operations/operations.routes.ts:715 | MATCH |
-| audit-logs | Authenticated (service checks ownership) | features/manage/AuditLogPage.tsx<br>features/operations/OperationsPage.tsx | /audit-logs | GET | BE/src/modules/operations/operations.routes.ts:733 | MATCH |
-| counter-orders | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /counter-orders | GET | BE/src/modules/operations/operations.routes.ts:781 | MATCH |
-| counter-orders | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /counter-orders | POST | BE/src/modules/operations/operations.routes.ts:789 | MATCH |
-| counter-orders | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /counter-orders/{id}/confirm | POST | BE/src/modules/operations/operations.routes.ts:835 | MATCH |
+| rooms | Authenticated (service checks ownership) | features/manage/ManagerRooms.tsx<br>features/operations/OperationsPage.tsx<br>features/manage/ResourcePage.tsx | /rooms/{id}/capabilities | PUT | BE/src/modules/operations/operations.routes.ts:171 | MATCH |
+| subjects | ADMIN | features/operations/OperationsPage.tsx | /subjects/{id}/requirements | PUT | BE/src/modules/operations/operations.routes.ts:209 | MATCH |
+| slots | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /slots | GET | BE/src/modules/operations/operations.routes.ts:330 | MATCH |
+| slots | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /slots | POST | BE/src/modules/operations/operations.routes.ts:333 | MATCH |
+| schedule-patterns | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /schedule-patterns | GET | BE/src/modules/operations/operations.routes.ts:336 | MATCH |
+| schedule-patterns | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /schedule-patterns | POST | BE/src/modules/operations/operations.routes.ts:346 | MATCH |
+| leave-requests | ADMIN, MANAGER, COACH, RECEPTIONIST, MEMBER | features/operations/OperationsPage.tsx | /leave-requests | GET | BE/src/modules/operations/operations.routes.ts:426 | MATCH |
+| leave-requests | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /leave-requests | POST | BE/src/modules/operations/operations.routes.ts:450 | MATCH |
+| leave-requests | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /leave-requests/{id} | PATCH | BE/src/modules/operations/operations.routes.ts:472 | MATCH |
+| issues | MEMBER, COACH, MANAGER, RECEPTIONIST, ADMIN | features/operations/OperationsPage.tsx | /issues | GET | BE/src/modules/operations/operations.routes.ts:685 | MATCH |
+| issues | MEMBER, COACH, RECEPTIONIST, MANAGER, ADMIN | features/operations/OperationsPage.tsx | /issues | POST | BE/src/modules/operations/operations.routes.ts:698 | MATCH |
+| issues | MEMBER, COACH, MANAGER, RECEPTIONIST, ADMIN | features/operations/OperationsPage.tsx | /issues/{id} | GET | BE/src/modules/operations/operations.routes.ts:745 | MATCH |
+| issues | MEMBER | features/operations/OperationsPage.tsx | /issues/{id} | PUT | BE/src/modules/operations/operations.routes.ts:760 | MATCH |
+| issues | MEMBER | features/operations/OperationsPage.tsx | /issues/{id} | DELETE | BE/src/modules/operations/operations.routes.ts:781 | MATCH |
+| issues | ADMIN, MANAGER, RECEPTIONIST | features/operations/OperationsPage.tsx | /issues/{id} | PATCH | BE/src/modules/operations/operations.routes.ts:724 | MATCH |
+| audit-logs | Authenticated (service checks ownership) | features/manage/AuditLogPage.tsx<br>features/operations/OperationsPage.tsx | /audit-logs | GET | BE/src/modules/operations/operations.routes.ts:742 | MATCH |
+| counter-orders | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /counter-orders | GET | BE/src/modules/operations/operations.routes.ts:790 | MATCH |
+| counter-orders | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /counter-orders | POST | BE/src/modules/operations/operations.routes.ts:798 | MATCH |
+| counter-orders | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /counter-orders/{id}/confirm | POST | BE/src/modules/operations/operations.routes.ts:844 | MATCH |
 | subjects | Public | UNUSED_API (no direct consumer found) | /subjects | GET | BE/src/modules/sports/sports.routes.ts:57 | MATCH |
 | subjects | ADMIN | UNUSED_API (no direct consumer found) | /subjects | POST | BE/src/modules/sports/sports.routes.ts:118 | MATCH |
 | subjects | Public | UNUSED_API (no direct consumer found) | /subjects/{id} | GET | BE/src/modules/sports/sports.routes.ts:78 | MATCH |
@@ -177,14 +177,19 @@ Generated from live checkout route AST and FE operations. MATCH means method/pat
 | class-schedules | Authenticated (service checks ownership) | features/manage/ResourcePage.tsx<br>api/classes.api.ts | /class-schedules/under-capacity | GET | BE/src/modules/class-schedules/class-schedules.routes.ts:149 | MATCH |
 | enrollments | MEMBER | pages/member/MyClassesPage.tsx<br>api/enrollments.api.ts | /enrollments/{id}/leave-request | POST | BE/src/modules/enrollments/enrollments.routes.ts:359 | MATCH |
 | enrollments | Authenticated (service checks ownership) | api/enrollments.api.ts | /enrollments/{id}/health-notes | PATCH | BE/src/modules/enrollments/enrollments.routes.ts:367 | MATCH |
-| facilities | Authenticated (service checks ownership) | features/operations/OperationsPage.tsx | /facilities/{facilityId}/limits | GET | BE/src/modules/facilities/facilities.route.ts:44 | MATCH |
+| facilities | Authenticated (service checks ownership) | features/manage/FacilityCapacityGauges.tsx<br>features/operations/OperationsPage.tsx | /facilities/{facilityId}/limits | GET | BE/src/modules/facilities/facilities.route.ts:44 | MATCH |
 | terms | ADMIN, MANAGER, COACH, RECEPTIONIST, MEMBER | features/manage/AdminTerms.tsx<br>features/manage/ScheduleForm.tsx<br>features/operations/OperationsPage.tsx<br>pages/member/BrowseClassesPage.tsx | /terms | GET | BE/src/modules/terms/terms.routes.ts:30 | MATCH |
-| terms | ADMIN, MANAGER, COACH, RECEPTIONIST, MEMBER | features/manage/ScheduleForm.tsx<br>pages/member/BrowseClassesPage.tsx | /terms/current | GET | BE/src/modules/terms/terms.routes.ts:47 | MATCH |
+| terms | ADMIN, MANAGER, COACH, RECEPTIONIST, MEMBER | features/manage/ScheduleForm.tsx<br>pages/member/BrowseClassesPage.tsx<br>shared/MemberTermBanner.tsx | /terms/current | GET | BE/src/modules/terms/terms.routes.ts:47 | MATCH |
 | terms | ADMIN, MANAGER, COACH, RECEPTIONIST, MEMBER | UNUSED_API (no direct consumer found) | /terms/{id} | GET | BE/src/modules/terms/terms.routes.ts:63 | MATCH |
-| terms | Authenticated (service checks ownership) | features/manage/AdminTerms.tsx | /terms | POST | BE/src/modules/terms/terms.routes.ts:79 | MATCH |
-| terms | Authenticated (service checks ownership) | features/manage/AdminTerms.tsx | /terms/{id} | PATCH | BE/src/modules/terms/terms.routes.ts:96 | MATCH |
-| terms | Authenticated (service checks ownership) | features/manage/AdminTerms.tsx | /terms/{id} | DELETE | BE/src/modules/terms/terms.routes.ts:113 | MATCH |
+| terms | ADMIN, MANAGER | features/manage/AdminTerms.tsx | /terms | POST | BE/src/modules/terms/terms.routes.ts:79 | MATCH |
+| terms | ADMIN, MANAGER | features/manage/AdminTerms.tsx | /terms/{id} | PATCH | BE/src/modules/terms/terms.routes.ts:96 | MATCH |
+| terms | ADMIN, MANAGER | features/manage/AdminTerms.tsx | /terms/{id} | DELETE | BE/src/modules/terms/terms.routes.ts:113 | MATCH |
 | members | MANAGER, RECEPTIONIST, ADMIN | features/manage/config.ts<br>features/reception/members/MembersPage.tsx<br>features/reception/membership/MembershipPage.tsx | /members | POST | BE/src/modules/members/members.routes.ts:10 | MATCH |
+| coach-change-requests | Authenticated (service checks ownership) | features/operations/CoachChangesPage.tsx | /coach-change-requests | GET | BE/src/modules/operations/operations.routes.ts:134 | MATCH |
+| coach-change-requests | Authenticated (service checks ownership) | features/operations/CoachChangesPage.tsx | /coach-change-requests/sessions | GET | BE/src/modules/operations/operations.routes.ts:135 | MATCH |
+| coach-change-requests | Authenticated (service checks ownership) | features/operations/CoachChangesPage.tsx | /coach-change-requests | POST | BE/src/modules/operations/operations.routes.ts:136 | MATCH |
+| coach-change-requests | Authenticated (service checks ownership) | features/operations/CoachChangesPage.tsx | /coach-change-requests/{id}/candidates | GET | BE/src/modules/operations/operations.routes.ts:137 | MATCH |
+| coach-change-requests | Authenticated (service checks ownership) | features/operations/CoachChangesPage.tsx | /coach-change-requests/{id} | PATCH | BE/src/modules/operations/operations.routes.ts:138 | MATCH |
 
 Backend operations absent from FE catalog: none.
 

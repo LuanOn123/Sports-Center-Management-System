@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./term-editor.css";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Calendar, Pencil, Trash2, ChevronDown, Clock, UserCheck, Sparkles, Building2, Lock } from "lucide-react";
@@ -97,6 +98,7 @@ function TermForm({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isPending) return;
     setLocalError("");
     const trimmedCode = code.trim().toUpperCase();
     if (!trimmedCode || trimmedCode.length < 2) {
@@ -132,7 +134,7 @@ function TermForm({
   const isEditing = Boolean(initial?.code);
 
   return (
-    <form className="form-grid" onSubmit={handleSubmit}>
+    <form className="term-editor" onSubmit={handleSubmit} aria-busy={isPending}>
       <fieldset className="form-grid wide" disabled={isPending}>
         {/* Code */}
         <label>
@@ -249,7 +251,7 @@ function TermForm({
         </label>
       </fieldset>
       {Boolean(localError || error) && (
-        <ErrorState error={localError ? new Error(localError) : error} />
+        <div className="term-editor-error"><ErrorState error={localError ? new Error(localError) : error} /></div>
       )}
       <div className="modal-footer">
         <button type="button" className="button" disabled={isPending} onClick={onCancel}>Hủy</button>
@@ -657,7 +659,7 @@ export function AdminTerms({ role = "ADMIN" }: { role?: "ADMIN" | "MANAGER" } = 
 
       {/* Create Modal */}
       {creating && (
-        <Modal title={isManager ? "Thêm kỳ học cho cơ sở" : "Thêm kỳ học mới"} onClose={() => setCreating(false)}>
+        <Modal title={isManager ? "Thêm kỳ học cho cơ sở" : "Thêm kỳ học mới"} onClose={() => setCreating(false)} dismissible={!createMutation.isPending}>
           <TermForm
             facilities={facilities}
             role={role}
@@ -672,7 +674,7 @@ export function AdminTerms({ role = "ADMIN" }: { role?: "ADMIN" | "MANAGER" } = 
 
       {/* Edit Modal */}
       {editing && (
-        <Modal title={`Chỉnh sửa · ${editing.name}`} onClose={() => setEditing(null)}>
+        <Modal title={`Chỉnh sửa · ${editing.name}`} onClose={() => setEditing(null)} dismissible={!updateMutation.isPending}>
           <TermForm
             initial={editing}
             facilities={facilities}

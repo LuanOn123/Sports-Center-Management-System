@@ -1,5 +1,10 @@
 import { sportNames } from "./sports";
 export const labels: Record<string, string> = {
+  maxClasses: "Số lớp học tối đa",
+  maxRooms: "Số phòng tập tối đa",
+  maxCoaches: "Số huấn luyện viên tối đa",
+  maxMembers: "Số hội viên tối đa",
+  maxSports: "Số bộ môn tối đa",
   facilityId: "Cơ sở", userId: "Nhân sự", startMinute: "Phút bắt đầu trong ngày", endMinute: "Phút kết thúc trong ngày", response: "Nội dung phản hồi", title: "Tiêu đề", code: "Mã cơ sở", address: "Địa chỉ", contactInfo: "Thông tin liên hệ", timezone: "Múi giờ", IN_PROGRESS: "Đang xử lý", RESOLVED: "Đã xử lý", CLOSED: "Đã đóng", APPROVED: "Đã duyệt", REJECTED: "Từ chối",
   PRESENT: "Có mặt",
   ABSENT: "Vắng mặt",
@@ -184,6 +189,9 @@ export const labels: Record<string, string> = {
   ATTENDANCE_PENALTY: "Phạt chuyên cần",
   ATTENDANCE_PENALTY_REVOKED: "Gỡ phạt chuyên cần",
   COACH_CHANGED: "Đổi huấn luyện viên",
+  COACH_CHANGE_REQUESTED: "Yêu cầu đổi HLV",
+  COACH_CHANGE_APPROVED: "Đã duyệt đổi HLV",
+  COACH_CHANGE_REJECTED: "Từ chối đổi HLV",
   TRAINING_PLAN_ASSIGNED: "Giao kế hoạch tập",
   GENERAL: "Thông báo chung",
 };

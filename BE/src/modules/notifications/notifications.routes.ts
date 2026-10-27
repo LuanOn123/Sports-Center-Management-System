@@ -35,6 +35,7 @@ const router = Router();
  *             "SCHEDULE_ROOM_CHANGED",
  *             "PAYMENT_SUCCESS", "PAYMENT_REFUNDED", "PAYMENT_FAILED",
  *             "LEAVE_REQUEST_SUBMITTED", "LEAVE_REQUEST_APPROVED", "LEAVE_REQUEST_REJECTED",
+ *             "COACH_CHANGE_REQUESTED", "COACH_CHANGE_APPROVED", "COACH_CHANGE_REJECTED",
  *             "GENERAL"
  *           ]
  *         description: Filter by notification type

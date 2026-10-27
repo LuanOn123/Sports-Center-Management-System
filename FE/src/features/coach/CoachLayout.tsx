@@ -1,6 +1,6 @@
-import { OperationsPage } from "../operations/OperationsPage";
+import { CoachChangesPage } from "../operations/CoachChangesPage";
 import { CoachFeedback } from "../../shared/CoachFeedback";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import type { PortalProps } from "../../app/RoleRouter";
 import { PortalLayout } from "../../shared/PortalLayout";
 import { Placeholder } from "../../shared/Placeholder";
@@ -16,7 +16,7 @@ import { idOf, type Row } from "./data";
 import "./coach.css";
 const items = [
   ["dashboard", "Tổng quan huấn luyện viên", LayoutDashboard],
-  ["leave", "Xin nghỉ phép", CalendarDays],
+  ["coach-changes", "Đổi HLV theo buổi", CalendarDays],
   ["schedule", "Lịch dạy", CalendarDays],
   ["classes", "Lớp phụ trách", BookOpen],
   ["profile", "Tài khoản", UserRound],
@@ -32,7 +32,8 @@ export function CoachLayout(props: PortalProps) {
       items={items}
     >
       <Routes>
-        <Route path="/coach/leave" element={<OperationsPage kind="leave" role="COACH" />} />
+        <Route path="/coach/leave" element={<Navigate to="/coach/coach-changes" replace />} />
+        <Route path="/coach/coach-changes" element={<CoachChangesPage role="COACH" />} />
         <Route
           path="/coach/feedback"
           element={

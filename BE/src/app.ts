@@ -108,6 +108,7 @@ app.use(v1, (req, res, next) => {
       "coaches",
       "issues",
       "leave-requests",
+      "coach-change-requests",
       "audit-logs",
       "slots",
       "schedule-patterns",

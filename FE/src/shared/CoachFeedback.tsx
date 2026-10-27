@@ -7,11 +7,13 @@ import { ErrorState, Loading, Modal } from "./ui";
 export function CoachFeedback({
   coachId,
   classId,
+  reviewClassId,
   role,
   canReview = false,
 }: {
   coachId: string;
   classId?: string;
+  reviewClassId?: string;
   role: string;
   canReview?: boolean;
 }) {
@@ -43,8 +45,11 @@ export function CoachFeedback({
     enabled: role === "MEMBER",
     queryFn: ({ signal }) => api<RecordData[]>("GET /feedbacks/my", { signal }),
   });
+  const contextClassId = reviewClassId ?? classId;
   const own = mine.data?.data.find(
-    (f) => f.coachId === coachId && (!classId || f.classId === classId),
+    (f) =>
+      f.coachId === coachId &&
+      (!contextClassId || f.classId === contextClassId),
   );
   const refresh = () => {
     void cache.invalidateQueries({ queryKey: ["feedback"] });
@@ -55,7 +60,7 @@ export function CoachFeedback({
       api("POST /feedbacks", {
         body: {
           coachId,
-          ...(classId ? { classId } : {}),
+          ...(contextClassId ? { classId: contextClassId } : {}),
           rating,
           comment: comment.trim(),
           isAnonymous: anonymous,
@@ -113,7 +118,9 @@ export function CoachFeedback({
                     setRemoveId(String(f.id));
                   }}
                 >
-                  {["ADMIN", "MANAGER"].includes(role) ? "Xóa đánh giá vi phạm" : "Xóa đánh giá"}
+                  {["ADMIN", "MANAGER"].includes(role)
+                    ? "Xóa đánh giá vi phạm"
+                    : "Xóa đánh giá"}
                 </button>
               )}
             </article>

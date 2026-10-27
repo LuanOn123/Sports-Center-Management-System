@@ -1,0 +1,55 @@
+{
+  "Admin": [
+    "Quản lý người dùng",
+    "Quản lý cơ sở & phân công",
+    "Quản lý danh mục gói tập",
+    "Quản lý bộ môn",
+    "Quản lý phòng tập & lớp học",
+    "Xem lịch hoạt động",
+    "Xử lý nghỉ phép & hỗ trợ",
+    "Xem tổng quan & nhật ký"
+  ],
+  "Manager": [
+    "Quản lý nhân sự cơ sở",
+    "Quản lý phòng tập",
+    "Quản lý lớp học",
+    "Điều phối lịch & huấn luyện viên",
+    "Quản lý chuyên cần",
+    "Xử lý nghỉ phép",
+    "Xử lý yêu cầu hỗ trợ",
+    "Xem báo cáo cơ sở"
+  ],
+  "Receptionist": [
+    "Quản lý hồ sơ hội viên",
+    "Đăng ký & gia hạn gói tập",
+    "Bán gói tại quầy",
+    "Hỗ trợ đăng ký lớp",
+    "Xem lịch lớp học",
+    "Theo dõi & hỗ trợ chuyên cần",
+    "Xử lý thanh toán & hóa đơn",
+    "Xử lý yêu cầu hỗ trợ"
+  ],
+  "Coach": [
+    "Xem lịch dạy",
+    "Xem lớp & học viên phụ trách",
+    "Điểm danh học viên",
+    "Tạo QR điểm danh",
+    "Gửi yêu cầu nghỉ phép",
+    "Xem đánh giá của hội viên"
+  ],
+  "Member": [
+    "Quản lý gói tập cá nhân",
+    "Đăng ký lớp & danh sách chờ",
+    "Xem lịch tập & lớp đã đăng ký",
+    "Điểm danh & check-in cơ sở",
+    "Thanh toán & xem hóa đơn",
+    "Đánh giá huấn luyện viên",
+    "Gửi yêu cầu hỗ trợ"
+  ],
+  "Guest": [
+    "Xem giới thiệu trung tâm",
+    "Đăng ký tài khoản",
+    "Đăng nhập / khôi phục mật khẩu",
+    "Hỏi trợ lý AI"
+  ]
+}

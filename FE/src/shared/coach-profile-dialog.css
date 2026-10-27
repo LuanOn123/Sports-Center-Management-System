@@ -1,0 +1,168 @@
+.member-coach-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
+  gap: 16px;
+}
+.member-coach-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  max-width: 520px;
+  padding: 22px;
+  border: 1px solid var(--member-border, #354358);
+  border-radius: 18px;
+  background: var(--member-surface-alt, #f6faf3);
+  color: var(--member-text, #203d31);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition:
+    border-color 180ms,
+    box-shadow 180ms;
+}
+.member-coach-card:hover {
+  border-color: var(--member-accent, #749b38);
+  box-shadow: 0 8px 24px #0002;
+}
+.member-coach-card:focus-visible {
+  outline: 2px solid var(--member-accent, #749b38);
+  outline-offset: 4px;
+}
+.member-coach-card .profile-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  flex-shrink: 0;
+  font-size: 23px;
+}
+.member-coach-card-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.member-coach-role {
+  color: var(--member-accent, #376228);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 1px;
+}
+.member-coach-card-copy > strong {
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+.member-coach-card-copy > span:not(.member-coach-role) {
+  color: var(--member-muted, #58695f);
+  font-size: 12px;
+}
+.member-coach-card-copy > .member-coach-card-link {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--member-accent, #376228) !important;
+  margin-top: 4px;
+  font-weight: 650;
+}
+.member-coach-profile {
+  padding: 24px;
+  display: grid;
+  gap: 24px;
+}
+.member-coach-profile-hero {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 22px;
+  padding: 24px;
+  border-radius: 18px;
+  background: var(--member-surface-alt, #f6faf3);
+  border: 1px solid var(--member-border, #354358);
+}
+.member-coach-profile-hero .profile-avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 24px;
+  font-size: 30px;
+}
+.member-coach-profile-hero h3 {
+  margin: 8px 0;
+  font-size: 24px;
+  overflow-wrap: anywhere;
+}
+.member-coach-profile-hero p {
+  margin: 0;
+  color: var(--member-muted, #58695f);
+  font-size: 13px;
+}
+.member-coach-profile-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 16px;
+}
+.member-coach-profile-facts > section {
+  padding: 18px;
+  border: 1px solid var(--member-border, #354358);
+  border-radius: 14px;
+}
+.member-coach-profile :is(.member-coach-profile-facts, .member-coach-bio) h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  font-size: 14px;
+}
+.member-coach-profile h3 > svg {
+  color: var(--member-accent, #376228);
+}
+.member-coach-profile-facts p,
+.member-coach-bio p {
+  font-size: 13px;
+  color: var(--member-muted, #58695f);
+  line-height: 1.7;
+  white-space: pre-line;
+  margin: 0;
+}
+.member-coach-specialties {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.member-coach-specialties span {
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: var(--member-surface-alt, #edf5e7);
+  color: var(--member-accent, #376228);
+  font-size: 12px;
+}
+.member-coach-reviews {
+  border-top: 1px solid var(--member-border, #354358);
+  padding-top: 22px;
+}
+.member-coach-reviews .feedback-card {
+  padding: 16px;
+  border: 1px solid var(--member-border, #354358);
+  border-radius: 14px;
+  background: var(--member-surface-alt, #f6faf3);
+}
+.member-coach-reviews .feedback-card p {
+  white-space: pre-line;
+  line-height: 1.7;
+  font-size: 13px;
+}
+@media (max-width: 600px) {
+  .member-coach-profile {
+    padding: 16px;
+  }
+  .member-coach-profile-hero {
+    padding: 18px;
+  }
+  .member-coach-card {
+    padding: 18px;
+    gap: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .member-coach-card {
+    transition: none;
+  }
+}

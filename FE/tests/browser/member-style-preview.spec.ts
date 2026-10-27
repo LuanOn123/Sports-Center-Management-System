@@ -44,7 +44,6 @@ test("member visual review", async ({ page }) => {
   await page.screenshot({ path: "test-results/member-style-invoice.png" });
   await page.keyboard.press("Escape");
   await page.goto("/member/membership");
-  await page.getByRole("button", { name: "Bảng giá các gói" }).click();
   await page.waitForTimeout(300);
   await page.screenshot({
     path: "test-results/member-style-plans.png",

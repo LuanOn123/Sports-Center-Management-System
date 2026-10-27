@@ -8,6 +8,8 @@ import type { RecordData, Schema } from "../api";
 import { at, label } from "../config";
 import { ErrorState, Loading } from "../feedback";
 import { allPages } from "../pagedApi";
+import { AreaTypePicker } from "./AreaTypePicker";
+import "./form-design.css";
 const lookupPaths: Record<string, string> = {
   sportId: "/sports",
   sportIds: "/sports",
@@ -299,7 +301,12 @@ export function SchemaForm({
     }
   }
   return (
-    <form ref={formRef} onSubmit={submit} aria-busy={busy}>
+    <form
+      className="schema-editor"
+      ref={formRef}
+      onSubmit={submit}
+      aria-busy={busy}
+    >
       {attendancePolicyLocked && (
         <p className="field-note">
           Chính sách chuyên cần đã khóa vì lớp có lượt đăng ký. Muốn đổi chính
@@ -322,7 +329,9 @@ export function SchemaForm({
       )}
       <fieldset className="form-grid" disabled={busy}>
         {Object.entries(schema.properties || {})
-          .filter(([k]) => !(k === "timezone" && operation.includes("/facilities")))
+          .filter(
+            ([k]) => !(k === "timezone" && operation.includes("/facilities")),
+          )
           .filter(
             ([k]) =>
               !(operation === "PATCH /class-schedules/{id}" && k === "status"),
@@ -349,24 +358,31 @@ export function SchemaForm({
           .map(([k, s]) => {
             const required = Boolean(schema.required?.includes(k));
             const value = values[k];
+            if (
+              k === "areaType" ||
+              (k === "areaTypes" && /\/sports(?:\/|$)/.test(operation))
+            ) {
+              return (
+                <AreaTypePicker
+                  key={k}
+                  label={label(k)}
+                  value={String(value || "")}
+                  required={required}
+                  allowed={choices[k]?.map((option) => option.value) ?? s.enum}
+                  onChange={(next) => change(k, next)}
+                />
+              );
+            }
             return (
               <label
                 key={k}
                 className={["description", "bio"].includes(k) ? "wide" : ""}
               >
-                {label(k)}
-                {required && <b className="required"> *</b>}
-                {k === "areaTypes" && /\/sports(?:\/|$)/.test(operation) ? (
-                  <select
-                    required={required}
-                    value={String(value)}
-                    onChange={(e) => change(k, e.target.value)}
-                  >
-                    <option value="INDOOR">Trong nhà</option>
-                    <option value="OUTDOOR">Ngoài trời</option>
-                    <option value="POOL">Hồ bơi</option>
-                  </select>
-                ) : choices[k] ? (
+                <span className="form-field-label">
+                  {label(k)}
+                  {required && <b className="required"> *</b>}
+                </span>
+                {choices[k] ? (
                   <select
                     aria-invalid={
                       (error instanceof ApiError &&
