@@ -57,7 +57,7 @@ export async function promoteNextEligible(
     const enrolled = existing
       ? await tx.enrollment.update({
           where: { id: existing.id },
-          data: { status: "BOOKED", bookedAt: new Date(), cancelledAt: null },
+          data: { status: "BOOKED", bookedAt: new Date(), cancelledAt: null, termMembershipGrant: Prisma.DbNull },
           include: {
             ...enrollmentInclude,
             member: { select: { id: true, userId: true } },

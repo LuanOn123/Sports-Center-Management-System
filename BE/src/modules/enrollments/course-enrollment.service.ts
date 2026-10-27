@@ -2,8 +2,9 @@ import { requestContext } from "../../config/request-context.js";
 import { Prisma, EnrollmentStatus, MemberTier } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../middlewares/errorHandler.js";
-import { lockMemberClass, lockMemberQuota, lockSchedules } from "../../utils/dbLocks.js";
+import { lockMemberClass, lockMemberQuota, lockSchedules, lockMemberSubscription } from "../../utils/dbLocks.js";
 import { createNotification } from "../notifications/notifications.service.js";
+import { createTermMembershipGrant, readTermMembershipGrant, termMembershipCovers } from "./term-membership-policy.js";
 import { findActivePenalty } from "../attendance/attendance-penalties.service.js";
 import {
   CONCURRENT_CLASS_LIMIT_CODE,
@@ -67,6 +68,7 @@ export interface CourseEligibility {
   sessions: CourseEligibilitySession[];
   blockers: CourseEnrollmentBlocker[];
   subscription: { tier: MemberTier; endDate: Date; planName: string | null } | null;
+  termMembershipGrant?: import("./term-membership-policy.js").TermMembershipGrant | null;
   quota: {
     tier: MemberTier | null;
     limit: number;
@@ -88,7 +90,7 @@ const vnDateTime = (d: Date) => d.toLocaleString("vi-VN", { timeZone: "Asia/Ho_C
  * - `POST /enrollments/bulk` (ghi thật, lỗi thì rollback toàn bộ).
  *
  * Luật áp dụng (giống `assertCanBook` của đặt từng buổi, siết thêm mốc buổi CUỐI):
- * gói ACTIVE và `endDate >= startTime buổi cuối`, PREMIUM class cần tier PREMIUM,
+ * gói ACTIVE phủ khóa hoặc còn >=50% thời hạn để học trọn kỳ; PREMIUM vẫn cần tier PREMIUM,
  * không bị hình phạt chuyên cần ở Class này, quota lớp học song song (DISTINCT Class),
  * còn sức chứa ở MỌI buổi, không trùng giờ với buổi khác của member.
  * Buổi member đã BOOKED/COMPLETED được coi là hợp lệ (idempotent), không sinh blocker.
@@ -134,7 +136,7 @@ export async function evaluateCourseEligibility(
     }),
     db.enrollment.findMany({
       where: { memberId: memberProfileId, scheduleId: { in: sessionIds } },
-      select: { id: true, scheduleId: true, status: true },
+      select: { id: true, scheduleId: true, status: true, termMembershipGrant: true },
     }),
     requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, () => db.enrollment.findMany({
       where: {
@@ -170,6 +172,17 @@ export async function evaluateCourseEligibility(
   ]);
 
   const blockers: CourseEnrollmentBlocker[] = [];
+  const term = schedulesWithTerms.length === sessions.length && schedulesWithTerms[0]?.term &&
+    schedulesWithTerms.every((row) => row.term?.id === schedulesWithTerms[0].term?.id)
+    ? schedulesWithTerms[0].term : null;
+  const grant = activeSub && term && sessions.every((session) => session.startTime >= term.startDate && session.endTime <= term.endDate)
+    ? createTermMembershipGrant(activeSub, term, memberProfileId, cls.id, now) : null;
+  const retained = !!term && sessions.every((session) => {
+    const enrollment = myEnrollments.find((row) => row.scheduleId === session.id);
+    return enrollment && ["BOOKED", "COMPLETED"].includes(enrollment.status) &&
+      termMembershipCovers(enrollment.termMembershipGrant, { memberId: memberProfileId, classId: cls.id, termId: term.id, startTime: session.startTime, endTime: session.endTime });
+  });
+  const retainedGrant = retained ? readTermMembershipGrant(myEnrollments.find((row) => row.scheduleId === sessions[0].id)?.termMembershipGrant) : null;
 
   // ── Cấp KỲ HỌC: thời gian mở đăng ký & trạng thái kỳ ────────────────────────
   const termsSeen = new Set<string>();
@@ -205,19 +218,19 @@ export async function evaluateCourseEligibility(
   }
 
   // ── Cấp KHÓA: gói tập / tier / hình phạt / quota ──────────────────────────
-  if (!activeSub) {
+  if (!activeSub && !retained) {
     blockers.push({
       code: "NO_ACTIVE_SUBSCRIPTION",
       message:
         "Bạn không có gói tập đang hoạt động. Vui lòng mua gói để đăng ký trọn khóa học.",
     });
-  } else if (activeSub.endDate < lastSession.endTime) {
+  } else if (activeSub && activeSub.endDate < lastSession.endTime && !grant && !retained) {
     const coveredSessions = sessions.filter((s) => s.endTime <= activeSub.endDate).length;
     blockers.push({
       code: "SUBSCRIPTION_ENDS_BEFORE_COURSE_END",
       message:
         `Gói tập của bạn hết hạn ngày ${vnDate(activeSub.endDate)}, trước buổi cuối của khóa ngày ` +
-        `${vnDate(lastSession.startTime)}. Vui lòng gia hạn gói để đăng ký trọn khóa.`,
+        `${vnDate(lastSession.startTime)}. Để đăng ký trọn kỳ vượt hạn gói, gói phải còn ít nhất 50% tổng thời hạn tại lúc đăng ký. Vui lòng gia hạn nếu chưa đủ điều kiện.`,
       details: {
         planEndDate: activeSub.endDate,
         lastSessionStartTime: lastSession.startTime,
@@ -225,7 +238,8 @@ export async function evaluateCourseEligibility(
         totalSessions: sessions.length,
       },
     });
-  } else if (cls.classType === "PREMIUM" && activeSub.tier !== "PREMIUM") {
+  }
+  if (activeSub && !retained && cls.classType === "PREMIUM" && activeSub.tier !== "PREMIUM") {
     blockers.push({
       code: "PREMIUM_REQUIRED",
       message: "Khóa học Premium yêu cầu gói tập hạng PREMIUM.",
@@ -381,6 +395,7 @@ export async function evaluateCourseEligibility(
   return {
     sessions: eligibilitySessions,
     blockers,
+    termMembershipGrant: retainedGrant ?? (activeSub && activeSub.endDate < lastSession.endTime ? grant : null),
     subscription: activeSub
       ? { tier: activeSub.tier, endDate: activeSub.endDate, planName: activeSub.plan?.name ?? null }
       : null,
@@ -422,7 +437,7 @@ export interface WholeCourseSessionResult {
  *   và transaction rollback: KHÔNG buổi nào được tạo.
  * - Buổi member đã BOOKED/COMPLETED: bỏ qua (idempotent, gọi lại không lỗi, không tạo trùng).
  * - Buổi member từng hủy: kích hoạt lại đúng Enrollment cũ (BR-07) thay vì tạo mới.
- * - Serialize bằng advisory lock đúng thứ tự memberQuota -> memberClass -> schedules
+ * - Serialize bằng advisory lock: memberSubscription -> memberQuota -> memberClass -> schedules
  *   (`lockSchedules` sắp xếp cố định) để không overbooking khi nhiều member cùng đăng ký.
  */
 export async function enrollWholeCourse(
@@ -469,6 +484,8 @@ export async function enrollWholeCourse(
 
   const outcome = await prisma.$transaction(
     async (tx) => {
+      // Serialize eligibility snapshots with renewal/cancellation of the source plan.
+      await lockMemberSubscription(tx, memberProfileId);
       // Lock TRƯỚC khi đọc để các request đồng thời của cùng member phải xếp hàng.
       await lockMemberQuota(tx, memberProfileId);
       await lockMemberClass(tx, memberProfileId, classId);
@@ -546,6 +563,7 @@ export async function enrollWholeCourse(
               bookedAt: now,
               cancelledAt: null,
               healthNotes: options.healthNotes !== undefined ? options.healthNotes : undefined,
+              termMembershipGrant: eligibility.termMembershipGrant ?? Prisma.DbNull,
             },
             select: { id: true },
           });
@@ -566,6 +584,7 @@ export async function enrollWholeCourse(
               scheduleId: state.scheduleId,
               status: "BOOKED",
               healthNotes: options.healthNotes ?? null,
+              termMembershipGrant: eligibility.termMembershipGrant ?? Prisma.DbNull,
             },
             select: { id: true },
           });

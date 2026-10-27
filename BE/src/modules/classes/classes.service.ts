@@ -762,6 +762,12 @@ export async function getClassCoursePlan(
           eligible: (eligibility?.blockers.length ?? 0) === 0,
           blockers: eligibility?.blockers ?? [],
           subscription: eligibility?.subscription ?? null,
+          membershipCoverage: eligibility?.termMembershipGrant ? {
+            policy: eligibility.termMembershipGrant.policy,
+            validUntil: eligibility.termMembershipGrant.validUntil,
+            qualifiedAt: eligibility.termMembershipGrant.approvedAt,
+            subscriptionEndDate: eligibility.termMembershipGrant.subscriptionEndDate,
+          } : null,
           quota: eligibility?.quota ?? null,
           penalty: eligibility?.penalty ?? null,
           registeredSessions: registeredCount,

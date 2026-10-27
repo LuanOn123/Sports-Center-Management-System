@@ -231,6 +231,12 @@ export interface ConcurrentClassQuota {
 export interface CourseRegistration {
   eligible: boolean;
   blockers: CourseRegistrationBlocker[];
+  membershipCoverage?: {
+    policy: "HALF_REMAINING_TERM_V1";
+    validUntil: string;
+    qualifiedAt: string;
+    subscriptionEndDate: string;
+  } | null;
   subscription: {
     tier: MemberTier;
     endDate: string;

@@ -1,10 +1,13 @@
-import { useState, useId, useMemo, useEffect, useCallback } from "react";
+import { useState, useId, useMemo, useEffect, useCallback, useRef } from "react";
 import type { FormEvent } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Calendar, Check, Clock3, LoaderCircle, Repeat, AlertCircle } from "lucide-react";
 import { api, type RecordData } from "../../shared/api";
 import { allPages } from "../../shared/pagedApi";
-import { display } from "../../shared/config";
+import { at, display } from "../../shared/config";
+import { getFacilityId } from "../../shared/facility";
+import { classSports } from "../../shared/sports";
+import { canTeach, loadQualifiedCoaches } from "../../shared/coachEligibility";
 import { ErrorState, Loading } from "../../shared/ui";
 import "./ScheduleForm.css";
 
@@ -51,6 +54,21 @@ interface RoomItem {
   capacity: number;
   areaType: string;
   isActive?: boolean;
+}
+
+async function loadClassTeaching(classId: string, signal?: AbortSignal) {
+  const [cls, coaches] = await Promise.all([
+    api<RecordData>("GET /classes/{id}", { params: { id: classId }, signal }),
+    loadQualifiedCoaches(signal),
+  ]);
+  if (cls.data.isActive === false) throw new Error("Lớp đã ngừng hoạt động. Không thể tạo lịch mới.");
+  const sports = classSports(cls.data).map((sport) => sport.id);
+  if (!sports.length || sports.some((id) => !id)) throw new Error("Lớp chưa có bộ môn. Hãy cập nhật bộ môn trước khi tạo lịch.");
+  const eligible = coaches.filter((coach) => canTeach(sports, coach.sportIds));
+  const assignments = Array.isArray(cls.data.coaches) ? cls.data.coaches as RecordData[] : [];
+  const primary = assignments.find((assignment) => assignment.isPrimary === true);
+  const primaryId = String(primary?.coachId || at(primary, "coach.id") || "");
+  return { eligible, primary: eligible.find((coach) => coach.id === primaryId) };
 }
 
 function getVietnamToday(): string {
@@ -161,6 +179,8 @@ export function ScheduleForm({
   onCancel: () => void;
   onBusyChange?: (busy: boolean) => void;
 }) {
+  const cache = useQueryClient();
+  const facilityId = getFacilityId();
   const errorId = useId();
   const initialClassId = String(
     initial.classId ?? (initial.class as RecordData)?.id ?? "",
@@ -188,6 +208,10 @@ export function ScheduleForm({
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
+  const [coachId, setCoachId] = useState("");
+  const [assignedClass, setAssignedClass] = useState("");
+  const completedSchedules = useRef(new Set<string>());
+  const [createdCount, setCreatedCount] = useState(0);
 
   // ── Recurring weekly schedule state ──
   const [recurringMode, setRecurringMode] = useState(false);
@@ -200,6 +224,13 @@ export function ScheduleForm({
     queryKey: ["schedule-form", "classes"],
     queryFn: ({ signal }) => allPages<ClassItem>("GET /classes", { signal }),
   });
+  const teaching = useQuery({
+    queryKey: ["schedule-class-teaching", facilityId, classId],
+    queryFn: ({ signal }) => loadClassTeaching(classId, signal),
+    enabled: mode === "create" && !!classId,
+  });
+  const selectedCoachId = teaching.data?.primary?.id || coachId;
+  const hasEligibleCoach = !!teaching.data?.eligible.some((coach) => coach.id === selectedCoachId);
 
   const roomsQuery = useQuery({
     queryKey: ["schedule-form", "rooms"],
@@ -265,6 +296,8 @@ export function ScheduleForm({
 
   const handleClassChange = (newClassId: string) => {
     setClassId(newClassId);
+    setCoachId("");
+    setError(undefined);
     const cls = allClasses.find((c) => String(c.id) === newClassId);
     if (cls?.defaultRoomId) {
       setRoomId(String(cls.defaultRoomId));
@@ -341,6 +374,7 @@ export function ScheduleForm({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     if (!classId) {
       setError(new Error("Vui lòng chọn lớp học."));
       return;
@@ -351,6 +385,10 @@ export function ScheduleForm({
     }
     if (selectedShifts.length === 0) {
       setError(new Error("Vui lòng chọn ít nhất 1 ca giờ hoạt động."));
+      return;
+    }
+    if (mode === "create" && (!teaching.data || teaching.error || !hasEligibleCoach)) {
+      setError(new Error("Vui lòng chọn HLV chính đủ chuyên môn cho lớp trước khi tạo lịch."));
       return;
     }
 
@@ -401,6 +439,18 @@ export function ScheduleForm({
     setError(undefined);
 
     try {
+      if (mode === "create") {
+        const fresh = await loadClassTeaching(classId);
+        if (!fresh.eligible.some((coach) => coach.id === selectedCoachId)) throw new Error("HLV không còn đủ chuyên môn hoặc không còn hoạt động tại cơ sở. Hãy tải lại danh sách HLV.");
+        if (fresh.primary && fresh.primary.id !== selectedCoachId) {
+          void teaching.refetch();
+          throw new Error("HLV chính của lớp vừa thay đổi. Kiểm tra lại phân công trước khi tạo lịch.");
+        }
+        if (!fresh.primary) {
+          await api("POST /classes/{id}/coaches", { params: { id: classId }, body: { coachId: selectedCoachId, isPrimary: true } });
+          setAssignedClass(classId);
+        }
+      }
       if (mode === "edit" && initial.id) {
         const shift = selectedShifts[0];
         const startTime = new Date(`${date}T${shift.startTime}:00+07:00`).toISOString();
@@ -409,12 +459,14 @@ export function ScheduleForm({
           params: { id: String(initial.id) },
           body: { roomId, startTime, endTime },
         });
-      } else if (recurringMode) {
-        // Create schedules for each date × shift combination
-        for (const dateStr of recurringDates) {
+      } else {
+        // Remember confirmed successes so retrying a partial batch cannot create them again.
+        for (const dateStr of recurringMode ? recurringDates : [date]) {
           for (const shift of selectedShifts) {
             const startTime = new Date(`${dateStr}T${shift.startTime}:00+07:00`).toISOString();
             const endTime = new Date(`${dateStr}T${shift.endTime}:00+07:00`).toISOString();
+            const key = JSON.stringify([classId, roomId, startTime, endTime, termId]);
+            if (completedSchedules.current.has(key)) continue;
             await api("POST /class-schedules", {
               body: {
                 classId,
@@ -424,27 +476,19 @@ export function ScheduleForm({
                 termId: termId || undefined,
               },
             });
+            completedSchedules.current.add(key);
+            setCreatedCount(completedSchedules.current.size);
           }
-        }
-      } else {
-        // Sequentially create schedules for single date
-        for (const shift of selectedShifts) {
-          const startTime = new Date(`${date}T${shift.startTime}:00+07:00`).toISOString();
-          const endTime = new Date(`${date}T${shift.endTime}:00+07:00`).toISOString();
-          await api("POST /class-schedules", {
-            body: {
-              classId,
-              roomId,
-              startTime,
-              endTime,
-              termId: termId || undefined,
-            },
-          });
         }
       }
       onSuccess();
     } catch (caught) {
       setError(caught);
+      if (mode === "create") {
+        void cache.invalidateQueries({ queryKey: ["resource", "schedules"] });
+        void cache.invalidateQueries({ queryKey: ["resource", "classes"] });
+        void teaching.refetch();
+      }
     } finally {
       setBusy(false);
       onBusyChange?.(false);
@@ -476,6 +520,38 @@ export function ScheduleForm({
             </select>
           )}
         </label>
+
+        {mode === "create" && (
+          <div className="wide">
+            <label>
+              HLV chính phụ trách lớp <b className="required">*</b>
+              <select
+                aria-label="HLV chính phụ trách lớp"
+                required
+                value={teaching.data?.primary?.id || coachId}
+                disabled={!classId || teaching.isFetching || !!teaching.error || !!teaching.data?.primary}
+                onChange={(event) => { setCoachId(event.target.value); setError(undefined); }}
+              >
+                <option value="">{!classId ? "Chọn lớp học trước" : teaching.isFetching ? "Đang kiểm tra HLV…" : "Chọn HLV đúng chuyên môn"}</option>
+                {teaching.data?.eligible.map((coach) => <option key={coach.id} value={coach.id}>{coach.name}</option>)}
+              </select>
+            </label>
+            {classId && teaching.error ? (
+              <>
+                <ErrorState error={teaching.error} />
+                <button type="button" className="button small" onClick={() => teaching.refetch()}>Tải lại danh sách HLV</button>
+              </>
+            ) : classId && !teaching.isPending && (
+              <p className="field-note" role="status">
+                {teaching.data?.primary
+                  ? "HLV chính hiện tại của lớp sẽ phụ trách các lịch mới. Có thể đổi HLV riêng từng buổi trong chi tiết lịch sau khi tạo."
+                  : teaching.data?.eligible.length
+                    ? "Lớp chưa có HLV chính phù hợp. Người được chọn sẽ được gán làm HLV chính của lớp trước khi tạo lịch."
+                    : "Chưa có HLV đủ bộ môn để dạy lớp này. Cập nhật bộ môn giảng dạy tại Nhân sự cơ sở trước khi tạo lịch."}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Room selector */}
         <label>
@@ -885,6 +961,12 @@ export function ScheduleForm({
           <ErrorState error={error} />
         </div>
       )}
+      {assignedClass === classId && error != null && (
+        <p className="field-note" role="status">Đã gán HLV chính cho lớp. Phân công được giữ lại; bạn có thể sửa lỗi và thử tạo lịch lại.</p>
+      )}
+      {createdCount > 0 && error != null && (
+        <p className="field-note" role="status">Đã tạo thành công {createdCount} lịch. Khi thử lại trong form này, hệ thống bỏ qua các lịch đã tạo thành công.</p>
+      )}
 
       <div className="modal-footer">
         <button
@@ -902,6 +984,7 @@ export function ScheduleForm({
             busy ||
             classesQuery.isPending ||
             roomsQuery.isPending ||
+            (mode === "create" && (!classId || teaching.isFetching || !!teaching.error || !hasEligibleCoach)) ||
             selectedShifts.length === 0 ||
             (recurringMode && recurringWeekdays.length === 0)
           }

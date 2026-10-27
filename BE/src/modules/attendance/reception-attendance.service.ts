@@ -135,6 +135,7 @@ async function loadAttendance(
           id: true,
           startTime: true,
           endTime: true,
+          termId: true,
           room: { select: { name: true } },
         },
       },
@@ -183,7 +184,7 @@ async function loadAttendance(
       .filter(
         (e) =>
           e.bookedAt <= e.schedule.startTime &&
-          isCoveredAt(coverage.get(e.memberId) || [], e.schedule.startTime),
+          isCoveredAt(coverage.get(e.memberId) || [], e.schedule.startTime, { scheduleId: e.scheduleId, classId: e.classId, termId: e.schedule.termId }),
       )
       .map((e) => {
         const record = recordMap.get(`${e.memberId}|${e.scheduleId}`);
