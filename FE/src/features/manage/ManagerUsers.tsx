@@ -4,9 +4,14 @@ import { User } from "lucide-react";
 import { api, type RecordData } from "../../shared/api";
 import { getFacilityId } from "../../shared/facility";
 import { allPages } from "../../shared/pagedApi";
-import { classSports } from "../../shared/sports";
 import { canTeach } from "../../shared/coachEligibility";
-import { Empty, ErrorState, Loading, Modal, SchemaForm } from "../../shared/ui";
+import { Empty, ErrorState, Loading, Modal } from "../../shared/ui";
+import {
+  CoachExperienceField,
+  CoachSportChoices,
+} from "./CoachExpertiseFields";
+import { CoachProfileForm } from "./CoachProfileForm";
+import { useCoachSports, validateCoachSports } from "./coachProfileData";
 
 type CoachSpecializationItem = {
   sport: { id: string; name: string };
@@ -357,10 +362,10 @@ function CoachEditor({ id, onClose }: { id: string; onClose: () => void }) {
         <ErrorState error={q.error} retry={() => q.refetch()} />
       ) : (
         q.data &&
-        (tab === "profile" ? (
-          <SchemaForm
-            operation="PATCH /coaches/{id}"
-            params={{ id }}
+        (tab === "profile" && profile?.id ? (
+          <CoachProfileForm
+            id={id}
+            profileId={String(profile.id)}
             initial={{ ...q.data.data, ...profile }}
             onBusyChange={setBusy}
             onCancel={onClose}
@@ -392,30 +397,7 @@ function CoachSports({
   onClose: () => void;
   onBusy: (busy: boolean) => void;
 }) {
-  const query = useQuery({
-    queryKey: ["manager-coach-sports", getFacilityId(), id],
-    queryFn: async ({ signal }) => {
-      const [sports, assigned, classes] = await Promise.all([
-        allPages<{ id: string; name: string }>("GET /sports", { signal }),
-        api<{ sportId: string }[]>("GET /coaches/{id}/specializations", {
-          params: { id },
-          signal,
-        }),
-        allPages<RecordData>("GET /classes", {
-          query: { coachId: id },
-          signal,
-        }),
-      ]);
-      return {
-        sports: sports.data,
-        assigned: assigned.data.map((row) => row.sportId),
-        requiredSports: classes.data
-          .filter((row) => row.isActive !== false)
-          .flatMap(classSports)
-          .map((sport) => sport.id),
-      };
-    },
-  });
+  const query = useCoachSports(id);
   const [selection, setSelection] = useState<string[]>();
   const cache = useQueryClient();
   const selected = selection ?? query.data?.assigned ?? [];
@@ -428,17 +410,7 @@ function CoachSports({
         throw new Error(
           "Không thể gỡ bộ môn của lớp HLV đang phụ trách. Hãy điều chỉnh phân công lớp trước.",
         );
-      const currentClasses = await allPages<RecordData>("GET /classes", {
-        query: { coachId: id },
-      });
-      const required = currentClasses.data
-        .filter((row) => row.isActive !== false)
-        .flatMap(classSports)
-        .map((sport) => sport.id);
-      if (required.length && !canTeach(required, selected))
-        throw new Error(
-          "Phân công lớp của HLV vừa thay đổi. Hãy tải lại và giữ các bộ môn của lớp đang phụ trách.",
-        );
+      await validateCoachSports(id, selected);
       return api("PUT /coaches/{id}/specializations", {
         params: { id },
         body: { sportIds: selected },
@@ -469,23 +441,11 @@ function CoachSports({
       </p>
       <fieldset disabled={save.isPending}>
         <legend>Bộ môn giảng dạy</legend>
-        {query.data?.sports.map((s) => (
-          <label key={s.id}>
-            <input
-              type="checkbox"
-              checked={selected.includes(s.id)}
-              onChange={(e) =>
-                setSelection(
-                  e.target.checked
-                    ? [...selected, s.id]
-                    : selected.filter((id) => id !== s.id),
-                )
-              }
-            />
-            {s.name}
-          </label>
-        ))}
-        {!query.data?.sports.length && <Empty text="Chưa có bộ môn" />}
+        <CoachSportChoices
+          sports={query.data.sports}
+          selected={selected}
+          onChange={setSelection}
+        />
         {!coversClasses && (
           <p role="alert">
             Không thể gỡ bộ môn của lớp HLV đang phụ trách. Điều chỉnh phân công
@@ -525,11 +485,14 @@ function CreateCoachModal({ onClose }: { onClose: () => void }) {
   const sportsQuery = useQuery({
     queryKey: ["all-sports"],
     queryFn: ({ signal }) =>
-      allPages<{ id: string; name: string; isActive?: boolean }>("GET /sports", { signal }),
+      allPages<{ id: string; name: string; isActive?: boolean }>(
+        "GET /sports",
+        { signal },
+      ),
   });
 
   const activeSports = (sportsQuery.data?.data ?? []).filter(
-    (s) => s.isActive !== false
+    (s) => s.isActive !== false,
   );
 
   const createCoach = useMutation({
@@ -545,14 +508,18 @@ function CreateCoachModal({ onClose }: { onClose: () => void }) {
           password: password.trim() || undefined,
           phone: phone.trim() || undefined,
           gender,
-          experienceYears: experienceYears ? Number(experienceYears) : undefined,
+          experienceYears: experienceYears
+            ? Number(experienceYears)
+            : undefined,
           bio: bio.trim() || undefined,
           sportIds: selectedSports,
         },
       });
     },
     onSuccess: async () => {
-      await cache.invalidateQueries({ queryKey: ["manager-staff", facilityId] });
+      await cache.invalidateQueries({
+        queryKey: ["manager-staff", facilityId],
+      });
       await cache.invalidateQueries({ queryKey: ["qualified-coaches"] });
       await cache.invalidateQueries({ queryKey: ["manager-candidates"] });
       onClose();
@@ -568,7 +535,11 @@ function CreateCoachModal({ onClose }: { onClose: () => void }) {
     selectedSports.length > 0;
 
   return (
-    <Modal title="Tạo Huấn luyện viên mới" onClose={onClose} dismissible={!createCoach.isPending}>
+    <Modal
+      title="Tạo Huấn luyện viên mới"
+      onClose={onClose}
+      dismissible={!createCoach.isPending}
+    >
       <form
         className="manager-config-form"
         onSubmit={(e) => {
@@ -580,7 +551,8 @@ function CreateCoachModal({ onClose }: { onClose: () => void }) {
         }}
       >
         <p className="field-note">
-          Tạo tài khoản HLV mới cho cơ sở này. Bắt buộc chọn ít nhất 1 bộ môn giảng dạy.
+          Tạo tài khoản HLV mới cho cơ sở này. Bắt buộc chọn ít nhất 1 bộ môn
+          giảng dạy.
         </p>
 
         {Boolean(error) && <ErrorState error={error} />}
@@ -638,16 +610,10 @@ function CreateCoachModal({ onClose }: { onClose: () => void }) {
             </select>
           </label>
 
-          <label>
-            Số năm kinh nghiệm
-            <input
-              type="number"
-              min="0"
-              value={experienceYears}
-              onChange={(e) => setExperienceYears(e.target.value)}
-              placeholder="Ví dụ: 3"
-            />
-          </label>
+          <CoachExperienceField
+            value={experienceYears}
+            onChange={setExperienceYears}
+          />
         </div>
 
         <label style={{ display: "block", marginTop: "12px" }}>
@@ -660,34 +626,33 @@ function CreateCoachModal({ onClose }: { onClose: () => void }) {
           />
         </label>
 
-        <fieldset style={{ marginTop: "16px" }} disabled={createCoach.isPending}>
+        <fieldset
+          style={{ marginTop: "16px" }}
+          disabled={createCoach.isPending}
+        >
           <legend>Bộ môn giảng dạy * (Bắt buộc chọn ít nhất 1 môn)</legend>
           {sportsQuery.isPending ? (
             <Loading />
-          ) : !activeSports.length ? (
-            <Empty text="Không có bộ môn khả dụng" />
+          ) : sportsQuery.error ? (
+            <ErrorState
+              error={sportsQuery.error}
+              retry={() => sportsQuery.refetch()}
+            />
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "8px", marginTop: "8px" }}>
-              {activeSports.map((s) => (
-                <label key={s.id} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedSports.includes(s.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedSports([...selectedSports, s.id]);
-                      } else {
-                        setSelectedSports(selectedSports.filter((id) => id !== s.id));
-                      }
-                    }}
-                  />
-                  {s.name}
-                </label>
-              ))}
-            </div>
+            <CoachSportChoices
+              sports={activeSports}
+              selected={selectedSports}
+              onChange={setSelectedSports}
+            />
           )}
           {!selectedSports.length && (
-            <p className="field-note" style={{ color: "var(--color-danger, #ef4444)", marginTop: "4px" }}>
+            <p
+              className="field-note"
+              style={{
+                color: "var(--color-danger, #ef4444)",
+                marginTop: "4px",
+              }}
+            >
               Vui lòng chọn ít nhất một bộ môn.
             </p>
           )}
