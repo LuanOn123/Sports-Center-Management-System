@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity,
   Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
+import type { ScrollViewInstance } from 'react-native';
 import clsx from 'clsx';
 import { Link, useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -49,7 +50,7 @@ export default function RegisterScreen() {
   const router = useRouter();
   const { register: authRegister } = useAuth();
   const insets = useSafeAreaInsets();
-  const scrollViewRef = React.useRef<ScrollView>(null);
+  const scrollViewRef = React.useRef<ScrollViewInstance>(null);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
   React.useEffect(() => {
@@ -251,7 +252,7 @@ export default function RegisterScreen() {
           {/* Submit */}
           <TouchableOpacity
             className={clsx('bg-primary rounded-md p-md items-center justify-center mt-sm', isSubmitting && 'opacity-60')}
-            onPress={handleSubmit(onSubmit)}
+            onPress={() => { void handleSubmit(onSubmit)(); }}
             disabled={isSubmitting}
             activeOpacity={0.85}
           >

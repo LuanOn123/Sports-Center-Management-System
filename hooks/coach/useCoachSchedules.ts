@@ -33,6 +33,7 @@ export function useCoachSchedules(coachId: string | undefined, range: ScheduleRa
     classes,
     schedules,
     isLoading: classesQuery.isLoading || (classesQuery.isSuccess && schedulesQuery.isLoading),
+    isFetching: classesQuery.isFetching || schedulesQuery.isFetching,
     isError: classesQuery.isError || schedulesQuery.isError,
     error: classesQuery.error ?? schedulesQuery.error,
     refetch: async () => {

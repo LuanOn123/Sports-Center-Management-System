@@ -95,6 +95,8 @@ export function SepayCheckoutPanel({
         )}
         <InfoRow label="Số tiền" value={formatVnd(checkout.amount)} onCopy={() => onCopy('số tiền', String(Math.round(checkout.amount)))} />
         <InfoRow label="Nội dung" value={checkout.transferContent} highlight onCopy={() => onCopy('nội dung chuyển khoản', checkout.transferContent)} />
+        {/* Mã đơn trước đây nằm ở dòng phụ của header; banner bên dưới dặn giữ mã đơn nên vẫn phải hiện ở đây */}
+        <InfoRow label="Mã đơn hàng" value={checkout.orderCode} onCopy={() => onCopy('mã đơn hàng', checkout.orderCode)} />
       </View>
 
       {/* Thông báo theo trạng thái */}

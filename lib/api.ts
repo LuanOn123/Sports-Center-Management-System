@@ -1,5 +1,6 @@
 import axios, { type AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
 import { storage } from './storage';
+import { WRONG_FACILITY_CODE } from '../constants/facility';
 import { emitSessionExpired } from './sessionEvents';
 import type { User } from './types';
 
@@ -28,10 +29,17 @@ export class ApiError extends Error {
     message: string,
     public status: number,
     public errors: Envelope<unknown>['errors'] = [],
+    /** message gốc của BE (vd. FORBIDDEN_SCOPE) — `message` ở trên đã được dịch sang tiếng Việt */
+    public code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
   }
+}
+
+/** BE chặn vì bản ghi thuộc cơ sở khác với cơ sở đang chọn (header X-Facility-Id) */
+export function isWrongFacilityError(e: unknown): e is ApiError {
+  return e instanceof ApiError && e.status === 403 && e.code === WRONG_FACILITY_CODE;
 }
 
 // ─── In-memory token cache ───────────────────────────────────────────────────
@@ -116,7 +124,7 @@ const SERVER_MESSAGE_VI: Record<string, string> = {
   'Cannot join waitlist: user is not an active MEMBER': 'Chỉ hội viên đang hoạt động mới được vào danh sách chờ.',
   FACILITY_CONTEXT_REQUIRED: 'Vui lòng chọn cơ sở để tiếp tục.',
   CONFLICTING_FACILITY_CONTEXT: 'Thông tin cơ sở không khớp. Vui lòng thử lại.',
-  FORBIDDEN_SCOPE: 'Bạn không có quyền truy cập cơ sở này.',
+  FORBIDDEN_SCOPE: 'Nội dung này không thuộc cơ sở bạn đang chọn. Hãy đổi cơ sở rồi thử lại.',
 };
 
 function viMessage(message?: string) {
@@ -198,7 +206,7 @@ axiosInstance.interceptors.response.use(
     // Nếu BE trả về success: false trong body (HTTP 200 nhưng lỗi nghiệp vụ)
     const payload = response.data as Envelope<unknown>;
     if (payload && payload.success === false) {
-      throw new ApiError(viMessage(payload.message) || 'Yêu cầu thất bại.', response.status, payload.errors);
+      throw new ApiError(viMessage(payload.message) || 'Yêu cầu thất bại.', response.status, payload.errors, payload.message);
     }
     return response;
   },
@@ -217,6 +225,7 @@ axiosInstance.interceptors.response.use(
       viMessage(data?.message) || `Yêu cầu thất bại (${status})`,
       status,
       data?.errors,
+      data?.message,
     );
   },
 );

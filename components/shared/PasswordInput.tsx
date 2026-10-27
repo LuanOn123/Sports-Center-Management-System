@@ -4,7 +4,7 @@
 
 import React, { forwardRef, useRef, useState } from 'react';
 import { View, TextInput, TouchableOpacity, Platform } from 'react-native';
-import type { TextInputProps } from 'react-native';
+import type { TextInputInstance, TextInputProps } from 'react-native';
 import clsx from 'clsx';
 import { Icon } from './Icon';
 import { Colors } from '../../constants/theme';
@@ -22,7 +22,7 @@ interface PasswordInputProps extends Omit<TextInputProps, 'value' | 'onChangeTex
   showToggle?: boolean;
 }
 
-export const PasswordInput = forwardRef<TextInput, PasswordInputProps>(function PasswordInput(
+export const PasswordInput = forwardRef<TextInputInstance, PasswordInputProps>(function PasswordInput(
   { value, onChangeText, hasError, revealed, onToggleReveal, showToggle = true, onFocus, ...inputProps },
   ref,
 ) {

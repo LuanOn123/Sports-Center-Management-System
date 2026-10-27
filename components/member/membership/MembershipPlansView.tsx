@@ -63,7 +63,7 @@ export function MembershipPlansView({ memberId, scope }: MembershipPlansViewProp
 
   return (
     <View className="flex-1 bg-bg-primary">
-      <ScreenHeader title="Gói thành viên" subtitle="Các gói tập & quyền lợi hội viên" onBackPress={handleGoBack} />
+      <ScreenHeader title="Gói thành viên" onBackPress={handleGoBack} />
 
       <ScrollView
         className="flex-1 bg-bg-primary"

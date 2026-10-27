@@ -32,6 +32,10 @@ import { api } from '../../../lib/api';
 import { Colors } from '../../../constants/theme';
 import type { Enrollment, ClassSchedule } from '../../../lib/types';
 import { ROUTES } from '../../../navigation/routes';
+import { Button } from '../../ui';
+import { ENROLLMENT_QUOTA_TEXT } from '../../../constants/classes';
+import { TIER_LABEL } from '../../../constants/membership';
+import { quotaBannerKind } from '../../../lib/classPlan';
 
 // ─── Utils ───────────────────────────────────────────────────────────────────
 
@@ -186,46 +190,47 @@ function EnrollmentCard({
 // ─── Quota Banner ─────────────────────────────────────────────────────────────
 
 function QuotaBanner() {
+  const router = useRouter();
   const { data: quota, isLoading } = useMyQuota();
   if (isLoading || !quota) return null;
 
-  const TIER_LABEL: Record<string, string> = { FREE: 'Miễn phí', MEMBERSHIP: 'Hội viên', PREMIUM: 'Premium' };
-  const tierLabel = quota.tier ? (TIER_LABEL[quota.tier] ?? quota.tier) : null;
-  const isFull = quota.hasActiveSubscription && quota.remaining === 0;
-
-  return (
-    <View className={clsx(
-      'mx-xl mb-sm rounded-xl px-lg py-sm flex-row items-center border gap-2',
-      isFull ? 'bg-[#FF8D9A12] border-[#FF8D9A30]' : 'bg-[#D4FF0010] border-[#D4FF0030]'
-    )}>
-      <Icon
-        name={isFull ? 'block' : 'school'}
-        size={16}
-        color={isFull ? Colors.status.cancelled : Colors.status.active}
-      />
-      <View className="flex-1">
-        <Text className={clsx(
-          'text-xs font-bevn-semibold',
-          isFull ? 'text-status-cancelled' : 'text-status-active'
-        )}>
-          {quota.hasActiveSubscription
-            ? `${tierLabel ? `Gói ${tierLabel} · ` : ''}Quota: ${quota.used}/${quota.limit} lớp song song`
-            : 'Chưa có gói tập — mua gói để đặt lịch'}
+  const kind = quotaBannerKind(quota);
+  if (kind === 'locked') {
+    return (
+      <View className="mx-xl mb-sm rounded-xl p-lg border gap-sm" style={{ backgroundColor: Colors.status.pending + '12', borderColor: Colors.status.pending + '40' }}>
+        <View className="flex-row items-center gap-sm">
+          <Icon name="lock-outline" size={18} color={Colors.status.pending} />
+          <Text className="flex-1 text-md text-text-primary font-bevn-bold">{ENROLLMENT_QUOTA_TEXT.lockedTitle}</Text>
+        </View>
+        <Text className="text-sm text-text-secondary font-bevn-regular leading-[20px]">
+          {quota.tier === 'FREE' ? ENROLLMENT_QUOTA_TEXT.lockedFree : ENROLLMENT_QUOTA_TEXT.lockedNoPlan}
         </Text>
+        <Button title={ENROLLMENT_QUOTA_TEXT.viewPlans} icon="card-membership" size="sm" block={false} className="self-start" onPress={() => router.push(ROUTES.membershipPlans)} />
       </View>
-      {quota.hasActiveSubscription && (
-        <View className={clsx(
-          'rounded-full px-sm py-0.5',
-          isFull ? 'bg-[#FF8D9A20]' : 'bg-[#D4FF0020]'
-        )}>
-          <Text className={clsx(
-            'text-xs font-bevn-bold',
-            isFull ? 'text-status-cancelled' : 'text-status-active'
-          )}>
-            {isFull ? 'Hết quota' : `Còn ${quota.remaining}`}
+    );
+  }
+
+  const color = kind === 'full' ? Colors.status.cancelled : Colors.status.active;
+  const tierLabel = quota.tier ? TIER_LABEL[quota.tier] : null;
+  return (
+    <View className="mx-xl mb-sm rounded-xl p-lg border gap-xs" style={{ backgroundColor: color + '10', borderColor: color + '30' }}>
+      <View className="flex-row items-start gap-md">
+        <View className="flex-1 gap-xs">
+          <Text className="text-md text-text-primary font-bevn-bold">
+            {ENROLLMENT_QUOTA_TEXT.title}{tierLabel ? ` · Gói ${tierLabel}` : ''}
+          </Text>
+          <Text className="text-sm text-text-secondary font-bevn-regular leading-[20px]">
+            {kind === 'full' ? ENROLLMENT_QUOTA_TEXT.full : ENROLLMENT_QUOTA_TEXT.remaining(quota.remaining)}
           </Text>
         </View>
-      )}
+        <View className="items-end">
+          <Text className="text-xl font-bevn-bold" style={{ color }}>
+            {quota.used}<Text className="text-sm text-text-muted font-bevn-medium"> / {quota.limit}</Text>
+          </Text>
+          <Text className="text-xs text-text-muted font-bevn-regular">{ENROLLMENT_QUOTA_TEXT.usedLabel}</Text>
+        </View>
+      </View>
+      <Text className="text-xs text-text-muted font-bevn-regular leading-[18px]">{ENROLLMENT_QUOTA_TEXT.note}</Text>
     </View>
   );
 }
@@ -377,7 +382,7 @@ export function MyClassesView({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <View className="flex-1 bg-bg-primary">
-      {!embedded && <ScreenHeader title="Lớp của tôi" subtitle="Lớp đã đặt, đổi buổi, hủy chỗ" />}
+      {!embedded && <ScreenHeader title="Lớp của tôi" />}
 
 
       {/* Quota chip — hiện số slot còn lại */}
@@ -458,7 +463,7 @@ export function MyClassesView({ embedded = false }: { embedded?: boolean }) {
           keyboardDismissMode="on-drag"
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20, gap: 12 }}
           refreshControl={
-            <RefreshControl refreshing={false} onRefresh={refetch} tintColor={Colors.primary} />
+            <RefreshControl refreshing={false} onRefresh={() => { void refetch(); }} tintColor={Colors.primary} />
           }
           ListEmptyComponent={
             <View className="items-center mt-[60px]">

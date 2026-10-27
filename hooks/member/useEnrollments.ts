@@ -128,6 +128,8 @@ export function useEnrollWholeCourse() {
 
     },
     onError: (e) => {
+      // BE là nơi quyết định (vd hết hạn đăng ký kỳ học, đăng ký muộn) → tải lại kế hoạch khóa để thẻ kỳ học + nút đăng ký khớp
+      void queryClient.invalidateQueries({ queryKey: ['course-plan'] });
       if (e instanceof ApiError) {
         // Thử parse errors.details[] từ BE 409 COURSE_ENROLLMENT_FAILED
         const details = (e.errors as any)?.[0]?.details;
@@ -143,10 +145,11 @@ export function useEnrollWholeCourse() {
     },
   });
 
-  const handleEnrollWholeCourse = (classId: string, className: string) => {
+  /** `late`: đã quá hạn đăng ký kỳ học, được đăng ký muộn nhờ gói còn ≥ 50% thời hạn (lib/termRegistration) */
+  const handleEnrollWholeCourse = (classId: string, className: string, options?: { late?: boolean }) => {
     showConfirm(
-      'Đăng ký trọn khóa',
-      `Đăng ký toàn bộ các buổi học sắp tới của lớp "${className}"?\n\nThao tác này áp dụng tất cả hoặc không buổi nào.`,
+      options?.late ? 'Đăng ký muộn trọn khóa' : 'Đăng ký trọn khóa',
+      `Đăng ký toàn bộ các buổi học sắp tới của lớp "${className}"?\n\n${options?.late ? 'Kỳ học đã hết hạn đăng ký, bạn được đăng ký muộn vì gói còn ít nhất 50% thời hạn.\n\n' : ''}Thao tác này áp dụng tất cả hoặc không buổi nào.`,
       () => mutation.mutate(classId),
       undefined,
       'Đăng ký ngay'

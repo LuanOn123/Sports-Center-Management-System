@@ -7,6 +7,7 @@ import {
   useMembershipData, useCancelSubscription, estimateSelfCancelRefund, findRegisteredSubscription,
 } from './useMembership';
 import { usePendingPayment, useStartCheckout, type PaymentScope } from './usePayment';
+import { canSelfCancelSubscription } from '../../lib/businessRules';
 import { detectPlanSwitchType, planSwitchHint } from '../../lib/planSwitch';
 import type { MembershipPlan, SepayCheckout } from '../../lib/types';
 
@@ -59,7 +60,7 @@ export function useMembershipScreen(memberId: string | undefined, scope: Payment
 
   // ─── Hủy gói ────────────────────────────────────────────────────────────────
   const openCancel = () => {
-    if (!activeSub) return;
+    if (!canSelfCancelSubscription(activeSub)) return;
     cancelMutation.reset();
     setCancelReason('');
     setCancelOpen(true);
@@ -71,7 +72,7 @@ export function useMembershipScreen(memberId: string | undefined, scope: Payment
   };
 
   const confirmCancel = () => {
-    if (!activeSub) return;
+    if (!activeSub || !canSelfCancelSubscription(activeSub)) return;
     cancelMutation.mutate({ id: activeSub.id, reason: cancelReason.trim() || undefined });
   };
 
@@ -94,7 +95,7 @@ export function useMembershipScreen(memberId: string | undefined, scope: Payment
       open: cancelOpen,
       reason: cancelReason,
       setReason: setCancelReason,
-      estimate: activeSub ? estimateSelfCancelRefund(activeSub) : null,
+      estimate: activeSub && canSelfCancelSubscription(activeSub) ? estimateSelfCancelRefund(activeSub) : null,
       mutation: cancelMutation,
       openModal: openCancel,
       close: closeCancel,

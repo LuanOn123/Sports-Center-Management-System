@@ -63,7 +63,6 @@ export function CoachAttendanceView({ coachId, initialScheduleId }: CoachAttenda
       <ScreenHeader
         variant={att.hasSelection ? 'stack' : 'tab'}
         title="Điểm danh"
-        subtitle={selected ? selected.class?.name ?? 'Buổi học' : 'Chọn buổi học để điểm danh'}
         onBackPress={att.hasSelection ? closeSession : undefined}
       />
 

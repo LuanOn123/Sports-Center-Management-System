@@ -9,6 +9,7 @@ import {
   View, Text, TextInput, TouchableOpacity,
   ScrollView, ActivityIndicator, Platform, Keyboard,
 } from 'react-native';
+import type { ScrollViewInstance } from 'react-native';
 import clsx from 'clsx';
 import { Link, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,7 +45,7 @@ export default function ForgotPasswordScreen() {
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   // Đếm ngược 5 phút chỉ để hiển thị — BE mới là nơi quyết định OTP còn hạn hay không.
   useEffect(() => {

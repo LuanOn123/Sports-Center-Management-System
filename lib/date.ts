@@ -1,7 +1,7 @@
 // lib/date.ts
 // Tiện ích ngày/tuần theo giờ Việt Nam (GMT+7), giống lịch trên web.
 
-const DAY_MS = 86_400_000;
+export const DAY_MS = 86_400_000;
 const VIETNAM_OFFSET_MS = 7 * 60 * 60_000;
 
 /** Shift for UTC getters only; this is not a real instant to send to the backend. */
@@ -49,6 +49,43 @@ export function isSameDay(a: Date, b: Date) {
 
 export function isToday(d: Date) {
   return isSameDay(d, new Date());
+}
+
+/** Khóa ngày theo giờ Việt Nam: "2026-10-27" — dùng để gom buổi học theo ngày */
+export function dayKey(d: Date | string) {
+  return vietnamDate(d).toISOString().slice(0, 10);
+}
+
+/** 00:00 mùng 1 của tháng chứa d */
+export function startOfMonth(d: Date) {
+  const v = vietnamDate(d);
+  return new Date(Date.UTC(v.getUTCFullYear(), v.getUTCMonth(), 1) - VIETNAM_OFFSET_MS);
+}
+
+/** 23:59:59.999 ngày cuối của tháng chứa d */
+export function endOfMonth(d: Date) {
+  const v = vietnamDate(d);
+  return new Date(Date.UTC(v.getUTCFullYear(), v.getUTCMonth() + 1, 1) - VIETNAM_OFFSET_MS - 1);
+}
+
+/** Mùng 1 của tháng cách d `delta` tháng (âm = lùi) */
+export function shiftMonth(d: Date, delta: number) {
+  const v = vietnamDate(d);
+  return new Date(Date.UTC(v.getUTCFullYear(), v.getUTCMonth() + delta, 1) - VIETNAM_OFFSET_MS);
+}
+
+export function isSameMonth(a: Date, b: Date) {
+  const x = vietnamDate(a);
+  const y = vietnamDate(b);
+  return x.getUTCFullYear() === y.getUTCFullYear() && x.getUTCMonth() === y.getUTCMonth();
+}
+
+/** Các tuần (T2 → CN) phủ kín tháng chứa d, mỗi phần tử là 00:00 của một ngày (gồm vài ngày của tháng kề hai đầu) */
+export function monthWeeks(d: Date) {
+  const first = startOfWeek(startOfMonth(d));
+  const lastWeek = startOfWeek(endOfMonth(d));
+  const count = Math.round((lastWeek.getTime() - first.getTime()) / (7 * DAY_MS)) + 1;
+  return Array.from({ length: count }, (_, week) => Array.from({ length: 7 }, (_, day) => addDays(first, week * 7 + day)));
 }
 
 export function daysFromNow(n: number) {

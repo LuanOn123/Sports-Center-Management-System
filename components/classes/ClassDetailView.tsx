@@ -1,22 +1,25 @@
 // components/classes/ClassDetailView.tsx
 // Chi tiết lớp theo thứ tự người dùng cần để quyết định: thông tin lớp → lịch học & địa điểm
-// → các buổi của khóa (chỉ xem) → huấn luyện viên → đánh giá. Nút "Đăng ký trọn khóa" cố định dưới đáy —
-// hội viên đăng ký theo CẢ KHÓA như web, không đặt lẻ từng buổi.
+// → các buổi của khóa (chỉ xem) → huấn luyện viên (bấm để xem hồ sơ & đánh giá, giống web). Nút "Đăng ký trọn khóa"
+// cố định dưới đáy — hội viên đăng ký theo CẢ KHÓA như web, không đặt lẻ từng buổi.
 // Chỉ hiển thị trường BE thật sự trả về (lớp không có giá riêng — quyền theo gói thành viên).
+// Chỉ một vòng tải: chờ đủ dữ liệu rồi hiện cả trang (lớp từ Khám phá hiện ngay vì đã có trong cache).
 
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon } from '../shared/Icon';
-import { Avatar } from '../shared/Avatar';
-import { CoachRating } from '../shared/CoachRating';
 import { WaitlistAction } from '../member/WaitlistAction';
 import { WorkflowScreen, WorkflowCard, WorkflowText, WorkflowButton, WorkflowState } from '../shared/WorkflowScreen';
 import { StatusBadge } from '../ui';
+import { TermNoticeCard } from './TermNoticeCard';
+import { CoachCard } from './CoachCard';
+import { CoachProfileSheet } from './CoachProfileSheet';
+import { WrongFacilityCard } from '../shared/WrongFacilityCard';
 import { useClassDetail } from '../../hooks/shared/useClassDetail';
 import { CLASS_TYPE_COLOR, CLASS_TYPE_LABEL, LOW_SLOT_THRESHOLD, SESSION_TONE_COLOR } from '../../constants/classes';
 import { Colors } from '../../constants/theme';
-import { canJoinSessionWaitlist, courseAvailability, formatSlot, sessionStatusLabel, type AvailabilityTone } from '../../lib/classPlan';
+import { canJoinSessionWaitlist, courseAvailability, courseFooterKind, formatSlot, sessionStatusLabel, type AvailabilityTone } from '../../lib/classPlan';
 import { formatDate, formatTime, formatWeekdayDate } from '../../lib/format';
 import { ROUTES } from '../../navigation/routes';
 
@@ -55,18 +58,24 @@ export function ClassDetailView({ id }: { id: string }) {
   };
 
   // Nút cố định dưới đáy — chỉ khi hội viên và lớp đã có kế hoạch khóa học
+  const footerKind = courseFooterKind({
+    isFullyRegistered: Boolean(registration?.isFullyRegistered),
+    eligible: Boolean(registration?.eligible),
+    needsMembership: d.needsMembership,
+    termSuggestsPlans: d.termSuggestsPlans,
+  });
   const footer = d.isMember && value && course ? (
-    registration?.isFullyRegistered ? (
+    footerKind === 'registered' ? (
       <WorkflowButton title="Đã đăng ký đủ khóa" secondary disabled onPress={() => undefined} />
-    ) : registration?.eligible ? (
+    ) : footerKind === 'enroll' ? (
       <WorkflowButton
         icon="event-available"
-        title={`Đăng ký trọn khóa · ${course.totalSessions} buổi`}
+        title={`${d.termNotice?.late ? 'Đăng ký muộn' : 'Đăng ký trọn khóa'} · ${course.totalSessions} buổi`}
         busy={d.bulk.isPending}
-        onPress={() => d.bulk.handleEnrollWholeCourse(id, value.name)}
+        onPress={() => d.bulk.handleEnrollWholeCourse(id, value.name, { late: d.termNotice?.late })}
       />
-    ) : d.needsMembership ? (
-      <WorkflowButton icon="card-membership" title="Xem gói thành viên để đăng ký" onPress={() => router.push(ROUTES.membershipPlans)} />
+    ) : footerKind === 'plans' ? (
+      <WorkflowButton icon="card-membership" title={d.needsMembership ? 'Xem gói thành viên để đăng ký' : 'Xem gói tập'} onPress={() => router.push(ROUTES.membershipPlans)} />
     ) : (
       <WorkflowButton title="Chưa thể đăng ký khóa này" disabled onPress={() => undefined} />
     )
@@ -77,8 +86,9 @@ export function ClassDetailView({ id }: { id: string }) {
 
   return (
     <WorkflowScreen title={value?.name || 'Chi tiết lớp học'} refreshing={d.refreshing} onRefresh={d.refresh} footer={footer}>
-      <WorkflowState pending={d.cls.isPending} error={d.cls.error} retry={() => { void d.cls.refetch(); }} />
-      {value && <>
+      <WorkflowState pending={d.isInitialLoading} error={d.facilityScope.wrongFacility ? undefined : d.cls.error} retry={() => { void d.cls.refetch(); }} />
+      {d.facilityScope.wrongFacility && <WrongFacilityCard subject="lớp học" facility={d.facilityScope} onBack={goToOtherClasses} />}
+      {value && !d.isInitialLoading && <>
         {/* 1. Thông tin lớp */}
         <WorkflowCard>
           <View className="flex-row items-center justify-between">
@@ -98,7 +108,7 @@ export function ClassDetailView({ id }: { id: string }) {
         {/* 2. Lịch học & địa điểm (hội viên) */}
         {d.isMember && <>
           <SectionTitle icon="calendar-today">Lịch học & địa điểm</SectionTitle>
-          <WorkflowState pending={d.plan.isPending} error={d.plan.error} retry={() => { void d.plan.refetch(); }} />
+          <WorkflowState error={d.plan.error} retry={() => { void d.plan.refetch(); }} />
           {d.plan.isSuccess && !course && (
             <WorkflowCard>
               <View className="items-center gap-xs py-sm">
@@ -108,6 +118,9 @@ export function ClassDetailView({ id }: { id: string }) {
               </View>
               <WorkflowButton title="Xem lớp khác" secondary onPress={goToOtherClasses} />
             </WorkflowCard>
+          )}
+          {d.term && d.termNotice && (
+            <TermNoticeCard termName={d.term.name} notice={d.termNotice} onViewPlans={() => router.push(ROUTES.membershipPlans)} />
           )}
           {course && (
             <WorkflowCard>
@@ -121,7 +134,7 @@ export function ClassDetailView({ id }: { id: string }) {
               {registration && registration.registeredSessions > 0 && (
                 <WorkflowText>Bạn đã đăng ký {registration.registeredSessions}/{course.totalSessions} buổi.</WorkflowText>
               )}
-              {registration?.blockers.map((blocker, index) => (
+              {d.blockers.map((blocker, index) => (
                 <Fact key={`${blocker.code}:${index}`} icon="info" color={Colors.status.pending}>{blocker.message}</Fact>
               ))}
             </WorkflowCard>
@@ -169,37 +182,13 @@ export function ClassDetailView({ id }: { id: string }) {
           ))}
         </>}
 
-        {/* 4. Huấn luyện viên */}
+        {/* 4. Huấn luyện viên — bấm thẻ để xem hồ sơ & đánh giá (web: CoachCard → CoachProfileDialog) */}
         {Boolean(value.coaches?.length) && <SectionTitle icon="person">Huấn luyện viên</SectionTitle>}
         {value.coaches?.map((assigned) => (
-          <WorkflowCard key={assigned.coachId}>
-            <View className="flex-row items-center gap-md">
-              <Avatar name={assigned.coach?.user?.fullName} size={44} />
-              <View className="flex-1">
-                <Text className="text-md text-text-primary font-bevn-semibold">{assigned.coach?.user?.fullName || 'Huấn luyện viên'}</Text>
-                <Text className="text-xs text-text-secondary font-bevn-regular mt-0.5">
-                  {[assigned.isPrimary ? 'HLV chính' : 'HLV', assigned.coach?.specialization, assigned.coach?.experienceYears ? `${assigned.coach.experienceYears} năm kinh nghiệm` : null].filter(Boolean).join(' · ')}
-                </Text>
-              </View>
-            </View>
-            {Boolean(assigned.coach?.bio) && <Text className="text-sm text-text-secondary font-bevn-regular leading-[22px]" numberOfLines={4}>{assigned.coach!.bio}</Text>}
-          </WorkflowCard>
+          <CoachCard key={assigned.coachId} assigned={assigned} onPress={() => d.openCoach(assigned)} />
         ))}
-
-        {/* 5. Đánh giá (hội viên) — mục riêng, không lặp tên HLV khi lớp chỉ có 1 HLV */}
-        {d.isMember && Boolean(value.coaches?.length) && <>
-          <SectionTitle icon="star">Đánh giá</SectionTitle>
-          {value.coaches!.map((assigned) => (
-            <CoachRating
-              key={assigned.coachId}
-              coachId={assigned.coachId}
-              coachName={assigned.coach?.user?.fullName}
-              classId={id}
-              title={value.coaches!.length > 1 ? assigned.coach?.user?.fullName || 'Huấn luyện viên' : 'Nhận xét của học viên'}
-            />
-          ))}
-        </>}
       </>}
+      <CoachProfileSheet assigned={d.selectedCoach} classId={id} onClose={d.closeCoach} />
     </WorkflowScreen>
   );
 }

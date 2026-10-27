@@ -6,26 +6,30 @@ import React, { type ReactNode } from 'react';
 import { View, Text, ScrollView, RefreshControl, ActivityIndicator, TextInput, type TextInputProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from './ScreenHeader';
+import { useUserPullRefresh } from '../../hooks/shared/useUserPullRefresh';
 import { Icon } from './Icon';
 import { Button } from '../ui/Button';
 import { Colors, Spacing } from '../../constants/theme';
 
-export function WorkflowScreen({ title, subtitle, children, refreshing = false, onRefresh, footer }: {
-  title: string; subtitle?: string; children: ReactNode; refreshing?: boolean; onRefresh?: () => void;
+export function WorkflowScreen({ title, children, refreshing = false, onRefresh, footer }: {
+  title: string; children: ReactNode; refreshing?: boolean; onRefresh?: () => void;
   /** Vùng cố định dưới đáy (vd: nút đăng ký) — nằm trên vùng an toàn của máy */
   footer?: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
+  // `refreshing` = màn đang làm mới dữ liệu (kể cả ngầm). Vòng xoay kéo-để-tải chỉ hiện khi người dùng kéo,
+  // không hiện mỗi lần dữ liệu tự làm mới (tránh "loading hai lần": vòng tải của trang + vòng xoay ở đầu trang)
+  const { pulling, onPull } = useUserPullRefresh(refreshing, onRefresh);
   return (
     <View className="flex-1 bg-bg-primary">
-      <ScreenHeader title={title} subtitle={subtitle} />
+      <ScreenHeader title={title} />
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           width: '100%', maxWidth: 760, alignSelf: 'center',
           padding: Spacing.xl, paddingBottom: footer ? Spacing.xl : Math.max(Spacing.xxxl, insets.bottom + Spacing.xl), gap: Spacing.md,
         }}
-        refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} /> : undefined}
+        refreshControl={onRefresh ? <RefreshControl refreshing={pulling} onRefresh={onPull} tintColor={Colors.primary} /> : undefined}
       >
         {children}
       </ScrollView>

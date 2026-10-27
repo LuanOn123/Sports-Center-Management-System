@@ -9,6 +9,8 @@ import { Colors } from '../../constants/theme';
 import { CLASS_CARD_SLOT_PREVIEW, CLASS_TYPE_COLOR, CLASS_TYPE_LABEL, LOW_SLOT_THRESHOLD } from '../../constants/classes';
 import { useCoursePlan } from '../../hooks/shared/useClasses';
 import { courseAvailability, formatSlot, previewSlots, type AvailabilityTone } from '../../lib/classPlan';
+import { termTag } from '../../lib/termRegistration';
+import { TERM_NOTICE_COLOR } from '../../constants/terms';
 import type { Class } from '../../lib/types';
 
 const TONE_COLOR: Record<AvailabilityTone, string> = {
@@ -33,6 +35,8 @@ export function ClassCard({ item, onPress }: { item: Class; onPress: () => void 
   const availability = course ? courseAvailability(course, LOW_SLOT_THRESHOLD) : null;
   const coachNames = item.coaches?.map((c) => c.coach?.user?.fullName).filter(Boolean).join(', ');
   const typeColor = CLASS_TYPE_COLOR[item.classType];
+  // Kỳ học của chính lớp này (web: "📅 Kỳ …" trên thẻ lớp) — thay cho thẻ kỳ học đứng riêng ở đầu danh sách
+  const term = course?.term ? termTag(course.term) : null;
 
   return (
     <TouchableOpacity
@@ -57,6 +61,15 @@ export function ClassCard({ item, onPress }: { item: Class; onPress: () => void 
       )}
 
       <View className="gap-sm mt-md pt-md border-t border-border">
+        {term && (
+          <MetaRow icon="event-note" color={TERM_NOTICE_COLOR[term.tone]}>
+            <Text className="text-sm text-text-secondary font-bevn-regular" numberOfLines={2}>
+              <Text className="text-text-primary font-bevn-semibold">{term.name}</Text>
+              {' · '}
+              <Text className="font-bevn-medium" style={{ color: TERM_NOTICE_COLOR[term.tone] }}>{term.label}</Text>
+            </Text>
+          </MetaRow>
+        )}
         <MetaRow icon="calendar-today">
           {plan.isPending ? (
             <Text className="text-sm text-text-muted font-bevn-regular">Đang tải lịch học…</Text>

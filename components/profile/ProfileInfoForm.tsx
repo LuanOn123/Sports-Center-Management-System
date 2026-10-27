@@ -174,7 +174,7 @@ export function ProfileInfoForm({ onFieldFocus, getInputRef }: ProfileInfoFormPr
       <TouchableOpacity
         accessibilityRole="button"
         className={clsx('flex-row bg-primary rounded-md p-md items-center justify-center gap-sm mb-xl', isSaving && 'opacity-60')}
-        onPress={submit}
+        onPress={() => { void submit(); }}
         disabled={isSaving}
       >
         {isSaving ? <ActivityIndicator color={Colors.text.inverse} /> : <Icon name="check-circle" size={18} color={Colors.text.inverse} />}

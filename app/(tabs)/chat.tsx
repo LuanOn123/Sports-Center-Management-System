@@ -3,6 +3,7 @@ import {
   View, Text, FlatList, TouchableOpacity, TextInput,
   ActivityIndicator, RefreshControl, Platform, Pressable,
 } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import clsx from 'clsx';
 import { useRouter } from 'expo-router';
 import { Icon } from '../../components/shared/Icon';
@@ -43,7 +44,7 @@ const ROLE_COLOR: Record<string, string> = {
 
 export default function ChatTabScreen() {
   const router = useRouter();
-  const searchInputRef = useRef<TextInput>(null);
+  const searchInputRef = useRef<TextInputInstance>(null);
   const { user } = useAuth();
   const [search, setSearch] = useState('');
 
@@ -83,7 +84,7 @@ export default function ChatTabScreen() {
   // ─── UI ─────────────────────────────────────────────────────────────────────
   return (
     <View className="flex-1 bg-bg-primary">
-      <ScreenHeader variant="tab" title="Tin nhắn" subtitle="Liên lạc với huấn luyện viên & đội ngũ" />
+      <ScreenHeader variant="tab" title="Tin nhắn" />
 
 
       {/* Tìm kiếm theo tên/email — lọc client-side trên danh sách đã gộp */}

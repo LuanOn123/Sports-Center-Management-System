@@ -14,4 +14,5 @@ export * from './ScreenHeader';
 export * from './InfoBanner';
 export * from './InfoRow';
 export * from './FilterChip';
+export * from './ChipRow';
 export * from './ScheduleDetailView';

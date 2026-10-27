@@ -6,3 +6,4 @@ export * from './CoachAttendanceView';
 export * from './AttendanceQrModal';
 export * from './AttendanceStatusPicker';
 export * from './CoachScheduleActions';
+export * from './CoachChangesView';

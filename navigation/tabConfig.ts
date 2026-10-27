@@ -44,7 +44,7 @@ export function getTabConfigForRole(role: Role | undefined): TabItemConfig[] {
   return [
     HOME,
     { name: 'classes', title: 'Khám phá', iconName: 'explore', visible: true },
-    { name: 'schedule', title: 'Lịch', iconName: 'today', visible: true },
+    { name: 'schedule', title: 'Lịch học', iconName: 'today', visible: true },
     CHAT,
     ACCOUNT,
     { name: 'enrollments', title: 'Lớp của tôi', iconName: 'event-note', visible: false },

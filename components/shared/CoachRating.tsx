@@ -19,7 +19,7 @@ function Stars({ value, size = 16 }: { value: number; size?: number }) {
   return (
     <View className="flex-row gap-0.5">
       {[1, 2, 3, 4, 5].map((i) => (
-        <Icon key={i} name={i <= value ? 'star' : 'star-border'} size={size} color={Colors.tier.PREMIUM} />
+        <Icon key={i} name="star" filled={i <= value} size={size} color={Colors.tier.PREMIUM} />
       ))}
     </View>
   );
@@ -30,7 +30,7 @@ function StarInput({ value, onChange }: { value: number; onChange: (v: number) =
     <View className="flex-row gap-1.5">
       {[1, 2, 3, 4, 5].map((i) => (
         <TouchableOpacity key={i} onPress={() => onChange(i)} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
-          <Icon name={i <= value ? 'star' : 'star-border'} size={28} color={Colors.tier.PREMIUM} />
+          <Icon name="star" filled={i <= value} size={28} color={Colors.tier.PREMIUM} />
         </TouchableOpacity>
       ))}
     </View>

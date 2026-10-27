@@ -17,7 +17,7 @@ export default function WaitlistScreen() {
   useEffect(() => {
     if (promoted) for (const key of ['my-enrollments', 'my-enrollments-upcoming', 'enrollment-quota', 'member-schedule', 'class-schedules', 'course-plan']) void cache.invalidateQueries({ queryKey: [key] });
   }, [promoted, cache]);
-  return <WorkflowScreen title="Danh sách chờ" subtitle={currentFacility?.name} refreshing={list.isRefetching} onRefresh={() => { void list.refetch(); }}>
+  return <WorkflowScreen title="Danh sách chờ" refreshing={list.isRefetching} onRefresh={() => { void list.refetch(); }}>
     <WorkflowText>Khi có chỗ trống, hệ thống xét theo thứ tự chờ và kiểm tra lại gói tập, quota, lịch học và quyết định chuyên cần. Vào danh sách chờ chưa đảm bảo có chỗ.</WorkflowText>
     <WorkflowState pending={hasProfile && list.isPending} error={list.error || leave.error} retry={() => { void list.refetch(); }} empty={!hasProfile ? 'Chưa có hồ sơ hội viên.' : list.isSuccess && !list.data.data.length ? 'Chưa có lượt đăng ký chờ.' : undefined} />
     {list.data?.data.map((entry) => <WorkflowCard key={entry.id} title={entry.schedule?.class?.name || 'Buổi học'}>
