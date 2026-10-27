@@ -1,0 +1,73 @@
+/* The session and facility gates render before the portal theme is mounted. */
+.fullscreen {
+  color-scheme: dark;
+  --color-background: #0b1018;
+  --color-surface: #131a26;
+  --color-surface-muted: #0e141e;
+  --color-surface-subtle: #192332;
+  --color-text: #f1f4f9;
+  --color-text-muted: #9baac0;
+  --color-border: #263143;
+  --color-primary: #d4ff00;
+  --color-secondary: #d4ff00;
+  --color-error-bg: #301b26;
+  --color-error-border: #65303f;
+  min-height: 100dvh;
+  background: var(--color-background);
+  color: var(--color-text);
+}
+.fullscreen .brand {
+  color: #f1f4f9;
+}
+.fullscreen .brand-mark {
+  color: #d4ff00;
+  background: #131a26;
+  border-color: #263143;
+}
+.fullscreen .brand small {
+  color: #9baac0;
+}
+.skeleton {
+  --skeleton-base: #253044;
+  --skeleton-highlight: #354258;
+}
+.skeleton .skeleton-block {
+  background: var(--skeleton-base);
+}
+.skeleton .skeleton-block::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--skeleton-highlight),
+    transparent
+  );
+}
+
+/* Disabled fields stay legible while requests are pending. */
+:is(.pulse-auth, .portal-theme) :is(input, select, textarea):disabled {
+  background: #131a26;
+  color: #bdc8d8;
+  -webkit-text-fill-color: #bdc8d8;
+  border-color: #2a3547;
+  opacity: 1;
+  cursor: not-allowed;
+}
+:is(.pulse-auth, .portal-theme) :is(input, textarea):disabled::placeholder {
+  color: #8a9ab0;
+  -webkit-text-fill-color: #8a9ab0;
+  opacity: 1;
+}
+:is(.pulse-auth, .portal-theme) input:is(:autofill, :-webkit-autofill) {
+  -webkit-text-fill-color: #f1f4f9;
+  caret-color: #d4ff00;
+  box-shadow: 0 0 0 1000px #131a26 inset;
+  -webkit-box-shadow: 0 0 0 1000px #131a26 inset;
+}
+:is(.pulse-auth, .portal-theme)
+  input:disabled:is(:autofill, :-webkit-autofill) {
+  -webkit-text-fill-color: #bdc8d8;
+}
+.pulse-auth .auth-floating input:disabled::placeholder {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}

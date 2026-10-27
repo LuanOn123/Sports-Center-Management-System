@@ -1,13 +1,14 @@
-import { AvatarUploader } from "../../shared/Avatar";
+import { Avatar, AvatarUploader } from "../../shared/Avatar";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { authApi } from "../../api/auth.api";
-import { UserCircle, Lock, Save, KeyRound } from "lucide-react";
+import { UserCircle, Lock, Save, KeyRound, Pencil, X } from "lucide-react";
 import { AlertBanner } from "../../components/common";
 
 export function ProfilePage() {
   const { user, updateUser } = useAuth();
+  const [editing, setEditing] = useState(false);
 
   // Profile Form state
   const [fullName, setFullName] = useState(user?.fullName || "");
@@ -148,299 +149,379 @@ export function ProfilePage() {
         </p>
       </div>
 
-      {user && <AvatarUploader user={user} />}
-
-      {/* EDIT PROFILE FORM */}
-      <div
-        style={{
-          background: "var(--member-surface, #ffffff)",
-          borderRadius: 18,
-          border: "1px solid var(--member-border, #e7ece9)",
-          padding: 28,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            marginBottom: 20,
-          }}
-        >
-          <UserCircle size={22} color="var(--member-text, #203d31)" />
-          <h2
-            style={{
-              fontSize: 18,
-              fontWeight: 800,
-              color: "var(--member-text, #203d31)",
-              margin: 0,
+      <section className="member-profile-overview">
+        <div className="member-profile-overview-head">
+          <div>
+            {user && <Avatar user={user} interactive={false} />}
+            <div>
+              <h2>{user?.fullName}</h2>
+              <p>{user?.email}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="button primary"
+            onClick={() => {
+              if (!editing) {
+                setFullName(user?.fullName || "");
+                setPhone(user?.phone || "");
+                setGender(
+                  (user?.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
+                );
+                setDateOfBirth(user?.dateOfBirth?.split("T")[0] || "");
+                setFitnessGoal(user?.memberProfile?.fitnessGoal || "");
+                setTrainingLevel(
+                  user?.memberProfile?.trainingLevel || "BEGINNER",
+                );
+                setTrainingPreference(
+                  user?.memberProfile?.trainingPreference || "",
+                );
+                setProfileMsg(null);
+              }
+              setEditing((value) => !value);
             }}
+            disabled={savingProfile}
+            aria-expanded={editing}
+            aria-controls="member-profile-edit"
           >
-            Thông tin cá nhân & Mục tiêu thể lực
-          </h2>
+            {editing ? <X size={17} /> : <Pencil size={17} />}
+            {editing ? "Hủy chỉnh sửa" : "Chỉnh sửa hồ sơ"}
+          </button>
         </div>
-
-        {profileMsg && (
-          <div style={{ marginBottom: 18 }}>
-            <AlertBanner type={profileMsg.type} message={profileMsg.text} />
-          </div>
+        {!editing && (
+          <dl className="member-profile-facts">
+            <div>
+              <dt>Số điện thoại</dt>
+              <dd>{user?.phone || "Chưa cập nhật"}</dd>
+            </div>
+            <div>
+              <dt>Ngày sinh</dt>
+              <dd>
+                {user?.dateOfBirth
+                  ? new Date(user.dateOfBirth).toLocaleDateString("vi-VN")
+                  : "Chưa cập nhật"}
+              </dd>
+            </div>
+            <div>
+              <dt>Mục tiêu tập luyện</dt>
+              <dd>{user?.memberProfile?.fitnessGoal || "Chưa cập nhật"}</dd>
+            </div>
+            <div>
+              <dt>Trình độ tập luyện</dt>
+              <dd>
+                {
+                  {
+                    BEGINNER: "Mới bắt đầu",
+                    INTERMEDIATE: "Trung cấp",
+                    ADVANCED: "Nâng cao",
+                  }[user?.memberProfile?.trainingLevel || "BEGINNER"]
+                }
+              </dd>
+            </div>
+          </dl>
         )}
+      </section>
 
-        <form
-          onSubmit={handleUpdateProfile}
-          style={{ display: "flex", flexDirection: "column", gap: 18 }}
-        >
+      {editing && (
+        <div id="member-profile-edit" style={{ display: "grid", gap: 24 }}>
+          {user && <AvatarUploader user={user} />}
+
+          {/* EDIT PROFILE FORM */}
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-              gap: 16,
+              background: "var(--member-surface, #ffffff)",
+              borderRadius: 18,
+              border: "1px solid var(--member-border, #e7ece9)",
+              padding: 28,
             }}
           >
-            {/* Full name */}
-            <div>
-              <label
-                htmlFor="member-profile-1"
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--member-text, #344054)",
-                  marginBottom: 6,
-                }}
-              >
-                Họ và tên *
-              </label>
-              <input
-                id="member-profile-1"
-                type="text"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-              />
-            </div>
-
-            {/* Email (Readonly) */}
-            <div>
-              <label
-                htmlFor="member-profile-2"
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--member-text, #344054)",
-                  marginBottom: 6,
-                }}
-              >
-                Email tài khoản (không thể đổi)
-              </label>
-              <input
-                id="member-profile-2"
-                type="email"
-                disabled
-                value={user?.email || ""}
-                style={{
-                  backgroundColor: "var(--member-surface-alt, #f8faf9)",
-                  color: "var(--member-muted, #667085)",
-                }}
-              />
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-              gap: 16,
-            }}
-          >
-            {/* Phone */}
-            <div>
-              <label
-                htmlFor="member-profile-3"
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--member-text, #344054)",
-                  marginBottom: 6,
-                }}
-              >
-                Số điện thoại
-              </label>
-              <input
-                id="member-profile-3"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="0912345678"
-              />
-            </div>
-
-            {/* Gender */}
-            <div>
-              <label
-                htmlFor="member-profile-4"
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--member-text, #344054)",
-                  marginBottom: 6,
-                }}
-              >
-                Giới tính
-              </label>
-              <select
-                id="member-profile-4"
-                value={gender}
-                onChange={(e) =>
-                  setGender(e.target.value as "MALE" | "FEMALE" | "OTHER")
-                }
-              >
-                <option value="MALE">Nam</option>
-                <option value="FEMALE">Nữ</option>
-                <option value="OTHER">Khác</option>
-              </select>
-            </div>
-
-            {/* Date of Birth */}
-            <div>
-              <label
-                htmlFor="member-profile-5"
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--member-text, #344054)",
-                  marginBottom: 6,
-                }}
-              >
-                Ngày sinh
-              </label>
-              <input
-                id="member-profile-5"
-                type="date"
-                value={dateOfBirth}
-                onChange={(e) => setDateOfBirth(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div
-            style={{
-              height: 1,
-              backgroundColor: "var(--member-surface-alt, #f0f4f2)",
-              margin: "8px 0",
-            }}
-          />
-
-          {/* Fitness Goal & Level */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-              gap: 16,
-            }}
-          >
-            <div>
-              <label
-                htmlFor="member-profile-6"
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--member-text, #344054)",
-                  marginBottom: 6,
-                }}
-              >
-                Cấp độ rèn luyện (Training Level)
-              </label>
-              <select
-                id="member-profile-6"
-                value={trainingLevel}
-                onChange={(e) =>
-                  setTrainingLevel(
-                    e.target.value as "BEGINNER" | "INTERMEDIATE" | "ADVANCED",
-                  )
-                }
-              >
-                <option value="BEGINNER">Mới bắt đầu (Beginner)</option>
-                <option value="INTERMEDIATE">Trung bình (Intermediate)</option>
-                <option value="ADVANCED">Nâng cao (Advanced)</option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor="member-profile-7"
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--member-text, #344054)",
-                  marginBottom: 6,
-                }}
-              >
-                Mục tiêu thể hình & sức khỏe (Fitness Goal)
-              </label>
-              <input
-                id="member-profile-7"
-                type="text"
-                value={fitnessGoal}
-                onChange={(e) => setFitnessGoal(e.target.value)}
-                placeholder="Ví dụ: Tăng cơ giảm mỡ, Cải thiện sức bền, Học Yoga..."
-              />
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="member-profile-8"
+            <div
               style={{
-                display: "block",
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--member-text, #344054)",
-                marginBottom: 6,
-              }}
-            >
-              Sở thích & Lưu ý tập luyện (Training Preference)
-            </label>
-            <textarea
-              id="member-profile-8"
-              value={trainingPreference}
-              onChange={(e) => setTrainingPreference(e.target.value)}
-              placeholder="Ghi chú sở thích về môn học, huấn luyện viên hoặc chấn thương cần lưu ý..."
-              rows={3}
-            />
-          </div>
-
-          <div>
-            <button
-              className="member-button member-button-primary"
-              type="submit"
-              disabled={savingProfile}
-              style={{
-                padding: "11px 24px",
-                backgroundColor: "var(--member-surface-alt, #203d31)",
-                color: "var(--member-text, #ffffff)",
-                border: "none",
-                borderRadius: 10,
-                fontSize: 14,
-                fontWeight: 700,
-                display: "inline-flex",
+                display: "flex",
                 alignItems: "center",
-                gap: 8,
-                cursor: "pointer",
+                gap: 10,
+                marginBottom: 20,
               }}
             >
-              <Save size={16} />
-              {savingProfile ? "Đang lưu..." : "Lưu thay đổi hồ sơ"}
-            </button>
+              <UserCircle size={22} color="var(--member-text, #203d31)" />
+              <h2
+                style={{
+                  fontSize: 18,
+                  fontWeight: 800,
+                  color: "var(--member-text, #203d31)",
+                  margin: 0,
+                }}
+              >
+                Thông tin cá nhân & Mục tiêu thể lực
+              </h2>
+            </div>
+
+            {profileMsg && (
+              <div style={{ marginBottom: 18 }}>
+                <AlertBanner type={profileMsg.type} message={profileMsg.text} />
+              </div>
+            )}
+
+            <form
+              onSubmit={handleUpdateProfile}
+              style={{ display: "flex", flexDirection: "column", gap: 18 }}
+            >
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                  gap: 16,
+                }}
+              >
+                {/* Full name */}
+                <div>
+                  <label
+                    htmlFor="member-profile-1"
+                    style={{
+                      display: "block",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--member-text, #344054)",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Họ và tên *
+                  </label>
+                  <input
+                    id="member-profile-1"
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
+                </div>
+
+                {/* Email (Readonly) */}
+                <div>
+                  <label
+                    htmlFor="member-profile-2"
+                    style={{
+                      display: "block",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--member-text, #344054)",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Email tài khoản (không thể đổi)
+                  </label>
+                  <input
+                    id="member-profile-2"
+                    type="email"
+                    disabled
+                    value={user?.email || ""}
+                    style={{
+                      backgroundColor: "var(--member-surface-alt, #f8faf9)",
+                      color: "var(--member-muted, #667085)",
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                  gap: 16,
+                }}
+              >
+                {/* Phone */}
+                <div>
+                  <label
+                    htmlFor="member-profile-3"
+                    style={{
+                      display: "block",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--member-text, #344054)",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Số điện thoại
+                  </label>
+                  <input
+                    id="member-profile-3"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="0912345678"
+                  />
+                </div>
+
+                {/* Gender */}
+                <div>
+                  <label
+                    htmlFor="member-profile-4"
+                    style={{
+                      display: "block",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--member-text, #344054)",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Giới tính
+                  </label>
+                  <select
+                    id="member-profile-4"
+                    value={gender}
+                    onChange={(e) =>
+                      setGender(e.target.value as "MALE" | "FEMALE" | "OTHER")
+                    }
+                  >
+                    <option value="MALE">Nam</option>
+                    <option value="FEMALE">Nữ</option>
+                    <option value="OTHER">Khác</option>
+                  </select>
+                </div>
+
+                {/* Date of Birth */}
+                <div>
+                  <label
+                    htmlFor="member-profile-5"
+                    style={{
+                      display: "block",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--member-text, #344054)",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Ngày sinh
+                  </label>
+                  <input
+                    id="member-profile-5"
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={(e) => setDateOfBirth(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div
+                style={{
+                  height: 1,
+                  backgroundColor: "var(--member-surface-alt, #f0f4f2)",
+                  margin: "8px 0",
+                }}
+              />
+
+              {/* Fitness Goal & Level */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                  gap: 16,
+                }}
+              >
+                <div>
+                  <label
+                    htmlFor="member-profile-6"
+                    style={{
+                      display: "block",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--member-text, #344054)",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Cấp độ rèn luyện (Training Level)
+                  </label>
+                  <select
+                    id="member-profile-6"
+                    value={trainingLevel}
+                    onChange={(e) =>
+                      setTrainingLevel(
+                        e.target.value as
+                          "BEGINNER" | "INTERMEDIATE" | "ADVANCED",
+                      )
+                    }
+                  >
+                    <option value="BEGINNER">Mới bắt đầu (Beginner)</option>
+                    <option value="INTERMEDIATE">
+                      Trung bình (Intermediate)
+                    </option>
+                    <option value="ADVANCED">Nâng cao (Advanced)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="member-profile-7"
+                    style={{
+                      display: "block",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--member-text, #344054)",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Mục tiêu thể hình & sức khỏe (Fitness Goal)
+                  </label>
+                  <input
+                    id="member-profile-7"
+                    type="text"
+                    value={fitnessGoal}
+                    onChange={(e) => setFitnessGoal(e.target.value)}
+                    placeholder="Ví dụ: Tăng cơ giảm mỡ, Cải thiện sức bền, Học Yoga..."
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="member-profile-8"
+                  style={{
+                    display: "block",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--member-text, #344054)",
+                    marginBottom: 6,
+                  }}
+                >
+                  Sở thích & Lưu ý tập luyện (Training Preference)
+                </label>
+                <textarea
+                  id="member-profile-8"
+                  value={trainingPreference}
+                  onChange={(e) => setTrainingPreference(e.target.value)}
+                  placeholder="Ghi chú sở thích về môn học, huấn luyện viên hoặc chấn thương cần lưu ý..."
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <button
+                  className="member-button member-button-primary"
+                  type="submit"
+                  disabled={savingProfile}
+                  style={{
+                    padding: "11px 24px",
+                    backgroundColor: "var(--member-surface-alt, #203d31)",
+                    color: "var(--member-text, #ffffff)",
+                    border: "none",
+                    borderRadius: 10,
+                    fontSize: 14,
+                    fontWeight: 700,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    cursor: "pointer",
+                  }}
+                >
+                  <Save size={16} />
+                  {savingProfile ? "Đang lưu..." : "Lưu thay đổi hồ sơ"}
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
-      </div>
+        </div>
+      )}
 
       {/* CHANGE PASSWORD FORM */}
       <div

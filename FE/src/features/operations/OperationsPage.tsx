@@ -35,7 +35,7 @@ const sections: Record<Kind, [string, string]> = {
   staff: ["Phân công nhân sự", "/facilities/{facilityId}"],
   slots: ["Khung giờ học", "/slots"],
   patterns: ["Sinh lịch định kỳ", "/schedule-patterns"],
-  leave: ["Nghỉ phép", "/leave-requests"],
+  leave: ["Nghỉ học & nhân sự", "/leave-requests"],
   issues: ["Yêu cầu hỗ trợ", "/issues"],
   audit: ["Nhật ký hoạt động", "/audit-logs"],
   orders: ["Bán gói tại quầy", "/counter-orders"],
@@ -112,7 +112,7 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
         ? "POST /facilities/{facilityId}/staff"
         : kind === "slots" && manager
           ? "POST /slots"
-          : kind === "leave" && (role === "COACH" || role === "RECEPTIONIST")
+          : kind === "leave" && role === "RECEPTIONIST"
             ? "POST /leave-requests"
             : kind === "issues" && member
               ? "POST /issues"

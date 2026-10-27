@@ -21,7 +21,8 @@ import {
   LoadingSpinner,
   StatusBadge,
 } from "../../components/common";
-import { CoachFeedback } from "../../shared/CoachFeedback";
+import { CoachCard, CoachProfileDialog } from "../../shared/CoachProfileDialog";
+import type { CoachInfo } from "../../types/member";
 import { WaitlistAction } from "../../shared/Waitlist";
 import { ErrorState } from "../../shared/feedback";
 import { formatMemberDate } from "../../shared/memberFormat";
@@ -40,7 +41,19 @@ function courseBlockers(error: unknown): CourseRegistrationBlocker[] {
   return Array.isArray(details) ? (details as CourseRegistrationBlocker[]) : [];
 }
 
-function blockerText(blocker: CourseRegistrationBlocker) {
+function isFreeQuotaBlocker(
+  blocker: CourseRegistrationBlocker,
+  tier?: string | null,
+) {
+  return (
+    blocker.code === "CONCURRENT_CLASS_LIMIT_REACHED" &&
+    (blocker.details?.tier ?? tier) === "FREE"
+  );
+}
+
+function blockerText(blocker: CourseRegistrationBlocker, tier?: string | null) {
+  if (isFreeQuotaBlocker(blocker, tier))
+    return "Tài khoản Free chưa bao gồm quyền đăng ký lớp học. Vui lòng chọn gói Membership hoặc Premium để tham gia.";
   if (!blocker.startTime) return blocker.message;
   return `${blocker.message} (${formatMemberDate(blocker.startTime, {
     hour: "2-digit",
@@ -148,8 +161,11 @@ function CourseScheduleTableView({
             >
               Lịch trình khóa học ({course.totalSessions} buổi)
             </strong>
-            <span style={{ fontSize: 12, color: "var(--member-muted, #9baac0)" }}>
-              {formatMemberDate(course.firstSessionStart)} → {formatMemberDate(course.lastSessionStart)}
+            <span
+              style={{ fontSize: 12, color: "var(--member-muted, #9baac0)" }}
+            >
+              {formatMemberDate(course.firstSessionStart)} →{" "}
+              {formatMemberDate(course.lastSessionStart)}
             </span>
           </div>
         </div>
@@ -180,8 +196,12 @@ function CourseScheduleTableView({
               fontWeight: 700,
               cursor: "pointer",
               transition: "all 0.2s ease",
-              background: viewMode === "table" ? "var(--member-accent, #d4ff00)" : "transparent",
-              color: viewMode === "table" ? "#000" : "var(--member-muted, #9baac0)",
+              background:
+                viewMode === "table"
+                  ? "var(--member-accent, #d4ff00)"
+                  : "transparent",
+              color:
+                viewMode === "table" ? "#000" : "var(--member-muted, #9baac0)",
             }}
           >
             <TableIcon size={14} />
@@ -201,8 +221,12 @@ function CourseScheduleTableView({
               fontWeight: 700,
               cursor: "pointer",
               transition: "all 0.2s ease",
-              background: viewMode === "weekly" ? "var(--member-accent, #d4ff00)" : "transparent",
-              color: viewMode === "weekly" ? "#000" : "var(--member-muted, #9baac0)",
+              background:
+                viewMode === "weekly"
+                  ? "var(--member-accent, #d4ff00)"
+                  : "transparent",
+              color:
+                viewMode === "weekly" ? "#000" : "var(--member-muted, #9baac0)",
             }}
           >
             <LayoutGrid size={14} />
@@ -240,25 +264,69 @@ function CourseScheduleTableView({
               }}
             >
               <tr>
-                <th style={{ padding: "12px 14px", color: "var(--member-muted, #9baac0)", fontWeight: 700, width: 70 }}>
+                <th
+                  style={{
+                    padding: "12px 14px",
+                    color: "var(--member-muted, #9baac0)",
+                    fontWeight: 700,
+                    width: 70,
+                  }}
+                >
                   Buổi
                 </th>
-                <th style={{ padding: "12px 14px", color: "var(--member-muted, #9baac0)", fontWeight: 700 }}>
+                <th
+                  style={{
+                    padding: "12px 14px",
+                    color: "var(--member-muted, #9baac0)",
+                    fontWeight: 700,
+                  }}
+                >
                   Thứ & Ngày tập
                 </th>
-                <th style={{ padding: "12px 14px", color: "var(--member-muted, #9baac0)", fontWeight: 700 }}>
+                <th
+                  style={{
+                    padding: "12px 14px",
+                    color: "var(--member-muted, #9baac0)",
+                    fontWeight: 700,
+                  }}
+                >
                   Khung giờ
                 </th>
-                <th style={{ padding: "12px 14px", color: "var(--member-muted, #9baac0)", fontWeight: 700 }}>
+                <th
+                  style={{
+                    padding: "12px 14px",
+                    color: "var(--member-muted, #9baac0)",
+                    fontWeight: 700,
+                  }}
+                >
                   Phòng tập
                 </th>
-                <th style={{ padding: "12px 14px", color: "var(--member-muted, #9baac0)", fontWeight: 700 }}>
+                <th
+                  style={{
+                    padding: "12px 14px",
+                    color: "var(--member-muted, #9baac0)",
+                    fontWeight: 700,
+                  }}
+                >
                   Chỗ trống
                 </th>
-                <th style={{ padding: "12px 14px", color: "var(--member-muted, #9baac0)", fontWeight: 700 }}>
+                <th
+                  style={{
+                    padding: "12px 14px",
+                    color: "var(--member-muted, #9baac0)",
+                    fontWeight: 700,
+                  }}
+                >
                   Trạng thái
                 </th>
-                <th style={{ padding: "12px 14px", color: "var(--member-muted, #9baac0)", fontWeight: 700, textAlign: "right" }}>
+                <th
+                  style={{
+                    padding: "12px 14px",
+                    color: "var(--member-muted, #9baac0)",
+                    fontWeight: 700,
+                    textAlign: "right",
+                  }}
+                >
                   Thao tác
                 </th>
               </tr>
@@ -267,13 +335,17 @@ function CourseScheduleTableView({
               {sessions.map((session, idx) => {
                 const label = sessionLabel(session);
                 const isOdd = idx % 2 === 1;
-                const availablePct = Math.round((session.remainingSlots / course.capacity) * 100);
+                const availablePct = Math.round(
+                  (session.remainingSlots / course.capacity) * 100,
+                );
 
                 return (
                   <tr
                     key={session.id}
                     style={{
-                      background: isOdd ? "rgba(255, 255, 255, 0.02)" : "transparent",
+                      background: isOdd
+                        ? "rgba(255, 255, 255, 0.02)"
+                        : "transparent",
                       borderBottom: "1px solid var(--member-border, #263143)",
                       transition: "background 0.15s ease",
                     }}
@@ -294,21 +366,34 @@ function CourseScheduleTableView({
                       </span>
                     </td>
                     <td style={{ padding: "12px 14px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
                         <span
                           style={{
                             padding: "2px 8px",
                             borderRadius: 6,
                             fontSize: 11,
                             fontWeight: 700,
-                            background: session.weekday === 2 ? "#1e293b" : "#172554",
-                            color: session.weekday === 2 ? "#38bdf8" : "#818cf8",
+                            background:
+                              session.weekday === 2 ? "#1e293b" : "#172554",
+                            color:
+                              session.weekday === 2 ? "#38bdf8" : "#818cf8",
                             border: "1px solid rgba(255, 255, 255, 0.08)",
                           }}
                         >
                           {session.weekdayLabel}
                         </span>
-                        <span style={{ color: "var(--member-text, #f1f4f9)", fontWeight: 600 }}>
+                        <span
+                          style={{
+                            color: "var(--member-text, #f1f4f9)",
+                            fontWeight: 600,
+                          }}
+                        >
                           {formatMemberDate(session.startTime)}
                         </span>
                       </div>
@@ -323,7 +408,10 @@ function CourseScheduleTableView({
                           fontWeight: 600,
                         }}
                       >
-                        <Clock size={14} color="var(--member-accent, #d4ff00)" />
+                        <Clock
+                          size={14}
+                          color="var(--member-accent, #d4ff00)"
+                        />
                         {session.timeLabel}
                       </div>
                     </td>
@@ -341,7 +429,13 @@ function CourseScheduleTableView({
                       </div>
                     </td>
                     <td style={{ padding: "12px 14px" }}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 4,
+                        }}
+                      >
                         <span
                           style={{
                             fontSize: 12,
@@ -351,7 +445,9 @@ function CourseScheduleTableView({
                               : "var(--member-success, #64dfb4)",
                           }}
                         >
-                          {session.isFull ? "Hết chỗ" : `Còn ${session.remainingSlots}/${course.capacity}`}
+                          {session.isFull
+                            ? "Hết chỗ"
+                            : `Còn ${session.remainingSlots}/${course.capacity}`}
                         </span>
                         <div
                           style={{
@@ -395,9 +491,9 @@ function CourseScheduleTableView({
                       {session.isFull &&
                         session.status === "SCHEDULED" &&
                         Date.parse(session.startTime) > Date.now() &&
-                        !["BOOKED", "COMPLETED"].includes(session.myEnrollmentStatus ?? "") && (
-                          <WaitlistAction scheduleId={session.id} />
-                        )}
+                        !["BOOKED", "COMPLETED"].includes(
+                          session.myEnrollmentStatus ?? "",
+                        ) && <WaitlistAction scheduleId={session.id} />}
                     </td>
                   </tr>
                 );
@@ -418,7 +514,9 @@ function CourseScheduleTableView({
             }}
           >
             {WEEKDAYS_MAP.map((d) => {
-              const daySlots = course.slots.filter((s) => s.weekday === d.weekday);
+              const daySlots = course.slots.filter(
+                (s) => s.weekday === d.weekday,
+              );
               const hasClass = daySlots.length > 0;
               return (
                 <div
@@ -450,7 +548,9 @@ function CourseScheduleTableView({
                     <strong
                       style={{
                         fontSize: 13,
-                        color: hasClass ? "var(--member-accent, #d4ff00)" : "var(--member-muted, #9baac0)",
+                        color: hasClass
+                          ? "var(--member-accent, #d4ff00)"
+                          : "var(--member-muted, #9baac0)",
                       }}
                     >
                       {d.label}
@@ -461,8 +561,12 @@ function CourseScheduleTableView({
                         fontWeight: 700,
                         padding: "2px 6px",
                         borderRadius: 6,
-                        background: hasClass ? "rgba(212, 255, 0, 0.15)" : "transparent",
-                        color: hasClass ? "var(--member-accent, #d4ff00)" : "var(--member-muted, #667085)",
+                        background: hasClass
+                          ? "rgba(212, 255, 0, 0.15)"
+                          : "transparent",
+                        color: hasClass
+                          ? "var(--member-accent, #d4ff00)"
+                          : "var(--member-muted, #667085)",
                       }}
                     >
                       {d.short}
@@ -489,7 +593,10 @@ function CourseScheduleTableView({
                             color: "var(--member-text, #f1f4f9)",
                           }}
                         >
-                          <Clock size={13} color="var(--member-accent, #d4ff00)" />
+                          <Clock
+                            size={13}
+                            color="var(--member-accent, #d4ff00)"
+                          />
                           {slot.startTime}–{slot.endTime}
                         </div>
                         <div
@@ -554,8 +661,10 @@ function CourseScheduleTableView({
           >
             <span>💡</span>
             <span>
-              Lớp học diễn ra định kỳ <strong>{course.slots.length} buổi/tuần</strong>.
-              Thời gian học cố định giúp bạn dễ dàng sắp xếp công việc và duy trì thói quen tập luyện đều đặn.
+              Lớp học diễn ra định kỳ{" "}
+              <strong>{course.slots.length} buổi/tuần</strong>. Thời gian học cố
+              định giúp bạn dễ dàng sắp xếp công việc và duy trì thói quen tập
+              luyện đều đặn.
             </span>
           </div>
         </div>
@@ -572,6 +681,7 @@ const cardStyle = {
 };
 
 export function ClassDetailPage() {
+  const [selectedCoach, setSelectedCoach] = useState<CoachInfo | null>(null);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -607,7 +717,10 @@ export function ClassDetailPage() {
   });
 
   const enrollCourseMutation = useMutation({
-    mutationFn: (variables?: { healthNotes?: string; saveToProfile?: boolean }) =>
+    mutationFn: (variables?: {
+      healthNotes?: string;
+      saveToProfile?: boolean;
+    }) =>
       enrollmentsApi.enrollWholeCourse(id!, undefined, {
         healthNotes: variables?.healthNotes || null,
         saveToProfile: variables?.saveToProfile,
@@ -670,12 +783,12 @@ export function ClassDetailPage() {
   const isTermPlanning = courseTerm?.status === "PLANNING";
   const isTermNotStarted = Boolean(
     courseTerm?.registrationStartDate &&
-      new Date(courseTerm.registrationStartDate).getTime() > now,
+    new Date(courseTerm.registrationStartDate).getTime() > now,
   );
   const isTermClosed = Boolean(
     courseTerm?.status === "CLOSED" ||
-      (courseTerm?.registrationEndDate &&
-        new Date(courseTerm.registrationEndDate).getTime() < now),
+    (courseTerm?.registrationEndDate &&
+      new Date(courseTerm.registrationEndDate).getTime() < now),
   );
   const isTermBlocked = Boolean(
     courseTerm && (isTermPlanning || isTermNotStarted || isTermClosed),
@@ -694,18 +807,25 @@ export function ClassDetailPage() {
 
   const blockerActions = (blockers: CourseRegistrationBlocker[]) => {
     const codes = blockers.map((blocker) => blocker.code);
-    const needsMembership = codes.some((code) =>
-      [
-        "SUBSCRIPTION_ENDS_BEFORE_COURSE_END",
-        "NO_ACTIVE_SUBSCRIPTION",
-        "PREMIUM_REQUIRED",
-      ].includes(code),
+    const freeNeedsPlan = blockers.some((blocker) =>
+      isFreeQuotaBlocker(blocker, registration?.quota?.tier),
     );
-    const membershipLabel = codes.includes("NO_ACTIVE_SUBSCRIPTION")
-      ? "Mua gói"
-      : codes.includes("PREMIUM_REQUIRED")
-        ? "Nâng cấp gói"
-        : "Gia hạn ngay";
+    const needsMembership =
+      freeNeedsPlan ||
+      codes.some((code) =>
+        [
+          "SUBSCRIPTION_ENDS_BEFORE_COURSE_END",
+          "NO_ACTIVE_SUBSCRIPTION",
+          "PREMIUM_REQUIRED",
+        ].includes(code),
+      );
+    const membershipLabel = freeNeedsPlan
+      ? "Xem các gói tập"
+      : codes.includes("NO_ACTIVE_SUBSCRIPTION")
+        ? "Mua gói"
+        : codes.includes("PREMIUM_REQUIRED")
+          ? "Nâng cấp gói"
+          : "Gia hạn ngay";
     return (
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         {needsMembership && (
@@ -716,7 +836,7 @@ export function ClassDetailPage() {
             {membershipLabel}
           </button>
         )}
-        {codes.includes("CONCURRENT_CLASS_LIMIT_REACHED") && (
+        {codes.includes("CONCURRENT_CLASS_LIMIT_REACHED") && !freeNeedsPlan && (
           <button
             className="button"
             onClick={() => navigate("/member/my-classes")}
@@ -737,7 +857,7 @@ export function ClassDetailPage() {
       <ul style={{ margin: 0, paddingLeft: 22 }}>
         {blockers.map((blocker, index) => (
           <li key={`${blocker.code}-${blocker.sessionId || index}`}>
-            {blockerText(blocker)}
+            {blockerText(blocker, registration?.quota?.tier)}
           </li>
         ))}
       </ul>
@@ -865,88 +985,41 @@ export function ClassDetailPage() {
               Chưa chỉ định huấn luyện viên
             </span>
           ) : (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
-              {coaches.map((assigned) => (
-                <div
-                  key={assigned.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    backgroundColor: "var(--member-surface-alt, #f9fbfa)",
-                    border: "1px solid var(--member-border, #e7ece9)",
-                    padding: "10px 16px",
-                    borderRadius: 12,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: "50%",
-                      backgroundColor: "var(--member-surface-alt, #203d31)",
-                      color: "var(--member-accent, #d3f879)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontWeight: 700,
-                    }}
-                  >
-                    {assigned.coach?.user?.fullName?.charAt(0) || "C"}
-                  </div>
-                  <div>
-                    <strong
-                      style={{
-                        fontSize: 13,
-                        color: "var(--member-text, #203d31)",
-                      }}
-                    >
-                      {assigned.coach?.user?.fullName}
-                    </strong>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: "var(--member-muted, #58695f)",
-                      }}
-                    >
-                      {assigned.isPrimary ? "HLV chính" : "HLV hỗ trợ"}
-                      {assigned.coach?.specialization
-                        ? ` · ${assigned.coach.specialization}`
-                        : ""}
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="member-coach-grid">
+              {coaches.map(
+                (assigned) =>
+                  assigned.coach?.id &&
+                  assigned.coach.user && (
+                    <CoachCard
+                      key={assigned.id}
+                      assigned={assigned}
+                      onClick={() => setSelectedCoach(assigned)}
+                    />
+                  ),
+              )}
             </div>
           )}
         </div>
       </section>
 
-      {coaches.map(
-        (assigned) =>
-          assigned.coach?.id && (
-            <details className="detail-disclosure" key={assigned.coach.id}>
-              <summary>Đánh giá · {assigned.coach.user?.fullName}</summary>
-              <div className="workflow-card">
-                <CoachFeedback
-                  coachId={assigned.coach.id}
-                  classId={cls.id}
-                  role="MEMBER"
-                  canReview={Boolean(
-                    enrollments.data?.enrollments.some(
-                      (enrollment) =>
-                        ["BOOKED", "COMPLETED"].includes(enrollment.status) &&
-                        (enrollment.classId === cls.id ||
-                          enrollment.schedule?.class?.id === cls.id ||
-                          enrollment.schedule?.class?.coaches?.some(
-                            (coach) => coach.coach?.id === assigned.coach.id,
-                          )),
-                    ),
-                  )}
-                />
-              </div>
-            </details>
-          ),
+      {selectedCoach && (
+        <CoachProfileDialog
+          key={selectedCoach.coach.id}
+          assigned={selectedCoach}
+          classId={cls.id}
+          onClose={() => setSelectedCoach(null)}
+          canReview={Boolean(
+            enrollments.data?.enrollments.some(
+              (enrollment) =>
+                ["BOOKED", "COMPLETED"].includes(enrollment.status) &&
+                (enrollment.classId === cls.id ||
+                  enrollment.schedule?.class?.id === cls.id ||
+                  enrollment.schedule?.class?.coaches?.some(
+                    (coach) => coach.coach?.id === selectedCoach.coach.id,
+                  )),
+            ),
+          )}
+        />
       )}
 
       <section style={cardStyle}>

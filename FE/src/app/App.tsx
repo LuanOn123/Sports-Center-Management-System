@@ -8,6 +8,7 @@ import {
 import { authService, hasSession } from "../shared/api";
 import { Session } from "../features/auth/Session";
 import "../styles.css";
+import "../shared/loading-theme.css";
 import { ErrorBoundary } from "../shared/ErrorBoundary";
 import { ToastViewport } from "../shared/toast";
 const client = new QueryClient({
@@ -32,12 +33,17 @@ export default function App() {
 
 function SessionChat() {
   // Recheck session identity on navigation, including logout redirects.
-  useLocation();
+  const location = useLocation();
   const profile = useQuery({
     queryKey: ["me"],
     queryFn: authService.me,
     enabled: false,
   });
+  if (
+    hasSession() &&
+    /^\/(member|admin|manager|coach|receptionist)(\/|$)/.test(location.pathname)
+  )
+    return null;
   return (
     <AIChatBubble
       key={hasSession() ? profile.data?.data.id || "loading" : "anonymous"}

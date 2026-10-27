@@ -3,7 +3,7 @@
 :root {
   font-family: "Inter", system-ui, sans-serif;
   color: var(--color-text);
-  background: var(--color-background);
+  background: #0b1018;
   font-synthesis: none;
   font-size: 16px;
   font-weight: 400;

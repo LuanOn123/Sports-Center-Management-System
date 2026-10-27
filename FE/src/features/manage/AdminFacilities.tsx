@@ -13,6 +13,7 @@ import { api } from "../../shared/api";
 import { allPages } from "../../shared/pagedApi";
 import { Empty, ErrorState, Loading, Modal, SchemaForm } from "../../shared/ui";
 import "./admin.css";
+import { FacilityEditor } from "./FacilityEditor";
 
 type CoachSpecialization = {
   sport: { id: string; name: string };
@@ -58,6 +59,7 @@ type Candidate = {
 export function AdminFacilities() {
   const cache = useQueryClient();
   const [edit, setEdit] = useState<Facility | "create">();
+  const [facilitySaving, setFacilitySaving] = useState(false);
   const [assignment, setAssignment] = useState<{
     facility: Facility;
     replaced?: Manager;
@@ -344,15 +346,12 @@ export function AdminFacilities() {
         <Modal
           title={edit === "create" ? "Thêm cơ sở" : `Chỉnh sửa · ${edit.name}`}
           onClose={() => setEdit(undefined)}
+          dismissible={!facilitySaving}
+          maxWidth={800}
         >
-          <SchemaForm
-            operation={
-              edit === "create"
-                ? "POST /facilities"
-                : "PUT /facilities/{facilityId}"
-            }
-            params={edit === "create" ? {} : { facilityId: edit.id }}
-            initial={edit === "create" ? {} : edit}
+          <FacilityEditor
+            initial={edit === "create" ? undefined : edit}
+            onBusyChange={setFacilitySaving}
             onCancel={() => setEdit(undefined)}
             onSuccess={() => {
               setEdit(undefined);

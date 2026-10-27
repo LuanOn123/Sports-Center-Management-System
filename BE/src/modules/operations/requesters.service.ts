@@ -61,6 +61,7 @@ export async function createStaffLeave(
   user: { id: string; role: string },
   input: { startTime: string; endTime: string; reason: string },
 ) {
+  if (user.role === "COACH") throw new AppError("Vui lòng gửi yêu cầu đổi huấn luyện viên theo buổi học.", 400);
   if (user.role !== "COACH" && user.role !== "RECEPTIONIST")
     throw new AppError("Only facility staff can submit leave", 403);
   const trimmedReason = input.reason?.trim();

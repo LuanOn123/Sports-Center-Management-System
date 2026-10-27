@@ -48,6 +48,7 @@ const audited = new Set([
   "Payment",
   "Attendance",
   "LeaveRequest",
+  "CoachChangeRequest",
   "Issue",
   "FacilityStaff",
   "SubjectRequirement",

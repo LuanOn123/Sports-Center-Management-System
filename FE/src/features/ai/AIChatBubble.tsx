@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { Bot, Send } from "lucide-react";
 import { Modal } from "../../shared/ui";
 import { AIMarkdown } from "./AIMarkdown";
@@ -117,19 +118,27 @@ export function AIChatConversation({
   );
 }
 
-export function AIChatBubble() {
+export function AIChatBubble({
+  launcher,
+}: {
+  launcher?: (launch: () => void) => ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const [history, setHistory] = useState<AIMessage[]>([]);
   return (
     <>
-      <button
-        className="ai-fab"
-        aria-label="Mở trợ lý AI"
-        aria-haspopup="dialog"
-        onClick={() => setOpen(true)}
-      >
-        <Bot size={24} />
-      </button>
+      {launcher ? (
+        launcher(() => setOpen(true))
+      ) : (
+        <button
+          className="ai-fab"
+          aria-label="Mở trợ lý AI"
+          aria-haspopup="dialog"
+          onClick={() => setOpen(true)}
+        >
+          <Bot size={24} />
+        </button>
+      )}
       {open && (
         <Modal
           title="Trợ Lý Sports Center"

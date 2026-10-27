@@ -25,8 +25,11 @@ import { readAttendanceReport } from "../attendance/reception-attendance.service
 import { enqueueNotification, flushNotificationOutbox } from "../notifications/outbox.service.js";
 import type { NotificationTypeEnum } from "../notifications/notifications.service.js";
 import { assertCanScheduleInTerm } from "../terms/terms.service.js";
+import { listCoachChanges, requestableSessions, createCoachChange, replacementCandidates, decideCoachChange } from "./coach-changes.service.js";
 const router = Router();
 const staff = authorize("ADMIN", "MANAGER");
+const coachChangeInput = z.object({ scheduleId: z.string().min(1), reason: z.string().trim().min(3).max(1000) });
+const coachChangeDecision = z.object({ status: z.enum(["APPROVED", "REJECTED"]), reason: z.string().trim().min(3).max(1000), coachId: z.string().min(1).optional() });
 const quantities = z.object({
   values: z.record(
     z.string().trim().min(1).max(80),
@@ -128,6 +131,12 @@ route("get", "/coaches/:id/specializations", [], async (req) => {
   const coach = await assertCoachFacility(id(req));
   return prisma.coachSpecialization.findMany({ where: { coachId: coach.id } });
 });
+route("get", "/coach-change-requests", [authorizeExact("COACH", "MANAGER", "ADMIN")], (req) => listCoachChanges(req.user));
+route("get", "/coach-change-requests/sessions", [authorizeExact("COACH")], (req) => requestableSessions(req.user));
+route("post", "/coach-change-requests", [authorizeExact("COACH"), validate(coachChangeInput)], (req) => createCoachChange(req.user, req.body));
+route("get", "/coach-change-requests/:id/candidates", [authorizeExact("MANAGER")], (req) => replacementCandidates(id(req)));
+route("patch", "/coach-change-requests/:id", [authorizeExact("MANAGER"), validate(coachChangeDecision)], (req) => decideCoachChange(req.user, id(req), req.body));
+
 route("get", "/leave-requests/:id/affected", [staff], async (req) => {
   const leave = await prisma.leaveRequest.findUnique({
     where: { id: id(req) },
@@ -441,7 +450,7 @@ route(
 route(
   "post",
   "/leave-requests",
-  [authorizeExact("COACH", "RECEPTIONIST"), validate(interval)],
+  [authorizeExact("RECEPTIONIST"), validate(interval)],
   (req) => createStaffLeave(req.user, req.body),
 );
 const decision = z.object({

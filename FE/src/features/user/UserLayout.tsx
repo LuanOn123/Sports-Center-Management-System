@@ -3,13 +3,10 @@ import { MemberPortalContext } from "../../shared/ui";
 import {
   LayoutDashboard,
   CreditCard,
-  ReceiptText,
   Search,
   BookOpen,
   CalendarDays,
-  CircleCheck,
   Bell,
-  UserRound,
 } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
@@ -69,17 +66,12 @@ const Notifications = lazy(() =>
 );
 const items = [
   ["dashboard", "Tổng quan hội viên", LayoutDashboard],
-  ["membership", "Gói thành viên", CreditCard],
-  ["payments", "Thanh toán & hóa đơn", ReceiptText],
-  ["classes", "Khám phá lớp học", Search],
-  ["my-classes", "Lớp của tôi", BookOpen],
   ["schedule", "Lịch tập", CalendarDays],
-  ["attendance", "Điểm danh", CircleCheck],
-  ["checkin", "Check-in cơ sở", CircleCheck],
+  ["my-classes", "Lớp của tôi", BookOpen],
+  ["classes", "Khám phá lớp học", Search],
+  ["membership", "Gói thành viên", CreditCard],
   ["waitlist", "Danh sách chờ", BookOpen],
   ["notifications", "Thông báo", Bell],
-  ["support", "Yêu cầu hỗ trợ", Bell],
-  ["profile", "Tài khoản", UserRound],
 ] as const;
 export function UserLayout(props: PortalProps) {
   return (
@@ -92,7 +84,10 @@ export function UserLayout(props: PortalProps) {
           <div className="member-content">
             <Suspense fallback={<Loading variant="page" />}>
               <Routes>
-                <Route path="/member/support" element={<OperationsPage kind="issues" role="MEMBER" />} />
+                <Route
+                  path="/member/support"
+                  element={<OperationsPage kind="issues" role="MEMBER" />}
+                />
                 <Route
                   path="/member/dashboard"
                   element={

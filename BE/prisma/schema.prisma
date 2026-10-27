@@ -196,6 +196,7 @@ model Facility {
   slots Slot[]
   patterns SchedulePattern[]
   leaves LeaveRequest[]
+  coachChangeRequests CoachChangeRequest[]
   issues Issue[]
   auditLogs AuditLog[]
   staffs      FacilityStaff[]
@@ -247,6 +248,8 @@ model MemberProfile {
 }
 
 model CoachProfile {
+  changeRequests CoachChangeRequest[] @relation("ChangeRequester")
+  replacementRequests CoachChangeRequest[] @relation("ChangeReplacement")
   id              String   @id @default(uuid())
   userId          String   @unique
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -425,6 +428,7 @@ model ClassMember {
 }
 
 model ClassSchedule {
+  coachChangeRequests CoachChangeRequest[]
   coachId String?
   id        String         @id @default(uuid())
   classId   String
@@ -863,6 +867,9 @@ model CoachFeedback {
 // ─────────────────────────────────────────
 
 enum NotificationType {
+  COACH_CHANGE_REQUESTED
+  COACH_CHANGE_APPROVED
+  COACH_CHANGE_REJECTED
   // ── Tài khoản ──
   MEMBER_REGISTERED // Chào mừng hội viên mới đăng ký
   // ── Chat ──
@@ -968,6 +975,31 @@ model SchedulePattern {
 
   @@index([termId])
 }
+model CoachChangeRequest {
+  id                 String        @id @default(uuid())
+  facilityId         String
+  facility           Facility      @relation(fields: [facilityId], references: [id])
+  scheduleId         String
+  schedule           ClassSchedule @relation(fields: [scheduleId], references: [id])
+  requesterCoachId   String
+  requester          CoachProfile  @relation("ChangeRequester", fields: [requesterCoachId], references: [id])
+  replacementCoachId String?
+  replacement        CoachProfile? @relation("ChangeReplacement", fields: [replacementCoachId], references: [id])
+  requestedStartTime DateTime
+  requestedEndTime   DateTime
+  reason             String
+  status             String        @default("PENDING")
+  decisionReason     String?
+  decidedBy          String?
+  decidedAt          DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([facilityId, status])
+  @@index([requesterCoachId, createdAt])
+  @@index([scheduleId])
+}
+
 model LeaveRequest {
   id String @id @default(uuid())
   facilityId String
