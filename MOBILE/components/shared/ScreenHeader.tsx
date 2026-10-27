@@ -1,5 +1,5 @@
 // components/shared/ScreenHeader.tsx
-// Header màn hình, 2 kiểu:
+// Header màn hình, 2 kiểu — CHỈ có tiêu đề, không có dòng chữ phụ bên dưới:
 // - 'tab'  : màn gốc của tab — tiêu đề lớn căn trái, không có nút quay lại, mặc định có chuông thông báo
 // - 'stack': màn con — nút quay lại + tiêu đề giữa (mặc định)
 
@@ -14,7 +14,6 @@ import { ROUTES } from '../../navigation/routes';
 
 interface ScreenHeaderProps {
   title: string;
-  subtitle?: string;
   variant?: 'stack' | 'tab';
   showBack?: boolean;
   onBackPress?: () => void;
@@ -24,7 +23,6 @@ interface ScreenHeaderProps {
 
 export function ScreenHeader({
   title,
-  subtitle,
   variant = 'stack',
   showBack = true,
   onBackPress,
@@ -38,10 +36,7 @@ export function ScreenHeader({
     const right = rightAction === undefined ? <NotificationBell /> : rightAction;
     return (
       <View className="flex-row items-center justify-between px-xl pb-md bg-bg-primary" style={{ paddingTop: topPadding }}>
-        <View className="flex-1 mr-md">
-          <Text className="text-xxl font-bevn-bold text-text-primary" numberOfLines={1}>{title}</Text>
-          {Boolean(subtitle) && <Text className="text-sm text-text-secondary font-bevn-regular mt-0.5" numberOfLines={1}>{subtitle}</Text>}
-        </View>
+        <Text className="flex-1 mr-md text-xxl font-bevn-bold text-text-primary" numberOfLines={1}>{title}</Text>
         {right}
       </View>
     );
@@ -68,9 +63,6 @@ export function ScreenHeader({
 
       <View className="flex-1 items-center px-xs">
         <Text className="text-lg font-bevn-bold text-text-primary text-center" numberOfLines={1}>{title}</Text>
-        {Boolean(subtitle) && (
-          <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular text-center" numberOfLines={1}>{subtitle}</Text>
-        )}
       </View>
 
       {rightAction ? <View className="w-10 h-10 justify-center items-center">{rightAction}</View> : <View className="w-10 h-10" />}

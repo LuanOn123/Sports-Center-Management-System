@@ -37,6 +37,17 @@ export function resolveNotificationRoute(item: AppNotification): Href | null {
     case 'ATTENDANCE_PENALTY':
     case 'ATTENDANCE_PENALTY_REVOKED':
       return ROUTES.myAttendance;
+    // Đổi HLV theo buổi: duyệt → mở buổi học (người gửi lẫn HLV thay thế đều nhận); từ chối → danh sách yêu cầu của HLV
+    case 'COACH_CHANGE_APPROVED': {
+      const scheduleId = metaString(item, 'scheduleId');
+      return scheduleId ? ROUTES.scheduleDetail(scheduleId) : ROUTES.coachChanges;
+    }
+    case 'COACH_CHANGE_REJECTED':
+      return ROUTES.coachChanges;
+    case 'PAYMENT_SUCCESS':
+    case 'PAYMENT_FAILED':
+    case 'PAYMENT_REFUNDED':
+      return ROUTES.payments;
     // Chưa có màn hình xem kế hoạch tập cho Member — chỉ đánh dấu đã đọc.
     case 'TRAINING_PLAN_ASSIGNED':
     default:

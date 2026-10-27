@@ -123,7 +123,6 @@ export default function MyAttendanceScreen() {
     <View className="flex-1 bg-bg-primary">
       <ScreenHeader
         title="Chuyên cần & Điểm danh"
-        subtitle="Tỉ lệ tham gia & lịch sử điểm danh"
         onBackPress={handleGoBack}
       />
 

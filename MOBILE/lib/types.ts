@@ -199,6 +199,19 @@ export interface ClassCoach {
   };
 }
 
+/** GET /coaches/:userId — hồ sơ HLV (id là mã NGƯỜI DÙNG, không phải mã hồ sơ HLV ở ClassCoach.coachId) */
+export interface CoachDetails {
+  id: string;
+  fullName: string;
+  avatarUrl?: string | null;
+  coachProfile?: {
+    id: string;
+    bio?: string | null;
+    specialization?: string | null;
+    experienceYears?: number | null;
+  } | null;
+}
+
 export interface Class {
   id: string;
   name: string;
@@ -391,6 +404,13 @@ export type NotificationType =
   | 'SCHEDULE_ROOM_CHANGED'
   | 'PAYMENT_SUCCESS'
   | 'PAYMENT_REFUNDED'
+  | 'PAYMENT_FAILED'
+  | 'LEAVE_REQUEST_SUBMITTED'
+  | 'LEAVE_REQUEST_APPROVED'
+  | 'LEAVE_REQUEST_REJECTED'
+  | 'COACH_CHANGE_REQUESTED'
+  | 'COACH_CHANGE_APPROVED'
+  | 'COACH_CHANGE_REJECTED'
   | 'GENERAL';
 
 export interface AppNotification {
@@ -457,8 +477,21 @@ export interface CoursePlanSlot {
   roomId: string; roomName: string; sessionCount: number;
 }
 
+/** Kỳ học (BE /terms/current, course.term của /classes/:id/course-plan) */
+export interface Term {
+  id: string;
+  code?: string;
+  name: string;
+  status: 'PLANNING' | 'OPEN_REGISTRATION' | 'IN_PROGRESS' | 'CLOSED';
+  startDate: string;
+  endDate: string;
+  registrationStartDate: string;
+  registrationEndDate: string;
+}
+
 export interface CoursePlan {
   course: null | {
+    term?: Term | null;
     classId: string; className: string; totalSessions: number; firstSessionStart: string; lastSessionEnd: string;
     weekdayLabels: string[]; capacity: number; slots: CoursePlanSlot[];
     availability: { minRemainingSlots: number; fullSessionCount: number; isFullyBookable: boolean };

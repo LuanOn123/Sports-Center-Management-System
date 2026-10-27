@@ -25,7 +25,7 @@ const MEMBER_ITEMS: QuickAccessItem[] = [
 
 const COACH_ITEMS: QuickAccessItem[] = [
   { icon: 'class', label: 'Lớp phụ trách', route: ROUTES.classes, color: Colors.feature.lime },
-  { icon: 'event-busy', label: 'Xin nghỉ', route: ROUTES.coachLeave, color: Colors.feature.amber },
+  { icon: 'swap-horiz', label: 'Đổi HLV', route: ROUTES.coachChanges, color: Colors.feature.amber },
   { icon: 'star', label: 'Đánh giá', route: ROUTES.coachFeedback, color: Colors.feature.pink },
   { icon: 'auto-awesome', label: 'Trợ lý AI', route: ROUTES.aiAssistant, color: Colors.feature.violet },
 ];

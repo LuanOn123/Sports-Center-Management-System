@@ -1,9 +1,10 @@
 // components/classes/ClassesExploreView.tsx
-// Màn Khám phá (hội viên) / Lớp dạy (HLV): tiêu đề → tìm kiếm → lọc "Môn tập" + "Hạng lớp" (có nhãn)
+// Màn Khám phá (hội viên) / Lớp dạy (HLV): tiêu đề → tìm kiếm → hai hàng chip lọc môn tập + hạng lớp (không nhãn)
 // → số kết quả → danh sách thẻ lớp (bấm cả thẻ để xem chi tiết và đăng ký).
 
 import React, { useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Pressable } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon } from '../shared/Icon';
 import { ScreenHeader } from '../shared/ScreenHeader';
@@ -16,13 +17,9 @@ import { Colors, Spacing } from '../../constants/theme';
 import { Haptic } from '../../lib/haptics';
 import { ROUTES } from '../../navigation/routes';
 
-function FilterLabel({ children }: { children: string }) {
-  return <Text className="text-xs text-text-muted font-bevn-medium px-xl mb-xs">{children}</Text>;
-}
-
 export function ClassesExploreView() {
   const router = useRouter();
-  const searchInputRef = useRef<TextInput>(null);
+  const searchInputRef = useRef<TextInputInstance>(null);
   const explore = useClassesExplore();
   const { isCoach, classes } = explore;
 
@@ -31,11 +28,7 @@ export function ClassesExploreView() {
   return (
     <View className="flex-1 bg-bg-primary">
       {/* Hội viên: tab Khám phá; HLV: màn con "Lớp phụ trách" mở từ Tài khoản / Trang chủ */}
-      <ScreenHeader
-        variant={isCoach ? 'stack' : 'tab'}
-        title={isCoach ? 'Lớp phụ trách' : 'Khám phá'}
-        subtitle={isCoach ? 'Các lớp bạn đang phụ trách' : 'Tìm và đăng ký lớp tập phù hợp'}
-      />
+      <ScreenHeader variant={isCoach ? 'stack' : 'tab'} title={isCoach ? 'Lớp phụ trách' : 'Khám phá'} />
 
       {/* Tìm kiếm */}
       <View className="px-xl pt-xl mb-md">
@@ -61,11 +54,12 @@ export function ClassesExploreView() {
         </Pressable>
       </View>
 
-      {/* Lọc theo môn tập */}
-      <FilterLabel>Môn tập</FilterLabel>
+      {/* Lọc theo môn tập — chỉ có chip, không có nhãn chữ */}
       <View>
         <FlatList
           horizontal
+          accessibilityLabel="Lọc theo môn tập"
+          style={{ flexGrow: 0 }}
           data={sportOptions}
           keyExtractor={(s) => s.id || 'all'}
           showsHorizontalScrollIndicator={false}
@@ -77,8 +71,7 @@ export function ClassesExploreView() {
         />
       </View>
 
-      {/* Lọc theo hạng lớp (lớp Cao cấp cần gói Premium) */}
-      <FilterLabel>Hạng lớp</FilterLabel>
+      {/* Lọc theo hạng lớp (lớp Cao cấp cần gói Premium) — chỉ có chip, không có nhãn chữ */}
       <View className="flex-row flex-wrap px-xl gap-sm mb-md">
         {CLASS_TYPE_FILTERS.map((type) => (
           <FilterChip key={type ?? 'all'} label={type ? CLASS_TYPE_LABEL[type] : 'Tất cả'} active={explore.classType === type} onPress={() => explore.setClassType(type)} />
@@ -123,7 +116,7 @@ export function ClassesExploreView() {
           ListFooterComponent={
             classes.length > 0 ? (
               <Text className="text-xs text-text-muted font-bevn-regular text-center mt-sm">Đã hiển thị tất cả {classes.length} lớp</Text>
-            ) : null
+            ) : undefined
           }
           renderItem={({ item }) => (
             <ClassCard

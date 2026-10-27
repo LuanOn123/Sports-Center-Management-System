@@ -26,6 +26,13 @@ function useSubscriptions(memberId: string | undefined) {
   });
 }
 
+/** Chỉ gói đang hiệu lực (dùng chung cache 'subscriptions' với useMembershipData) */
+export function useActiveSubscription(memberId: string | undefined) {
+  const subsQuery = useSubscriptions(memberId);
+  const subscriptions: Subscription[] = Array.isArray(subsQuery.data?.data) ? subsQuery.data!.data : [];
+  return { activeSub: effectiveSubscription(subscriptions) ?? null, isLoading: subsQuery.isLoading };
+}
+
 // ─── Combined hook — computes derived state ───────────────────────────────────
 
 export function useMembershipData(memberId: string | undefined) {

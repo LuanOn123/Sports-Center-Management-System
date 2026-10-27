@@ -33,6 +33,13 @@ const TYPE_ICON: Record<NotificationType, React.ComponentProps<typeof Icon>['nam
   SCHEDULE_ROOM_CHANGED: 'place',
   PAYMENT_SUCCESS: 'payments',
   PAYMENT_REFUNDED: 'currency-exchange',
+  PAYMENT_FAILED: 'error-outline',
+  LEAVE_REQUEST_SUBMITTED: 'event-note',
+  LEAVE_REQUEST_APPROVED: 'event-available',
+  LEAVE_REQUEST_REJECTED: 'event-busy',
+  COACH_CHANGE_REQUESTED: 'swap-horiz',
+  COACH_CHANGE_APPROVED: 'swap-horiz',
+  COACH_CHANGE_REJECTED: 'swap-horiz',
   GENERAL: 'notifications',
 };
 
@@ -73,7 +80,6 @@ export default function NotificationsScreen() {
     <View className="flex-1 bg-bg-primary">
       <ScreenHeader
         title="Thông báo"
-        subtitle="Cập nhật và tin tức từ trung tâm"
         rightAction={
           // Nút icon vừa ô 40×40 của header (nút chữ cũ bị bóp méo)
           hasUnread ? (

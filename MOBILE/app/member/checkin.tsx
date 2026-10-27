@@ -12,7 +12,7 @@ export default function CheckInScreen() {
   const cache = useQueryClient();
   const visits = useQuery({ queryKey: ['facility-visits', currentFacility?.id], enabled: hasProfile, queryFn: ({ signal }) => getMyVisits(signal) });
   const checkIn = useMutation({ mutationFn: checkInFacility, onSuccess: () => cache.invalidateQueries({ queryKey: ['facility-visits'] }) });
-  return <WorkflowScreen title="Check-in cơ sở" subtitle={currentFacility?.name} refreshing={visits.isRefetching} onRefresh={() => { void visits.refetch(); }}>
+  return <WorkflowScreen title="Check-in cơ sở" refreshing={visits.isRefetching} onRefresh={() => { void visits.refetch(); }}>
     <WorkflowCard title="Ghi nhận vào cửa"><WorkflowText>Cần gói còn hiệu lực; gói FREE cũng được vào cửa. Check-in lặp trong 5 phút sẽ trả lại lượt vừa ghi nhận.</WorkflowText>
       <WorkflowButton title="Check-in vào cơ sở" onPress={() => checkIn.mutate()} busy={checkIn.isPending} disabled={!currentFacility || !hasProfile} />
       <WorkflowState error={checkIn.error} />

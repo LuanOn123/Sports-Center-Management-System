@@ -47,6 +47,16 @@ export function isEffectiveSubscription(
   return s.status === 'ACTIVE' && Date.parse(s.startDate) <= now && Date.parse(s.endDate) >= now;
 }
 
+/** Gói FREE do hệ thống cấp khi tạo tài khoản (tier lưu trên subscription, rồi tới tier của gói) */
+export function isFreeSubscription(sub: { tier?: string; plan?: { tier?: string } | null } | null | undefined) {
+  return Boolean(sub) && (sub!.tier ?? sub!.plan?.tier) === 'FREE';
+}
+
+/** Hội viên tự hủy được: có gói và không phải gói FREE (web MembershipPage chỉ hiện "Hủy gói" khi tier !== FREE) */
+export function canSelfCancelSubscription(sub: { tier?: string; plan?: { tier?: string } | null } | null | undefined) {
+  return Boolean(sub) && !isFreeSubscription(sub);
+}
+
 /** Gói hiệu lực của hội viên — ưu tiên PREMIUM, rồi gói hết hạn muộn nhất */
 export function effectiveSubscription<
   T extends { status: string; startDate: string; endDate: string; tier?: string },

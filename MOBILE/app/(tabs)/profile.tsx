@@ -8,6 +8,7 @@ import {
   Platform,
   Keyboard,
 } from 'react-native';
+import type { ScrollViewInstance } from 'react-native';
 import clsx from 'clsx';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -58,7 +59,7 @@ export default function ProfileScreen() {
   const [tab, setTab] = useState<'info' | 'security'>('info');
   const [isInputFocused, setIsInputFocused] = useState(false);
 
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
   const inputRefs = useRef<Record<string, React.RefObject<any>>>({});
 
   const getInputRef = (key: string): React.RefObject<any> => {
@@ -211,10 +212,7 @@ export default function ProfileScreen() {
 
   return (
     <KeyboardAwareView className="flex-1 bg-bg-primary">
-      <ScreenHeader
-        title="Thông tin cá nhân"
-        subtitle="Thông tin tài khoản & cài đặt bảo mật"
-      />
+      <ScreenHeader title="Thông tin cá nhân" />
 
       <ScrollView
         ref={scrollViewRef}
@@ -363,7 +361,7 @@ export default function ProfileScreen() {
             </View>
             <TouchableOpacity
               className={clsx('bg-primary rounded-md p-md items-center mt-sm', pwdSubmitting && 'opacity-60')}
-              onPress={handlePwd((data) => changePwd.mutate(data))}
+              onPress={() => { void handlePwd((data) => changePwd.mutate(data))(); }}
               disabled={pwdSubmitting}
             >
               {pwdSubmitting ? <ActivityIndicator color={Colors.text.inverse} /> : <Text className="text-text-inverse font-bold font-bevn-bold text-md">Đổi mật khẩu</Text>}

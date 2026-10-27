@@ -7,6 +7,7 @@ import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon } from './Icon';
 import { ScreenHeader } from './ScreenHeader';
+import { WrongFacilityCard } from './WrongFacilityCard';
 import { useScheduleDetail } from '../../hooks/shared/useScheduleDetail';
 import { Colors, Spacing } from '../../constants/theme';
 import { SCHEDULE_STATUS_COLOR, SCHEDULE_STATUS_LABEL } from '../../constants/schedule';
@@ -37,7 +38,7 @@ function InfoTile({ icon, label, value, danger }: { icon: string; label: string;
 
 export function ScheduleDetailView({ scheduleId, renderActions }: ScheduleDetailViewProps) {
   const router = useRouter();
-  const { schedule: s, isLoading, isFull, isPast, slotsLeft } = useScheduleDetail(scheduleId);
+  const { schedule: s, facilityScope, isLoading, isFull, isPast, slotsLeft } = useScheduleDetail(scheduleId);
 
   const handleGoBack = () => {
     if (router.canGoBack()) router.back();
@@ -45,6 +46,17 @@ export function ScheduleDetailView({ scheduleId, renderActions }: ScheduleDetail
   };
 
   const header = <ScreenHeader title={s?.class?.name ?? 'Chi tiết buổi học'} onBackPress={handleGoBack} />;
+
+  if (facilityScope.wrongFacility && !s) {
+    return (
+      <View className="flex-1 bg-bg-primary">
+        {header}
+        <View className="p-xl">
+          <WrongFacilityCard subject="buổi học" facility={facilityScope} onBack={handleGoBack} />
+        </View>
+      </View>
+    );
+  }
 
   if (isLoading || !s) {
     return (

@@ -13,7 +13,7 @@ export default function SupportScreen() {
   const list = useQuery({ queryKey: ['issues', currentFacility?.id], queryFn: ({ signal }) => getMyIssues(signal) });
   const create = useMutation({ mutationFn: () => createIssue({ title: title.trim(), description: description.trim() }), onSuccess: () => { setTitle(''); setDescription(''); void cache.invalidateQueries({ queryKey: ['issues'] }); } });
   const remove = useMutation({ mutationFn: deleteIssue, onSuccess: () => cache.invalidateQueries({ queryKey: ['issues'] }) });
-  return <WorkflowScreen title="Yêu cầu hỗ trợ" subtitle={currentFacility?.name} refreshing={list.isRefetching} onRefresh={() => { void list.refetch(); }}>
+  return <WorkflowScreen title="Yêu cầu hỗ trợ" refreshing={list.isRefetching} onRefresh={() => { void list.refetch(); }}>
     <WorkflowCard title="Gửi yêu cầu"><WorkflowField label="Tiêu đề" value={title} onChangeText={setTitle} maxLength={120} editable={!create.isPending} />
       <WorkflowField label="Nội dung" value={description} onChangeText={setDescription} multiline maxLength={3000} editable={!create.isPending} />
       <WorkflowButton title="Gửi yêu cầu" busy={create.isPending} disabled={title.trim().length < 3 || description.trim().length < 5} onPress={() => create.mutate()} />

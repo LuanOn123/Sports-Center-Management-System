@@ -28,6 +28,14 @@ export const SUBSCRIPTION_STATUS_COLOR: Record<SubscriptionStatus, string> = {
   SCHEDULED: Colors.status.scheduled,
 };
 
+/** Thẻ "Tài khoản Free" ở màn Gói thành viên (web MembershipPage: membership-free-summary) */
+export const FREE_PLAN_TEXT = {
+  eyebrow: 'GÓI HIỆN TẠI',
+  title: 'Tài khoản Free',
+  description: 'Được cấp tự động khi tạo tài khoản. Bạn có thể check-in cơ sở; gói Free chưa bao gồm quyền đăng ký lớp học.',
+  hint: 'Chọn một gói bên dưới để mở quyền đăng ký lớp học.',
+} as const;
+
 /** Hẹn ngày kích hoạt gói tối đa bao nhiêu ngày (BE: MAX_SCHEDULE_DAYS trong subscription-purchase) */
 export const PLAN_SCHEDULE_MAX_DAYS = 60;
 

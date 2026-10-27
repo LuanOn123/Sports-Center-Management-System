@@ -11,9 +11,6 @@ export interface FacilityVisit {
 export interface SupportIssue {
   id: string; title: string; description: string; status: string; response?: string; createdAt?: string;
 }
-export interface LeaveRequest {
-  id: string; startTime: string; endTime: string; reason: string; status: string; decisionReason?: string;
-}
 export interface PaymentRecord {
   id: string; amount: string; status: string; method: string; transactionCode?: string; paidAt?: string; createdAt: string;
 }
@@ -29,8 +26,6 @@ export const checkInFacility = () => api.post<FacilityVisit>('/facility-visits/c
 export const getMyIssues = (signal?: AbortSignal) => allPages<SupportIssue>('/issues', {}, signal);
 export const createIssue = (body: { title: string; description: string }) => api.post<SupportIssue>('/issues', body);
 export const deleteIssue = (id: string) => api.delete(`/issues/${encodeURIComponent(id)}`);
-export const getMyLeaveRequests = (signal?: AbortSignal) => allPages<LeaveRequest>('/leave-requests', {}, signal);
-export const requestLeave = (body: { startTime: string; endTime: string; reason: string }) => api.post<LeaveRequest>('/leave-requests', body);
 export const getMemberInvoices = (memberId: string, signal?: AbortSignal) => allPages<Invoice>(`/invoices/member/${encodeURIComponent(memberId)}`, {}, signal);
 export const getInvoice = (id: string) => api.get<Invoice>(`/invoices/${encodeURIComponent(id)}`);
 export const getPayment = (id: string) => api.get<PaymentRecord>(`/payments/${encodeURIComponent(id)}`);

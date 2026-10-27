@@ -18,7 +18,7 @@ export default function MembershipPlansScreen() {
   if (!memberId) {
     return (
       <View className="flex-1 bg-bg-primary">
-        <ScreenHeader title="Gói thành viên" subtitle="Các gói tập & quyền lợi hội viên" />
+        <ScreenHeader title="Gói thành viên" />
         <ScrollView contentContainerStyle={{ padding: Spacing.xl }}>
           <MissingMemberProfile />
         </ScrollView>

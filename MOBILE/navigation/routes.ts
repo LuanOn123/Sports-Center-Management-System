@@ -31,7 +31,7 @@ export const ROUTES = {
   waitlist: '/member/waitlist',
   support: '/member/support',
   payments: '/member/payments',
-  coachLeave: '/coach/leave',
+  coachChanges: '/coach/coach-changes',
   coachFeedback: '/coach/feedback',
   coachMember: (id: string): Href => ({ pathname: '/coach/member/[id]', params: { id } }),
   aiAssistant: '/assistant',

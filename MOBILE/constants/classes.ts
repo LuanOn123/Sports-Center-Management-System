@@ -31,3 +31,16 @@ export const SESSION_TONE_COLOR = {
 
 /** Còn ít chỗ hơn hoặc bằng số này thì báo "Sắp kín" */
 export const LOW_SLOT_THRESHOLD = 3;
+
+/** Khung "Quyền đăng ký lớp học" ở Lớp của tôi (web MyClassesPage) — câu chữ khớp BE concurrentClassLimitMessage */
+export const ENROLLMENT_QUOTA_TEXT = {
+  lockedTitle: 'Mở quyền đăng ký lớp học',
+  lockedFree: 'Tài khoản Free chưa bao gồm lớp học. Chọn gói Membership hoặc Premium để bắt đầu đăng ký.',
+  lockedNoPlan: 'Bạn cần một gói tập còn hiệu lực để đăng ký lớp học.',
+  viewPlans: 'Xem các gói tập',
+  title: 'Quyền đăng ký lớp học',
+  remaining: (n: number) => `Bạn có thể đăng ký thêm ${n} lớp khác nhau.`,
+  full: 'Bạn đã đăng ký đủ số lớp của gói hiện tại. Hãy hoàn thành hoặc hủy lớp chưa bắt đầu trước khi đăng ký lớp mới.',
+  note: 'Mỗi lớp có nhiều buổi vẫn chỉ tính là một lớp. Giới hạn áp dụng chung tại mọi cơ sở.',
+  usedLabel: 'Lớp đang đăng ký',
+} as const;

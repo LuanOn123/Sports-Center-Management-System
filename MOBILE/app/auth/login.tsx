@@ -143,7 +143,7 @@ export default function LoginScreen() {
             accessibilityLabel="Đăng nhập"
             accessibilityState={{ disabled: isSubmitting || !captchaToken, busy: isSubmitting }}
             className={clsx('bg-primary rounded-md p-md items-center justify-center mt-sm', (isSubmitting || !captchaToken) && 'opacity-60')}
-            onPress={handleSubmit(onSubmit)}
+            onPress={() => { void handleSubmit(onSubmit)(); }}
             disabled={isSubmitting || !captchaToken}
             activeOpacity={0.85}
           >

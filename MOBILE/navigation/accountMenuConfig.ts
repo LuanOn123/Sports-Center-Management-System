@@ -58,7 +58,7 @@ const COACH_MENU: AccountMenuGroup[] = [
     title: 'Giảng dạy',
     items: [
       { icon: 'class', label: 'Lớp phụ trách', route: ROUTES.classes, color: Colors.feature.lime },
-      { icon: 'event-busy', label: 'Xin nghỉ phép', route: ROUTES.coachLeave, color: Colors.feature.amber },
+      { icon: 'swap-horiz', label: 'Đổi HLV theo buổi', route: ROUTES.coachChanges, color: Colors.feature.amber },
       { icon: 'star', label: 'Đánh giá của hội viên', route: ROUTES.coachFeedback, color: Colors.feature.pink },
     ],
   },

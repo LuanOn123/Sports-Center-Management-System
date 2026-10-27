@@ -5,8 +5,11 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Icon } from '../../shared/Icon';
 import { Colors } from '../../../constants/theme';
-import { TIER_ICON, TIER_LABEL } from '../../../constants/membership';
+import { FREE_PLAN_TEXT, TIER_ICON, TIER_LABEL } from '../../../constants/membership';
 import { formatDate } from '../../../lib/format';
+import { isFreeSubscription } from '../../../lib/businessRules';
+import { lateRegistration, lateRegistrationHint } from '../../../lib/termRegistration';
+import { TERM_NOTICE_COLOR } from '../../../constants/terms';
 import type { MembershipTier, Subscription } from '../../../lib/types';
 
 interface CurrentMembershipCardProps {
@@ -30,7 +33,23 @@ export function CurrentMembershipCard({ activeSub, tier, daysRemaining, onCancel
     );
   }
 
+  // Gói FREE hệ thống cấp: không có hạn dùng và không hủy được → thẻ tóm tắt, không có nút hủy (giống web)
+  if (isFreeSubscription(activeSub)) {
+    return (
+      <View key="membership-free" className="bg-bg-surface rounded-xl p-xl mb-xl border border-border">
+        <Text className="text-xs text-text-muted uppercase tracking-wide mb-sm font-bevn-regular">{FREE_PLAN_TEXT.eyebrow}</Text>
+        <View className="flex-row items-center gap-sm mb-md">
+          <Icon name={TIER_ICON.FREE} size={28} color={Colors.text.muted} />
+          <Text className="text-xxl font-bevn-bold text-text-primary">{FREE_PLAN_TEXT.title}</Text>
+        </View>
+        <Text className="text-sm text-text-secondary font-bevn-regular leading-[20px]">{FREE_PLAN_TEXT.description}</Text>
+        <Text className="text-sm text-primary font-bevn-semibold mt-sm">{FREE_PLAN_TEXT.hint}</Text>
+      </View>
+    );
+  }
+
   const tierColor = Colors.tier[tier];
+  const lateHint = lateRegistrationHint(lateRegistration(activeSub));
   return (
     <View key="membership-active" className="bg-bg-surface rounded-xl p-xl mb-xl border" style={{ borderColor: tierColor + '60' }}>
       <View className="flex-row justify-between items-center mb-xs">
@@ -52,6 +71,12 @@ export function CurrentMembershipCard({ activeSub, tier, daysRemaining, onCancel
           <View className="flex-row items-center gap-1.5">
             <Icon name="schedule" size={16} color={Colors.text.secondary} />
             <Text className="text-sm text-text-secondary font-bevn-regular">Còn {daysRemaining} ngày sử dụng</Text>
+          </View>
+        )}
+        {lateHint && (
+          <View className="flex-row items-start gap-1.5">
+            <Icon name="event-available" size={16} color={TERM_NOTICE_COLOR[lateHint.tone]} style={{ marginTop: 2 }} />
+            <Text className="flex-1 text-sm font-bevn-regular leading-[20px]" style={{ color: TERM_NOTICE_COLOR[lateHint.tone] }}>{lateHint.text}</Text>
           </View>
         )}
       </View>

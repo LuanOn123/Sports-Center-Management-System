@@ -105,10 +105,12 @@ export interface IconProps {
   size?: number;
   color?: string;
   style?: StyleProp<ViewStyle>;
+  /** Tô đầy biểu tượng (lucide chỉ có nét viền; vd. sao đã chọn khác sao chưa chọn khi đánh giá) */
+  filled?: boolean;
 }
 
-export function Icon({ name, size = 24, color = '#000', style }: IconProps) {
+export function Icon({ name, size = 24, color = '#000', style, filled }: IconProps) {
   const LucideIcon = ICON_MAP[name];
-  if (LucideIcon) return <LucideIcon size={size} color={color} style={style} />;
+  if (LucideIcon) return <LucideIcon size={size} color={color} style={style} fill={filled ? color : 'none'} />;
   return <MaterialIcons name={name as never} size={size} color={color} style={style} />;
 }

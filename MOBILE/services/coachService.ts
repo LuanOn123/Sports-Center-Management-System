@@ -3,7 +3,7 @@
 // (API điểm danh nằm ở services/attendanceService.ts)
 
 import { api } from '../lib/api';
-import type { Class, ClassSchedule, Enrollment, ScheduleStatus } from '../lib/types';
+import type { Class, ClassSchedule, CoachDetails, Enrollment, ScheduleStatus } from '../lib/types';
 import { allPages } from '../lib/pagedApi';
 
 const CLASS_BATCH_SIZE = 4; // số lớp gọi song song mỗi lượt (giống FE web)
@@ -19,6 +19,9 @@ export interface ScheduleRange {
 /** GET /classes?coachId= — các lớp HLV được phân công */
 export const getCoachClasses = (coachId: string) =>
   allPages<Class>('/classes', { coachId });
+
+/** GET /coaches/:userId — hồ sơ HLV (tên, ảnh, giới thiệu, chuyên môn, kinh nghiệm); hội viên xem được như web */
+export const getCoachProfile = (userId: string) => api.get<CoachDetails>(`/coaches/${encodeURIComponent(userId)}`);
 
 /** GET /class-schedules?classId=&startAfter=&startBefore= — gom đủ mọi trang của một lớp */
 async function getClassSchedules(classId: string, range: ScheduleRange): Promise<ClassSchedule[]> {

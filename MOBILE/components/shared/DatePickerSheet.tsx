@@ -4,6 +4,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Modal, ScrollView, TouchableOpacity } from 'react-native';
+import type { ScrollViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import clsx from 'clsx';
 import { Icon } from './Icon';
@@ -26,7 +27,7 @@ function PickerColumn({ title, items, selected, onSelect, visible }: {
   onSelect: (value: number) => void;
   visible: boolean;
 }) {
-  const ref = useRef<ScrollView>(null);
+  const ref = useRef<ScrollViewInstance>(null);
   const index = Math.max(0, items.findIndex((i) => i.value === selected));
 
   // Đưa mục đang chọn vào giữa cột khi mở sheet

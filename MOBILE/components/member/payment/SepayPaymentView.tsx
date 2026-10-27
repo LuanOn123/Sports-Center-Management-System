@@ -92,11 +92,7 @@ export function SepayPaymentView({ paymentId, scope }: SepayPaymentViewProps) {
 
   return (
     <View className="flex-1 bg-bg-primary">
-      <ScreenHeader
-        title="Chuyển khoản VietQR"
-        subtitle={checkout ? `Mã đơn ${checkout.orderCode}` : undefined}
-        onBackPress={close}
-      />
+      <ScreenHeader title="Chuyển khoản VietQR" onBackPress={close} />
 
       {phase === 'loading' ? (
         <View className="flex-1 justify-center items-center">
@@ -116,7 +112,7 @@ export function SepayPaymentView({ paymentId, scope }: SepayPaymentViewProps) {
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-          refreshControl={<RefreshControl refreshing={false} onRefresh={() => flow.reload()} tintColor={Colors.primary} />}
+          refreshControl={<RefreshControl refreshing={false} onRefresh={() => { void flow.reload(); }} tintColor={Colors.primary} />}
         >
           {phase === 'review' ? (
             <SepayReviewPanel checkout={checkout} isChecking={flow.isFetching} onCheckAgain={handleCheckAgain} onClose={close} />
