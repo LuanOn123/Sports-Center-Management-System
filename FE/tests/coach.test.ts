@@ -2,6 +2,18 @@ import { beforeEach, expect, it, vi } from "vitest";
 beforeEach(() => {
   vi.stubGlobal("sessionStorage", { getItem: () => "mongo-identities-v1" });
 });
+it("uses complete month boundaries including leap years and year rollover", async () => {
+  const { monthRange, shiftMonth } = await import("../src/features/coach/data");
+  expect(monthRange("2028-02-20")).toEqual({
+    start: "2028-02-01",
+    end: "2028-02-29",
+  });
+  expect(monthRange("2026-02-20").end).toBe("2026-02-28");
+  expect(monthRange("2026-12-31").end).toBe("2026-12-31");
+  expect(shiftMonth("2026-01-31", 1)).toBe("2026-02-01");
+  expect(shiftMonth("2026-12-31", 1)).toBe("2027-01-01");
+  expect(shiftMonth("2026-01-15", -1)).toBe("2025-12-01");
+});
 it("uses the Vietnam calendar day at the UTC midnight boundary", async () => {
   const { dateKey, fmt } = await import("../src/features/coach/data");
   expect(dateKey("2026-09-17T17:30:00Z")).toBe("2026-09-18");

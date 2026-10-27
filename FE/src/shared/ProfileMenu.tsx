@@ -1,18 +1,28 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { ChevronDown, LifeBuoy, ReceiptText, UserRound } from "lucide-react";
+import {
+  ChevronDown,
+  LifeBuoy,
+  LogOut,
+  ReceiptText,
+  UserRound,
+} from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Avatar } from "./Avatar";
 import type { ProfileOk } from "./generated";
 import "./profile-menu.css";
+import { display } from "./config";
 
 export function ProfileMenu({
   user,
   base,
+  onLogout,
 }: {
   user: ProfileOk["data"];
   base: string;
+  onLogout?: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const id = useId();
@@ -49,7 +59,7 @@ export function ProfileMenu({
       >
         <span className="member-profile-name">
           <strong>{user.fullName}</strong>
-          <small>Hội viên</small>
+          <small>{user.role === "STAFF" ? "Lễ tân" : display(user.role)}</small>
         </span>
         <Avatar user={user} interactive={false} />
         <ChevronDown size={14} aria-hidden="true" />
@@ -65,14 +75,35 @@ export function ProfileMenu({
             <UserRound size={18} />
             Hồ sơ cá nhân
           </Link>
-          <Link to={`${base}/payments`}>
-            <ReceiptText size={18} />
-            Thanh toán & hóa đơn
-          </Link>
-          <Link to={`${base}/support`}>
-            <LifeBuoy size={18} />
-            Yêu cầu hỗ trợ
-          </Link>
+          {user.role === "MEMBER" && (
+            <>
+              <Link to={`${base}/payments`}>
+                <ReceiptText size={18} />
+                Thanh toán & hóa đơn
+              </Link>
+              <Link to={`${base}/support`}>
+                <LifeBuoy size={18} />
+                Yêu cầu hỗ trợ
+              </Link>
+            </>
+          )}
+          {user.role !== "MEMBER" && onLogout && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await onLogout();
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              <LogOut size={18} />
+              {busy ? "Đang đăng xuất…" : "Đăng xuất"}
+            </button>
+          )}
         </nav>
       )}
     </div>

@@ -110,6 +110,17 @@ export function monday(day: string) {
   const weekday = new Date(`${day}T12:00:00+07:00`).getUTCDay();
   return addDays(day, -(weekday === 0 ? 6 : weekday - 1));
 }
+export function monthRange(day: string) {
+  const start = day.slice(0, 7) + "-01";
+  const next = new Date(`${start}T12:00:00+07:00`);
+  next.setUTCMonth(next.getUTCMonth() + 1);
+  return { start, end: addDays(dateKey(next.toISOString()), -1) };
+}
+export function shiftMonth(day: string, offset: number) {
+  const next = new Date(`${day.slice(0, 7)}-01T12:00:00+07:00`);
+  next.setUTCMonth(next.getUTCMonth() + offset);
+  return dateKey(next.toISOString());
+}
 export function fmt(value: unknown, time = false) {
   const d = new Date(String(value));
   return Number.isFinite(d.getTime())

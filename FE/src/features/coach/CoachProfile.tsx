@@ -5,7 +5,7 @@ import { api, ApiError } from "../../shared/api";
 import type { PortalProps } from "../../app/RoleRouter";
 import { ErrorState } from "../../shared/ui";
 import { Heading } from "./CoachWorkspace";
-import { dateKey, obj, str, type Row } from "./data";
+import { dateKey, fmt, obj, str, type Row } from "./data";
 import { getFacilityId } from "../../shared/facility";
 import { allPages } from "../../shared/pagedApi";
 import type { CoachSpecialization } from "../../shared/coachEligibility";
@@ -37,6 +37,7 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
   const client = useQueryClient();
   const formRef = useRef<HTMLFormElement>(null);
   const [tab, setTab] = useState("profile");
+  const [editing, setEditing] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState("");
   const [show, setShow] = useState(false);
@@ -45,6 +46,7 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
       api(key, { body }),
     onSuccess: () => {
       if (tab === "password") return;
+      setEditing(false);
       setSuccess(tab === "profile" ? "Đã cập nhật hồ sơ." : "Đã đổi mật khẩu.");
       void client.invalidateQueries({ queryKey: ["me"] });
     },
@@ -131,6 +133,7 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
                 disabled={mutation.isPending}
                 onClick={() => {
                   setTab(v);
+                  setEditing(false);
                   setSuccess("");
                   setErrors({});
                   mutation.reset();
@@ -143,173 +146,250 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
           {tab === "password" && (
             <p>Đổi mật khẩu sẽ đăng xuất khỏi tất cả thiết bị.</p>
           )}
-          <form
-            key={tab}
-            ref={formRef}
-            className="coach-form"
-            noValidate
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (mutation.isPending) return;
-              const f = new FormData(e.currentTarget);
-              setSuccess("");
-              let body: Row;
-              if (tab === "profile") {
-                const phone = String(f.get("phone") || "").trim();
-                body = {
-                  fullName: String(f.get("fullName") || "").trim(),
-                  ...(phone ? { phone } : {}),
-                  ...(f.get("dateOfBirth")
-                    ? { dateOfBirth: String(f.get("dateOfBirth")) }
-                    : {}),
-                  ...(f.get("gender")
-                    ? { gender: String(f.get("gender")) }
-                    : {}),
-                };
-                const next = validateCoachProfile(body);
-                if (Object.keys(next).length) {
-                  setErrors(next);
-                  return;
+          {tab === "profile" && !editing ? (
+            <div className="coach-profile-overview">
+              <div className="coach-calendar-heading">
+                <h2>Thông tin cá nhân</h2>
+                <button
+                  className="button primary"
+                  onClick={() => {
+                    setEditing(true);
+                    setSuccess("");
+                    setErrors({});
+                    mutation.reset();
+                  }}
+                >
+                  Chỉnh sửa thông tin
+                </button>
+              </div>
+              <dl className="coach-profile-facts">
+                <div>
+                  <dt>Họ và tên</dt>
+                  <dd>{user.fullName}</dd>
+                </div>
+                <div>
+                  <dt>Email</dt>
+                  <dd>{user.email}</dd>
+                </div>
+                <div>
+                  <dt>Số điện thoại</dt>
+                  <dd>{str(user.phone)}</dd>
+                </div>
+                <div>
+                  <dt>Ngày sinh</dt>
+                  <dd>
+                    {user.dateOfBirth ? fmt(user.dateOfBirth) : "Chưa cập nhật"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Giới tính</dt>
+                  <dd>
+                    {{ MALE: "Nam", FEMALE: "Nữ", OTHER: "Khác" }[
+                      user.gender || ""
+                    ] || "Chưa cập nhật"}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          ) : (
+            <form
+              key={tab}
+              ref={formRef}
+              className="coach-form"
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (mutation.isPending) return;
+                const f = new FormData(e.currentTarget);
+                setSuccess("");
+                let body: Row;
+                if (tab === "profile") {
+                  const phone = String(f.get("phone") || "").trim();
+                  body = {
+                    fullName: String(f.get("fullName") || "").trim(),
+                    ...(phone ? { phone } : {}),
+                    ...(f.get("dateOfBirth")
+                      ? { dateOfBirth: String(f.get("dateOfBirth")) }
+                      : {}),
+                    ...(f.get("gender")
+                      ? { gender: String(f.get("gender")) }
+                      : {}),
+                  };
+                  const next = validateCoachProfile(body);
+                  if (Object.keys(next).length) {
+                    setErrors(next);
+                    return;
+                  }
+                } else {
+                  const currentPassword = String(
+                      f.get("currentPassword") || "",
+                    ),
+                    newPassword = String(f.get("newPassword") || "");
+                  const next: Record<string, string> = {};
+                  if (!currentPassword)
+                    next.currentPassword = "Nhập mật khẩu hiện tại.";
+                  if (newPassword.length < 6)
+                    next.newPassword = "Mật khẩu mới cần ít nhất 6 ký tự.";
+                  if (newPassword === currentPassword)
+                    next.newPassword =
+                      "Mật khẩu mới phải khác mật khẩu hiện tại.";
+                  if (newPassword !== f.get("confirmPassword"))
+                    next.confirmPassword = "Mật khẩu xác nhận chưa khớp.";
+                  if (Object.keys(next).length) {
+                    setErrors(next);
+                    return;
+                  }
+                  body = { currentPassword, newPassword };
                 }
-              } else {
-                const currentPassword = String(f.get("currentPassword") || ""),
-                  newPassword = String(f.get("newPassword") || "");
-                const next: Record<string, string> = {};
-                if (!currentPassword)
-                  next.currentPassword = "Nhập mật khẩu hiện tại.";
-                if (newPassword.length < 6)
-                  next.newPassword = "Mật khẩu mới cần ít nhất 6 ký tự.";
-                if (newPassword === currentPassword)
-                  next.newPassword =
-                    "Mật khẩu mới phải khác mật khẩu hiện tại.";
-                if (newPassword !== f.get("confirmPassword"))
-                  next.confirmPassword = "Mật khẩu xác nhận chưa khớp.";
-                if (Object.keys(next).length) {
-                  setErrors(next);
-                  return;
-                }
-                body = { currentPassword, newPassword };
-              }
-              setErrors({});
-              mutation.mutate({
-                key:
-                  tab === "profile"
-                    ? "PATCH /auth/me"
-                    : "PATCH /auth/me/change-password",
-                body,
-              });
-            }}
-          >
-            <fieldset disabled={mutation.isPending}>
-              <legend>
-                {tab === "profile" ? "Thông tin cá nhân" : "Bảo mật tài khoản"}
-              </legend>
-              {tab === "profile" ? (
-                <>
-                  <Field name="fullName" label="Họ và tên" errors={errors}>
-                    <input
-                      id="fullName"
-                      name="fullName"
-                      defaultValue={user.fullName}
-                      autoComplete="name"
-                      maxLength={100}
-                      required
-                      aria-invalid={!!errors.fullName}
-                      aria-describedby={
-                        errors.fullName ? "fullName-error" : undefined
-                      }
-                    />
-                  </Field>
-                  <label>
-                    Email
-                    <input value={user.email} readOnly type="email" />
-                    <small>Email đăng nhập do hệ thống quản lý.</small>
-                  </label>
-                  <Field name="phone" label="Số điện thoại" errors={errors}>
-                    <input
-                      id="phone"
-                      name="phone"
-                      defaultValue={user.phone || ""}
-                      autoComplete="tel"
-                      inputMode="tel"
-                      maxLength={15}
-                      aria-invalid={!!errors.phone}
-                      aria-describedby={
-                        errors.phone ? "phone-error" : "coach-phone-help"
-                      }
-                    />
-                    <small id="coach-phone-help">
-                      9–15 ký tự, ví dụ 0901234567. Để trống giữ thông tin hiện
-                      có.
-                    </small>
-                  </Field>
-                  <div className="coach-two">
-                    <Field name="dateOfBirth" label="Ngày sinh" errors={errors}>
+                setErrors({});
+                mutation.mutate({
+                  key:
+                    tab === "profile"
+                      ? "PATCH /auth/me"
+                      : "PATCH /auth/me/change-password",
+                  body,
+                });
+              }}
+            >
+              <fieldset disabled={mutation.isPending}>
+                <legend>
+                  {tab === "profile"
+                    ? "Thông tin cá nhân"
+                    : "Bảo mật tài khoản"}
+                </legend>
+                {tab === "profile" ? (
+                  <>
+                    <Field name="fullName" label="Họ và tên" errors={errors}>
                       <input
-                        id="dateOfBirth"
-                        type="date"
-                        name="dateOfBirth"
-                        defaultValue={
-                          user.dateOfBirth ? dateKey(user.dateOfBirth) : ""
-                        }
-                        aria-invalid={!!errors.dateOfBirth}
+                        id="fullName"
+                        name="fullName"
+                        defaultValue={user.fullName}
+                        autoComplete="name"
+                        maxLength={100}
+                        required
+                        aria-invalid={!!errors.fullName}
                         aria-describedby={
-                          errors.dateOfBirth ? "dateOfBirth-error" : undefined
+                          errors.fullName ? "fullName-error" : undefined
                         }
                       />
                     </Field>
                     <label>
-                      Giới tính
-                      <select name="gender" defaultValue={user.gender || ""}>
-                        <option value="">Chưa cập nhật</option>
-                        <option value="MALE">Nam</option>
-                        <option value="FEMALE">Nữ</option>
-                        <option value="OTHER">Khác</option>
-                      </select>
+                      Email
+                      <input value={user.email} readOnly type="email" />
+                      <small>Email đăng nhập do hệ thống quản lý.</small>
                     </label>
-                  </div>
-                </>
-              ) : (
-                <>
-                  {[
-                    ["currentPassword", "Mật khẩu hiện tại"],
-                    ["newPassword", "Mật khẩu mới"],
-                    ["confirmPassword", "Xác nhận mật khẩu mới"],
-                  ].map(([name, label]) => (
-                    <Field key={name} name={name} label={label} errors={errors}>
+                    <Field name="phone" label="Số điện thoại" errors={errors}>
                       <input
-                        id={name}
-                        name={name}
-                        type={show ? "text" : "password"}
-                        required
-                        autoComplete={
-                          name === "currentPassword"
-                            ? "current-password"
-                            : "new-password"
-                        }
-                        aria-invalid={!!errors[name]}
+                        id="phone"
+                        name="phone"
+                        defaultValue={user.phone || ""}
+                        autoComplete="tel"
+                        inputMode="tel"
+                        maxLength={15}
+                        aria-invalid={!!errors.phone}
                         aria-describedby={
-                          errors[name] ? `${name}-error` : undefined
+                          errors.phone ? "phone-error" : "coach-phone-help"
                         }
                       />
+                      <small id="coach-phone-help">
+                        9–15 ký tự, ví dụ 0901234567. Để trống giữ thông tin
+                        hiện có.
+                      </small>
                     </Field>
-                  ))}
-                  <label className="coach-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={show}
-                      onChange={(e) => setShow(e.target.checked)}
-                    />{" "}
-                    Hiện mật khẩu
-                  </label>
-                </>
-              )}
-              {mutation.error && <ErrorState error={mutation.error} />}
-              <button className="button primary" disabled={mutation.isPending}>
-                {mutation.isPending ? "Đang lưu…" : "Lưu thay đổi"}
-              </button>
-            </fieldset>
-          </form>
+                    <div className="coach-two">
+                      <Field
+                        name="dateOfBirth"
+                        label="Ngày sinh"
+                        errors={errors}
+                      >
+                        <input
+                          id="dateOfBirth"
+                          type="date"
+                          name="dateOfBirth"
+                          defaultValue={
+                            user.dateOfBirth ? dateKey(user.dateOfBirth) : ""
+                          }
+                          aria-invalid={!!errors.dateOfBirth}
+                          aria-describedby={
+                            errors.dateOfBirth ? "dateOfBirth-error" : undefined
+                          }
+                        />
+                      </Field>
+                      <label>
+                        Giới tính
+                        <select name="gender" defaultValue={user.gender || ""}>
+                          <option value="">Chưa cập nhật</option>
+                          <option value="MALE">Nam</option>
+                          <option value="FEMALE">Nữ</option>
+                          <option value="OTHER">Khác</option>
+                        </select>
+                      </label>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {[
+                      ["currentPassword", "Mật khẩu hiện tại"],
+                      ["newPassword", "Mật khẩu mới"],
+                      ["confirmPassword", "Xác nhận mật khẩu mới"],
+                    ].map(([name, label]) => (
+                      <Field
+                        key={name}
+                        name={name}
+                        label={label}
+                        errors={errors}
+                      >
+                        <input
+                          id={name}
+                          name={name}
+                          type={show ? "text" : "password"}
+                          required
+                          autoComplete={
+                            name === "currentPassword"
+                              ? "current-password"
+                              : "new-password"
+                          }
+                          aria-invalid={!!errors[name]}
+                          aria-describedby={
+                            errors[name] ? `${name}-error` : undefined
+                          }
+                        />
+                      </Field>
+                    ))}
+                    <label className="coach-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={show}
+                        onChange={(e) => setShow(e.target.checked)}
+                      />{" "}
+                      Hiện mật khẩu
+                    </label>
+                  </>
+                )}
+                {mutation.error && <ErrorState error={mutation.error} />}
+                <button
+                  className="button primary"
+                  disabled={mutation.isPending}
+                >
+                  {mutation.isPending ? "Đang lưu…" : "Lưu thay đổi"}
+                </button>
+                {tab === "profile" && (
+                  <button
+                    type="button"
+                    className="button"
+                    disabled={mutation.isPending}
+                    onClick={() => {
+                      setEditing(false);
+                      setErrors({});
+                      mutation.reset();
+                    }}
+                  >
+                    Hủy chỉnh sửa
+                  </button>
+                )}
+              </fieldset>
+            </form>
+          )}
           {success && (
             <p role="status" className="success">
               {success}

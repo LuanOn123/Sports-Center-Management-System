@@ -1,4 +1,3 @@
-import { AttendancePage } from "./attendance/AttendancePage";
 import { OperationsPage } from "../operations/OperationsPage";
 import { Navigate, Routes, Route } from "react-router-dom";
 import type { PortalProps } from "../../app/RoleRouter";
@@ -16,7 +15,6 @@ import { ResourcePage } from "../manage/ResourcePage";
 const items = [
   ["dashboard", "Tổng quan"],
   ["members", "Hội viên"],
-  ["attendance", "Chuyên cần"],
   ["membership", "Gói thành viên"],
   ["orders", "Bán gói tại quầy"],
   ["classes", "Đăng ký lớp"],
@@ -31,7 +29,10 @@ export function ReceptionLayout(props: PortalProps) {
   return (
     <PortalLayout {...props} title="Lễ tân" base="/receptionist" items={items}>
       <Routes>
-        <Route path="/receptionist/attendance" element={<AttendancePage />} />
+        <Route
+          path="/receptionist/attendance"
+          element={<Navigate replace to="/receptionist/dashboard" />}
+        />
         <Route
           path="/receptionist/orders"
           element={<OperationsPage kind="orders" role="RECEPTIONIST" />}
@@ -84,7 +85,7 @@ export function ReceptionLayout(props: PortalProps) {
         />
         <Route
           path="/receptionist/profile"
-          element={<Profile user={props.user} />}
+          element={<Profile user={props.user} explicitEditing />}
         />
         <Route
           path="*"
