@@ -3,6 +3,7 @@ import { labels } from "./config";
 type FieldError = { field: string; message: string };
 
 const messages: Record<string, string> = {
+  "coach_required": "Lớp chưa được phân công huấn luyện viên. Hãy chọn và gán HLV chính cho lớp trước khi tạo lịch.",
   "receptionist_facility_required": "Tài khoản lễ tân cần được phân công đúng một cơ sở đang hoạt động. Liên hệ Admin để kiểm tra phân công.",
   "manager_facility_required": "Tài khoản quản lý cần được phân công đúng một cơ sở đang hoạt động. Liên hệ Admin để kiểm tra phân công.",
   "coach_not_assigned": "Coach chưa được phân công vào cơ sở này. Kiểm tra mục Người dùng trước khi xếp lớp.",

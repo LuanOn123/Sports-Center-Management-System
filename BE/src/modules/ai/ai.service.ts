@@ -12,60 +12,172 @@ const getGroqAI = () => {
 };
 
 export async function chatWithAssistant(data: AiChatInput) {
-  // 1. Thu thập Context (RAG)
-  // 1.1 Danh sách gói tập đang mở bán
-  const plans = await prisma.membershipPlan.findMany({
+  // 1. Thu thập Context từ Database (RAG)
+  // 1.1 Cơ sở trung tâm (Facilities)
+  const facilities = await prisma.facility.findMany({
     where: { isActive: true },
-    select: { name: true, price: true, durationDays: true, tier: true, maxConcurrentClasses: true },
+    select: { name: true, address: true, contactInfo: true },
+    orderBy: { name: "asc" },
   });
 
-  // 1.2 Lịch học trong 3 ngày tới
+  // 1.2 Các bộ môn thể thao (Sports)
+  const sports = await prisma.sport.findMany({
+    where: { isActive: true },
+    select: { name: true, description: true },
+    orderBy: { name: "asc" },
+  });
+
+  // 1.3 Danh sách các khóa học / lớp học đang mở (Classes)
+  const classes = await prisma.class.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      classType: true,
+      areaType: true,
+      capacity: true,
+      facility: { select: { name: true } },
+      sports: { select: { name: true } },
+      coaches: {
+        select: {
+          isPrimary: true,
+          coach: { select: { user: { select: { fullName: true } } } },
+        },
+      },
+    },
+    orderBy: { name: "asc" },
+  });
+
+  // 1.4 Danh sách gói tập đang mở bán (Membership Plans)
+  const plans = await prisma.membershipPlan.findMany({
+    where: { isActive: true },
+    select: { name: true, price: true, durationDays: true, tier: true, maxConcurrentClasses: true, description: true },
+    orderBy: { price: "asc" },
+  });
+
+  // 1.5 Các kỳ học sắp hoặc đang diễn ra (Terms)
+  const terms = await prisma.term.findMany({
+    where: {
+      status: { in: ["OPEN_REGISTRATION", "IN_PROGRESS", "PLANNING"] },
+    },
+    select: {
+      name: true,
+      code: true,
+      status: true,
+      startDate: true,
+      endDate: true,
+      registrationStartDate: true,
+      registrationEndDate: true,
+      facility: { select: { name: true } },
+    },
+    orderBy: { startDate: "asc" },
+    take: 5,
+  });
+
+  // 1.6 Lịch học sắp tới (Class Schedules)
   const now = new Date();
-  const next3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
   const schedules = await prisma.classSchedule.findMany({
-    where: { startTime: { gte: now, lte: next3Days }, class: { isActive: true } },
+    where: { startTime: { gte: now }, class: { isActive: true } },
     include: {
       class: {
         select: {
           name: true,
-          description: true,
+          facility: { select: { name: true } },
           coaches: {
             include: { coach: { include: { user: { select: { fullName: true } } } } },
           },
         },
       },
+      room: { select: { name: true } },
     },
     orderBy: { startTime: "asc" },
+    take: 25,
   });
 
   // 2. Xây dựng System Prompt (Prompt Hệ Thống)
   let systemPrompt = `Bạn là trợ lý ảo thân thiện của trung tâm thể thao Sports Center. Tên của bạn là "Trợ Lý Sports Center".
 Hãy xưng hô là "em" và gọi người dùng là "anh/chị" hoặc "bạn". 
-Nhiệm vụ của bạn là giải đáp các thắc mắc về trung tâm dựa trên DỮ LIỆU THỰC TẾ dưới đây. Nếu người dùng hỏi điều gì không có trong dữ liệu này, hãy nói: "Dạ, thông tin này em chưa cập nhật, anh/chị vui lòng liên hệ lễ tân để được hỗ trợ ạ." Không được tự bịa ra giá tiền, lịch tập hoặc chính sách.
+Nhiệm vụ của bạn là giải đáp các thắc mắc về trung tâm thể thao dựa trên DỮ LIỆU THỰC TẾ dưới đây.
+- Khi người dùng hỏi có bao nhiêu khóa học/lớp học, hãy trả lời chính xác số lượng (${classes.length} lớp học đang mở) và tóm tắt danh sách các lớp.
+- Nếu người dùng hỏi về bộ môn, huấn luyện viên, cơ sở, lịch học hay gói tập, hãy dựa vào dữ liệu thực tế bên dưới để trả lời.
+- Nếu người dùng hỏi điều gì không có trong dữ liệu này, hãy lịch sự nói: "Dạ, thông tin này em chưa cập nhật, anh/chị vui lòng liên hệ lễ tân để được hỗ trợ ạ."
+- Không được tự bịa ra giá tiền, lịch tập hoặc chính sách sai lệch.
 
---- DANH SÁCH GÓI TẬP ĐANG MỞ BÁN ---
+--- DANH SÁCH CƠ SỞ (FACILITIES) ---
 `;
+
+  if (facilities.length === 0) {
+    systemPrompt += "(Chưa có thông tin cơ sở)\n";
+  } else {
+    facilities.forEach((f) => {
+      systemPrompt += `- Cơ sở: ${f.name} | Địa chỉ: ${f.address}${f.contactInfo ? ` | Liên hệ: ${f.contactInfo}` : ""}\n`;
+    });
+  }
+
+  systemPrompt += `\n--- CÁC BỘ MÔN THỂ THAO ĐANG HOẠT ĐỘNG --- \n`;
+  if (sports.length === 0) {
+    systemPrompt += "(Chưa có bộ môn nào)\n";
+  } else {
+    sports.forEach((sp) => {
+      systemPrompt += `- Môn ${sp.name}${sp.description ? `: ${sp.description}` : ""}\n`;
+    });
+  }
+
+  systemPrompt += `\n--- DANH SÁCH KHÓA HỌC / LỚP HỌC ĐANG MỞ (Tổng cộng: ${classes.length} lớp học) ---\n`;
+  if (classes.length === 0) {
+    systemPrompt += "(Hiện chưa có lớp học nào đang mở)\n";
+  } else {
+    classes.forEach((c, idx) => {
+      const sportNames = c.sports.map((s) => s.name).join(", ") || "Thể thao chung";
+      const coachNames =
+        c.coaches
+          .map((cm) => cm.coach.user.fullName + (cm.isPrimary ? " (Chính)" : ""))
+          .join(", ") || "Chưa xếp HLV";
+      const tierReq =
+        c.classType === "PREMIUM"
+          ? "Yêu cầu gói PREMIUM"
+          : "Gói MEMBERSHIP hoặc PREMIUM";
+      systemPrompt += `${idx + 1}. Lớp: "${c.name}" | Môn: ${sportNames} | Cơ sở: ${c.facility?.name || "Mọi cơ sở"} | Loại lớp: ${c.classType} (${tierReq}) | HLV: ${coachNames} | Sức chứa: ${c.capacity} học viên${c.description ? ` | Mô tả: ${c.description}` : ""}\n`;
+    });
+  }
+
+  systemPrompt += `\n--- DANH SÁCH GÓI TẬP (MEMBERSHIP PLANS) ---\n`;
   if (plans.length === 0) {
     systemPrompt += "(Hiện chưa có gói tập nào được cấu hình)\n";
   } else {
     plans.forEach((p) => {
-      systemPrompt += `- Gói ${p.name} (Hạng ${p.tier}): Giá ${Number(p.price).toLocaleString("vi-VN")} VND, Thời hạn ${p.durationDays} ngày, Được học tối đa ${p.maxConcurrentClasses} lớp cùng lúc.\n`;
+      const priceFormatted = Number(p.price).toLocaleString("vi-VN");
+      systemPrompt += `- Gói ${p.name} (Hạng ${p.tier}): Giá ${priceFormatted} VND | Thời hạn: ${p.durationDays} ngày | Học tối đa: ${p.maxConcurrentClasses} lớp cùng lúc${p.description ? ` | Chi tiết: ${p.description}` : ""}\n`;
     });
   }
 
-  systemPrompt += `\n--- LỊCH HỌC TRONG 3 NGÀY TỚI ---\n`;
+  systemPrompt += `\n--- KỲ HỌC (TERMS) ---\n`;
+  if (terms.length === 0) {
+    systemPrompt += "(Hiện chưa có kỳ học nào)\n";
+  } else {
+    terms.forEach((t) => {
+      const start = t.startDate.toLocaleDateString("vi-VN");
+      const end = t.endDate.toLocaleDateString("vi-VN");
+      const regStart = t.registrationStartDate.toLocaleDateString("vi-VN");
+      const regEnd = t.registrationEndDate.toLocaleDateString("vi-VN");
+      systemPrompt += `- Kỳ "${t.name}" (${t.code}): Trạng thái: ${t.status} | Thời gian học: ${start} - ${end} | Thời gian mở ĐK: ${regStart} - ${regEnd}${t.facility ? ` | Cơ sở: ${t.facility.name}` : ""}\n`;
+    });
+  }
+
+  systemPrompt += `\n--- LỊCH HỌC SẮP TỚI (CLASS SCHEDULES) ---\n`;
   if (schedules.length === 0) {
-    systemPrompt += "(Không có lịch học nào trong 3 ngày tới)\n";
+    systemPrompt += "(Hiện tại chưa có lịch học cụ thể nào sắp diễn ra trong hệ thống)\n";
   } else {
     schedules.forEach((s) => {
       const timeStr = s.startTime.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
       const duration = Math.round((s.endTime.getTime() - s.startTime.getTime()) / 60000);
       const coachNames = s.class.coaches.map((c) => c.coach.user.fullName).join(", ") || "Chưa xếp HLV";
-      systemPrompt += `- Lớp "${s.class.name}" (HLV: ${coachNames}) | Bắt đầu: ${timeStr} | Kéo dài: ${duration} phút | Phòng: ${s.roomId}\n`;
+      systemPrompt += `- Lớp "${s.class.name}" (HLV: ${coachNames}) | Bắt đầu: ${timeStr} | Kéo dài: ${duration} phút | Phòng: ${s.room?.name || "Chưa xếp phòng"} | Cơ sở: ${s.class.facility?.name || "Chưa rõ"}\n`;
     });
   }
 
-  systemPrompt += `\nLưu ý:\n- Câu trả lời nên ngắn gọn, dễ đọc (dùng gạch đầu dòng nếu cần).\n- Trung tâm có hỗ trợ thanh toán chuyển khoản qua mã QR (SePay).\n- Hội viên mua gói sẽ được cấp mã QR tự động.`;
+  systemPrompt += `\nLưu ý & Chính sách:\n- Câu trả lời nên ngắn gọn, dùng gạch đầu dòng Markdown rõ ràng, dễ nhìn.\n- Trung tâm hỗ trợ thanh toán trực tuyến qua mã QR SePay (tự động kích hoạt gói) và tại quầy.\n- Hội viên cần có gói tập phù hợp để đặt chỗ lớp học. Hạng MEMBERSHIP được học lớp REGULAR; Hạng PREMIUM được học cả REGULAR và PREMIUM.\n- Điểm danh bằng quét mã QR tại phòng tập hoặc dùng mã nhập tay từ HLV.`;
 
   const groq = getGroqAI();
   const messages: any[] = [{ role: "system", content: systemPrompt }];
@@ -78,7 +190,7 @@ Nhiệm vụ của bạn là giải đáp các thắc mắc về trung tâm dự
   try {
     const chatCompletion = await groq.chat.completions.create({
       messages: messages,
-      model: "qwen/qwen3.8-27b", // Model mới hỗ trợ rất tốt tiếng Việt
+      model: process.env.GROQ_MODEL || "qwen/qwen3.8-27b",
       temperature: 0.5,
     });
     
@@ -88,5 +200,3 @@ Nhiệm vụ của bạn là giải đáp các thắc mắc về trung tâm dự
     throw new AppError("Lỗi kết nối đến AI Server. Vui lòng thử lại sau.", 500);
   }
 }
-
-

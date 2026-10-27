@@ -9,6 +9,7 @@ import { buildPaginationMeta } from "../../utils/pagination.js";
 import { notifyViaOutbox } from "../notifications/outbox.service.js";
 import { computeAttendanceBuckets } from "./attendance-analytics.service.js";
 import { expireStalePenalties } from "./attendance-penalties.service.js";
+import { termMembershipCovers } from "../enrollments/term-membership-policy.js";
 
 
 /** §5: MEMBER không có quyền ghi attendance; COACH không được tự set EXCUSED — chỉ MANAGER. */
@@ -292,7 +293,7 @@ export const generateQrToken = async (scheduleId: string, user: any) => {
  * - `code`: mã dự phòng 6 ký tự cho member không quét được QR (camera hỏng).
  *
  * Member KHÔNG gửi `scheduleId` — buổi học chỉ được suy ra từ credential (schema .strict()).
- * Mọi chốt chặn cũ giữ nguyên: enrollment BOOKED/COMPLETED + gói tập ACTIVE tại thời điểm điểm danh.
+ * Enrollment phải BOOKED/COMPLETED và có gói ACTIVE hoặc quyền học trọn kỳ đã được duyệt cho đúng buổi.
  */
 export const scanQr = async (input: { qrToken?: string; code?: string }, user: any) => {
   if (user.role !== "MEMBER") {
@@ -322,7 +323,7 @@ export const scanQr = async (input: { qrToken?: string; code?: string }, user: a
     throw new AppError("Bạn chưa đặt chỗ cho lớp học này nên không thể điểm danh.", 403);
   }
 
-  // 3. Chốt chặn 2: Kiểm tra lại gói tập còn hạn tại thời điểm điểm danh
+  // 3. Chốt chặn 2: gói còn hạn hoặc snapshot quyền học trọn kỳ của buổi đã đăng ký.
   const now = new Date();
   const activeSub = await prisma.membershipSubscription.findFirst({
     where: {
@@ -333,7 +334,13 @@ export const scanQr = async (input: { qrToken?: string; code?: string }, user: a
     },
   });
 
-  if (!activeSub) {
+  const schedule = await prisma.classSchedule.findUnique({ where: { id: scheduleId } });
+  if (!schedule) throw new AppError("Buổi học không tồn tại.", 404);
+  const approvedTerm = termMembershipCovers(enrollment.termMembershipGrant, {
+    memberId: memberProfile.id, classId: schedule.classId, termId: schedule.termId,
+    startTime: schedule.startTime, endTime: schedule.endTime,
+  });
+  if (!activeSub && !approvedTerm) {
     throw new AppError(
       "Gói tập của bạn đã hết hạn. Vui lòng gia hạn để có thể vào lớp học.",
       403
@@ -341,8 +348,6 @@ export const scanQr = async (input: { qrToken?: string; code?: string }, user: a
   }
 
   // Chốt chặn 3: SERVER quyết định cửa sổ điểm danh + trạng thái buổi học (A09).
-  const schedule = await prisma.classSchedule.findUnique({ where: { id: scheduleId } });
-  if (!schedule) throw new AppError("Buổi học không tồn tại.", 404);
   assertAttendanceWindow(schedule, now);
 
   // 4. Ghi nhận điểm danh — idempotent & KHÔNG ghi đè kết quả đã chốt.

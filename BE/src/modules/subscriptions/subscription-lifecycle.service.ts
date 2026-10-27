@@ -45,7 +45,7 @@ export async function expireStaleSubscriptions(now: Date = new Date()): Promise<
       title: "Gói tập đã hết hạn",
       body:
         `Gói "${sub.plan.name}" của bạn đã hết hạn vào ` +
-        `${sub.endDate.toLocaleDateString("vi-VN")}. Gia hạn để tiếp tục đặt lớp và điểm danh.`,
+        `${sub.endDate.toLocaleDateString("vi-VN")}. Gia hạn để tiếp tục đăng ký lớp mới và sử dụng cơ sở. Quyền học trọn kỳ đã được duyệt vẫn có hiệu lực trong phạm vi lớp và kỳ đã đăng ký.`,
       metadata: { subscriptionId: sub.id },
     });
   }

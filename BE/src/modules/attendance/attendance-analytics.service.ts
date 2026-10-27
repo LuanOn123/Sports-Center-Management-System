@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
+import { readTermMembershipGrant } from "../enrollments/term-membership-policy.js";
 import {
   ATTENDANCE,
   absenceAllowance,
@@ -13,7 +14,7 @@ import {
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
 /** A10: khoảng thời gian member thực sự có quyền lợi (dùng cho analytics + kiểm tra dời lịch A11). */
-export type MembershipCoverageInterval = { from: Date; to: Date };
+export type MembershipCoverageInterval = { from: Date; to: Date; scheduleId?: string; classId?: string; termId?: string };
 
 /**
  * A10 — Dựng khoảng quyền lợi từ danh sách subscription (mọi trạng thái):
@@ -40,8 +41,9 @@ export function buildCoverageIntervals(
 }
 
 /** Thời điểm `at` có nằm trong ít nhất một khoảng quyền lợi (bao gồm cả biên). */
-export function isCoveredAt(intervals: MembershipCoverageInterval[], at: Date): boolean {
-  return intervals.some((iv) => iv.from <= at && at <= iv.to);
+export function isCoveredAt(intervals: MembershipCoverageInterval[], at: Date, scope?: { scheduleId: string; classId: string; termId?: string | null; endTime?: Date }): boolean {
+  return intervals.some((iv) => iv.from <= at && at <= iv.to &&
+    (!iv.scheduleId || (!!scope && iv.scheduleId === scope.scheduleId && iv.classId === scope.classId && iv.termId === scope.termId && (!scope.endTime || scope.endTime <= iv.to))));
 }
 
 /** A10 — Khoảng quyền lợi của nhiều member (1 query) — dùng lại ở A11 khi dời lịch. */
@@ -64,6 +66,18 @@ export async function getMembershipCoverageIntervals(
   const map = new Map<string, MembershipCoverageInterval[]>();
   for (const sub of subs) {
     map.set(sub.memberId, [...(map.get(sub.memberId) ?? []), ...buildCoverageIntervals([sub])]);
+  }
+  const approved = await db.enrollment.findMany({
+    where: { memberId: { in: memberIds }, status: { in: ["BOOKED", "COMPLETED"] } },
+    select: { memberId: true, classId: true, scheduleId: true, termMembershipGrant: true, schedule: { select: { termId: true } } },
+  });
+  for (const row of approved) {
+    const grant = readTermMembershipGrant(row.termMembershipGrant);
+    if (!grant || grant.memberId !== row.memberId || grant.classId !== row.classId || grant.termId !== row.schedule.termId) continue;
+    map.set(row.memberId, [...(map.get(row.memberId) ?? []), {
+      from: new Date(grant.approvedAt), to: new Date(grant.validUntil),
+      scheduleId: row.scheduleId, classId: row.classId, termId: grant.termId,
+    }]);
   }
   return map;
 }
@@ -134,7 +148,7 @@ export async function computeAttendanceBuckets(
     select: {
       memberId: true,
       classId: true,
-      schedule: { select: { id: true, startTime: true } },
+      schedule: { select: { id: true, startTime: true, termId: true } },
     },
     orderBy: { schedule: { startTime: "desc" } },
   });
@@ -165,7 +179,7 @@ export async function computeAttendanceBuckets(
   // FIXED giữ TOÀN BỘ buổi đã chốt trong coverage (không cắt rolling).
   const grouped = new Map<
     string,
-    { memberId: string; classId: string; schedules: { id: string; startTime: Date }[] }
+    { memberId: string; classId: string; schedules: { id: string; startTime: Date; termId: string | null }[] }
   >();
   for (const e of enrollments) {
     const key = `${e.memberId}|${e.classId}`;
@@ -181,23 +195,13 @@ export async function computeAttendanceBuckets(
   const classIds = [...new Set([...grouped.values()].map((g) => g.classId))];
   const scheduleIds = [...new Set([...grouped.values()].flatMap((g) => g.schedules.map((s) => s.id)))];
 
-  const [members, classes, subscriptions, attendances] = await Promise.all([
+  const [members, classes, coverageByMember, attendances] = await Promise.all([
     db.memberProfile.findMany({
       where: { id: { in: memberIds } },
       select: { id: true, user: { select: { id: true, fullName: true } } },
     }),
     db.class.findMany({ where: { id: { in: classIds } }, select: { id: true, name: true } }),
-    db.membershipSubscription.findMany({
-      where: { memberId: { in: memberIds } },
-      select: {
-        memberId: true,
-        status: true,
-        startDate: true,
-        endDate: true,
-        suspendedAt: true,
-        cancelledAt: true,
-      },
-    }),
+    getMembershipCoverageIntervals(db, memberIds),
     db.attendance.findMany({
       where: { memberId: { in: memberIds }, scheduleId: { in: scheduleIds } },
       select: { memberId: true, scheduleId: true, status: true, note: true },
@@ -206,18 +210,11 @@ export async function computeAttendanceBuckets(
 
   const memberMap = new Map(members.map((m) => [m.id, m]));
   const classMap = new Map(classes.map((c) => [c.id, c]));
-  const coverageByMember = new Map<string, MembershipCoverageInterval[]>();
-  for (const sub of subscriptions) {
-    coverageByMember.set(sub.memberId, [
-      ...(coverageByMember.get(sub.memberId) ?? []),
-      ...buildCoverageIntervals([sub]),
-    ]);
-  }
   const attendanceMap = new Map(attendances.map((a) => [`${a.memberId}|${a.scheduleId}`, a]));
 
   /** Buổi chỉ được tính khi thời điểm học nằm trong khoảng quyền lợi LỊCH SỬ (A10). */
-  const isCoveredByMembership = (memberId: string, at: Date) =>
-    isCoveredAt(coverageByMember.get(memberId) ?? [], at);
+  const isCoveredByMembership = (memberId: string, classId: string, schedule: { id: string; startTime: Date; termId: string | null }) =>
+    isCoveredAt(coverageByMember.get(memberId) ?? [], schedule.startTime, { scheduleId: schedule.id, classId, termId: schedule.termId });
 
   const buckets: AttendanceBucket[] = [];
   for (const entry of grouped.values()) {
@@ -228,7 +225,7 @@ export async function computeAttendanceBuckets(
     let excusedCount = 0;
 
     for (const schedule of entry.schedules) {
-      if (!isCoveredByMembership(entry.memberId, schedule.startTime)) continue;
+      if (!isCoveredByMembership(entry.memberId, entry.classId, schedule)) continue;
       const attendance = attendanceMap.get(`${entry.memberId}|${schedule.id}`);
       if (!attendance) {
         noShowCount++; // buổi đã kết thúc nhưng chưa có bản ghi điểm danh

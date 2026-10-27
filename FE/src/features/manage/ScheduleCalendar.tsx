@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin, UserRound } from "lucide-react";
 import type { RecordData } from "../../shared/api";
 import { at, display } from "../../shared/config";
 
@@ -71,6 +71,7 @@ function ScheduleCard({
   underCapacity?: { bookedCount: number; minCapacity: number };
 }) {
   const status = String(row.status || "SCHEDULED").toLowerCase();
+  const coachName = at(row, "coach.user.fullName") || at(row, "coach.fullName") || (row.coachId ? "HLV đã phân công" : at(row, "class.coaches.0.coach.user.fullName"));
   return (
     <button
       type="button"
@@ -81,6 +82,7 @@ function ScheduleCard({
       <strong>{display(at(row, "class.name"))}</strong>
       <span><Clock3 size={12} /> {time(row.startTime)}–{time(row.endTime)}</span>
       {!compact && <span><MapPin size={12} /> {display(at(row, "room.name"))}</span>}
+      {!compact && <span><UserRound size={12} /> {String(coachName || "Chưa phân công")}</span>}
       {underCapacity && (
         <span
           style={{

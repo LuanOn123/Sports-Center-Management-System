@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { localizeApiError } from "../src/shared/apiErrors";
 
 describe("Vietnamese backend errors", () => {
+  it("explains the class-coach prerequisite instead of showing COACH_REQUIRED", () => {
+    expect(localizeApiError("COACH_REQUIRED", [], 400).message).toBe(
+      "Lớp chưa được phân công huấn luyện viên. Hãy chọn và gán HLV chính cho lớp trước khi tạo lịch.",
+    );
+  });
   it.each(["email", "phone"])(
     "identifies the actual duplicate %s from the API contract",
     (field) => {
