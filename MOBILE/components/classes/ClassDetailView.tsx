@@ -13,6 +13,7 @@ import { WaitlistAction } from '../member/WaitlistAction';
 import { WorkflowScreen, WorkflowCard, WorkflowText, WorkflowButton, WorkflowState } from '../shared/WorkflowScreen';
 import { StatusBadge } from '../ui';
 import { TermNoticeCard } from './TermNoticeCard';
+import { MembershipCoverageNotice } from './MembershipCoverageNotice';
 import { CoachCard } from './CoachCard';
 import { CoachProfileSheet } from './CoachProfileSheet';
 import { WrongFacilityCard } from '../shared/WrongFacilityCard';
@@ -62,7 +63,6 @@ export function ClassDetailView({ id }: { id: string }) {
     isFullyRegistered: Boolean(registration?.isFullyRegistered),
     eligible: Boolean(registration?.eligible),
     needsMembership: d.needsMembership,
-    termSuggestsPlans: d.termSuggestsPlans,
   });
   const footer = d.isMember && value && course ? (
     footerKind === 'registered' ? (
@@ -70,12 +70,12 @@ export function ClassDetailView({ id }: { id: string }) {
     ) : footerKind === 'enroll' ? (
       <WorkflowButton
         icon="event-available"
-        title={`${d.termNotice?.late ? 'Đăng ký muộn' : 'Đăng ký trọn khóa'} · ${course.totalSessions} buổi`}
+        title={`Đăng ký trọn khóa · ${course.totalSessions} buổi`}
         busy={d.bulk.isPending}
-        onPress={() => d.bulk.handleEnrollWholeCourse(id, value.name, { late: d.termNotice?.late })}
+        onPress={() => d.bulk.handleEnrollWholeCourse(id, value.name)}
       />
     ) : footerKind === 'plans' ? (
-      <WorkflowButton icon="card-membership" title={d.needsMembership ? 'Xem gói thành viên để đăng ký' : 'Xem gói tập'} onPress={() => router.push(ROUTES.membershipPlans)} />
+      <WorkflowButton icon="card-membership" title="Xem gói thành viên để đăng ký" onPress={() => router.push(ROUTES.membershipPlans)} />
     ) : (
       <WorkflowButton title="Chưa thể đăng ký khóa này" disabled onPress={() => undefined} />
     )
@@ -119,9 +119,8 @@ export function ClassDetailView({ id }: { id: string }) {
               <WorkflowButton title="Xem lớp khác" secondary onPress={goToOtherClasses} />
             </WorkflowCard>
           )}
-          {d.term && d.termNotice && (
-            <TermNoticeCard termName={d.term.name} notice={d.termNotice} onViewPlans={() => router.push(ROUTES.membershipPlans)} />
-          )}
+          {d.term && d.termNotice && <TermNoticeCard termName={d.term.name} notice={d.termNotice} />}
+          {d.coverage && <MembershipCoverageNotice title={d.coverage.title} message={d.coverage.message} />}
           {course && (
             <WorkflowCard>
               <View className="gap-sm">

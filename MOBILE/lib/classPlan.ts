@@ -47,10 +47,10 @@ export function courseAvailability(course: Course, lowThreshold: number): { text
 
 /** Nút cố định dưới đáy màn chi tiết lớp (hội viên): đã đủ khóa / đăng ký / xem gói / chưa thể đăng ký */
 export type CourseFooterKind = 'registered' | 'enroll' | 'plans' | 'blocked';
-export function courseFooterKind(input: { isFullyRegistered: boolean; eligible: boolean; needsMembership: boolean; termSuggestsPlans: boolean }): CourseFooterKind {
+export function courseFooterKind(input: { isFullyRegistered: boolean; eligible: boolean; needsMembership: boolean }): CourseFooterKind {
   if (input.isFullyRegistered) return 'registered';
   if (input.eligible) return 'enroll';
-  return input.needsMembership || input.termSuggestsPlans ? 'plans' : 'blocked';
+  return input.needsMembership ? 'plans' : 'blocked';
 }
 
 /** Trạng thái khung quota ở Lớp của tôi — web: chưa có gói hoặc limit 0 (gói FREE) thì khóa và mời mua gói */

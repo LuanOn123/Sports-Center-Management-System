@@ -2,7 +2,7 @@
 // Logic màn chi tiết lớp: thông tin lớp, kế hoạch khóa (hội viên), buổi dạy sắp tới (HLV),
 // đăng ký trọn khóa — giống ClassDetailPage web (không đặt lẻ từng buổi).
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { apiRequest, type Envelope } from '../../lib/api';
@@ -11,9 +11,9 @@ import { findClassInLists } from '../../lib/classCache';
 import type { Class, ClassCoach, ClassSchedule } from '../../lib/types';
 import { useCoursePlan } from './useClasses';
 import { useEnrollWholeCourse } from '../member/useEnrollments';
-import { useTermNotice } from '../member/useTermNotice';
 import { useOwningFacility } from './useOwningFacility';
-import { TERM_REGISTRATION_CLOSED_CODE } from '../../constants/terms';
+import { TERM_STAGE_BLOCKER_CODES } from '../../constants/terms';
+import { membershipCoverageNotice, termNotice as describeTerm } from '../../lib/termRegistration';
 
 /** Lý do chặn đăng ký liên quan gói thành viên → gợi ý xem gói */
 const MEMBERSHIP_BLOCKER = /SUBSCRIPTION|TIER|MEMBERSHIP/;
@@ -46,10 +46,11 @@ export function useClassDetail(id: string) {
   const bulk = useEnrollWholeCourse();
 
   const registration = plan.data?.data.registration ?? null;
-  // Kỳ học của khóa + đăng ký muộn: BE chặn khóa vì hết hạn đăng ký hay không (undefined khi chưa có dữ liệu đăng ký)
+  // Kỳ học của khóa: giai đoạn đăng ký (hết hạn đăng ký là hết, gói không nới được)
   const term = plan.data?.data.course?.term ?? null;
-  const termBlocked = registration ? registration.blockers.some((b) => b.code === TERM_REGISTRATION_CLOSED_CODE) : undefined;
-  const termNotice = useTermNotice(isMember ? term : null, termBlocked);
+  const termNotice = useMemo(() => (isMember && term ? describeTerm(term) : null), [isMember, term]);
+  // Gói hết hạn trước buổi cuối của khóa nhưng còn ≥ 50% thời hạn: BE xác nhận quyền học đến hết kỳ
+  const coverage = useMemo(() => membershipCoverageNotice(registration?.membershipCoverage), [registration?.membershipCoverage]);
 
   return {
     isMember,
@@ -65,11 +66,11 @@ export function useClassDetail(id: string) {
     course: plan.data?.data.course ?? null,
     sessions: plan.data?.data.sessions ?? [],
     registration,
-    /** Lý do chặn của BE, bỏ dòng "hết hạn đăng ký" khi thẻ kỳ học đã giải thích đủ để khỏi lặp */
-    blockers: (registration?.blockers ?? []).filter((b) => !(termNotice?.coversBlocker && b.code === TERM_REGISTRATION_CLOSED_CODE)),
+    /** Lý do chặn của BE, bỏ các dòng theo giai đoạn kỳ học khi thẻ kỳ học đã giải thích đủ để khỏi lặp */
+    blockers: (registration?.blockers ?? []).filter((b) => !(termNotice?.coversBlocker && TERM_STAGE_BLOCKER_CODES.includes(b.code))),
     term,
     termNotice,
-    termSuggestsPlans: Boolean(termBlocked && termNotice?.suggestPlans),
+    coverage,
     needsMembership: Boolean(registration?.blockers.some((b) => MEMBERSHIP_BLOCKER.test(b.code))),
     selectedCoach,
     openCoach: setSelectedCoach,

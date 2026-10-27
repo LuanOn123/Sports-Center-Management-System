@@ -8,7 +8,7 @@ import { Colors } from '../../../constants/theme';
 import { FREE_PLAN_TEXT, TIER_ICON, TIER_LABEL } from '../../../constants/membership';
 import { formatDate } from '../../../lib/format';
 import { isFreeSubscription } from '../../../lib/businessRules';
-import { lateRegistration, lateRegistrationHint } from '../../../lib/termRegistration';
+import { membershipHalfHint } from '../../../lib/termRegistration';
 import { TERM_NOTICE_COLOR } from '../../../constants/terms';
 import type { MembershipTier, Subscription } from '../../../lib/types';
 
@@ -49,7 +49,7 @@ export function CurrentMembershipCard({ activeSub, tier, daysRemaining, onCancel
   }
 
   const tierColor = Colors.tier[tier];
-  const lateHint = lateRegistrationHint(lateRegistration(activeSub));
+  const halfHint = membershipHalfHint(activeSub);
   return (
     <View key="membership-active" className="bg-bg-surface rounded-xl p-xl mb-xl border" style={{ borderColor: tierColor + '60' }}>
       <View className="flex-row justify-between items-center mb-xs">
@@ -73,10 +73,10 @@ export function CurrentMembershipCard({ activeSub, tier, daysRemaining, onCancel
             <Text className="text-sm text-text-secondary font-bevn-regular">Còn {daysRemaining} ngày sử dụng</Text>
           </View>
         )}
-        {lateHint && (
+        {halfHint && (
           <View className="flex-row items-start gap-1.5">
-            <Icon name="event-available" size={16} color={TERM_NOTICE_COLOR[lateHint.tone]} style={{ marginTop: 2 }} />
-            <Text className="flex-1 text-sm font-bevn-regular leading-[20px]" style={{ color: TERM_NOTICE_COLOR[lateHint.tone] }}>{lateHint.text}</Text>
+            <Icon name="event-available" size={16} color={TERM_NOTICE_COLOR[halfHint.tone]} style={{ marginTop: 2 }} />
+            <Text className="flex-1 text-sm font-bevn-regular leading-[20px]" style={{ color: TERM_NOTICE_COLOR[halfHint.tone] }}>{halfHint.text}</Text>
           </View>
         )}
       </View>
