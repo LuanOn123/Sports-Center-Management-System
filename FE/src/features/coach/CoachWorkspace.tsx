@@ -23,6 +23,8 @@ import {
   fmt,
   idOf,
   monday,
+  monthRange,
+  shiftMonth,
   obj,
   state,
   str,
@@ -67,8 +69,16 @@ export function CoachWorkspace({
   const [session, setSession] = useState<Row | null>(null);
   const [detail, setDetail] = useState<Row | null>(null);
   const classes = useClasses(coachId);
-  const start = monday(day),
-    end = addDays(start, 6);
+  const monthly = view === "month";
+  const range = monthRange(day);
+  const start = monthly ? range.start : monday(day),
+    end = monthly ? range.end : addDays(start, 6);
+  const calendarStart = monthly ? monday(start) : start;
+  const calendarDays = monthly
+    ? Math.round(
+        (Date.parse(monday(end)) - Date.parse(calendarStart)) / 86400000,
+      ) + 7
+    : 7;
   const schedules = useSchedules(
     coachId,
     mode === "classes" ? undefined : classes.data,
@@ -103,7 +113,7 @@ export function CoachWorkspace({
         title={titles[mode]}
         description={
           mode === "schedule"
-            ? "Sắp xếp tuần dạy và theo dõi học viên của từng buổi. Giờ Việt Nam (GMT+7)."
+            ? "Xem lịch theo tuần hoặc tháng và theo dõi học viên của từng buổi. Giờ Việt Nam (GMT+7)."
             : mode === "classes"
               ? "Theo dõi các lớp được phân công và mục tiêu của từng học viên."
               : "Một góc nhìn rõ ràng cho tuần dạy của bạn. Giờ Việt Nam (GMT+7)."
@@ -214,7 +224,9 @@ export function CoachWorkspace({
                   <div>
                     <h2>
                       {mode === "dashboard"
-                        ? "Lịch dạy tuần này"
+                        ? monthly
+                          ? "Lịch dạy trong tháng"
+                          : "Lịch dạy tuần này"
                         : "Thời khóa biểu"}
                     </h2>
                     <p>
@@ -224,18 +236,22 @@ export function CoachWorkspace({
                   <div className="coach-actions">
                     <button
                       className="button"
-                      aria-label="Tuần trước"
-                      onClick={() => setDay(addDays(day, -7))}
+                      aria-label={monthly ? "Tháng trước" : "Tuần trước"}
+                      onClick={() =>
+                        setDay(monthly ? shiftMonth(day, -1) : addDays(day, -7))
+                      }
                     >
                       <ArrowLeft size={18} />
                     </button>
                     <button className="button" onClick={() => setDay(today)}>
-                      Tuần này
+                      {monthly ? "Tháng này" : "Tuần này"}
                     </button>
                     <button
                       className="button"
-                      aria-label="Tuần sau"
-                      onClick={() => setDay(addDays(day, 7))}
+                      aria-label={monthly ? "Tháng sau" : "Tuần sau"}
+                      onClick={() =>
+                        setDay(monthly ? shiftMonth(day, 1) : addDays(day, 7))
+                      }
                     >
                       <ArrowRight size={18} />
                     </button>
@@ -243,15 +259,17 @@ export function CoachWorkspace({
                 </div>
                 <div className="coach-toolbar">
                   <label>
-                    Ngày cần xem
+                    {monthly ? "Tháng cần xem" : "Ngày cần xem"}
                     <input
-                      type="date"
-                      value={day}
-                      min="2000-01-01"
-                      max="2100-12-31"
+                      type={monthly ? "month" : "date"}
+                      value={monthly ? day.slice(0, 7) : day}
+                      min={monthly ? "2000-01" : "2000-01-01"}
+                      max={monthly ? "2100-12" : "2100-12-31"}
                       onChange={(e) => {
                         if (e.target.value && e.target.validity.valid)
-                          setDay(e.target.value);
+                          setDay(
+                            monthly ? e.target.value + "-01" : e.target.value,
+                          );
                       }}
                     />
                   </label>
@@ -286,7 +304,7 @@ export function CoachWorkspace({
                   <div className="coach-actions" aria-label="Chế độ xem">
                     {[
                       ["week", "Theo tuần"],
-                      ["list", "Danh sách"],
+                      ["month", "Xem theo tháng"],
                     ].map(([v, t]) => (
                       <button
                         key={v}
@@ -307,72 +325,81 @@ export function CoachWorkspace({
                     retry={() => schedules.refetch()}
                   />
                 ) : !list.length ? (
-                  <Empty text="Không có buổi dạy trong tuần hoặc bộ lọc này." />
+                  <Empty
+                    text={`Không có buổi dạy trong ${monthly ? "tháng" : "tuần"} hoặc bộ lọc này.`}
+                  />
                 ) : (
                   <div
-                    className={view === "week" ? "coach-week" : "coach-agenda"}
+                    className={monthly ? "coach-month" : "coach-week"}
+                    aria-label={
+                      monthly
+                        ? `Lịch dạy tháng ${day.slice(5, 7)}/${day.slice(0, 4)}`
+                        : "Lịch dạy theo tuần"
+                    }
                   >
-                    {Array.from({ length: 7 }, (_, i) => addDays(start, i)).map(
-                      (d, i) => {
-                        const items = list.filter(
-                          (s) => dateKey(s.startTime) === d,
-                        );
-                        return (
-                          <section
-                            className={`coach-day ${d === today ? "is-today" : ""}`}
-                            key={d}
-                          >
-                            <header>
-                              <strong>
-                                {
-                                  [
-                                    "Thứ hai",
-                                    "Thứ ba",
-                                    "Thứ tư",
-                                    "Thứ năm",
-                                    "Thứ sáu",
-                                    "Thứ bảy",
-                                    "Chủ nhật",
-                                  ][i]
-                                }
-                              </strong>
-                              <span>
-                                {fmt(d).slice(0, 5)}
-                                {d === today ? " · Hôm nay" : ""}
-                              </span>
-                            </header>
-                            <div>
-                              {items.length ? (
-                                items.map((s) => (
-                                  <button
-                                    key={idOf(s)}
-                                    className={`coach-session ${s.status === "CANCELLED" ? "is-cancelled" : ""}`}
-                                    onClick={() => setSession(s)}
-                                  >
-                                    <span className="coach-time">
-                                      <Clock3 size={14} />
-                                      {fmt(s.startTime, true)} –{" "}
-                                      {fmt(s.endTime, true)}
-                                    </span>
-                                    <strong>{str(obj(s.class).name)}</strong>
-                                    <span>
-                                      <MapPin size={13} />{" "}
-                                      {str(obj(s.room).name)}
-                                    </span>
-                                    <Badge value={s.status} />
-                                    <small>Xem học viên →</small>
-                                  </button>
-                                ))
-                              ) : (
-                                <p className="coach-day-empty">
-                                  Không có buổi dạy
-                                </p>
-                              )}
-                            </div>
-                          </section>
-                        );
-                      },
-                    )}
+                    {Array.from({ length: calendarDays }, (_, i) =>
+                      addDays(calendarStart, i),
+                    ).map((d, i) => {
+                      const items = list.filter(
+                        (s) =>
+                          dateKey(s.startTime) === d && d >= start && d <= end,
+                      );
+                      return (
+                        <section
+                          className={`coach-day ${d === today ? "is-today" : ""} ${d < start || d > end ? "is-outside-month" : ""}`}
+                          key={d}
+                        >
+                          <header>
+                            <strong>
+                              {
+                                [
+                                  "Thứ hai",
+                                  "Thứ ba",
+                                  "Thứ tư",
+                                  "Thứ năm",
+                                  "Thứ sáu",
+                                  "Thứ bảy",
+                                  "Chủ nhật",
+                                ][i % 7]
+                              }
+                            </strong>
+                            <span>
+                              {fmt(d).slice(0, 5)}
+                              {d === today ? " · Hôm nay" : ""}
+                            </span>
+                          </header>
+                          <div>
+                            {items.length ? (
+                              items.map((s) => (
+                                <button
+                                  key={idOf(s)}
+                                  className={`coach-session ${s.status === "CANCELLED" ? "is-cancelled" : ""}`}
+                                  onClick={() => setSession(s)}
+                                >
+                                  <span className="coach-time">
+                                    <Clock3 size={14} />
+                                    {fmt(s.startTime, true)} –{" "}
+                                    {fmt(s.endTime, true)}
+                                  </span>
+                                  <strong>{str(obj(s.class).name)}</strong>
+                                  <span>
+                                    <MapPin size={13} /> {str(obj(s.room).name)}
+                                  </span>
+                                  <Badge value={s.status} />
+                                  <small>Xem học viên →</small>
+                                </button>
+                              ))
+                            ) : (
+                              <p className="coach-day-empty">
+                                {d < start || d > end
+                                  ? "—"
+                                  : "Không có buổi dạy"}
+                              </p>
+                            )}
+                          </div>
+                        </section>
+                      );
+                    })}
                   </div>
                 )}
               </section>

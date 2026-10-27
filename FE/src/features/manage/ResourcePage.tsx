@@ -788,7 +788,9 @@ export function ResourcePage({
                     {r.slug === "members" || r.slug === "users"
                       ? "Gói & tập luyện"
                       : r.slug === "schedules"
-                        ? "Học viên & điểm danh"
+                        ? ["RECEPTIONIST", "STAFF"].includes(role)
+                          ? "Học viên"
+                          : "Học viên & điểm danh"
                         : r.slug === "coaches"
                           ? "Đánh giá"
                           : role !== "MANAGER"
@@ -1100,7 +1102,35 @@ function Enrollments({
       ) : q.isError ? (
         <ErrorState error={q.error} retry={() => q.refetch()} />
       ) : q.data.data.length ? (
-        <Attendance schedule={schedule} roster={q.data.data} role={role} />
+        ["RECEPTIONIST", "STAFF"].includes(role) ? (
+          <div
+            className="table-scroll"
+            role="region"
+            aria-label="Danh sách học viên đăng ký"
+            tabIndex={0}
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Hội viên</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">Trạng thái đăng ký</th>
+                </tr>
+              </thead>
+              <tbody>
+                {q.data.data.map((row) => (
+                  <tr key={String(row.id)}>
+                    <td>{display(at(row, "member.user.fullName"))}</td>
+                    <td>{display(at(row, "member.user.email"))}</td>
+                    <td>{display(row.status)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <Attendance schedule={schedule} roster={q.data.data} role={role} />
+        )
       ) : (
         <Empty text="Chưa có hội viên đăng ký" />
       )}

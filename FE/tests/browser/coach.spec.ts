@@ -45,7 +45,15 @@ async function setupCoach(
     const request = route.request(),
       url = new URL(request.url()),
       path = url.pathname.replace("/api/v1", "");
-    if (path === "/facilities") return route.fulfill({ json: { success: true, data: [{ id: "facility-a", code: "A", name: "Cơ sở A", isActive: true }] } });
+    if (path === "/facilities")
+      return route.fulfill({
+        json: {
+          success: true,
+          data: [
+            { id: "facility-a", code: "A", name: "Cơ sở A", isActive: true },
+          ],
+        },
+      });
     calls.push({
       path,
       method: request.method(),
@@ -188,7 +196,7 @@ test("roster loads every page and opens student goals, Escape returns to roster"
   await page.goto("/coach/schedule");
   await page.locator(".coach-session").click();
   await expect(
-    page.getByText("Học viên trang hai", { exact: true }),
+    page.getByRole("button", { name: /Học viên trang hai/ }),
   ).toBeVisible();
   expect(
     calls.some((c) => c.path.includes("/enrollments/") && c.query.page === "2"),
@@ -212,7 +220,7 @@ test("roster loads every page and opens student goals, Escape returns to roster"
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
-test("calendar navigation, status filter and agenda view use correct date window", async ({
+test("calendar navigation, status filter and month view use correct date window", async ({
   page,
 }) => {
   const calls = await setupCoach(page);
@@ -222,22 +230,35 @@ test("calendar navigation, status filter and agenda view use correct date window
     path: "artifacts/portal-theme/coach-schedule-populated.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Danh sách", exact: true }).click();
-  await expect(page.locator(".coach-agenda")).toBeVisible();
   await page
-    .getByRole("combobox", { name: "Trạng thái", exact: true })
-    .selectOption("CANCELLED");
-  await expect(
-    page.getByText("Không có buổi dạy trong tuần hoặc bộ lọc này."),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Tuần sau", exact: true }).click();
+    .getByRole("button", { name: "Xem theo tháng", exact: true })
+    .click();
+  await expect(page.locator(".coach-month")).toBeVisible();
   await expect
     .poll(
       () =>
         calls.filter((c) => c.path === "/class-schedules").at(-1)?.query
           .startAfter,
     )
-    .toBe("2026-09-20T17:00:00.000Z");
+    .toBe("2026-08-31T17:00:00.000Z");
+  expect(
+    calls.filter((c) => c.path === "/class-schedules").at(-1)?.query
+      .startBefore,
+  ).toBe("2026-09-30T16:59:59.999Z");
+  await page
+    .getByRole("combobox", { name: "Trạng thái", exact: true })
+    .selectOption("CANCELLED");
+  await expect(
+    page.getByText("Không có buổi dạy trong tháng hoặc bộ lọc này."),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Tháng sau", exact: true }).click();
+  await expect
+    .poll(
+      () =>
+        calls.filter((c) => c.path === "/class-schedules").at(-1)?.query
+          .startAfter,
+    )
+    .toBe("2026-09-30T17:00:00.000Z");
 });
 test("class cards filter and carry class into teaching schedule", async ({
   page,
@@ -255,11 +276,104 @@ test("class cards filter and carry class into teaching schedule", async ({
     page.getByRole("combobox", { name: "Lớp học", exact: true }),
   ).toHaveValue("class-1");
 });
+
+for (const width of [390, 1440]) {
+  test(`month calendar includes first and last sessions and opens details at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await setupCoach(page);
+    await page.route("**/api/v1/class-schedules?**", async (route) => {
+      const dates = ["2026-09-01", "2026-09-18", "2026-09-30", "2026-10-01"];
+      const url = new URL(route.request().url());
+      const data = dates
+        .filter((day) => {
+          const time = Date.parse(`${day}T09:00:00+07:00`);
+          return (
+            time >= Date.parse(url.searchParams.get("startAfter")!) &&
+            time <= Date.parse(url.searchParams.get("startBefore")!)
+          );
+        })
+        .map((day) => ({
+          id: day === "2026-09-18" ? "session-1" : day,
+          classId: "class-1",
+          status: "SCHEDULED",
+          startTime: `${day}T09:00:00+07:00`,
+          endTime: `${day}T10:00:00+07:00`,
+          class: { id: "class-1", name: "Yoga nền tảng" },
+          room: { name: "Phòng A" },
+        }));
+      await route.fulfill({ json: { success: true, data } });
+    });
+    await page.goto("/coach/schedule");
+    await expect(page.locator(".coach-session")).toHaveCount(1);
+    await page.getByRole("button", { name: "Xem theo tháng" }).click();
+    await expect(page.locator(".coach-session")).toHaveCount(3);
+    await expect(page.getByLabel("Tháng cần xem")).toHaveValue("2026-09");
+    await page.screenshot({
+      path: `artifacts/coach-month-${width}.png`,
+      fullPage: true,
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1,
+      ),
+    ).toBeTruthy();
+    await page.locator(".coach-session").nth(1).click();
+    await expect(
+      page.getByRole("heading", { name: "Danh sách học viên" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.getByLabel("Tháng cần xem").fill("2026-10");
+    await expect(page.locator(".coach-session")).toHaveCount(1);
+    await page
+      .getByRole("button", { name: "Tháng trước", exact: true })
+      .click();
+    await expect(page.locator(".coach-session")).toHaveCount(3);
+    await page.getByRole("button", { name: "Theo tuần", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Tuần sau", exact: true }),
+    ).toBeVisible();
+  });
+}
+
+test("coach account opens from header and personal details require explicit editing", async ({
+  page,
+}) => {
+  await setupCoach(page);
+  await page.goto("/coach/schedule");
+  await expect(page.locator(".sidebar nav a")).toHaveText([
+    "Lịch dạy",
+    "Lớp phụ trách",
+    "Tổng quan",
+    "Đổi HLV",
+    "Đánh giá",
+    "Chính sách sử dụng",
+  ]);
+  await expect(
+    page.locator(".sidebar").getByRole("button", { name: "Đăng xuất" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: /Menu hồ sơ của/ }).click();
+  await expect(
+    page
+      .getByRole("navigation", { name: "Menu hồ sơ", exact: true })
+      .getByRole("button", { name: "Đăng xuất" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Hồ sơ cá nhân", exact: true }).click();
+  await expect(page.getByLabel("Họ và tên", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Chỉnh sửa thông tin" }).click();
+  await page.getByLabel("Họ và tên", { exact: true }).fill("Tên chưa lưu");
+  await page.getByRole("button", { name: "Hủy chỉnh sửa" }).click();
+  await expect(page.locator(".coach-profile-facts")).toContainText(
+    "Nguyễn Minh An",
+  );
+});
 test("profile validates names, phone and birthdate before API call", async ({
   page,
 }) => {
   const calls = await setupCoach(page);
   await page.goto("/coach/profile");
+  await page.getByRole("button", { name: "Chỉnh sửa thông tin" }).click();
   await page.getByLabel("Họ và tên", { exact: true }).fill("  ");
   await page.getByLabel("Số điện thoại", { exact: true }).fill("abc");
   await page.getByLabel("Ngày sinh", { exact: true }).fill("2099-01-01");
