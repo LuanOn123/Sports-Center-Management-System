@@ -2,6 +2,7 @@ import { StatusBadge } from "../../shared/StatusBadge";
 import { ClassForm } from "./ClassForm";
 import { ScheduleForm } from "./ScheduleForm";
 import { CoachAssignmentForm } from "./CoachAssignmentForm";
+import { ScheduleCoachForm } from "./ScheduleCoachForm";
 import { ClassRegistrations, MemberProfile } from "./UserCourseDetails";
 import { ResourceCollection } from "../../shared/ResourceCollection";
 import { CoachFeedback } from "../../shared/CoachFeedback";
@@ -37,6 +38,7 @@ import {
 import { at, display, label, money } from "../../shared/config";
 import { classSports } from "../../shared/sports";
 import { useDebouncedValue } from "../../shared/useDebouncedValue";
+import { getFacilityId } from "../../shared/facility";
 import {
   Details,
   Empty,
@@ -129,6 +131,16 @@ export function ResourcePage({
         ? allPages<RecordData>(listKey, { query: requestQuery, signal })
         : api<RecordData[]>(listKey, { query: requestQuery, signal }),
   });
+  const scheduleCoachNames = useQuery({
+    queryKey: ["schedule-coach-names", getFacilityId()],
+    queryFn: ({ signal }) => allPages<RecordData>("GET /coaches", { signal }),
+    enabled: r.slug === "schedules" && role === "MANAGER",
+  });
+  function withScheduleCoach(row: RecordData): RecordData {
+    if (!row.coachId || at(row, "coach.user.fullName") || at(row, "coach.fullName")) return row;
+    const coach = scheduleCoachNames.data?.data.find((coach) => at(coach, "coachProfile.id") === row.coachId);
+    return coach ? { ...row, coach: { id: row.coachId, user: { fullName: coach.fullName } } } : row;
+  }
   const underCapacityQuery = useQuery({
     queryKey: ["schedules", "under-capacity", 48],
     queryFn: () =>
@@ -227,6 +239,17 @@ export function ResourcePage({
           title="Phân công huấn luyện viên"
           className="icon-button"
           onClick={() => setModal({ kind: "assign", row })}
+        >
+          <UserPlus size={17} />
+        </button>
+      )}
+      {r.slug === "schedules" && role === "MANAGER" && (
+        <button
+          aria-label="Gán HLV cho buổi học"
+          title="Gán HLV cho buổi học"
+          className="icon-button"
+          disabled={row.status !== "SCHEDULED"}
+          onClick={() => setModal({ kind: "assignScheduleCoach", row })}
         >
           <UserPlus size={17} />
         </button>
@@ -486,7 +509,7 @@ export function ResourcePage({
           />
         ) : view === "visual" && r.slug === "schedules" ? (
           <ScheduleCalendar
-            rows={q.data.data}
+            rows={q.data.data.map(withScheduleCoach)}
             cursor={calendarCursor}
             view={calendarView}
             onCursorChange={setCalendarCursor}
@@ -638,7 +661,9 @@ export function ResourcePage({
         <Modal
           dismissible={!busy}
           title={
-            modal.kind === "complete"
+            modal.kind === "assignScheduleCoach"
+              ? "Gán HLV cho buổi học"
+              : modal.kind === "complete"
               ? "Hoàn tất buổi học"
               : modal.kind === "create"
                 ? "Thêm " + r.title.toLowerCase()
@@ -660,7 +685,14 @@ export function ResourcePage({
             if (!busy) setModal(null);
           }}
         >
-          {r.slug === "classes" && ["create", "edit"].includes(modal.kind) ? (
+          {modal.kind === "assignScheduleCoach" && role === "MANAGER" ? (
+            <ScheduleCoachForm
+              scheduleId={String(modal.row?.id)}
+              onSuccess={done}
+              onCancel={() => setModal(null)}
+              onBusyChange={setBusy}
+            />
+          ) : r.slug === "classes" && ["create", "edit"].includes(modal.kind) ? (
             <ClassForm
               initial={modal.kind === "edit" ? modal.row : {}}
               onSuccess={done}
@@ -788,7 +820,9 @@ export function ResourcePage({
                     {r.slug === "members" || r.slug === "users"
                       ? "Gói & tập luyện"
                       : r.slug === "schedules"
-                        ? "Học viên & điểm danh"
+                        ? ["RECEPTIONIST", "STAFF"].includes(role)
+                          ? "Học viên"
+                          : "Học viên & điểm danh"
                         : r.slug === "coaches"
                           ? "Đánh giá"
                           : role !== "MANAGER"
@@ -801,7 +835,7 @@ export function ResourcePage({
                 r.slug === "rooms" ? (
                   <RoomDetailView data={detail.data.data} />
                 ) : r.slug === "schedules" ? (
-                  <ScheduleDetailView data={detail.data.data} />
+                  <ScheduleDetailView data={withScheduleCoach(detail.data.data)} />
                 ) : (
                   <Details value={detail.data.data} />
                 )
@@ -810,6 +844,15 @@ export function ResourcePage({
                 r.slug === "schedules" &&
                 !readOnly && (
                   <div className="modal-footer schedule-detail-actions">
+                    {role === "MANAGER" && (
+                      <button
+                        className="button"
+                        disabled={detail.data.data.status !== "SCHEDULED"}
+                        onClick={() => setModal({ kind: "assignScheduleCoach", row: detail.data.data })}
+                      >
+                        <UserPlus size={16} /> Gán HLV cho buổi học
+                      </button>
+                    )}
                     <button
                       className="button"
                       disabled={modal.row?.status !== "SCHEDULED"}
@@ -1100,7 +1143,35 @@ function Enrollments({
       ) : q.isError ? (
         <ErrorState error={q.error} retry={() => q.refetch()} />
       ) : q.data.data.length ? (
-        <Attendance schedule={schedule} roster={q.data.data} role={role} />
+        ["RECEPTIONIST", "STAFF"].includes(role) ? (
+          <div
+            className="table-scroll"
+            role="region"
+            aria-label="Danh sách học viên đăng ký"
+            tabIndex={0}
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Hội viên</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">Trạng thái đăng ký</th>
+                </tr>
+              </thead>
+              <tbody>
+                {q.data.data.map((row) => (
+                  <tr key={String(row.id)}>
+                    <td>{display(at(row, "member.user.fullName"))}</td>
+                    <td>{display(at(row, "member.user.email"))}</td>
+                    <td>{display(row.status)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <Attendance schedule={schedule} roster={q.data.data} role={role} />
+        )
       ) : (
         <Empty text="Chưa có hội viên đăng ký" />
       )}
@@ -1298,7 +1369,7 @@ export function ScheduleDetailView({ data }: { data: RecordData }) {
   const coachName =
     at(coach, "user.fullName") ||
     at(data, "coach.fullName") ||
-    at(cls, "coaches.0.coach.user.fullName");
+    (data.coachId ? "HLV đã phân công" : at(cls, "coaches.0.coach.user.fullName"));
   const sports = classSports(cls);
 
   const snapshot = data.requirementsSnapshot;

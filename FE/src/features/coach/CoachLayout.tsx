@@ -9,18 +9,18 @@ import {
   CalendarDays,
   BookOpen,
   UserRound,
+  ArrowLeftRight,
 } from "lucide-react";
 import { CoachWorkspace } from "./CoachWorkspace";
 import { CoachProfile } from "./CoachProfile";
 import { idOf, type Row } from "./data";
 import "./coach.css";
 const items = [
-  ["dashboard", "Tổng quan huấn luyện viên", LayoutDashboard],
-  ["coach-changes", "Đổi HLV theo buổi", CalendarDays],
   ["schedule", "Lịch dạy", CalendarDays],
   ["classes", "Lớp phụ trách", BookOpen],
-  ["profile", "Tài khoản", UserRound],
-  ["feedback", "Đánh giá của hội viên", UserRound],
+  ["dashboard", "Tổng quan", LayoutDashboard],
+  ["coach-changes", "Đổi HLV", ArrowLeftRight],
+  ["feedback", "Đánh giá", UserRound],
 ] as const;
 export function CoachLayout(props: PortalProps) {
   const coachId = idOf((props.user as unknown as Row).coachProfile);
@@ -32,8 +32,14 @@ export function CoachLayout(props: PortalProps) {
       items={items}
     >
       <Routes>
-        <Route path="/coach/leave" element={<Navigate to="/coach/coach-changes" replace />} />
-        <Route path="/coach/coach-changes" element={<CoachChangesPage role="COACH" />} />
+        <Route
+          path="/coach/leave"
+          element={<Navigate to="/coach/coach-changes" replace />}
+        />
+        <Route
+          path="/coach/coach-changes"
+          element={<CoachChangesPage role="COACH" />}
+        />
         <Route
           path="/coach/feedback"
           element={

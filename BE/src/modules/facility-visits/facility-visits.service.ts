@@ -5,6 +5,8 @@ import { AppError } from "../../middlewares/errorHandler.js";
 import { lockMemberCheckIn } from "../../utils/dbLocks.js";
 import { FACILITY_CHECKIN } from "../../config/membership.js";
 import { findActiveSubscription } from "../enrollments/enrollment-quota.service.js";
+import { termMembershipCovers } from "../enrollments/term-membership-policy.js";
+import { ATTENDANCE } from "../../config/attendance.js";
 
 export type CheckInMethod = "QR" | "RECEPTION";
 
@@ -41,7 +43,23 @@ export async function checkIn(
     if (!facility.isActive) throw new AppError("FORBIDDEN_SCOPE", 403);
 
     const activeSub = await findActiveSubscription(tx, memberProfileId, now);
-    if (!activeSub) {
+    // An expired plan only permits entry for an approved class at this facility,
+    // within the existing attendance window; it grants no general gym access.
+    const approvedClasses = activeSub ? [] : await tx.enrollment.findMany({
+      where: {
+        memberId: memberProfileId, status: "BOOKED",
+        schedule: { status: "SCHEDULED", class: { facilityId },
+          startTime: { lte: new Date(now.getTime() + ATTENDANCE.SCAN_OPEN_MINUTES_BEFORE * 60000) },
+          endTime: { gte: new Date(now.getTime() - ATTENDANCE.SCAN_CLOSE_MINUTES_AFTER * 60000) },
+        },
+      },
+      include: { schedule: true },
+    });
+    const approvedTermVisit = approvedClasses.some((row) => termMembershipCovers(row.termMembershipGrant, {
+      memberId: memberProfileId, classId: row.classId, termId: row.schedule.termId,
+      startTime: row.schedule.startTime, endTime: row.schedule.endTime,
+    }));
+    if (!activeSub && !approvedTermVisit) {
       throw new AppError(
         "Bạn không có gói tập đang hoạt động. Vui lòng mua/gia hạn gói để vào cơ sở.",
         403,

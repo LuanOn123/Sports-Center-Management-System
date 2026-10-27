@@ -19,15 +19,8 @@ import { useReceptionList } from "../api";
 import { Heading, ListState, MemberPicker } from "../components";
 import { StatusBadge } from "../../../shared/StatusBadge";
 import { ErrorState, Loading, Modal } from "../../../shared/ui";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 
-type AttendanceRecord = {
-  id: string;
-  memberId: string;
-  scheduleId: string;
-  status: string;
-  note?: string;
-};
 
 function formatDateTime(value: unknown) {
   if (!value) return "—";
@@ -42,24 +35,6 @@ function formatDateTime(value: unknown) {
   });
 }
 
-function AttendanceStatusBadge({ status }: { status?: unknown }) {
-  const str = status ? String(status) : "";
-  if (!str) {
-    return <span className="badge badge-neutral">Chưa điểm danh</span>;
-  }
-  switch (str) {
-    case "PRESENT":
-      return <span className="badge badge-success">Có mặt</span>;
-    case "ABSENT":
-      return <span className="badge badge-danger">Vắng mặt</span>;
-    case "LATE":
-      return <span className="badge badge-warning">Đi muộn</span>;
-    case "EXCUSED":
-      return <span className="badge badge-info">Vắng có phép</span>;
-    default:
-      return <span className="badge badge-neutral">{display(str)}</span>;
-  }
-}
 
 function EnrollmentBadge({ status }: { status?: unknown }) {
   const str = status ? String(status) : "";
@@ -108,15 +83,6 @@ export function ClassesPage() {
     Boolean(schedule?.id),
   );
 
-  const attendanceQuery = useQuery({
-    queryKey: ["attendance", schedule?.id],
-    queryFn: ({ signal }) =>
-      api<AttendanceRecord[]>("GET /attendance", {
-        query: { scheduleId: String(schedule?.id || "") },
-        signal,
-      }),
-    enabled: Boolean(schedule?.id),
-  });
 
   // Calculate schedule statistics
   const totalBooked = useMemo(() => {
@@ -129,27 +95,6 @@ export function ClassesPage() {
   const spotsLeft =
     capacity > 0 ? Math.max(0, capacity - totalBooked) : undefined;
 
-  const attendanceMap = useMemo(() => {
-    const map = new Map<string, AttendanceRecord>();
-    if (attendanceQuery.data?.data && Array.isArray(attendanceQuery.data.data)) {
-      for (const att of attendanceQuery.data.data) {
-        map.set(att.memberId, att);
-      }
-    }
-    return map;
-  }, [attendanceQuery.data?.data]);
-
-  const attendanceStats = useMemo(() => {
-    let present = 0;
-    let absent = 0;
-    let late = 0;
-    attendanceMap.forEach((att) => {
-      if (att.status === "PRESENT") present++;
-      else if (att.status === "ABSENT") absent++;
-      else if (att.status === "LATE") late++;
-    });
-    return { present, absent, late, total: attendanceMap.size };
-  }, [attendanceMap]);
 
   // Selected member check
   const selectedMemberId = member ? String(member.id) : "";
@@ -265,7 +210,7 @@ export function ClassesPage() {
       <section className="panel reception-section">
         <h2>Lịch học theo buổi</h2>
         <div className="collection-toolbar">
-          <p>Chọn một buổi học để xem danh sách đăng ký, kiểm tra chuyên cần và hỗ trợ hội viên.</p>
+          <p>Chọn một buổi học để xem danh sách đăng ký và hỗ trợ hội viên.</p>
           <label className="agenda-filter">
             <CalendarDays size={18} aria-hidden="true" />
             <span className="sr-only">Ngày học</span>
@@ -401,30 +346,6 @@ export function ClassesPage() {
                 </div>
               </div>
 
-              <div
-                style={{
-                  background: "var(--color-bg-secondary, rgba(255,255,255,0.05))",
-                  padding: "8px 14px",
-                  borderRadius: "8px",
-                  border: "1px solid var(--color-border, #444)",
-                  textAlign: "center",
-                }}
-              >
-                <div style={{ fontSize: "11px", color: "var(--color-text-muted, #aaa)", textTransform: "uppercase" }}>
-                  Chuyên cần
-                </div>
-                <div style={{ fontWeight: 600, fontSize: "13px" }}>
-                  <span style={{ color: "var(--color-success, #52c41a)" }}>{attendanceStats.present} có mặt</span>
-                  {" · "}
-                  <span style={{ color: "var(--color-danger, #ff4d4f)" }}>{attendanceStats.absent} vắng</span>
-                  {attendanceStats.late > 0 && (
-                    <span style={{ color: "var(--color-warning, #faad14)" }}>
-                      {" · "}
-                      {attendanceStats.late} muộn
-                    </span>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
 
@@ -600,17 +521,12 @@ export function ClassesPage() {
                     <th scope="col">Số điện thoại</th>
                     <th scope="col">Email</th>
                     <th scope="col">Trạng thái đặt chỗ</th>
-                    <th scope="col">Chuyên cần</th>
                     <th scope="col">Đăng ký lúc</th>
                     <th scope="col" style={{ textAlign: "right" }}>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredEnrollments.map((row, index) => {
-                    const memberId = String(
-                      row.memberId || at(row, "member.id") || "",
-                    );
-                    const attRecord = attendanceMap.get(memberId);
                     const isBooked = row.status === "BOOKED";
 
                     return (
@@ -636,10 +552,6 @@ export function ClassesPage() {
                         </td>
                         <td>
                           <EnrollmentBadge status={row.status} />
-                        </td>
-                        <td>
-                          {/* Read-only attendance monitoring badge */}
-                          <AttendanceStatusBadge status={attRecord?.status} />
                         </td>
                         <td style={{ color: "var(--color-text-muted, #888)", fontSize: "13px" }}>
                           {formatDateTime(row.bookedAt)}
@@ -673,7 +585,7 @@ export function ClassesPage() {
           )}
 
           <p className="field-note" style={{ marginTop: "16px" }}>
-            * Lễ tân có thể xem trạng thái chuyên cần để hỗ trợ hội viên. Quyền ghi hoặc sửa điểm danh được thực hiện bởi Huấn luyện viên hoặc Quản lý.
+            Lễ tân hỗ trợ đăng ký và hủy đăng ký lớp cho hội viên.
           </p>
         </section>
       )}

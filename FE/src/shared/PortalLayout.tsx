@@ -81,6 +81,10 @@ export function PortalLayout({
   const sidebarId = useId();
   const [busy, setBusy] = useState(false);
   const location = useLocation();
+  const accountMenu = ["MEMBER", "COACH", "RECEPTIONIST", "STAFF"].includes(
+    user.role,
+  );
+  const headerLogout = ["COACH", "RECEPTIONIST", "STAFF"].includes(user.role);
   const navigation = [
     ...(groups || [
       {
@@ -119,7 +123,7 @@ export function PortalLayout({
   }, [pageTitle]);
   return (
     <div
-      className={`app-layout portal-theme${user.role === "MEMBER" ? " member-theme" : ""}`}
+      className={`app-layout portal-theme${user.role === "MEMBER" ? " member-theme" : user.role === "COACH" ? " coach-theme" : ""}${headerLogout ? " header-account-layout" : ""}`}
     >
       <a className="skip-link" href="#main-content">
         Đến nội dung chính
@@ -172,23 +176,25 @@ export function PortalLayout({
             </div>
           ))}
         </nav>
-        <div className="sidebar-bottom">
-          <button
-            className="logout"
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              try {
-                await onLogout();
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <LogOut size={16} />
-            {busy ? "Đang đăng xuất…" : "Đăng xuất"}
-          </button>
-        </div>
+        {!headerLogout && (
+          <div className="sidebar-bottom">
+            <button
+              className="logout"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await onLogout();
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              <LogOut size={16} />
+              {busy ? "Đang đăng xuất…" : "Đăng xuất"}
+            </button>
+          </div>
+        )}
       </aside>
       <div className="main-shell" inert={mobile && open}>
         <header className="topbar">
@@ -214,8 +220,8 @@ export function PortalLayout({
             <FacilityPicker />
             <HelpPanel role={user.role} base={base} />
             <NotificationBell base={base} role={user.role} />
-            {user.role === "MEMBER" ? (
-              <ProfileMenu user={user} base={base} />
+            {accountMenu ? (
+              <ProfileMenu user={user} base={base} onLogout={onLogout} />
             ) : (
               <div className="profile-link">
                 {location.pathname === `${base}/profile` ? (

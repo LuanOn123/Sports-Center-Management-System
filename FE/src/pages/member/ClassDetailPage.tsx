@@ -1160,6 +1160,13 @@ export function ClassDetailPage() {
                 </span>
               )}
             </div>
+            {registration?.membershipCoverage?.policy === "HALF_REMAINING_TERM_V1" && (
+              <AlertBanner
+                type="info"
+                title="Đủ điều kiện thời hạn cho trọn kỳ"
+                message={`Gói còn ít nhất 50% thời hạn tại thời điểm xét đăng ký. Quyền học áp dụng cho lớp trong kỳ này đến ${formatMemberDate(registration.membershipCoverage.validUntil)}, kể cả khi gói hết hạn ngày ${formatMemberDate(registration.membershipCoverage.subscriptionEndDate)}. Ngày hết hạn gói không thay đổi.`}
+              />
+            )}
             {registration && !registration.eligible && (
               <div
                 style={{ display: "flex", flexDirection: "column", gap: 10 }}

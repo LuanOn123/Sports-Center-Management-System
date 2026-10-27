@@ -86,4 +86,12 @@ Chạy `npm run generate:api -- --local` để xuất Swagger trực tiếp từ
 
 ## Deploy
 
-`npm run build` tạo `dist/`. Cấu hình static host rewrite các đường dẫn về `/index.html` để React Router hoạt động khi refresh/deep link. Chưa triển khai hay push lên remote trong yêu cầu này.
+`npm run build` tạo `dist/`.
+
+### Vercel
+
+- Đặt **Root Directory** là `FE`, **Framework Preset** là `Vite`, **Build Command** là `npm run build`, **Output Directory** là `dist`.
+- `vercel.json` trong thư mục `FE` rewrite các đường dẫn về `/index.html` để React Router xử lý URL khi refresh hoặc mở trực tiếp trang con. Nếu thiếu cấu hình này, Vercel trả `404 NOT_FOUND` cho các URL như `/coach/coach-changes`.
+- Sau khi push thay đổi, chờ deployment mới hoàn tất (hoặc redeploy). Kiểm tra bằng cách mở trực tiếp `/coach/coach-changes`, đăng nhập tài khoản COACH nếu cần, rồi nhấn F5; kiểm tra thêm một trang con của vai trò khác với tài khoản tương ứng.
+
+Với static host khác, cấu hình fallback tương đương về `/index.html` để hỗ trợ refresh/deep link.

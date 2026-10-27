@@ -159,7 +159,7 @@ router.get("/my/quota", authenticate, authorize("MEMBER"), enrollmentsController
  *
  *       **Chốt chặn nghiệp vụ (chạy sau khi đã advisory-lock memberQuota → memberClass → schedules):**
  *       - Class tồn tại, đang hoạt động và **có ít nhất 1 buổi sắp diễn ra** (400 nếu không).
- *       - Gói tập `ACTIVE` và **`endDate` phủ tới buổi CUỐI của khóa** (`SUBSCRIPTION_ENDS_BEFORE_COURSE_END`).
+ *       - Gói ACTIVE phủ tới buổi cuối, hoặc tại lúc đăng ký còn >=50% thời hạn gói (endDate-startDate) và toàn bộ buổi thuộc cùng một kỳ. Trường hợp 50% lưu quyền học theo Enrollment, không gia hạn gói.
  *       - Class `PREMIUM` yêu cầu gói tier `PREMIUM` (`PREMIUM_REQUIRED`).
  *       - Không bị hình phạt chuyên cần đang hiệu lực ở Class này (`ATTENDANCE_PENALTY_ACTIVE`).
  *       - Không vượt `MembershipPlan.maxConcurrentClasses` (`CONCURRENT_CLASS_LIMIT_REACHED`).

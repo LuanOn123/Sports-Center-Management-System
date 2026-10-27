@@ -38,11 +38,6 @@ export function ReceptionAnalytics() {
         signal,
       ),
   });
-  const attendance = useQuery({
-    queryKey: ["reception-dashboard-attendance", facility],
-    queryFn: ({ signal }) =>
-      dashboardRows("GET /attendance/monitoring", {}, signal),
-  });
   const unread = useQuery({
     queryKey: ["chat", "unread-count"],
     queryFn: ({ signal }) =>
@@ -54,9 +49,6 @@ export function ReceptionAnalytics() {
   const rows = payments.data ?? [],
     success = rows.filter((r) => r.status === "SUCCESS"),
     pending = rows.filter((r) => r.status === "PENDING");
-  const monitor = attendance.data ?? [],
-    warning = monitor.filter((r) => r.status === "WARNING").length,
-    violation = monitor.filter((r) => r.status === "VIOLATION").length;
   return (
     <div className="analytics-dashboard">
       <div className="analytics-toolbar">
@@ -193,48 +185,6 @@ export function ReceptionAnalytics() {
           </div>
         </>
       )}
-      <Card
-        title="Theo dõi chuyên cần"
-        note="Trạng thái hiện tại theo từng cặp hội viên–lớp, độc lập với kỳ giao dịch. Một hội viên có thể học nhiều lớp."
-      >
-        {attendance.isPending ? (
-          <Loading variant="cards" />
-        ) : attendance.isError ? (
-          <ErrorState
-            error={attendance.error}
-            retry={() => attendance.refetch()}
-          />
-        ) : (
-          <div className="analytics-kpis">
-            <Kpi
-              title="Đang theo dõi"
-              value={monitor.length}
-              note="Cặp hội viên–lớp"
-            />
-            <Kpi
-              title="Cảnh báo"
-              value={warning}
-              note="Cặp hội viên–lớp ở trạng thái WARNING"
-              part={warning}
-              total={monitor.length}
-            />
-            <Kpi
-              title="Vi phạm"
-              value={violation}
-              note="Cặp hội viên–lớp ở trạng thái VIOLATION"
-              part={violation}
-              total={monitor.length}
-            />
-            <Kpi
-              title="Báo cáo chờ duyệt"
-              value={monitor.filter((r) => r.reportStatus === "PENDING").length}
-              note="Cặp hội viên–lớp có báo cáo chờ quản lý"
-              part={monitor.filter((r) => r.reportStatus === "PENDING").length}
-              total={monitor.length}
-            />
-          </div>
-        )}
-      </Card>
     </div>
   );
 }

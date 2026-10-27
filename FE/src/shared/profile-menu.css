@@ -44,7 +44,8 @@
   letter-spacing: 1.6px;
   color: var(--member-muted, #a1b2c8);
 }
-.member-profile-dropdown a {
+.member-profile-dropdown a,
+.member-profile-dropdown button {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -54,7 +55,16 @@
   text-decoration: none;
   font-size: 14px;
 }
-.member-profile-dropdown a:hover {
+.member-profile-dropdown button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.member-profile-dropdown a:hover,
+.member-profile-dropdown button:hover {
   background: var(--member-surface-alt, #243044);
 }
 .member-profile-dropdown svg {
@@ -107,6 +117,14 @@
   overflow-wrap: anywhere;
 }
 @media (max-width: 760px) {
+  .header-account-layout .topbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .header-account-layout .topbar-actions {
+    margin-left: auto;
+    max-width: 100%;
+  }
   .member-profile-name {
     display: none;
   }

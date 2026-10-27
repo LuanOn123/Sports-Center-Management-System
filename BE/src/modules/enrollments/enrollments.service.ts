@@ -6,7 +6,7 @@ import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { createNotification } from "../notifications/notifications.service.js";
 import { enqueueNotification, flushNotificationOutbox } from "../notifications/outbox.service.js";
-import { lockMemberClass, lockMemberQuota, lockSchedule } from "../../utils/dbLocks.js";
+import { lockMemberClass, lockMemberQuota, lockSchedule, lockMemberSubscription } from "../../utils/dbLocks.js";
 import { findActivePenalty } from "../attendance/attendance-penalties.service.js";
 import { ATTENDANCE } from "../../config/attendance.js";
 import {
@@ -14,6 +14,7 @@ import {
   findActiveSubscription,
 } from "./enrollment-quota.service.js";
 import { checkFacilityMemberLimit } from "../facilities/facility-limits.service.js";
+import { termMembershipCovers } from "./term-membership-policy.js";
 
 export type BookableSchedule = {
   id: string;
@@ -79,12 +80,18 @@ export async function assertCanBook(
   tx: Prisma.TransactionClient,
   memberProfileId: string,
   schedule: BookableSchedule,
-  options: { excludeEnrollmentId?: string; quotaExemptClassId?: string } = {}
+  options: { excludeEnrollmentId?: string; quotaExemptClassId?: string; termMembershipGrant?: unknown } = {}
 ) {
+  const termId = schedule.termId ?? (await tx.classSchedule.findUnique({
+    where: { id: schedule.id }, select: { termId: true },
+  }))?.termId;
+  const approvedTerm = termMembershipCovers(options.termMembershipGrant, {
+    memberId: memberProfileId, classId: schedule.class.id, termId, startTime: schedule.startTime, endTime: schedule.endTime,
+  });
   // Chốt chặn 1: subscription phải ACTIVE và còn hạn đến ngày lớp học diễn ra.
   const activeSub = await findActiveSubscription(tx, memberProfileId);
 
-  if (!activeSub) {
+  if (!activeSub && !approvedTerm) {
     throw new AppError(
       "Bạn không có gói tập đang hoạt động. Vui lòng mua gói để đặt lịch.",
       403
@@ -92,7 +99,7 @@ export async function assertCanBook(
   }
 
   const lastSession = await tx.classSchedule.findFirst({ where: { classId: schedule.class.id, status: "SCHEDULED" }, orderBy: { endTime: "desc" } });
-  if (activeSub.endDate < (lastSession?.endTime || schedule.endTime)) {
+  if (activeSub && !approvedTerm && activeSub.endDate < (lastSession?.endTime || schedule.endTime)) {
     const expiredDate = activeSub.endDate.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
     const classDate = schedule.startTime.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
     throw new AppError(
@@ -101,15 +108,10 @@ export async function assertCanBook(
     );
   }
 
-  if (schedule.class.classType === "PREMIUM" && activeSub.tier !== "PREMIUM")
+  if (!approvedTerm && schedule.class.classType === "PREMIUM" && activeSub?.tier !== "PREMIUM")
     throw new AppError("Premium membership required to book this class.", 403);
 
   // Chốt chặn kỳ học (Term/Semester registration period & status):
-  const termId = schedule.termId ?? (await tx.classSchedule.findUnique({
-    where: { id: schedule.id },
-    select: { termId: true },
-  }))?.termId;
-
   if (termId) {
     const term = await tx.term.findUnique({ where: { id: termId } });
     if (term) {
@@ -331,6 +333,7 @@ export async function bookClass(
           bookedAt: new Date(),
           cancelledAt: null,
           healthNotes: options.healthNotes !== undefined ? options.healthNotes : existing.healthNotes,
+          termMembershipGrant: Prisma.DbNull,
         },
         include: {
           schedule: { include: { class: { include: { sports: true } }, room: true } },
@@ -618,8 +621,9 @@ export async function transferEnrollment(
     throw new AppError("Cannot transfer to a past class", 400);
 
   return prisma.$transaction(async (tx) => {
-    // Quota là tài nguyên theo memberId nên phải lock TRƯỚC (lock order: memberQuota ->
-    // memberClass -> schedule).
+    // Khóa gói trước quota để không chuyển quyền học xen với hủy/gia hạn gói.
+    // Lock order: memberSubscription -> memberQuota -> memberClass -> schedule.
+    await lockMemberSubscription(tx, enrollment.memberId);
     await lockMemberQuota(tx, enrollment.memberId);
     // BR-09: serialize mọi transfer của cùng (memberId, classId). Thiếu lock này, 2 request
     // đồng thời (lock schedule đích khác nhau) có thể cùng thấy enrollment BOOKED rồi cùng commit
@@ -649,15 +653,20 @@ export async function transferEnrollment(
       excludeEnrollmentId: enrollment.id,
       // §9: transfer chỉ đổi buổi TRONG CÙNG Class (BR-08) => số Class không đổi, không tiêu quota mới.
       quotaExemptClassId: enrollment.classId,
+      termMembershipGrant: enrollment.termMembershipGrant,
     });
 
     const enrollmentInclude = {
       schedule: { include: { class: { include: { sports: true } }, room: true } },
     };
+    const transferredGrant = termMembershipCovers(enrollment.termMembershipGrant, {
+      memberId: enrollment.memberId, classId: target.classId, termId: target.termId,
+      startTime: target.startTime, endTime: target.endTime,
+    }) ? enrollment.termMembershipGrant! : Prisma.DbNull;
     const transferred = existingTarget
       ? await tx.enrollment.update({
           where: { id: existingTarget.id },
-          data: { status: "BOOKED", bookedAt: new Date(), cancelledAt: null },
+          data: { status: "BOOKED", bookedAt: new Date(), cancelledAt: null, termMembershipGrant: transferredGrant },
           include: enrollmentInclude,
         })
       : await tx.enrollment.create({
@@ -666,6 +675,7 @@ export async function transferEnrollment(
             classId: target.classId,
             scheduleId: targetScheduleId,
             status: "BOOKED",
+            termMembershipGrant: transferredGrant,
           },
           include: enrollmentInclude,
         });

@@ -16,13 +16,6 @@ const STATUS_LABELS: Record<TermStatus, string> = {
   CLOSED: "Đã đóng",
 };
 
-const STATUS_BADGE: Record<TermStatus, string> = {
-  PLANNING: "muted",
-  OPEN_REGISTRATION: "success",
-  IN_PROGRESS: "primary",
-  CLOSED: "danger",
-};
-
 function fmtDate(d: string) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("vi-VN", {

@@ -473,11 +473,11 @@ async function cancelScheduleTx(
  */
 async function assertScheduleMoveKeepsBookingsValid(
   tx: Prisma.TransactionClient,
-  params: { scheduleId: string; startTime: Date; endTime: Date }
+  params: { scheduleId: string; startTime: Date; endTime: Date; termId?: string | null }
 ) {
   const booked = await tx.enrollment.findMany({
     where: { scheduleId: params.scheduleId, status: "BOOKED" },
-    select: { memberId: true, member: { select: { user: { select: { fullName: true } } } } },
+    select: { memberId: true, classId: true, schedule: { select: { termId: true } }, member: { select: { user: { select: { fullName: true } } } } },
   });
   if (booked.length === 0) return;
 
@@ -502,7 +502,10 @@ async function assertScheduleMoveKeepsBookingsValid(
   ]);
 
   const conflicted = new Set(conflicts.map((c) => c.memberId));
-  const uncovered = memberIds.filter((m) => !isCoveredAt(coverage.get(m) ?? [], params.startTime));
+  const uncovered = booked.filter((row) => !isCoveredAt(coverage.get(row.memberId) ?? [], params.startTime, {
+    scheduleId: params.scheduleId, classId: row.classId,
+    termId: params.termId === undefined ? row.schedule.termId : params.termId, endTime: params.endTime,
+  })).map((row) => row.memberId);
   if (conflicted.size === 0 && uncovered.length === 0) return;
 
   const nameOf = (memberId: string) =>
@@ -616,7 +619,7 @@ export async function updateSchedule(id: string, data: any) {
       await checkConflicts(tx, roomId, existing.classId, startTime, endTime, id, data.coachId);
 
       // A11: không dời lịch nếu phá chỗ đã hợp lệ (trùng giờ / ngoài hạn gói của member đang giữ chỗ).
-      await assertScheduleMoveKeepsBookingsValid(tx, { scheduleId: id, startTime, endTime });
+      await assertScheduleMoveKeepsBookingsValid(tx, { scheduleId: id, startTime, endTime, termId: termTouched ? newTermId : existing.termId });
 
       // A12: CAS trạng thái — lịch vừa bị hủy/hoàn tất trong lúc chờ lock thì không ghi.
       const moved = await tx.classSchedule.updateMany({
