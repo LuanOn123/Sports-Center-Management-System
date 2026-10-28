@@ -27,6 +27,10 @@ import { WaitlistAction } from "../../shared/Waitlist";
 import { ErrorState } from "../../shared/feedback";
 import { formatMemberDate } from "../../shared/memberFormat";
 import { sportNames } from "../../shared/sports";
+import {
+  applyWholeCourseEnrollment,
+  isWholeCourseRegistered,
+} from "../../shared/courseRegistration";
 import type {
   CoursePlan,
   CoursePlanSession,
@@ -725,7 +729,8 @@ export function ClassDetailPage() {
         healthNotes: variables?.healthNotes || null,
         saveToProfile: variables?.saveToProfile,
       }),
-    onSuccess: (result) => {
+    onMutate: () => queryClient.cancelQueries({ queryKey: ["course-plan", id] }),
+    onSuccess: async (result) => {
       const { summary } = result;
       setActionSuccess(
         summary.enrolledNow > 0
@@ -734,15 +739,23 @@ export function ClassDetailPage() {
       );
       setActionError(null);
       setConfirmOpen(false);
-      for (const key of [
-        ["class", id],
-        ["course-plan", id],
-        ["my-enrollments"],
-        ["my-enrollment-quota"],
-        ["member-schedule"],
-        ["classes"],
-      ])
-        queryClient.invalidateQueries({ queryKey: key });
+      await queryClient.cancelQueries({
+        queryKey: ["course-plan", result.classId],
+      });
+      queryClient.setQueryData<CoursePlan | null>(
+        ["course-plan", result.classId],
+        (current) => current ? applyWholeCourseEnrollment(current, result) : current,
+      );
+      await Promise.all(
+        [
+          ["class", result.classId],
+          ["course-plan", result.classId],
+          ["my-enrollments"],
+          ["my-enrollment-quota"],
+          ["member-schedule"],
+          ["classes"],
+        ].map((key) => queryClient.invalidateQueries({ queryKey: key })),
+      );
     },
     onError: (err: unknown) => {
       setActionError(err);
@@ -773,6 +786,7 @@ export function ClassDetailPage() {
   const coaches = cls.coaches || [];
   const course = plan?.course;
   const registration = plan?.registration;
+  const fullyRegistered = isWholeCourseRegistered(plan);
   const mutationBlockers = courseBlockers(actionError);
 
   const courseTerm =
@@ -1042,7 +1056,13 @@ export function ClassDetailPage() {
         >
           Toàn bộ lịch trình của lớp — đăng ký một lần cho cả khóa
         </p>
-        {planError ? (
+        {planError && course && (
+          <ErrorState
+            error={planError}
+            retry={() => queryClient.invalidateQueries({ queryKey: ["course-plan", id] })}
+          />
+        )}
+        {planError && !course ? (
           <ErrorState error={planError} />
         ) : planLoading ? (
           <LoadingSpinner text="Đang tải lịch trình khóa học..." />
@@ -1160,7 +1180,14 @@ export function ClassDetailPage() {
                 </span>
               )}
             </div>
-            {registration && !registration.eligible && (
+            {registration?.membershipCoverage?.policy === "HALF_REMAINING_TERM_V1" && (
+              <AlertBanner
+                type="info"
+                title="Đủ điều kiện thời hạn cho trọn kỳ"
+                message={`Gói còn ít nhất 50% thời hạn tại thời điểm xét đăng ký. Quyền học áp dụng cho lớp trong kỳ này đến ${formatMemberDate(registration.membershipCoverage.validUntil)}, kể cả khi gói hết hạn ngày ${formatMemberDate(registration.membershipCoverage.subscriptionEndDate)}. Ngày hết hạn gói không thay đổi.`}
+              />
+            )}
+            {registration && !registration.eligible && !fullyRegistered && (
               <div
                 style={{ display: "flex", flexDirection: "column", gap: 10 }}
               >
@@ -1221,6 +1248,7 @@ export function ClassDetailPage() {
             <button
               className="button primary"
               disabled={
+                fullyRegistered ||
                 enrollCourseMutation.isPending ||
                 !registration ||
                 !registration.eligible ||
@@ -1228,23 +1256,28 @@ export function ClassDetailPage() {
                 course.availability.minRemainingSlots === 0
               }
               onClick={() => {
+                if (fullyRegistered || enrollCourseMutation.isPending) return;
                 setActionError(null);
                 setActionSuccess(null);
                 setConfirmOpen(true);
               }}
               style={{ alignSelf: "flex-start" }}
             >
-              {isTermPlanning
-                ? "Kỳ đang lập kế hoạch"
-                : isTermNotStarted
-                  ? "Chưa mở đăng ký"
-                  : isTermClosed
-                    ? "Đã hết hạn đăng ký"
-                    : !registration ||
-                        !registration.eligible ||
-                        course.availability.minRemainingSlots === 0
-                      ? "Chưa thể đăng ký"
-                      : "Đăng ký trọn khóa"}
+              {fullyRegistered
+                ? "Đã đăng ký trọn khóa"
+                : enrollCourseMutation.isPending
+                  ? "Đang đăng ký…"
+                  : isTermPlanning
+                    ? "Kỳ đang lập kế hoạch"
+                    : isTermNotStarted
+                      ? "Chưa mở đăng ký"
+                      : isTermClosed
+                        ? "Đã hết hạn đăng ký"
+                        : !registration ||
+                            !registration.eligible ||
+                            course.availability.minRemainingSlots === 0
+                          ? "Chưa thể đăng ký"
+                          : "Đăng ký trọn khóa"}
             </button>
             {/* BẢNG LỊCH TRÌNH KHÓA HỌC DẠNG BẢNG & MA TRẬN TUẦN TRỰC QUAN */}
             <CourseScheduleTableView course={course} sessions={plan.sessions} />
@@ -1256,6 +1289,7 @@ export function ClassDetailPage() {
         isOpen={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         onConfirm={({ healthNotes, saveToProfile }) => {
+          if (fullyRegistered || enrollCourseMutation.isPending) return;
           enrollCourseMutation.mutate({ healthNotes, saveToProfile });
         }}
         title="Xác nhận đăng ký & Lưu ý thể trạng"

@@ -40,7 +40,6 @@ const groups: NavigationGroup[] = [
     title: "ĐIỀU PHỐI",
     items: [
       ["coach-changes", "Đổi HLV theo buổi", CalendarDays],
-      ["leave", "Nghỉ học & nhân sự", CalendarDays],
       ["issues", "Yêu cầu hỗ trợ", ClipboardList],
     ],
   },

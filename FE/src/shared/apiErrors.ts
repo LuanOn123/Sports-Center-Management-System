@@ -3,7 +3,7 @@ import { labels } from "./config";
 type FieldError = { field: string; message: string };
 
 const messages: Record<string, string> = {
-  "coach_required": "Lớp chưa có HLV. Hãy phân công HLV trước khi tạo lịch.",
+  "coach_required": "Lớp chưa được phân công huấn luyện viên. Hãy chọn và gán HLV chính cho lớp trước khi tạo lịch.",
   "coach_on_leave": "HLV chính hoặc HLV phụ có lịch nghỉ đã được duyệt trong thời gian này.",
   "coach_specialization_required": "HLV chưa đủ chuyên môn để giảng dạy bộ môn của lớp.",
   "invalid facility resources": "Lớp và phòng phải đang hoạt động và thuộc cùng cơ sở.",

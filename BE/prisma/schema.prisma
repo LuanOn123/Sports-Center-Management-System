@@ -501,6 +501,8 @@ model Enrollment {
 
   status      EnrollmentStatus @default(BOOKED)
   healthNotes String?
+  /// Server-owned eligibility snapshot for the approved class/term, independent of plan expiry.
+  termMembershipGrant Json?
   bookedAt    DateTime         @default(now())
   cancelledAt DateTime?
   createdAt   DateTime         @default(now())

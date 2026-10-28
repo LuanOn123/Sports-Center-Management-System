@@ -82,6 +82,33 @@ test("a manager cannot select a term belonging to another facility", async () =>
   });
 });
 
+for (const currentActive of [false, true]) {
+  test(`term-grant transfers retain their original subscription with ${currentActive ? "another active plan" : "no active plan"}`, async () => {
+    const { assertCanBook } = require("../src/modules/enrollments/enrollments.service.js");
+    const { createTermMembershipGrant } = require("../src/modules/enrollments/term-membership-policy.js");
+    const grant = createTermMembershipGrant({ id: "original-paid-sub", status: "ACTIVE",
+      startDate: new Date("2020-01-01"), endDate: new Date("2040-01-01") },
+      { id: "term", endDate: new Date("2099-01-01") }, "member", "gym", new Date("2026-01-01"));
+    assert.ok(grant);
+    const schedule = { id: "target", termId: "term", startTime: new Date("2080-01-01T01:00:00Z"),
+      endTime: new Date("2080-01-01T02:00:00Z"),
+      class: { id: "gym", capacity: 20, classType: "REGULAR", facilityId: null } };
+    const tx = {
+      membershipSubscription: { findFirst: async ({ where }: any) => where.status === "SCHEDULED" || !currentActive ? null :
+        { id: "unrelated-new-sub", tier: "PREMIUM", endDate: new Date("2099-01-01"), plan: { maxConcurrentClasses: 6 } } },
+      classSchedule: { findFirst: async () => schedule },
+      term: { findUnique: async () => ({ id: "term", status: "IN_PROGRESS", registrationStartDate: new Date("2000-01-01"), registrationEndDate: new Date("2099-01-01") }) },
+      class: { findUnique: async () => ({ facilityId: null }) },
+      issue: { findMany: async () => [] }, attendancePenalty: { findFirst: async () => null },
+      enrollment: { findMany: async () => [], count: async () => 0, findUnique: async () => null, findFirst: async () => null },
+    };
+    let sourceId: string | undefined;
+    await assertCanBook(tx, "member", schedule, { termMembershipGrant: grant, quotaExemptClassId: "gym",
+      onSubscriptionSelected: (id: string) => { sourceId = id; } });
+    assert.equal(sourceId, "original-paid-sub");
+  });
+}
+
 for (const reactivate of [false, true]) {
   test(`${reactivate ? "reactivating" : "creating"} a booking records the exact active subscription`, async () => {
     const { bookClass } = require("../src/modules/enrollments/enrollments.service.js");

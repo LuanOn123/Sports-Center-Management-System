@@ -217,6 +217,13 @@ test("creating several schedule shifts sends one batch request", async ({
   await page.route("**/api/v1/terms/current", (route) =>
     route.fulfill({ json: { success: true, data: null } }),
   );
+  await page.route("**/api/v1/classes/class-a", (route) => route.fulfill({ json: { success: true, data: {
+    id: "class-a", isActive: true, sports: [{ id: "gym", name: "Gym" }], coaches: [{ coachId: "coach-a", isPrimary: true }],
+  } } }));
+  await page.route("**/api/v1/coaches?*", (route) => route.fulfill({ json: { success: true, data: [
+    { id: "coach-user", fullName: "HLV Gym", isActive: true, coachProfile: { id: "coach-a" } },
+  ] } }));
+  await page.route("**/api/v1/coaches/coach-a/specializations", (route) => route.fulfill({ json: { success: true, data: [{ sportId: "gym" }] } }));
   const requests: any[] = [];
   await page.route("**/api/v1/class-schedules/batch", (route) => {
     requests.push(route.request().postDataJSON());

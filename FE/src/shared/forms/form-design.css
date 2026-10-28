@@ -82,6 +82,11 @@
   padding: 0;
   cursor: pointer;
 }
+/* The global disabled-field theme must not reveal the native radio overlay. */
+.portal-theme .area-type-option > input:disabled {
+  opacity: 0;
+  cursor: not-allowed;
+}
 .area-type-content {
   position: relative;
   display: flex;

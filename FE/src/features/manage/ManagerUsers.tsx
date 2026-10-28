@@ -4,10 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { User } from "lucide-react";
 import { api, type RecordData } from "../../shared/api";
 import { getFacilityId } from "../../shared/facility";
-import { allPages } from "../../shared/pagedApi";
-import { classSports } from "../../shared/sports";
 import { canTeach } from "../../shared/coachEligibility";
-import { Empty, ErrorState, Loading, Modal, SchemaForm } from "../../shared/ui";
+import { Empty, ErrorState, Loading, Modal } from "../../shared/ui";
+import { CoachSportChoices } from "./CoachExpertiseFields";
+import { CoachProfileForm } from "./CoachProfileForm";
+import { useCoachSports, validateCoachSports } from "./coachProfileData";
 
 type CoachSpecializationItem = {
   sport: { id: string; name: string };
@@ -359,10 +360,10 @@ function CoachEditor({ id, onClose }: { id: string; onClose: () => void }) {
         <ErrorState error={q.error} retry={() => q.refetch()} />
       ) : (
         q.data &&
-        (tab === "profile" ? (
-          <SchemaForm
-            operation="PATCH /coaches/{id}"
-            params={{ id }}
+        (tab === "profile" && profile?.id ? (
+          <CoachProfileForm
+            id={id}
+            profileId={String(profile.id)}
             initial={{ ...q.data.data, ...profile }}
             onBusyChange={setBusy}
             onCancel={onClose}
@@ -394,30 +395,7 @@ function CoachSports({
   onClose: () => void;
   onBusy: (busy: boolean) => void;
 }) {
-  const query = useQuery({
-    queryKey: ["manager-coach-sports", getFacilityId(), id],
-    queryFn: async ({ signal }) => {
-      const [sports, assigned, classes] = await Promise.all([
-        allPages<{ id: string; name: string }>("GET /sports", { signal }),
-        api<{ sportId: string }[]>("GET /coaches/{id}/specializations", {
-          params: { id },
-          signal,
-        }),
-        allPages<RecordData>("GET /classes", {
-          query: { coachId: id },
-          signal,
-        }),
-      ]);
-      return {
-        sports: sports.data,
-        assigned: assigned.data.map((row) => row.sportId),
-        requiredSports: classes.data
-          .filter((row) => row.isActive !== false)
-          .flatMap(classSports)
-          .map((sport) => sport.id),
-      };
-    },
-  });
+  const query = useCoachSports(id);
   const [selection, setSelection] = useState<string[]>();
   const cache = useQueryClient();
   const selected = selection ?? query.data?.assigned ?? [];
@@ -430,17 +408,7 @@ function CoachSports({
         throw new Error(
           "Không thể gỡ bộ môn của lớp HLV đang phụ trách. Hãy điều chỉnh phân công lớp trước.",
         );
-      const currentClasses = await allPages<RecordData>("GET /classes", {
-        query: { coachId: id },
-      });
-      const required = currentClasses.data
-        .filter((row) => row.isActive !== false)
-        .flatMap(classSports)
-        .map((sport) => sport.id);
-      if (required.length && !canTeach(required, selected))
-        throw new Error(
-          "Phân công lớp của HLV vừa thay đổi. Hãy tải lại và giữ các bộ môn của lớp đang phụ trách.",
-        );
+      await validateCoachSports(id, selected);
       return api("PUT /coaches/{id}/specializations", {
         params: { id },
         body: { sportIds: selected },
@@ -471,23 +439,11 @@ function CoachSports({
       </p>
       <fieldset disabled={save.isPending}>
         <legend>Bộ môn giảng dạy</legend>
-        {query.data?.sports.map((s) => (
-          <label key={s.id}>
-            <input
-              type="checkbox"
-              checked={selected.includes(s.id)}
-              onChange={(e) =>
-                setSelection(
-                  e.target.checked
-                    ? [...selected, s.id]
-                    : selected.filter((id) => id !== s.id),
-                )
-              }
-            />
-            {s.name}
-          </label>
-        ))}
-        {!query.data?.sports.length && <Empty text="Chưa có bộ môn" />}
+        <CoachSportChoices
+          sports={query.data.sports}
+          selected={selected}
+          onChange={setSelection}
+        />
         {!coversClasses && (
           <p role="alert">
             Không thể gỡ bộ môn của lớp HLV đang phụ trách. Điều chỉnh phân công
