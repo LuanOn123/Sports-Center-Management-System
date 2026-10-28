@@ -67,7 +67,7 @@ export interface CourseEligibilitySession {
 export interface CourseEligibility {
   sessions: CourseEligibilitySession[];
   blockers: CourseEnrollmentBlocker[];
-  subscription: { tier: MemberTier; endDate: Date; planName: string | null } | null;
+  subscription: { id: string; tier: MemberTier; endDate: Date; planName: string | null } | null;
   termMembershipGrant?: import("./term-membership-policy.js").TermMembershipGrant | null;
   quota: {
     tier: MemberTier | null;
@@ -397,7 +397,7 @@ export async function evaluateCourseEligibility(
     blockers,
     termMembershipGrant: retainedGrant ?? (activeSub && activeSub.endDate < lastSession.endTime ? grant : null),
     subscription: activeSub
-      ? { tier: activeSub.tier, endDate: activeSub.endDate, planName: activeSub.plan?.name ?? null }
+      ? { id: activeSub.id, tier: activeSub.tier, endDate: activeSub.endDate, planName: activeSub.plan?.name ?? null }
       : null,
     quota: {
       tier: quotaUsage.tier,
@@ -560,6 +560,7 @@ export async function enrollWholeCourse(
             where: { id: state.myEnrollment.id },
             data: {
               status: "BOOKED",
+              subscriptionId: eligibility.termMembershipGrant?.subscriptionId ?? eligibility.subscription?.id ?? null,
               bookedAt: now,
               cancelledAt: null,
               healthNotes: options.healthNotes !== undefined ? options.healthNotes : undefined,
@@ -583,6 +584,7 @@ export async function enrollWholeCourse(
               classId,
               scheduleId: state.scheduleId,
               status: "BOOKED",
+              subscriptionId: eligibility.termMembershipGrant?.subscriptionId ?? eligibility.subscription?.id ?? null,
               healthNotes: options.healthNotes ?? null,
               termMembershipGrant: eligibility.termMembershipGrant ?? Prisma.DbNull,
             },

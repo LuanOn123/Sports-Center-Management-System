@@ -129,6 +129,13 @@ const PlannerScheduleSchema = z.object({
   path: ["endTime"],
 });
 
+export const CreateScheduleBatchSchema = z.object({
+  classId: z.string().min(1),
+  roomId: z.string().min(1),
+  termId: z.string().min(1).optional(),
+  schedules: z.array(PlannerScheduleSchema).min(1).max(500),
+});
+
 export const CreateActivityPlanSchema = z.object({
   termId: z.string().min(1).optional(),
   sport: z.union([

@@ -8,9 +8,15 @@ export const CreateUserSchema = z.object({
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
   dateOfBirth: z.string().optional(),
   role: z.enum(["MEMBER", "COACH", "RECEPTIONIST", "MANAGER", "ADMIN"]),
+  sportIds: z.array(z.string().trim().min(1)).optional(),
+  experienceYears: z.number().int().min(0).optional(),
+  bio: z.string().optional(),
   fitnessGoal: z.string().optional(),
   trainingLevel: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED"]).optional(),
   trainingPreference: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.role === "COACH" && !data.sportIds?.length)
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["sportIds"], message: "Bắt buộc chọn ít nhất một bộ môn giảng dạy." });
 });
 
 export const UpdateUserSchema = z.object({

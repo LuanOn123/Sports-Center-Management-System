@@ -97,6 +97,12 @@ export async function createUser(data: CreateUserInput) {
   const existing = await User.findOne({ email: data.email });
   if (existing) throw new AppError("Email is already in use", 409);
 
+  const sportIds = [...new Set(data.sportIds ?? [])];
+  if (data.role === "COACH") {
+    const count = await prisma.sport.count({ where: { id: { in: sportIds }, isActive: true } });
+    if (!sportIds.length || count !== sportIds.length)
+      throw new AppError("Vui lòng chọn bộ môn đang hoạt động cho HLV.", 400);
+  }
   const hashed = await hashPassword(data.password);
 
   const session = await mongoose.startSession();
@@ -123,7 +129,7 @@ export async function createUser(data: CreateUserInput) {
       });
       await mp.save({ session });
     } else if (data.role === "COACH") {
-      const cp = new CoachProfile({ userId });
+      const cp = new CoachProfile({ userId, experienceYears: data.experienceYears, bio: data.bio });
       await cp.save({ session });
     } else if (data.role === "MANAGER") {
       const mgr = new ManagerProfile({ userId });
@@ -166,7 +172,7 @@ export async function createUser(data: CreateUserInput) {
       const cp = await CoachProfile.findOne({ userId });
       if (cp) {
         await prisma.coachProfile.create({
-          data: { id: cp._id.toString(), userId: userId }
+          data: { id: cp._id.toString(), userId, experienceYears: data.experienceYears, bio: data.bio, specializations: { create: sportIds.map((sportId) => ({ sportId })) } }
         });
       }
     } else if (data.role === "MANAGER") {

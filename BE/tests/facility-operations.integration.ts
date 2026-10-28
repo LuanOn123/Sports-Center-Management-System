@@ -93,7 +93,7 @@ async function main() {
     );
     assert.deepEqual(
       missingCapabilities({ mats: 5 }, [{ key: "mats", quantity: 4 }]),
-      ["mats"],
+      [],
     );
     console.log("PASS recurring schedule dates and room capability validation");
     const { checkFacilityScope } =

@@ -1,6 +1,6 @@
 import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
-import { missingCapabilities } from "./rules.js";
+import { mergeRequirements, missingCapabilities } from "./rules.js";
 
 export async function validateResources(
   db: any,
@@ -9,10 +9,11 @@ export async function validateResources(
   startTime: Date,
   endTime: Date,
   replacement?: string,
+  sessions?: { startTime: Date; endTime: Date }[],
 ) {
   const cls = await db.class.findUnique({
     where: { id: classId },
-    include: { sports: true, coaches: true },
+    include: { sports: { include: { requirements: true } }, coaches: true },
   });
   const room = await db.room.findUnique({
     where: { id: roomId },
@@ -23,14 +24,16 @@ export async function validateResources(
   if (room.capacity < cls.capacity || room.areaType !== cls.areaType)
     throw new AppError("Room capacity or area is unsuitable", 400);
   const missing = missingCapabilities(
-    cls.requirementsSnapshot as Record<string, number>,
+    mergeRequirements(cls.sports.flatMap((sport: any) => sport.requirements ?? [])),
     room.capabilities,
+    room.areaType,
   );
   if (missing.length)
     throw new AppError(`ROOM_CAPABILITY_MISSING: ${missing.join(", ")}`, 409);
-  const coaches = replacement
-    ? [replacement]
-    : cls.coaches.map((v: any) => v.coachId);
+  const coaches = [...new Set<string>([
+    ...cls.coaches.filter((v: any) => !replacement || v.isPrimary === false).map((v: any) => v.coachId),
+    ...(replacement ? [replacement] : []),
+  ])];
   if (!coaches.length) throw new AppError("COACH_REQUIRED", 409);
   for (const coachId of coaches) {
     const coach = await db.coachProfile.findUnique({
@@ -62,8 +65,7 @@ export async function validateResources(
           where: {
             coachId,
             status: "APPROVED",
-            startTime: { lt: endTime },
-            endTime: { gt: startTime },
+            OR: (sessions ?? [{ startTime, endTime }]).map((session) => ({ startTime: { lt: session.endTime }, endTime: { gt: session.startTime } })),
           },
         }),
     );

@@ -1,3 +1,6 @@
+import { requestContext } from "../../config/request-context.js";
+import { mergeRequirements, missingCapabilities } from "../operations/rules.js";
+import { validateResources } from "../operations/scheduling.js";
 import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
@@ -18,7 +21,7 @@ export async function listSports(query: any) {
       where,
       skip,
       take: limit,
-      include: { _count: { select: { classes: true } } },
+      include: { requirements: true, _count: { select: { classes: true } } },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -30,7 +33,10 @@ export async function createSport(data: any) {
     where: { name: data.name },
   });
   if (existing) throw new AppError("Sport with this name already exists", 409);
-  return prisma.sport.create({ data });
+  const { requirements, ...fields } = data;
+  return prisma.sport.create({ data: { ...fields, requirements: requirements ? {
+    create: Object.entries(requirements).map(([key, minimum]) => ({ key, minimum: minimum as number })),
+  } : undefined }, include: { requirements: true } });
 }
 
 export async function getSportById(id: string) {
@@ -83,7 +89,32 @@ export async function updateSport(id: string, data: any) {
     }
   }
 
-  return prisma.sport.update({ where: { id }, data });
+  const { requirements, ...fields } = data;
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.sport.update({ where: { id }, data: { ...fields,
+      ...(requirements !== undefined ? { requirements: { deleteMany: {}, create:
+        Object.entries(requirements).map(([key, minimum]) => ({ key, minimum: minimum as number })) } } : {}),
+    }, include: { requirements: true } });
+    if (requirements !== undefined) {
+      // Sports are global: edits must remain valid at every facility, including
+      // default rooms of classes which do not have a scheduled session yet.
+      await requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, async () => {
+        const classes = await tx.class.findMany({
+          where: { sports: { some: { id } }, isActive: true },
+          include: { defaultRoom: { include: { capabilities: true } }, sports: { include: { requirements: true } } },
+        });
+        for (const cls of classes) {
+          const required = mergeRequirements(cls.sports.flatMap((sport) => sport.requirements));
+          if (cls.defaultRoom && missingCapabilities(required, cls.defaultRoom.capabilities, cls.defaultRoom.areaType).length)
+            throw new AppError(`Phòng mặc định của lớp "${cls.name}" không đủ dụng cụ theo yêu cầu mới.`, 409);
+        }
+        const sessions = await tx.classSchedule.findMany({ where: { class: { sports: { some: { id } } }, status: "SCHEDULED", endTime: { gt: new Date() } } });
+        for (const session of sessions)
+          await validateResources(tx, session.roomId, session.classId, session.startTime, session.endTime, session.coachId ?? undefined);
+      });
+    }
+    return updated;
+  }, { timeout: 30000 });
 }
 
 export async function deleteSport(id: string) {

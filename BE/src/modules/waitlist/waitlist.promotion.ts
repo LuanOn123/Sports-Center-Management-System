@@ -42,8 +42,9 @@ export async function promoteNextEligible(
     await lockMemberClass(tx, entry.memberId, freshSchedule.class.id);
 
     let existing: any = null;
+    let subscriptionId: string | undefined;
     try {
-      existing = await assertCanBook(tx, entry.memberId, freshSchedule as any);
+      existing = await assertCanBook(tx, entry.memberId, freshSchedule as any, { onSubscriptionSelected: (id) => { subscriptionId = id; } });
     } catch {
       continue;
     }
@@ -57,7 +58,7 @@ export async function promoteNextEligible(
     const enrolled = existing
       ? await tx.enrollment.update({
           where: { id: existing.id },
-          data: { status: "BOOKED", bookedAt: new Date(), cancelledAt: null, termMembershipGrant: Prisma.DbNull },
+          data: { status: "BOOKED", bookedAt: new Date(), cancelledAt: null, subscriptionId, termMembershipGrant: Prisma.DbNull },
           include: {
             ...enrollmentInclude,
             member: { select: { id: true, userId: true } },
@@ -65,6 +66,7 @@ export async function promoteNextEligible(
         })
       : await tx.enrollment.create({
           data: {
+            subscriptionId,
             memberId: entry.memberId,
             classId: freshSchedule.class.id,
             scheduleId,

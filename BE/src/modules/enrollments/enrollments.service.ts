@@ -14,7 +14,7 @@ import {
   findActiveSubscription,
 } from "./enrollment-quota.service.js";
 import { checkFacilityMemberLimit } from "../facilities/facility-limits.service.js";
-import { termMembershipCovers } from "./term-membership-policy.js";
+import { readTermMembershipGrant, termMembershipCovers } from "./term-membership-policy.js";
 
 export type BookableSchedule = {
   id: string;
@@ -80,7 +80,7 @@ export async function assertCanBook(
   tx: Prisma.TransactionClient,
   memberProfileId: string,
   schedule: BookableSchedule,
-  options: { excludeEnrollmentId?: string; quotaExemptClassId?: string; termMembershipGrant?: unknown } = {}
+  options: { excludeEnrollmentId?: string; quotaExemptClassId?: string; onSubscriptionSelected?: (id: string) => void; termMembershipGrant?: unknown } = {}
 ) {
   const termId = schedule.termId ?? (await tx.classSchedule.findUnique({
     where: { id: schedule.id }, select: { termId: true },
@@ -264,6 +264,10 @@ export async function assertCanBook(
     }
   }
 
+  const sourceSubscriptionId = approvedTerm
+    ? readTermMembershipGrant(options.termMembershipGrant)!.subscriptionId
+    : activeSub!.id;
+  options.onSubscriptionSelected?.(sourceSubscriptionId);
   return existing;
 }
 
@@ -321,7 +325,8 @@ export async function bookClass(
     }
 
     // 2-5. Gói tập / sức chứa / trùng chỗ / trùng giờ — dùng chung với transferEnrollment.
-    const existing = await assertCanBook(tx, memberProfileId, freshSchedule);
+    let subscriptionId: string | undefined;
+    const existing = await assertCanBook(tx, memberProfileId, freshSchedule, { onSubscriptionSelected: (id) => { subscriptionId = id; } });
 
     // 6. Create or Reactivate enrollment
     let enrolled;
@@ -332,6 +337,7 @@ export async function bookClass(
           status: "BOOKED",
           bookedAt: new Date(),
           cancelledAt: null,
+          subscriptionId,
           healthNotes: options.healthNotes !== undefined ? options.healthNotes : existing.healthNotes,
           termMembershipGrant: Prisma.DbNull,
         },
@@ -347,6 +353,7 @@ export async function bookClass(
           classId: freshSchedule.classId,
           scheduleId,
           status: "BOOKED",
+          subscriptionId,
           healthNotes: options.healthNotes ?? null,
         },
         include: {
@@ -649,7 +656,9 @@ export async function transferEnrollment(
         409
       );
 
+    let subscriptionId: string | undefined;
     const existingTarget = await assertCanBook(tx, enrollment.memberId, target, {
+      onSubscriptionSelected: (id) => { subscriptionId = id; },
       excludeEnrollmentId: enrollment.id,
       // §9: transfer chỉ đổi buổi TRONG CÙNG Class (BR-08) => số Class không đổi, không tiêu quota mới.
       quotaExemptClassId: enrollment.classId,
@@ -666,11 +675,12 @@ export async function transferEnrollment(
     const transferred = existingTarget
       ? await tx.enrollment.update({
           where: { id: existingTarget.id },
-          data: { status: "BOOKED", bookedAt: new Date(), cancelledAt: null, termMembershipGrant: transferredGrant },
+          data: { status: "BOOKED", bookedAt: new Date(), cancelledAt: null, subscriptionId, termMembershipGrant: transferredGrant },
           include: enrollmentInclude,
         })
       : await tx.enrollment.create({
           data: {
+            subscriptionId,
             memberId: enrollment.memberId,
             classId: target.classId,
             scheduleId: targetScheduleId,

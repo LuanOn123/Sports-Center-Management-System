@@ -8,6 +8,12 @@ export async function listSchedules(req: Request, res: Response, next: NextFunct
     sendSuccess(res, schedules, "Schedules retrieved successfully", 200, pagination);
   } catch (err) { next(err); }
 }
+export async function createScheduleBatch(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await schedulesService.createScheduleBatch(req.body);
+    sendCreated(res, result, `Đã tạo ${result.schedulesCreated} buổi học thành công.`);
+  } catch (err) { next(err); }
+}
 export async function createSchedule(req: Request, res: Response, next: NextFunction) {
   try {
     const schedule = await schedulesService.createSchedule(req.body);
@@ -20,7 +26,7 @@ export async function createActivityPlan(req: Request, res: Response, next: Next
       req.body,
       req.user?.role === "ADMIN",
     );
-    sendCreated(res, result, "Activity plan created successfully");
+    sendCreated(res, result, `Đã tạo lớp và ${result.schedulesCreated} buổi học thành công.`);
   } catch (err) { next(err); }
 }
 export async function getScheduleById(req: Request, res: Response, next: NextFunction) {
