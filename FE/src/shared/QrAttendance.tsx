@@ -250,11 +250,6 @@ export function ScanAttendanceQr() {
         </form>
       </details>
       {scan.isPending && <p role="status">Đang xác nhận điểm danh…</p>}
-      {scan.isSuccess && (
-        <p className="success" role="status">
-          Điểm danh thành công!
-        </p>
-      )}
       {scan.error && <ErrorState error={scan.error} />}
       {scan.error instanceof ApiError && scan.error.status === 429 && (
         <p role="alert">

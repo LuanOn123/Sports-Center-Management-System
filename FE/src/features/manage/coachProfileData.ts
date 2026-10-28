@@ -9,6 +9,7 @@ import type { CoachSportOption } from "./CoachExpertiseFields";
 export function useCoachSports(id: string) {
   return useQuery({
     queryKey: ["manager-coach-sports", getFacilityId(), id],
+    refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const [sports, assigned, classes] = await Promise.all([
         allPages<CoachSportOption>("GET /sports", { signal }),

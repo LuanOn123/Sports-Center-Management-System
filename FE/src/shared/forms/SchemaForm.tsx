@@ -1,3 +1,5 @@
+import { EquipmentFields, equipmentValues } from "./EquipmentFields";
+import { CreateCoachForm } from "./CreateCoachForm";
 import { classSports } from "../sports";
 import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
@@ -122,6 +124,12 @@ export function SchemaForm({
                 : (s.default ?? ""))),
       ]),
     ),
+    ...(/\/rooms(?:\/|$)/.test(operation)
+      ? { capabilities: equipmentValues(initial.capabilities, "quantity") }
+      : {}),
+    ...(/\/sports(?:\/|$)/.test(operation)
+      ? { requirements: equipmentValues(initial.requirements, "minimum") }
+      : {}),
     ...fixed,
   }));
   const [error, setError] = useState<unknown>();
@@ -168,7 +176,33 @@ export function SchemaForm({
       )
         continue;
       let v = values[k];
+      if (k === "capabilities" && values.areaType !== "INDOOR") v = {};
+      if (k === "requirements" && ![values.areaTypes].flat().includes("INDOOR"))
+        v = {};
       if (v === "" || v === undefined || v === null) continue;
+      if (["capabilities", "requirements"].includes(k)) {
+        const entries = Object.entries(v as Record<string, number>);
+        const names = entries.map(([name]) =>
+          name.trim().toLocaleLowerCase("vi"),
+        );
+        if (
+          entries.some(
+            ([name, count]) =>
+              !name.trim() || !Number.isInteger(count) || count < 1,
+          ) ||
+          new Set(names).size !== names.length
+        ) {
+          setError(
+            new Error(
+              "Tên dụng cụ phải khác nhau và số lượng phải là số nguyên dương.",
+            ),
+          );
+          return;
+        }
+        v = Object.fromEntries(
+          entries.map(([name, count]) => [name.trim(), count]),
+        );
+      }
       if (s.type === "number" || s.type === "integer") v = Number(v);
       if (k === "areaTypes" && /\/sports(?:\/|$)/.test(operation)) {
         v = [String(v)];
@@ -300,6 +334,37 @@ export function SchemaForm({
       onBusyChange?.(false);
     }
   }
+  if (operation === "POST /users" && values.role === "COACH") {
+    return (
+      <>
+        {!("role" in fixed) && (
+          <label>
+            Vai trò
+            <select
+              value="COACH"
+              disabled={busy}
+              onChange={(e) => change("role", e.target.value)}
+            >
+              {schema.properties?.role.enum?.map((role) => (
+                <option key={role} value={role}>
+                  {label(role)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <CreateCoachForm
+          system
+          onClose={onSuccess}
+          onCancel={onCancel}
+          onBusyChange={(value) => {
+            setBusy(value);
+            onBusyChange?.(value);
+          }}
+        />
+      </>
+    );
+  }
   return (
     <form
       className="schema-editor"
@@ -358,6 +423,24 @@ export function SchemaForm({
           .map(([k, s]) => {
             const required = Boolean(schema.required?.includes(k));
             const value = values[k];
+            if (
+              (k === "capabilities" && values.areaType !== "INDOOR") ||
+              (k === "requirements" &&
+                ![values.areaTypes].flat().includes("INDOOR"))
+            )
+              return null;
+            if (["capabilities", "requirements"].includes(k))
+              return (
+                <EquipmentFields
+                  key={k}
+                  subject={k === "requirements"}
+                  value={equipmentValues(
+                    value,
+                    k === "requirements" ? "minimum" : "quantity",
+                  )}
+                  onChange={(next) => change(k, next)}
+                />
+              );
             if (
               k === "areaType" ||
               (k === "areaTypes" && /\/sports(?:\/|$)/.test(operation))

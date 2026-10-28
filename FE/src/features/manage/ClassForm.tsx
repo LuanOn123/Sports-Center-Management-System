@@ -1,3 +1,4 @@
+import { hasEquipment } from "../../shared/forms/EquipmentFields";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, Search, X, MapPin, Users } from "lucide-react";
@@ -13,12 +14,14 @@ type Sport = {
   id: string;
   name: string;
   areaTypes: string[];
+  requirements?: { key: string; minimum: number }[];
   isActive: boolean;
 };
 type Room = {
   id: string;
   name: string;
   capacity: number;
+  capabilities?: { key: string; quantity: number }[];
   areaType: string;
   isActive: boolean;
 };
@@ -43,7 +46,9 @@ export function ClassForm({
   const [search, setSearch] = useState("");
   const [roomId, setRoomId] = useState(String(initial.defaultRoomId ?? ""));
   const [capacity, setCapacity] = useState(String(initial.capacity ?? ""));
-  const [minCapacity, setMinCapacity] = useState(String(initial.minCapacity ?? "1"));
+  const [minCapacity, setMinCapacity] = useState(
+    String(initial.minCapacity ?? "1"),
+  );
   const [classType, setClassType] = useState(
     String(initial.classType ?? "REGULAR"),
   );
@@ -72,7 +77,12 @@ export function ClassForm({
     : [];
   const eligibleRooms =
     rooms.data?.data.filter(
-      (r) => r.isActive && allowedAreas.includes(r.areaType),
+      (r) =>
+        r.isActive &&
+        allowedAreas.includes(r.areaType) &&
+        selected.every((sport) =>
+          hasEquipment(sport.requirements ?? [], r.capabilities, r.areaType),
+        ),
     ) ?? [];
   const room = eligibleRooms.find((r) => r.id === roomId);
   const save = useMutation({
@@ -111,7 +121,7 @@ export function ClassForm({
   function toggle(id: string) {
     const next = sportIds.includes(id)
       ? sportIds.filter((value) => value !== id)
-      : [...sportIds, id];
+      : [id];
     setSportIds(next);
     const nextSports = allSports.filter((s) => next.includes(s.id));
     if (
@@ -127,7 +137,11 @@ export function ClassForm({
       onSubmit={(event) => {
         event.preventDefault();
         setError(undefined);
-        if (!room || !selected.length || selected.some((s) => !s.isActive)) {
+        if (
+          !room ||
+          selected.length !== 1 ||
+          selected.some((s) => !s.isActive)
+        ) {
           setError(new Error("Chọn bộ môn đang hoạt động và phòng phù hợp."));
           return;
         }
@@ -139,7 +153,11 @@ export function ClassForm({
           return;
         }
         if (!Number.isInteger(minCount) || minCount < 1 || minCount > count) {
-          setError(new Error(`Sĩ số tối thiểu phải từ 1 đến ${count} (không vượt sĩ số tối đa).`));
+          setError(
+            new Error(
+              `Sĩ số tối thiểu phải từ 1 đến ${count} (không vượt sĩ số tối đa).`,
+            ),
+          );
           return;
         }
         if (
@@ -242,7 +260,8 @@ export function ClassForm({
                       .map((s) => (
                         <label className="sport-option" key={s.id}>
                           <input
-                            type="checkbox"
+                            type="radio"
+                            name="class-sport"
                             checked={sportIds.includes(s.id)}
                             onChange={() => toggle(s.id)}
                           />
@@ -344,9 +363,13 @@ export function ClassForm({
             value={minCapacity}
             onChange={(e) => setMinCapacity(e.target.value)}
           />
-          {Number(minCapacity) > 0 && Number(capacity) > 0 && Number(minCapacity) <= Number(capacity) && (
-            <span className="field-note">Buổi học sẽ bị cảnh báo hủy nếu có ít hơn {minCapacity} học viên</span>
-          )}
+          {Number(minCapacity) > 0 &&
+            Number(capacity) > 0 &&
+            Number(minCapacity) <= Number(capacity) && (
+              <span className="field-note">
+                Buổi học sẽ bị cảnh báo hủy nếu có ít hơn {minCapacity} học viên
+              </span>
+            )}
         </label>
         <label>
           Loại lớp

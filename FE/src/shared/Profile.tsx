@@ -14,7 +14,6 @@ export function Profile({
 }) {
   const client = useQueryClient();
   const [tab, setTab] = useState("profile");
-  const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   return (
@@ -34,7 +33,6 @@ export function Profile({
           onClick={() => {
             setTab("profile");
             setEditing(false);
-            setSuccess("");
           }}
         >
           Hồ sơ
@@ -46,7 +44,6 @@ export function Profile({
           onClick={() => {
             setTab("password");
             setEditing(false);
-            setSuccess("");
           }}
         >
           Đổi mật khẩu
@@ -56,11 +53,6 @@ export function Profile({
         <AvatarUploader user={user} />
       )}
       <section className="panel profile-panel">
-        {success && (
-          <div className="success" role="status">
-            {success}
-          </div>
-        )}
         {tab === "password" && (
           <p>Đổi mật khẩu sẽ đăng xuất khỏi tất cả thiết bị.</p>
         )}
@@ -78,7 +70,6 @@ export function Profile({
                 className="button primary"
                 onClick={() => {
                   setEditing(true);
-                  setSuccess("");
                 }}
               >
                 Chỉnh sửa thông tin
@@ -121,7 +112,6 @@ export function Profile({
             onBusyChange={setBusy}
             onSuccess={() => {
               if (tab === "password") return;
-              setSuccess("Cập nhật thành công.");
               setEditing(false);
               void client.invalidateQueries({ queryKey: ["me"] });
             }}

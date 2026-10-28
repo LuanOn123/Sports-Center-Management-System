@@ -44,22 +44,22 @@ async function fixture(page: Page, existingCoach = false) {
         expect(body).toEqual({ coachId: "profile-swim", isPrimary: true });
         state.assigned = true;
         data = cls();
-      } else if (path === "/class-schedules") {
+      } else if (path === "/class-schedules/batch") {
         // Reproduce the real error: schedules cannot be created before class assignment.
         if (!state.assigned)
           return route.fulfill({
             status: 400,
             json: { success: false, message: "COACH_REQUIRED" },
           });
-        if (state.failSecondSlot && state.successfulSlots.length === 1)
+        if (state.failSecondSlot)
           return route.fulfill({
             status: 409,
             json: { success: false, message: "Phòng tập bị trùng giờ" },
           });
-        const start = String(body.startTime);
-        expect(state.successfulSlots).not.toContain(start);
-        state.successfulSlots.push(start);
-        data = { id: `session-${state.successfulSlots.length}`, ...body };
+        const starts = body.schedules.map((slot: { startTime: string }) => slot.startTime);
+        for (const start of starts) expect(state.successfulSlots).not.toContain(start);
+        state.successfulSlots.push(...starts);
+        data = { schedulesCreated: starts.length };
       } else return route.fallback();
     } else if (path === "/classes") data = [cls()];
     else if (path === "/classes/class-swim") data = cls();
@@ -140,8 +140,7 @@ test("requires an eligible coach and assigns the class before creating both shif
   await expect(dialog).not.toBeVisible();
   expect(state.writes.map((row) => row.path)).toEqual([
     "/classes/class-swim/coaches",
-    "/class-schedules",
-    "/class-schedules",
+    "/class-schedules/batch",
   ]);
   expect(state.successfulSlots).toEqual([
     "2099-11-02T08:00:00.000Z",
@@ -169,8 +168,7 @@ test("keeps an existing class coach without changing the class assignment", asyn
   await dialog.getByRole("button", { name: "Lưu thay đổi" }).click();
   await expect(dialog).not.toBeVisible();
   expect(state.writes.map((row) => row.path)).toEqual([
-    "/class-schedules",
-    "/class-schedules",
+    "/class-schedules/batch",
   ]);
 });
 
@@ -184,14 +182,14 @@ test("stops before creating schedules if class assignment fails", async ({
     .selectOption("profile-swim");
   state.failAssignment = true;
   await dialog.getByRole("button", { name: "Lưu thay đổi" }).click();
-  await expect(dialog.getByRole("alert")).toContainText("trùng giờ");
+  await expect(dialog.locator(".error-state[role=alert]")).toContainText("trùng giờ");
   expect(state.writes.map((row) => row.path)).toEqual([
     "/classes/class-swim/coaches",
   ]);
   expect(state.successfulSlots).toEqual([]);
 });
 
-test("retains a saved assignment and skips successful shifts when retrying a partial batch", async ({
+test("retains a saved assignment and retries the whole atomic batch after a conflict", async ({
   page,
 }) => {
   const state = await fixture(page);
@@ -201,9 +199,9 @@ test("retains a saved assignment and skips successful shifts when retrying a par
     .selectOption("profile-swim");
   state.failSecondSlot = true;
   await dialog.getByRole("button", { name: "Lưu thay đổi" }).click();
-  await expect(dialog.getByRole("alert")).toContainText("trùng giờ");
+  await expect(dialog.locator(".error-state[role=alert]")).toContainText("trùng giờ");
   await expect(dialog.getByText(/Đã gán HLV chính cho lớp/)).toBeVisible();
-  await expect(dialog.getByText(/Đã tạo thành công 1 lịch/)).toBeVisible();
+  expect(state.successfulSlots).toEqual([]);
   state.failSecondSlot = false;
   await dialog.getByRole("button", { name: "Lưu thay đổi" }).click();
   await expect(dialog).not.toBeVisible();
@@ -224,7 +222,7 @@ test("rechecks teaching permissions before creating any data", async ({
     .selectOption("profile-swim");
   state.revoked = true;
   await dialog.getByRole("button", { name: "Lưu thay đổi" }).click();
-  await expect(dialog.getByRole("alert")).toContainText(
+  await expect(dialog.locator(".error-state[role=alert]")).toContainText(
     "không còn đủ chuyên môn",
   );
   await expect(dialog.getByRole("button", { name: "Lưu thay đổi" })).toBeDisabled();

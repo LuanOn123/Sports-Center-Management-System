@@ -122,7 +122,10 @@ export function MembershipPage() {
     : 0;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div
+      className="membership-page"
+      style={{ display: "flex", flexDirection: "column", gap: 24 }}
+    >
       {/* HEADER */}
       <div
         style={{
@@ -443,7 +446,7 @@ export function MembershipPage() {
                   className="badge info"
                   style={{
                     backgroundColor: "rgba(99, 102, 241, 0.15)",
-                    color: "#4f46e5",
+                    color: "var(--member-info, #4f46e5)",
                     fontWeight: 700,
                     padding: "6px 12px",
                     borderRadius: 8,
@@ -491,7 +494,7 @@ export function MembershipPage() {
                     fontSize: 15,
                     fontWeight: 700,
                     marginTop: 4,
-                    color: "#4f46e5",
+                    color: "var(--member-info, #4f46e5)",
                   }}
                 >
                   {formatMemberDate(scheduledSub.startDate)}
@@ -535,14 +538,7 @@ export function MembershipPage() {
         ) : plans.length === 0 ? (
           <EmptyState title="Hiện chưa có gói tập nào mở bán" />
         ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
-              gap: 24,
-            }}
-          >
+          <div className="membership-plan-grid">
             {plans.map((p) => {
               const isPremium = p.tier === "PREMIUM";
               const isRenewal = Boolean(
@@ -577,21 +573,6 @@ export function MembershipPage() {
                 <div
                   key={p.id}
                   className={`membership-plan-card ${isPremium ? "premium" : ""}`}
-                  style={{
-                    backgroundColor: "var(--member-surface, #ffffff)",
-                    borderRadius: 18,
-                    border: isPremium
-                      ? "2px solid var(--member-text, #203d31)"
-                      : "1px solid var(--member-border, #e7ece9)",
-                    padding: 28,
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    position: "relative",
-                    boxShadow: isPremium
-                      ? "0 10px 25px -5px rgba(32, 61, 49, 0.12)"
-                      : "0 2px 4px rgba(0, 0, 0, 0.02)",
-                  }}
                 >
                   {isPremium && (
                     <span
@@ -819,7 +800,10 @@ export function MembershipPage() {
                     {isDowngrade && activeSub && (
                       <p
                         className="field-note"
-                        style={{ color: "#4f46e5", fontSize: 12 }}
+                        style={{
+                          color: "var(--member-info, #4f46e5)",
+                          fontSize: 12,
+                        }}
                       >
                         Gói sẽ kích hoạt sau ngày{" "}
                         {formatMemberDate(activeSub.endDate)}
@@ -828,7 +812,10 @@ export function MembershipPage() {
                     {isRenewal && activeSub && (
                       <p
                         className="field-note"
-                        style={{ color: "#059669", fontSize: 12 }}
+                        style={{
+                          color: "var(--member-success, #059669)",
+                          fontSize: 12,
+                        }}
                       >
                         Gia hạn tự động nối tiếp sau{" "}
                         {formatMemberDate(activeSub.endDate)}
@@ -1007,7 +994,7 @@ export function MembershipPage() {
               >
                 <strong
                   style={{
-                    color: "#059669",
+                    color: "var(--member-success, #059669)",
                     display: "block",
                     marginBottom: 4,
                   }}
@@ -1157,7 +1144,7 @@ export function MembershipPage() {
                 >
                   <strong
                     style={{
-                      color: "#4f46e5",
+                      color: "var(--member-info, #4f46e5)",
                       display: "block",
                       marginBottom: 4,
                     }}

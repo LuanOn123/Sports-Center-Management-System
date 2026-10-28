@@ -1,3 +1,4 @@
+import { MembershipInsightsPage } from "./MembershipInsightsPage";
 import { Link, Navigate, Route, Routes } from "react-router-dom";
 import {
   CalendarDays,
@@ -44,7 +45,10 @@ const groups: NavigationGroup[] = [
   },
   {
     title: "TÀI CHÍNH",
-    items: [["reports", "Báo cáo doanh thu", ChartNoAxesCombined]],
+    items: [
+      ["reports", "Báo cáo doanh thu", ChartNoAxesCombined],
+      ["membership-insights", "Nhu cầu gói & lớp", ChartNoAxesCombined],
+    ],
   },
 ];
 const redirects: Record<string, string> = {
@@ -82,8 +86,15 @@ export function ManagerLayout({
     >
       <Routes>
         <Route path="/manager/dashboard" element={<ManagerOverview />} />
-        <Route path="/manager/coach-changes" element={<CoachChangesPage role="MANAGER" />} />
+        <Route
+          path="/manager/coach-changes"
+          element={<CoachChangesPage role="MANAGER" />}
+        />
         <Route path="/manager/terms" element={<AdminTerms role="MANAGER" />} />
+        <Route
+          path="/manager/membership-insights"
+          element={<MembershipInsightsPage />}
+        />
         <Route path="/manager/reports" element={<ManagerOverview reports />} />
         <Route path="/manager/users" element={<ManagerUsers />} />
         <Route

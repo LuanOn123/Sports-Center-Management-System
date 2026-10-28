@@ -887,6 +887,13 @@
             "INDOOR"
           ],
           "description": "Area types this sport supports (at least one)"
+        },
+        "requirements": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
         }
       }
     },
@@ -974,6 +981,13 @@
         },
         "isActive": {
           "type": "boolean"
+        },
+        "requirements": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
         }
       }
     },
@@ -1148,6 +1162,13 @@
             "OUTDOOR"
           ],
           "example": "INDOOR"
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
         }
       }
     },
@@ -1248,6 +1269,13 @@
         },
         "isActive": {
           "type": "boolean"
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
         }
       }
     },
@@ -1600,6 +1628,22 @@
           "type": "string"
         },
         "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+      },
+      {
+        "name": "termId",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "facilityId",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
       }
     ],
     "body": null,
@@ -8522,5 +8566,62 @@
       "500"
     ]
   }
-
+,
+  "POST /class-schedules/batch": {
+    "path": "/class-schedules/batch",
+    "method": "POST",
+    "summary": "Tạo lịch hàng loạt",
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "properties": {
+        "classId": {
+          "type": "string"
+        },
+        "roomId": {
+          "type": "string"
+        },
+        "termId": {
+          "type": "string"
+        },
+        "schedules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "startTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "endTime": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "startTime",
+              "endTime"
+            ]
+          }
+        }
+      },
+      "required": [
+        "classId",
+        "roomId",
+        "schedules"
+      ]
+    },
+    "statusCodes": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "409"
+    ]
+  }
 }
