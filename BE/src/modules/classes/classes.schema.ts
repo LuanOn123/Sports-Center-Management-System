@@ -5,7 +5,7 @@ export const AreaTypeEnum = z.enum(["POOL", "INDOOR", "OUTDOOR"]);
 export const CreateClassSchema = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
-  sportIds: z.array(z.string().min(1)).min(1, "Must assign at least one sport"),
+  sportIds: z.array(z.string().min(1)).min(1, "Must assign at least one sport").max(1, "Mỗi lớp chỉ được dạy một bộ môn. Hãy tạo lớp riêng cho môn khác."),
   capacity: z.number().int().positive().max(200),
   minCapacity: z.number().int().positive().max(200).optional().default(1),
   classType: z.enum(["REGULAR", "PREMIUM"]).default("REGULAR"),
@@ -40,7 +40,7 @@ export const CreateClassSchema = z.object({
 export const UpdateClassSchema = z.object({
   name: z.string().min(2).optional(),
   description: z.string().optional(),
-  sportIds: z.array(z.string().min(1)).min(1, "Must assign at least one sport").optional(),
+  sportIds: z.array(z.string().min(1)).min(1, "Must assign at least one sport").max(1, "Mỗi lớp chỉ được dạy một bộ môn. Hãy tạo lớp riêng cho môn khác.").optional(),
   capacity: z.number().int().positive().max(200).optional(),
   minCapacity: z.number().int().positive().max(200).optional(),
   classType: z.enum(["REGULAR", "PREMIUM"]).optional(),

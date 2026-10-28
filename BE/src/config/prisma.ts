@@ -135,26 +135,21 @@ prisma.$use(async (params, next) => {
       }
     }
     if (isWrite) {
-      for (const data of [args.data, args.create, args.update]
-        .flat()
-        .filter(Boolean)) {
-        for (const [field, delegate] of Object.entries({
-          classId: "class",
-          roomId: "room",
-          scheduleId: "classSchedule",
-          subscriptionId: "membershipSubscription",
-          paymentId: "payment",
-          slotId: "slot",
-        })) {
-          if (
-            typeof data[field] === "string" &&
-            !(await db[delegate].findFirst({ where: { id: data[field] } }))
-          )
-            throw new AppError("FORBIDDEN_SCOPE", 403);
-        }
+      // Bulk schedule writes reference the same room/class hundreds of times.
+      // Validate each distinct reference in one scoped lookup per model.
+      for (const [field, delegate] of Object.entries({
+        classId: "class", roomId: "room", scheduleId: "classSchedule",
+        subscriptionId: "membershipSubscription", paymentId: "payment", slotId: "slot",
+      })) {
+        const ids = [...new Set<string>([args.data, args.create, args.update].flat().filter(Boolean)
+          .map((data: any) => data[field]).filter((id: unknown): id is string => typeof id === "string"))];
+        if (!ids.length) continue;
+        const accessible = await db[delegate].findMany({ where: { id: { in: ids } }, select: { id: true } });
+        if (accessible.length !== ids.length) throw new AppError("FORBIDDEN_SCOPE", 403);
       }
     }
   }
+
   if (model === "Class" && params.action === "create") {
     const connected = [args.data.sports?.connect].flat().filter(Boolean);
     const requirements = await db.subjectRequirement.findMany({

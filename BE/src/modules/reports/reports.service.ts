@@ -208,7 +208,16 @@ export async function getEnrollmentReport(startDate: string, endDate: string) {
   };
 }
 
-export async function getMembershipReport(startDate: string, endDate: string, facilityIdParam?: string) {
+export async function getMembershipReport(startDate: string, endDate: string, facilityIdParam?: string, termId?: string) {
+  const context = requestContext.getStore();
+  if (context?.role === "MANAGER" && facilityIdParam && facilityIdParam !== context.facilityId)
+    throw new AppError("Báo cáo chỉ áp dụng cho cơ sở đang quản lý.", 403);
+  const facilityId = facilityIdParam === "ALL" ? undefined : facilityIdParam ?? context?.facilityId;
+  // Keep DAL scope consistent for payments, enrollments and subscriptions.
+  return requestContext.run({ ...context, facilityId }, () => buildMembershipReport(startDate, endDate, facilityIdParam, termId));
+}
+
+async function buildMembershipReport(startDate: string, endDate: string, facilityIdParam?: string, termId?: string) {
   // BR-26: VN timezone boundary
   const start = new Date(`${startDate}T00:00:00+07:00`);
   const end = new Date(`${endDate}T23:59:59.999+07:00`);
@@ -257,6 +266,7 @@ export async function getMembershipReport(startDate: string, endDate: string, fa
       _sum: { amount: true },
     }),
     prisma.membershipPlan.findMany({
+      where: { tier: { not: "FREE" } },
       orderBy: { price: "desc" },
     }),
     prisma.membershipSubscription.findMany({
@@ -305,72 +315,46 @@ export async function getMembershipReport(startDate: string, endDate: string, fa
   });
   const planRevenueMap = Object.fromEntries(paymentsByPlan.map((p) => [p.planId!, Number(p._sum.amount ?? 0)]));
 
-  // Build enrollment correlation for each plan:
-  // "xem bao nhiêu gói được bán (từ gói Membership => biết bao nhiêu người đăng ký khóa đó)"
-  const allSubMemberIds = Array.from(new Set(periodSubs.map((s) => s.memberId)));
-
-  let enrollmentsForSubscribers: Array<{
-    id: string;
-    memberId: string;
-    classId: string;
-    class: {
-      id: string;
-      name: string;
-      classType: string;
-      sports: { name: string }[];
-    };
-  }> = [];
-
-  if (allSubMemberIds.length > 0) {
-    enrollmentsForSubscribers = await prisma.enrollment.findMany({
-      where: {
-        memberId: { in: allSubMemberIds },
-        bookedAt: { gte: start, lte: end },
-        status: { in: ["BOOKED", "COMPLETED"] },
-        ...(isGlobal ? {} : { class: { facilityId: originFacilityId } }),
-      },
-      select: {
-        id: true,
-        memberId: true,
-        classId: true,
-        class: {
-          select: {
-            id: true,
-            name: true,
-            classType: true,
-            sports: { select: { name: true } },
-          },
-        },
-      },
-    });
+  if (termId) {
+    const term = await prisma.term.findUnique({ where: { id: termId } });
+    if (!term || (!isGlobal && term.facilityId && term.facilityId !== originFacilityId))
+      throw new AppError("Kỳ học không tồn tại hoặc không thuộc phạm vi báo cáo.", 403);
   }
-
-  // Pre-index enrollments by memberId for quick lookup per plan
-  const enrollmentsByMember = new Map<string, typeof enrollmentsForSubscribers>();
-  for (const e of enrollmentsForSubscribers) {
-    let list = enrollmentsByMember.get(e.memberId);
-    if (!list) {
-      list = [];
-      enrollmentsByMember.set(e.memberId, list);
-    }
-    list.push(e);
+  // Attribute usage to the entitlement recorded when booking, including plans bought before the period.
+  const usage = await requestContext.run({ ...store, facilityId: isGlobal ? undefined : originFacilityId }, () => prisma.enrollment.findMany({
+    where: {
+      bookedAt: { gte: start, lte: end }, status: { in: ["BOOKED", "COMPLETED"] },
+      ...(termId ? { schedule: { termId } } : {}),
+      ...(isGlobal ? {} : { class: { facilityId: originFacilityId } }),
+    },
+    select: {
+      id: true, memberId: true, classId: true, subscriptionId: true,
+      subscription: { select: { planId: true } },
+      member: { select: { user: { select: { fullName: true } } } },
+      class: { select: { id: true, name: true, classType: true, sports: { select: { name: true } } } },
+    },
+  }));
+  const unattributedEnrollments = usage.filter((row) => !row.subscription).length;
+  const enrollmentsByPlan = new Map<string, typeof usage>();
+  for (const row of usage) {
+    if (!row.subscription) continue;
+    const list = enrollmentsByPlan.get(row.subscription.planId) ?? [];
+    list.push(row);
+    enrollmentsByPlan.set(row.subscription.planId, list);
   }
-
   const plansBreakdown = plans.map((plan) => {
     const subsForThisPlan = periodSubs.filter((s) => s.planId === plan.id);
     const soldCount = subsForThisPlan.length;
     const planMembers = Array.from(new Set(subsForThisPlan.map((s) => s.memberId)));
     const uniqueMembersCount = planMembers.length;
 
-    // Collect all enrollments made by members who bought this plan
-    const planEnrollments: typeof enrollmentsForSubscribers = [];
-    for (const mId of planMembers) {
-      const mEnrollments = enrollmentsByMember.get(mId);
-      if (mEnrollments) {
-        planEnrollments.push(...mEnrollments);
-      }
+    const planEnrollments = enrollmentsByPlan.get(plan.id) ?? [];
+    const bookingsByMember = new Map<string, typeof planEnrollments>();
+    for (const row of planEnrollments) {
+      const list = bookingsByMember.get(row.memberId) ?? [];
+      list.push(row);
+      bookingsByMember.set(row.memberId, list);
     }
-
     const totalClassEnrollments = planEnrollments.length;
     const enrolledMembersCount = new Set(planEnrollments.map((e) => e.memberId)).size;
 
@@ -413,7 +397,7 @@ export async function getMembershipReport(startDate: string, endDate: string, fa
         enrollmentsCount: cs.enrollmentsCount,
         uniqueMembersCount: cs.memberIds.size,
       }))
-      .sort((a, b) => b.enrollmentsCount - a.enrollmentsCount);
+      .sort((a, b) => b.uniqueMembersCount - a.uniqueMembersCount || b.enrollmentsCount - a.enrollmentsCount);
 
     return {
       planId: plan.id,
@@ -430,7 +414,18 @@ export async function getMembershipReport(startDate: string, endDate: string, fa
       enrollmentStats: {
         totalClassEnrollments,
         enrolledMembersCount,
+        classRegistrationCount: new Set(planEnrollments.map((row) => row.memberId + ":" + row.classId)).size,
         topClasses,
+        memberUsage: Array.from(bookingsByMember.entries()).map(([memberId, bookings]) => {
+          const counts = new Map<string, { classId: string; className: string; bookings: number }>();
+          for (const booking of bookings) {
+            const entry = counts.get(booking.classId) ?? { classId: booking.classId, className: booking.class.name, bookings: 0 };
+            entry.bookings++;
+            counts.set(booking.classId, entry);
+          }
+          return { memberId, memberName: bookings[0].member.user.fullName, totalBookings: bookings.length,
+            classes: [...counts.values()].sort((a, b) => b.bookings - a.bookings) };
+        }).sort((a, b) => b.totalBookings - a.totalBookings),
       },
     };
   });
@@ -448,6 +443,9 @@ export async function getMembershipReport(startDate: string, endDate: string, fa
     subscriptionsByStatus: statusMap,
     totalRevenue: Number(revenueAgg._sum.amount ?? 0),
     plansBreakdown,
+    unattributedEnrollments,
+    attributedEnrollments: usage.length - unattributedEnrollments,
+    usageScope: "CLASS_FACILITY",
   };
 }
 

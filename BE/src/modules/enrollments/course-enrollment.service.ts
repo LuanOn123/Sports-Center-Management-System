@@ -66,7 +66,7 @@ export interface CourseEligibilitySession {
 export interface CourseEligibility {
   sessions: CourseEligibilitySession[];
   blockers: CourseEnrollmentBlocker[];
-  subscription: { tier: MemberTier; endDate: Date; planName: string | null } | null;
+  subscription: { id: string; tier: MemberTier; endDate: Date; planName: string | null } | null;
   quota: {
     tier: MemberTier | null;
     limit: number;
@@ -382,7 +382,7 @@ export async function evaluateCourseEligibility(
     sessions: eligibilitySessions,
     blockers,
     subscription: activeSub
-      ? { tier: activeSub.tier, endDate: activeSub.endDate, planName: activeSub.plan?.name ?? null }
+      ? { id: activeSub.id, tier: activeSub.tier, endDate: activeSub.endDate, planName: activeSub.plan?.name ?? null }
       : null,
     quota: {
       tier: quotaUsage.tier,
@@ -543,6 +543,7 @@ export async function enrollWholeCourse(
             where: { id: state.myEnrollment.id },
             data: {
               status: "BOOKED",
+              subscriptionId: eligibility.subscription!.id,
               bookedAt: now,
               cancelledAt: null,
               healthNotes: options.healthNotes !== undefined ? options.healthNotes : undefined,
@@ -565,6 +566,7 @@ export async function enrollWholeCourse(
               classId,
               scheduleId: state.scheduleId,
               status: "BOOKED",
+              subscriptionId: eligibility.subscription!.id,
               healthNotes: options.healthNotes ?? null,
             },
             select: { id: true },

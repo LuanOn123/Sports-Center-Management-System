@@ -1,26 +1,22 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { CheckCircle2, CircleAlert, Info, X } from "lucide-react";
 import "./toast.css";
 
 type Kind = "success" | "error" | "info";
-type Notice = { id: number; kind: Kind; message: string };
+type Notice = { id: number; kind: Kind; message: string; key: string };
 let notices: Notice[] = [];
 let sequence = 0;
 const listeners = new Set<() => void>();
-const recent = new Map<string, number>();
 const emit = () => listeners.forEach((listener) => listener());
 function dismiss(id: number) {
   notices = notices.filter((notice) => notice.id !== id);
   emit();
 }
 export function toast(kind: Kind, message: string, key = `${kind}:${message}`) {
-  const now = Date.now();
-  for (const [entry, timestamp] of recent)
-    if (now - timestamp > 15000) recent.delete(entry);
-  if (recent.has(key)) return;
-  recent.set(key, now);
+  if (notices.some((notice) => notice.key === key)) return;
   const id = ++sequence;
-  notices = [...notices.slice(-3), { id, kind, message }];
+  notices = [...notices.slice(-3), { id, kind, message, key }];
   emit();
   globalThis.setTimeout(() => dismiss(id), kind === "error" ? 9000 : 5000);
 }
@@ -33,7 +29,23 @@ const subscribe = (listener: () => void) => {
 const snapshot = () => notices;
 export function ToastViewport() {
   const items = useSyncExternalStore(subscribe, snapshot);
-  return (
+  const [host, setHost] = useState<Element>(document.body);
+  useEffect(() => {
+    const update = () => {
+      const dialogs = document.querySelectorAll("dialog[open]");
+      setHost(dialogs[dialogs.length - 1] ?? document.body);
+    };
+    const observer = new MutationObserver(update);
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["open"],
+    });
+    update();
+    return () => observer.disconnect();
+  }, []);
+  return createPortal(
     <section className="toast-viewport" aria-label="Thông báo thao tác">
       {items.map(({ id, kind, message }) => (
         <div
@@ -67,6 +79,7 @@ export function ToastViewport() {
           </button>
         </div>
       ))}
-    </section>
+    </section>,
+    host,
   );
 }

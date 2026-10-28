@@ -1,19 +1,19 @@
 export function mergeRequirements(rows: { key: string; minimum: number }[]) {
-  const result: Record<string, number> = {};
-  for (const row of rows)
-    result[row.key] = Math.max(result[row.key] || 0, row.minimum);
+  const result: Record<string, number> = Object.create(null);
+  for (const row of rows) {
+    const key = row.key.trim().normalize("NFC").toLocaleLowerCase("vi");
+    result[key] = Math.max(result[key] || 0, row.minimum);
+  }
   return result;
 }
 export function missingCapabilities(
   requirements: Record<string, number>,
   capabilities: { key: string; quantity: number }[],
+  areaType = "INDOOR",
 ) {
-  const values = Object.fromEntries(
-    capabilities.map((v) => [v.key, v.quantity]),
-  );
-  return Object.keys(requirements).filter(
-    (key) => (values[key] || 0) < requirements[key],
-  );
+  if (areaType !== "INDOOR") return [];
+  const requiresEquipment = Object.values(requirements).some((minimum) => minimum > 0);
+  return requiresEquipment && !capabilities.some((row) => row.quantity > 0) ? ["Dụng cụ tập luyện"] : [];
 }
 // SCMS currently operates in Vietnam; patterns use local dates and ISO weekdays.
 export function expandPattern(

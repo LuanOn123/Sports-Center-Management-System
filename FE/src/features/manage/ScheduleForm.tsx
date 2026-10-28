@@ -1,7 +1,16 @@
+import { CoachAssignmentForm } from "./CoachAssignmentForm";
+import { hasEquipment } from "../../shared/forms/EquipmentFields";
 import { useState, useId, useMemo, useEffect, useCallback } from "react";
 import type { FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Check, Clock3, LoaderCircle, Repeat, AlertCircle } from "lucide-react";
+import {
+  Calendar,
+  Check,
+  Clock3,
+  LoaderCircle,
+  Repeat,
+  AlertCircle,
+} from "lucide-react";
 import { api, type RecordData } from "../../shared/api";
 import { allPages } from "../../shared/pagedApi";
 import { display } from "../../shared/config";
@@ -12,18 +21,60 @@ export interface ScheduleShift {
   id: string;
   name: string;
   startTime: string; // "07:00"
-  endTime: string;   // "09:00"
-  label: string;     // "07:00 – 09:00"
+  endTime: string; // "09:00"
+  label: string; // "07:00 – 09:00"
 }
 
 export const SCHEDULE_SHIFTS: ScheduleShift[] = [
-  { id: "shift-1", name: "Ca 1", startTime: "07:00", endTime: "09:00", label: "07:00 – 09:00" },
-  { id: "shift-2", name: "Ca 2", startTime: "09:00", endTime: "11:00", label: "09:00 – 11:00" },
-  { id: "shift-3", name: "Ca 3", startTime: "11:00", endTime: "13:00", label: "11:00 – 13:00" },
-  { id: "shift-4", name: "Ca 4", startTime: "13:00", endTime: "15:00", label: "13:00 – 15:00" },
-  { id: "shift-5", name: "Ca 5", startTime: "15:00", endTime: "17:00", label: "15:00 – 17:00" },
-  { id: "shift-6", name: "Ca 6", startTime: "17:00", endTime: "19:00", label: "17:00 – 19:00" },
-  { id: "shift-7", name: "Ca 7", startTime: "19:00", endTime: "21:00", label: "19:00 – 21:00" },
+  {
+    id: "shift-1",
+    name: "Ca 1",
+    startTime: "07:00",
+    endTime: "09:00",
+    label: "07:00 – 09:00",
+  },
+  {
+    id: "shift-2",
+    name: "Ca 2",
+    startTime: "09:00",
+    endTime: "11:00",
+    label: "09:00 – 11:00",
+  },
+  {
+    id: "shift-3",
+    name: "Ca 3",
+    startTime: "11:00",
+    endTime: "13:00",
+    label: "11:00 – 13:00",
+  },
+  {
+    id: "shift-4",
+    name: "Ca 4",
+    startTime: "13:00",
+    endTime: "15:00",
+    label: "13:00 – 15:00",
+  },
+  {
+    id: "shift-5",
+    name: "Ca 5",
+    startTime: "15:00",
+    endTime: "17:00",
+    label: "15:00 – 17:00",
+  },
+  {
+    id: "shift-6",
+    name: "Ca 6",
+    startTime: "17:00",
+    endTime: "19:00",
+    label: "17:00 – 19:00",
+  },
+  {
+    id: "shift-7",
+    name: "Ca 7",
+    startTime: "19:00",
+    endTime: "21:00",
+    label: "19:00 – 21:00",
+  },
 ];
 
 // Weekday definitions (ISO: 1=Mon..7=Sun)
@@ -42,10 +93,13 @@ interface ClassItem {
   name: string;
   areaType: string;
   defaultRoomId?: string;
+  capacity: number;
+  sports?: { id: string; requirements?: { key: string; minimum: number }[] }[];
   isActive?: boolean;
 }
 
 interface RoomItem {
+  capabilities?: { key: string; quantity: number }[];
   id: string;
   name: string;
   capacity: number;
@@ -132,7 +186,11 @@ function getIsoWeekday(dateStr: string): number {
 }
 
 /** Generate all YYYY-MM-DD dates in [fromDate, toDate] that fall on the selected weekdays */
-function generateRecurringDates(fromDate: string, toDate: string, isoWeekdays: number[]): string[] {
+function generateRecurringDates(
+  fromDate: string,
+  toDate: string,
+  isoWeekdays: number[],
+): string[] {
   if (!fromDate || !toDate || isoWeekdays.length === 0) return [];
   const result: string[] = [];
   let current = fromDate;
@@ -176,6 +234,7 @@ export function ScheduleForm({
     (s) => s.startTime === initialStartTimeStr,
   );
 
+  const [assignSupport, setAssignSupport] = useState(false);
   const [classId, setClassId] = useState(initialClassId);
   const [roomId, setRoomId] = useState(initialRoomId);
   const [date, setDate] = useState(initialDate);
@@ -231,8 +290,12 @@ export function ScheduleForm({
   }, [termsQuery.data]);
 
   const selectedTerm = termsList.find((t) => String(t.id) === termId);
-  const minTermDate = selectedTerm?.startDate ? String(selectedTerm.startDate).slice(0, 10) : undefined;
-  const maxTermDate = selectedTerm?.endDate ? String(selectedTerm.endDate).slice(0, 10) : undefined;
+  const minTermDate = selectedTerm?.startDate
+    ? String(selectedTerm.startDate).slice(0, 10)
+    : undefined;
+  const maxTermDate = selectedTerm?.endDate
+    ? String(selectedTerm.endDate).slice(0, 10)
+    : undefined;
 
   // When term changes or recurring mode is enabled, default the date range to term bounds
   useEffect(() => {
@@ -244,8 +307,9 @@ export function ScheduleForm({
 
   const isDateOutsideTerm = Boolean(
     selectedTerm &&
-      date &&
-      ((minTermDate && date < minTermDate) || (maxTermDate && date > maxTermDate)),
+    date &&
+    ((minTermDate && date < minTermDate) ||
+      (maxTermDate && date > maxTermDate)),
   );
 
   const allClasses = (classesQuery.data?.data ?? []).filter(
@@ -260,20 +324,35 @@ export function ScheduleForm({
   // Eligible rooms based on class areaType if selected
   const eligibleRooms = useMemo(() => {
     if (!selectedClass?.areaType) return allRooms;
-    return allRooms.filter((r) => r.areaType === selectedClass.areaType);
+    return allRooms.filter(
+      (r) =>
+        r.areaType === selectedClass.areaType &&
+        r.capacity >= selectedClass.capacity &&
+        (selectedClass.sports ?? []).every((sport) =>
+          hasEquipment(sport.requirements ?? [], r.capabilities, r.areaType),
+        ),
+    );
   }, [allRooms, selectedClass]);
 
   const handleClassChange = (newClassId: string) => {
     setClassId(newClassId);
     const cls = allClasses.find((c) => String(c.id) === newClassId);
-    if (cls?.defaultRoomId) {
-      setRoomId(String(cls.defaultRoomId));
-    } else if (cls?.areaType) {
-      const compatible = allRooms.filter((r) => r.areaType === cls.areaType);
-      if (!compatible.some((r) => String(r.id) === roomId)) {
-        setRoomId(compatible[0]?.id ? String(compatible[0].id) : "");
-      }
-    }
+    const compatible = allRooms.filter(
+      (room) =>
+        !cls ||
+        (room.areaType === cls.areaType &&
+          room.capacity >= cls.capacity &&
+          (cls.sports ?? []).every((sport) =>
+            hasEquipment(sport.requirements ?? [], room.capabilities, room.areaType),
+          )),
+    );
+    const preferred = compatible.find((room) => room.id === cls?.defaultRoomId);
+    setRoomId(
+      preferred?.id ??
+        compatible.find((room) => room.id === roomId)?.id ??
+        compatible[0]?.id ??
+        "",
+    );
   };
 
   const toggleShift = (shiftId: string) => {
@@ -300,12 +379,15 @@ export function ScheduleForm({
 
   const toggleWeekday = useCallback((iso: number) => {
     setRecurringWeekdays((prev) =>
-      prev.includes(iso) ? prev.filter((d) => d !== iso) : [...prev, iso].sort((a, b) => a - b),
+      prev.includes(iso)
+        ? prev.filter((d) => d !== iso)
+        : [...prev, iso].sort((a, b) => a - b),
     );
     setError(undefined);
   }, []);
 
-  const selectAllWeekdays = () => setRecurringWeekdays(WEEKDAYS.map((w) => w.iso));
+  const selectAllWeekdays = () =>
+    setRecurringWeekdays(WEEKDAYS.map((w) => w.iso));
   const clearWeekdays = () => setRecurringWeekdays([]);
 
   // Compute selected shift objects sorted by time
@@ -318,17 +400,27 @@ export function ScheduleForm({
   // Recurring dates preview
   const recurringDates = useMemo(() => {
     if (!recurringMode) return [];
-    return generateRecurringDates(recurringFrom, recurringTo, recurringWeekdays);
+    return generateRecurringDates(
+      recurringFrom,
+      recurringTo,
+      recurringWeekdays,
+    );
   }, [recurringMode, recurringFrom, recurringTo, recurringWeekdays]);
 
   // Validate recurring range against term
   const recurringFromOutsideTerm = Boolean(
-    selectedTerm && recurringFrom && minTermDate && maxTermDate &&
-    (recurringFrom < minTermDate || recurringFrom > maxTermDate)
+    selectedTerm &&
+    recurringFrom &&
+    minTermDate &&
+    maxTermDate &&
+    (recurringFrom < minTermDate || recurringFrom > maxTermDate),
   );
   const recurringToOutsideTerm = Boolean(
-    selectedTerm && recurringTo && minTermDate && maxTermDate &&
-    (recurringTo > maxTermDate || recurringTo < minTermDate)
+    selectedTerm &&
+    recurringTo &&
+    minTermDate &&
+    maxTermDate &&
+    (recurringTo > maxTermDate || recurringTo < minTermDate),
   );
 
   // Earliest start and latest end for display
@@ -341,6 +433,7 @@ export function ScheduleForm({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     if (!classId) {
       setError(new Error("Vui lòng chọn lớp học."));
       return;
@@ -357,7 +450,9 @@ export function ScheduleForm({
     if (recurringMode) {
       // Recurring mode validations
       if (recurringWeekdays.length === 0) {
-        setError(new Error("Vui lòng chọn ít nhất 1 ngày trong tuần để lặp lịch."));
+        setError(
+          new Error("Vui lòng chọn ít nhất 1 ngày trong tuần để lặp lịch."),
+        );
         return;
       }
       if (!recurringFrom) {
@@ -372,12 +467,24 @@ export function ScheduleForm({
         setError(new Error("Ngày bắt đầu phải trước ngày kết thúc."));
         return;
       }
-      if (recurringDates.length === 0) {
-        setError(new Error("Không có ngày nào phù hợp với các ngày trong tuần đã chọn trong khoảng thời gian này."));
+      if (+new Date(recurringTo) - +new Date(recurringFrom) > 366 * 86400000) {
+        setError(new Error("Khoảng tạo lịch tối đa 366 ngày."));
         return;
       }
-      if (recurringDates.length > 200) {
-        setError(new Error(`Số lịch tạo (${totalSchedulesToCreate}) quá lớn. Vui lòng rút ngắn khoảng thời gian hoặc giảm số ca.`));
+      if (recurringDates.length === 0) {
+        setError(
+          new Error(
+            "Không có ngày nào phù hợp với các ngày trong tuần đã chọn trong khoảng thời gian này.",
+          ),
+        );
+        return;
+      }
+      if (totalSchedulesToCreate > 500) {
+        setError(
+          new Error(
+            `Số lịch tạo (${totalSchedulesToCreate}) quá lớn. Vui lòng rút ngắn khoảng thời gian hoặc giảm số ca.`,
+          ),
+        );
         return;
       }
     } else {
@@ -403,44 +510,29 @@ export function ScheduleForm({
     try {
       if (mode === "edit" && initial.id) {
         const shift = selectedShifts[0];
-        const startTime = new Date(`${date}T${shift.startTime}:00+07:00`).toISOString();
-        const endTime = new Date(`${date}T${shift.endTime}:00+07:00`).toISOString();
+        const startTime = new Date(
+          `${date}T${shift.startTime}:00+07:00`,
+        ).toISOString();
+        const endTime = new Date(
+          `${date}T${shift.endTime}:00+07:00`,
+        ).toISOString();
         await api("PATCH /class-schedules/{id}", {
           params: { id: String(initial.id) },
           body: { roomId, startTime, endTime },
         });
-      } else if (recurringMode) {
-        // Create schedules for each date × shift combination
-        for (const dateStr of recurringDates) {
-          for (const shift of selectedShifts) {
-            const startTime = new Date(`${dateStr}T${shift.startTime}:00+07:00`).toISOString();
-            const endTime = new Date(`${dateStr}T${shift.endTime}:00+07:00`).toISOString();
-            await api("POST /class-schedules", {
-              body: {
-                classId,
-                roomId,
-                startTime,
-                endTime,
-                termId: termId || undefined,
-              },
-            });
-          }
-        }
       } else {
-        // Sequentially create schedules for single date
-        for (const shift of selectedShifts) {
-          const startTime = new Date(`${date}T${shift.startTime}:00+07:00`).toISOString();
-          const endTime = new Date(`${date}T${shift.endTime}:00+07:00`).toISOString();
-          await api("POST /class-schedules", {
-            body: {
-              classId,
-              roomId,
-              startTime,
-              endTime,
-              termId: termId || undefined,
-            },
-          });
-        }
+        const dates = recurringMode ? recurringDates : [date];
+        const schedules = dates.flatMap((day) =>
+          selectedShifts.map((shift) => ({
+            startTime: new Date(
+              `${day}T${shift.startTime}:00+07:00`,
+            ).toISOString(),
+            endTime: new Date(`${day}T${shift.endTime}:00+07:00`).toISOString(),
+          })),
+        );
+        await api("POST /class-schedules/batch", {
+          body: { classId, roomId, termId: termId || undefined, schedules },
+        });
       }
       onSuccess();
     } catch (caught) {
@@ -451,6 +543,28 @@ export function ScheduleForm({
     }
   };
 
+  if (assignSupport && classId)
+    return (
+      <div>
+        <p className="field-note">
+          HLV phụ được phân công cho lớp và tham gia các buổi của lớp này. Hệ
+          thống kiểm tra chuyên môn và lịch trùng.
+        </p>
+        <CoachAssignmentForm
+          classId={classId}
+          support
+          onBusyChange={(value) => {
+            setBusy(value);
+            onBusyChange?.(value);
+          }}
+          onSuccess={() => {
+            setAssignSupport(false);
+            void classesQuery.refetch();
+          }}
+          onCancel={() => setAssignSupport(false)}
+        />
+      </div>
+    );
   return (
     <form className="schedule-form" onSubmit={handleSubmit} aria-busy={busy}>
       <fieldset className="form-grid" disabled={busy}>
@@ -477,6 +591,17 @@ export function ScheduleForm({
           )}
         </label>
 
+        {classId && (
+          <div className="wide">
+            <button
+              type="button"
+              className="button"
+              onClick={() => setAssignSupport(true)}
+            >
+              Phân công HLV phụ cho lớp
+            </button>
+          </div>
+        )}
         {/* Room selector */}
         <label>
           Phòng tập <b className="required">*</b>
@@ -518,8 +643,11 @@ export function ScheduleForm({
               <option value="">-- Không áp dụng kỳ học --</option>
               {termsList.map((t: any) => (
                 <option key={t.id} value={t.id}>
-                  {t.name} ({formatDisplayDate(t.startDate?.slice(0, 10))} – {formatDisplayDate(t.endDate?.slice(0, 10))})
-                  {t.id === currentTermQuery.data?.data?.id ? " [Kỳ hiện tại]" : ""}
+                  {t.name} ({formatDisplayDate(t.startDate?.slice(0, 10))} –{" "}
+                  {formatDisplayDate(t.endDate?.slice(0, 10))})
+                  {t.id === currentTermQuery.data?.data?.id
+                    ? " [Kỳ hiện tại]"
+                    : ""}
                 </option>
               ))}
             </select>
@@ -540,13 +668,16 @@ export function ScheduleForm({
             >
               <Repeat size={16} />
               <span>Lịch cố định theo tuần</span>
-              <span className={`recurring-toggle-pill ${recurringMode ? "on" : "off"}`}>
+              <span
+                className={`recurring-toggle-pill ${recurringMode ? "on" : "off"}`}
+              >
                 {recurringMode ? "BẬT" : "TẮT"}
               </span>
             </button>
             {!recurringMode && (
               <p className="recurring-hint">
-                Bật để tạo lịch tự động lặp theo ngày trong tuần (ví dụ: mỗi Thứ 2, Thứ 4, Thứ 6) trong một khoảng thời gian.
+                Bật để tạo lịch tự động lặp theo ngày trong tuần (ví dụ: mỗi Thứ
+                2, Thứ 4, Thứ 6) trong một khoảng thời gian.
               </p>
             )}
           </div>
@@ -594,7 +725,9 @@ export function ScheduleForm({
                 <button
                   type="button"
                   className="schedule-quick-btn"
-                  onClick={() => setDate(addDaysVietnam(date || getVietnamToday(), 7))}
+                  onClick={() =>
+                    setDate(addDaysVietnam(date || getVietnamToday(), 7))
+                  }
                 >
                   +7 ngày
                 </button>
@@ -619,9 +752,17 @@ export function ScheduleForm({
                 }}
               >
                 {isDateOutsideTerm ? (
-                  <span>⚠️ Cảnh báo: Ngày đã chọn nằm ngoài phạm vi kỳ học "{selectedTerm.name}" ({formatDisplayDate(minTermDate || "")} – {formatDisplayDate(maxTermDate || "")}).</span>
+                  <span>
+                    ⚠️ Cảnh báo: Ngày đã chọn nằm ngoài phạm vi kỳ học "
+                    {selectedTerm.name}" ({formatDisplayDate(minTermDate || "")}{" "}
+                    – {formatDisplayDate(maxTermDate || "")}).
+                  </span>
                 ) : (
-                  <span>✓ Thuộc kỳ học "{selectedTerm.name}" ({formatDisplayDate(minTermDate || "")} – {formatDisplayDate(maxTermDate || "")}).</span>
+                  <span>
+                    ✓ Thuộc kỳ học "{selectedTerm.name}" (
+                    {formatDisplayDate(minTermDate || "")} –{" "}
+                    {formatDisplayDate(maxTermDate || "")}).
+                  </span>
                 )}
               </div>
             )}
@@ -634,14 +775,32 @@ export function ScheduleForm({
             {/* Weekday selector */}
             <div className="recurring-section">
               <div className="recurring-section-header">
-                <strong>Ngày trong tuần <b className="required">*</b></strong>
+                <strong>
+                  Ngày trong tuần <b className="required">*</b>
+                </strong>
                 <small>Chọn các ngày lịch sẽ lặp lại hàng tuần</small>
                 <div className="recurring-weekday-actions">
-                  <button type="button" className="schedule-quick-btn" onClick={selectAllWeekdays}>Chọn tất cả</button>
-                  <button type="button" className="schedule-quick-btn" onClick={clearWeekdays}>Bỏ chọn</button>
+                  <button
+                    type="button"
+                    className="schedule-quick-btn"
+                    onClick={selectAllWeekdays}
+                  >
+                    Chọn tất cả
+                  </button>
+                  <button
+                    type="button"
+                    className="schedule-quick-btn"
+                    onClick={clearWeekdays}
+                  >
+                    Bỏ chọn
+                  </button>
                 </div>
               </div>
-              <div className="recurring-weekday-grid" role="group" aria-label="Chọn ngày trong tuần">
+              <div
+                className="recurring-weekday-grid"
+                role="group"
+                aria-label="Chọn ngày trong tuần"
+              >
                 {WEEKDAYS.map((wd) => {
                   const selected = recurringWeekdays.includes(wd.iso);
                   return (
@@ -656,14 +815,23 @@ export function ScheduleForm({
                       title={wd.fullLabel}
                     >
                       <span className="wd-label">{wd.label}</span>
-                      {selected && <Check size={10} strokeWidth={3} className="wd-check" />}
+                      {selected && (
+                        <Check size={10} strokeWidth={3} className="wd-check" />
+                      )}
                     </button>
                   );
                 })}
               </div>
               {recurringWeekdays.length > 0 && (
                 <div className="recurring-weekday-summary">
-                  Lặp vào: <strong>{recurringWeekdays.map((iso) => WEEKDAYS.find((w) => w.iso === iso)?.fullLabel).join(", ")}</strong>
+                  Lặp vào:{" "}
+                  <strong>
+                    {recurringWeekdays
+                      .map(
+                        (iso) => WEEKDAYS.find((w) => w.iso === iso)?.fullLabel,
+                      )
+                      .join(", ")}
+                  </strong>
                 </div>
               )}
             </div>
@@ -671,9 +839,14 @@ export function ScheduleForm({
             {/* Date range */}
             <div className="recurring-section">
               <div className="recurring-section-header">
-                <strong>Khoảng thời gian áp dụng <b className="required">*</b></strong>
+                <strong>
+                  Khoảng thời gian áp dụng <b className="required">*</b>
+                </strong>
                 {selectedTerm && (
-                  <small>Kỳ học: {formatDisplayDate(minTermDate || "")} – {formatDisplayDate(maxTermDate || "")}</small>
+                  <small>
+                    Kỳ học: {formatDisplayDate(minTermDate || "")} –{" "}
+                    {formatDisplayDate(maxTermDate || "")}
+                  </small>
                 )}
               </div>
               <div className="recurring-date-range-row">
@@ -689,7 +862,10 @@ export function ScheduleForm({
                       min={minTermDate}
                       max={maxTermDate || recurringTo || undefined}
                       value={recurringFrom}
-                      onChange={(e) => { setRecurringFrom(e.target.value); setError(undefined); }}
+                      onChange={(e) => {
+                        setRecurringFrom(e.target.value);
+                        setError(undefined);
+                      }}
                     />
                   </div>
                   {recurringFromOutsideTerm && (
@@ -709,7 +885,10 @@ export function ScheduleForm({
                       min={recurringFrom || minTermDate || undefined}
                       max={maxTermDate}
                       value={recurringTo}
-                      onChange={(e) => { setRecurringTo(e.target.value); setError(undefined); }}
+                      onChange={(e) => {
+                        setRecurringTo(e.target.value);
+                        setError(undefined);
+                      }}
                     />
                   </div>
                   {recurringToOutsideTerm && (
@@ -739,8 +918,8 @@ export function ScheduleForm({
                 <div className="recurring-preview-header">
                   <Check size={15} />
                   <span>
-                    Sẽ tạo <strong>{totalSchedulesToCreate} lịch</strong>
-                    {" "}({recurringDates.length} ngày × {selectedShifts.length} ca)
+                    Sẽ tạo <strong>{totalSchedulesToCreate} lịch</strong> (
+                    {recurringDates.length} ngày × {selectedShifts.length} ca)
                   </span>
                 </div>
                 <div className="recurring-preview-dates">
@@ -758,12 +937,18 @@ export function ScheduleForm({
               </div>
             )}
 
-            {recurringWeekdays.length > 0 && recurringFrom && recurringTo && recurringDates.length === 0 && (
-              <div className="recurring-no-dates-warn">
-                <AlertCircle size={15} />
-                <span>Không có ngày nào khớp với khoảng thời gian và các ngày trong tuần đã chọn.</span>
-              </div>
-            )}
+            {recurringWeekdays.length > 0 &&
+              recurringFrom &&
+              recurringTo &&
+              recurringDates.length === 0 && (
+                <div className="recurring-no-dates-warn">
+                  <AlertCircle size={15} />
+                  <span>
+                    Không có ngày nào khớp với khoảng thời gian và các ngày
+                    trong tuần đã chọn.
+                  </span>
+                </div>
+              )}
           </div>
         )}
 

@@ -1,3 +1,4 @@
+import { updateSport } from "../sports/sports.service.js";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../config/prisma.js";
@@ -210,23 +211,7 @@ route(
   "put",
   "/subjects/:id/requirements",
   [authorize("ADMIN"), validate(quantities)],
-  (req) =>
-    prisma.$transaction(async (tx) => {
-      if (!(await tx.sport.findUnique({ where: { id: id(req) } })))
-        throw new AppError("Subject not found", 404);
-      await tx.subjectRequirement.deleteMany({ where: { sportId: id(req) } });
-      await tx.subjectRequirement.createMany({
-        data: Object.entries(req.body.values).map(([key, minimum]) => ({
-          sportId: id(req),
-          key,
-          minimum: minimum as number,
-        })),
-      });
-      return tx.sport.findUnique({
-        where: { id: id(req) },
-        include: { requirements: true },
-      });
-    }),
+  (req) => updateSport(id(req), { requirements: req.body.values }),
 );
 route(
   "put",

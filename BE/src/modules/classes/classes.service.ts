@@ -1,3 +1,4 @@
+import { mergeRequirements, missingCapabilities } from "../operations/rules.js";
 import { prisma } from "../../config/prisma.js";
 import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
@@ -8,7 +9,7 @@ import { checkFacilityClassLimit, checkFacilitySportLimit } from "../facilities/
 
 const classInclude = {
   defaultRoom: true,
-  sports: true,
+  sports: { include: { requirements: true } },
   coaches: {
     include: {
       coach: {
@@ -72,7 +73,7 @@ export async function createClass(data: any) {
   }
 
   const { sportIds, ...restData } = data;
-  const sports = await prisma.sport.findMany({ where: { id: { in: sportIds }, isActive: true } });
+  const sports = await prisma.sport.findMany({ where: { id: { in: sportIds }, isActive: true }, include: { requirements: true } });
   if (sports.length !== sportIds.length) throw new AppError("One or more sports not found or inactive", 404);
 
   if (facilityId) {
@@ -83,9 +84,16 @@ export async function createClass(data: any) {
   assertSportsSupportAreaType(sports, data.areaType);
   await assertDefaultRoom(data.defaultRoomId, data.areaType, data.capacity);
 
+  const requirements = mergeRequirements(sports.flatMap((sport) => sport.requirements));
+  if (data.defaultRoomId) {
+    const room = await prisma.room.findUnique({ where: { id: data.defaultRoomId }, include: { capabilities: true } });
+    if (room && missingCapabilities(requirements, room.capabilities, room.areaType).length)
+      throw new AppError("Phòng không đủ dụng cụ theo yêu cầu bộ môn.", 409);
+  }
   const newClass = await prisma.class.create({ 
     data: {
       ...restData,
+      requirementsSnapshot: requirements,
       sports: { connect: sportIds.map((id: string) => ({ id })) }
     }, 
     include: classInclude 
@@ -270,6 +278,16 @@ export async function updateClass(id: string, data: any) {
     updateData.sports = { set: sportIds.map((sid: string) => ({ id: sid })) };
   }
 
+  const effectiveSports = await prisma.sport.findMany({
+    where: { id: { in: sportIds ?? cls.sports.map((sport) => sport.id) } }, include: { requirements: true },
+  });
+  const requirements = mergeRequirements(effectiveSports.flatMap((sport) => sport.requirements));
+  const upcoming = await prisma.classSchedule.findMany({ where: { classId: id, status: "SCHEDULED", endTime: { gt: new Date() } }, select: { roomId: true } });
+  const roomIds = [...new Set([data.defaultRoomId ?? cls.defaultRoomId, ...upcoming.map((row) => row.roomId)].filter(Boolean))] as string[];
+  const rooms = await prisma.room.findMany({ where: { id: { in: roomIds } }, include: { capabilities: true } });
+  if (rooms.some((room) => missingCapabilities(requirements, room.capabilities, room.areaType).length))
+    throw new AppError("Phòng mặc định hoặc phòng có lịch sắp tới không đủ dụng cụ cho bộ môn.", 409);
+  updateData.requirementsSnapshot = requirements;
   return prisma.class.update({ where: { id }, data: updateData, include: classInclude });
 }
 

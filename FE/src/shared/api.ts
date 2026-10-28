@@ -1,4 +1,10 @@
-import { getFacilityId, facilitySignal, selectFacility, trackMutation } from "./facility";
+import { label } from "./config";
+import {
+  getFacilityId,
+  facilitySignal,
+  selectFacility,
+  trackMutation,
+} from "./facility";
 import { migrateIdentityStorage } from "./identityStorage";
 import operations from "./operations.json";
 import { toast } from "./toast";
@@ -90,14 +96,19 @@ async function transport(
   authenticated = true,
 ) {
   let res: Response;
-  const contextSignal = path.startsWith("/auth/") || path.startsWith("/facilities") ? new AbortController().signal : facilitySignal();
+  const contextSignal =
+    path.startsWith("/auth/") || path.startsWith("/facilities")
+      ? new AbortController().signal
+      : facilitySignal();
   try {
     res = await fetch(BASE_URL + path, {
       method,
       cache: "no-store",
       headers: {
         Accept: "application/json",
-        ...(authenticated && getFacilityId() && !path.startsWith("/facilities/") ? { "X-Facility-Id": getFacilityId() } : {}),
+        ...(authenticated && getFacilityId() && !path.startsWith("/facilities/")
+          ? { "X-Facility-Id": getFacilityId() }
+          : {}),
         ...(body !== undefined && !(body instanceof FormData)
           ? { "Content-Type": "application/json" }
           : {}),
@@ -305,6 +316,52 @@ async function apiRequest<T = RecordData>(
     throw e;
   }
 }
+export function mutationSuccessMessage(key: string): string {
+  if (key === "POST /auth/register") return "Đã tạo tài khoản thành công.";
+  if (/coaches\/support/.test(key)) return "Đã phân công HLV phụ.";
+  if (/\/coaches$|\/staff$/.test(key) && key.includes("{id}"))
+    return "Đã lưu phân công nhân sự.";
+  if (/\/complete$/.test(key)) return "Đã hoàn tất buổi học.";
+  if (/\/cancel$/.test(key)) return "Đã hủy và cập nhật dữ liệu liên quan.";
+  const resource = key.split("/")[1];
+  const names: Record<string, string> = {
+    users: "tài khoản",
+    sports: "bộ môn",
+    rooms: "phòng tập",
+    classes: "lớp học",
+    "class-schedules": "lịch hoạt động",
+    "membership-plans": "gói thành viên",
+    subscriptions: "gói đăng ký",
+    enrollments: "đăng ký lớp",
+    payments: "thanh toán",
+    coaches: "hồ sơ HLV",
+    members: "hồ sơ hội viên",
+    facilities: "cơ sở",
+    terms: "kỳ học",
+  };
+  const name = names[resource];
+  if (key.startsWith("DELETE ")) {
+    if (resource === "class-schedules" || resource === "enrollments")
+      return `Đã hủy ${name}.`;
+    if (key.includes("/coaches/")) return "Đã gỡ phân công HLV.";
+    if (
+      [
+        "users",
+        "sports",
+        "rooms",
+        "classes",
+        "membership-plans",
+        "facilities",
+      ].includes(resource)
+    )
+      return `Đã ngừng hoạt động ${name}.`;
+    return name ? `Đã xóa ${name}.` : "Đã xử lý yêu cầu xóa.";
+  }
+  if (key.startsWith("POST ") && name) return `Đã tạo ${name} thành công.`;
+  if (name) return `Đã cập nhật ${name}.`;
+  return "Đã lưu thay đổi thành công.";
+}
+
 export async function api<T = RecordData>(
   key: string,
   options: Parameters<typeof apiRequest>[1] = {},
@@ -332,7 +389,7 @@ export async function api<T = RecordData>(
             ? "Đã gửi xác nhận giả lập. Đang kiểm tra trạng thái thanh toán."
             : /[À-ỹ]/.test(result.message || "")
               ? result.message
-              : "Thao tác đã thực hiện thành công.";
+              : mutationSuccessMessage(key);
       toast("success", message);
     }
     return result;
@@ -364,9 +421,14 @@ export async function api<T = RecordData>(
         "error",
         code === "SEPAY_NOT_CONFIGURED"
           ? "Thanh toán online chưa được cấu hình. Vui lòng thanh toán tại quầy hoặc thử lại sau."
-          : error instanceof Error
-            ? error.message
-            : "Thao tác không thành công. Vui lòng thử lại.",
+          : error instanceof ApiError && error.errors?.length
+            ? error.errors
+                .slice(0, 2)
+                .map((entry) => `${label(entry.field)}: ${entry.message}`)
+                .join(" · ")
+            : error instanceof Error
+              ? error.message
+              : "Thao tác không thành công. Vui lòng thử lại.",
       );
     }
     throw error;

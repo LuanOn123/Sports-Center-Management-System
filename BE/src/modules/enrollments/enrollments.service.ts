@@ -79,7 +79,7 @@ export async function assertCanBook(
   tx: Prisma.TransactionClient,
   memberProfileId: string,
   schedule: BookableSchedule,
-  options: { excludeEnrollmentId?: string; quotaExemptClassId?: string } = {}
+  options: { excludeEnrollmentId?: string; quotaExemptClassId?: string; onSubscriptionSelected?: (id: string) => void } = {}
 ) {
   // Chốt chặn 1: subscription phải ACTIVE và còn hạn đến ngày lớp học diễn ra.
   const activeSub = await findActiveSubscription(tx, memberProfileId);
@@ -262,6 +262,7 @@ export async function assertCanBook(
     }
   }
 
+  options.onSubscriptionSelected?.(activeSub.id);
   return existing;
 }
 
@@ -319,7 +320,8 @@ export async function bookClass(
     }
 
     // 2-5. Gói tập / sức chứa / trùng chỗ / trùng giờ — dùng chung với transferEnrollment.
-    const existing = await assertCanBook(tx, memberProfileId, freshSchedule);
+    let subscriptionId: string | undefined;
+    const existing = await assertCanBook(tx, memberProfileId, freshSchedule, { onSubscriptionSelected: (id) => { subscriptionId = id; } });
 
     // 6. Create or Reactivate enrollment
     let enrolled;
@@ -330,6 +332,7 @@ export async function bookClass(
           status: "BOOKED",
           bookedAt: new Date(),
           cancelledAt: null,
+          subscriptionId,
           healthNotes: options.healthNotes !== undefined ? options.healthNotes : existing.healthNotes,
         },
         include: {
@@ -344,6 +347,7 @@ export async function bookClass(
           classId: freshSchedule.classId,
           scheduleId,
           status: "BOOKED",
+          subscriptionId,
           healthNotes: options.healthNotes ?? null,
         },
         include: {
@@ -645,7 +649,9 @@ export async function transferEnrollment(
         409
       );
 
+    let subscriptionId: string | undefined;
     const existingTarget = await assertCanBook(tx, enrollment.memberId, target, {
+      onSubscriptionSelected: (id) => { subscriptionId = id; },
       excludeEnrollmentId: enrollment.id,
       // §9: transfer chỉ đổi buổi TRONG CÙNG Class (BR-08) => số Class không đổi, không tiêu quota mới.
       quotaExemptClassId: enrollment.classId,
@@ -657,11 +663,12 @@ export async function transferEnrollment(
     const transferred = existingTarget
       ? await tx.enrollment.update({
           where: { id: existingTarget.id },
-          data: { status: "BOOKED", bookedAt: new Date(), cancelledAt: null },
+          data: { status: "BOOKED", bookedAt: new Date(), cancelledAt: null, subscriptionId },
           include: enrollmentInclude,
         })
       : await tx.enrollment.create({
           data: {
+            subscriptionId,
             memberId: enrollment.memberId,
             classId: target.classId,
             scheduleId: targetScheduleId,

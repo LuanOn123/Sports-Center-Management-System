@@ -166,11 +166,6 @@ export function CoachFeedback({
       {mine.error && (
         <ErrorState error={mine.error} retry={() => mine.refetch()} />
       )}
-      {save.isSuccess && (
-        <p className="success" role="status">
-          Đã lưu đánh giá của bạn.
-        </p>
-      )}
       {editing && (
         <Modal
           title="Đánh giá huấn luyện viên"

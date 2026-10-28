@@ -1,3 +1,4 @@
+import { validateResources } from "../operations/scheduling.js";
 import { prisma } from "../../config/prisma.js";
 import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
@@ -22,6 +23,7 @@ export async function listRooms(query: any) {
       where,
       skip,
       take: limit,
+      include: { capabilities: true },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -38,7 +40,11 @@ export async function createRoom(data: any) {
     where: { name: data.name, facilityId: facilityId ?? "legacy-main" },
   });
   if (existing) throw new AppError("Room with this name already exists in this facility", 409);
-  return prisma.room.create({ data });
+  const { capabilities: providedCapabilities, ...fields } = data;
+  const capabilities = data.areaType === "INDOOR" ? providedCapabilities : {};
+  return prisma.room.create({ data: { ...fields, capabilities: capabilities ? {
+    create: Object.entries(capabilities).map(([key, quantity]) => ({ key, quantity: quantity as number })),
+  } : undefined }, include: { capabilities: true } });
 }
 
 export async function getRoomById(id: string) {
@@ -128,7 +134,21 @@ export async function updateRoom(id: string, data: any) {
     }
   }
 
-  return prisma.room.update({ where: { id }, data });
+  const { capabilities: providedCapabilities, ...fields } = data;
+  const capabilities = (data.areaType ?? room.areaType) === "INDOOR" ? providedCapabilities : {};
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('schedule:room:' || ${id}::text))`;
+    const updated = await tx.room.update({ where: { id }, data: { ...fields,
+      ...(capabilities !== undefined ? { capabilities: { deleteMany: {}, create:
+        Object.entries(capabilities).map(([key, quantity]) => ({ key, quantity: quantity as number })) } } : {}),
+    }, include: { capabilities: true } });
+    if (capabilities !== undefined) {
+      const sessions = await tx.classSchedule.findMany({ where: { roomId: id, status: "SCHEDULED", endTime: { gt: new Date() } } });
+      for (const session of sessions)
+        await validateResources(tx, id, session.classId, session.startTime, session.endTime, session.coachId ?? undefined);
+    }
+    return updated;
+  }, { timeout: 30000 });
 }
 
 export async function deleteRoom(id: string) {

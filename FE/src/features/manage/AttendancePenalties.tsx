@@ -89,11 +89,6 @@ export function AttendancePenalties() {
       {(scanMutation.error || previewMutation.error) && (
         <ErrorState error={scanMutation.error || previewMutation.error} />
       )}
-      {scanMutation.isSuccess && (
-        <p className="success" role="status">
-          Đã hoàn tất quét và gửi các cảnh báo mới.
-        </p>
-      )}
       {preview && (
         <section className="panel">
           <h2>Cảnh báo cần quản lý xem xét</h2>

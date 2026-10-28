@@ -332,6 +332,8 @@ model MembershipSubscription {
   @@index([planId])
   @@index([status])
   @@index([endDate])
+  enrollments Enrollment[]
+
 }
 
 // ─────────────────────────────────────────
@@ -493,6 +495,10 @@ model Enrollment {
   class       Class            @relation(fields: [classId], references: [id])
   scheduleId  String
   schedule    ClassSchedule    @relation(fields: [scheduleId], references: [id])
+  /// Exact entitlement selected when this booking was made; NULL for legacy bookings.
+  subscriptionId String?
+  subscription MembershipSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
   status      EnrollmentStatus @default(BOOKED)
   healthNotes String?
   bookedAt    DateTime         @default(now())
@@ -504,6 +510,8 @@ model Enrollment {
   @@index([memberId])
   @@index([scheduleId])
   @@index([classId])
+  @@index([subscriptionId])
+
 }
 
 /// Trạng thái mục chờ (waitlist) cho buổi học đã full — Phase 2 Member × Facility.

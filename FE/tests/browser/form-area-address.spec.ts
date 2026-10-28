@@ -27,7 +27,7 @@ for (const [path, button, key] of [
     await page.goto(`/admin/${path}`);
     await page.getByRole("button", { name: button, exact: true }).click();
     const dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("radio")).toHaveCount(3);
+    await expect(dialog.locator(".area-type-picker").getByRole("radio")).toHaveCount(3);
     await dialog
       .getByLabel(/^Tên/)
       .fill(path === "sports" ? "Bơi lội" : "Hồ bơi A");

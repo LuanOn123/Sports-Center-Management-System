@@ -93,6 +93,10 @@ router.get("/:id", sportsController.getSportById);
  *               - name
  *               - areaTypes
  *             properties:
+ *               requirements:
+ *                 type: object
+ *                 additionalProperties: { type: integer, minimum: 1 }
+ *                 description: Equipment names and quantities (empty means no equipment)
  *               name:
  *                 type: string
  *                 example: "Yoga"
@@ -142,6 +146,10 @@ router.post(
  *           schema:
  *             type: object
  *             properties:
+ *               requirements:
+ *                 type: object
+ *                 additionalProperties: { type: integer, minimum: 1 }
+ *                 description: Equipment names and quantities (empty means no equipment)
  *               name:
  *                 type: string
  *               description:

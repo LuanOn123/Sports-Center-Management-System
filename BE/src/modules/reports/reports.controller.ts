@@ -36,7 +36,7 @@ export async function getMembershipReport(req: Request, res: Response, next: Nex
       targetFacilityId = "ALL";
     }
 
-    const report = await reportsService.getMembershipReport(startDate, endDate, targetFacilityId);
+    const report = await reportsService.getMembershipReport(startDate, endDate, targetFacilityId, req.query.termId as string | undefined);
     sendSuccess(res, report, "Membership report retrieved successfully");
   } catch (err) { next(err); }
 }

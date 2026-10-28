@@ -9,7 +9,7 @@ export async function listPlans(query: any) {
   const limit = Math.min(100, Math.max(1, parseInt(query.limit ?? "10") || 10));
   const skip = (page - 1) * limit;
 
-  const where: any = {};
+  const where: any = { tier: { not: "FREE" } };
   if (query.tier) where.tier = query.tier;
   if (query.isActive !== undefined) where.isActive = query.isActive === "true";
 
@@ -48,12 +48,15 @@ export async function getPlanById(id: string) {
 export async function updatePlan(id: string, data: UpdatePlanInput) {
   const plan = await prisma.membershipPlan.findUnique({ where: { id } });
   if (!plan) throw new AppError("Membership plan not found", 404);
+  if (plan.tier === "FREE") throw new AppError("Gói miễn phí được hệ thống tự động cấp và không thể chỉnh sửa.", 409);
   return prisma.membershipPlan.update({ where: { id }, data });
 }
 
 export async function deletePlan(id: string) {
   const plan = await prisma.membershipPlan.findUnique({ where: { id } });
   if (!plan) throw new AppError("Membership plan not found", 404);
+
+  if (plan.tier === "FREE") throw new AppError("Gói miễn phí được hệ thống tự động cấp và không thể ngừng hoạt động.", 409);
 
   // MF-12: MembershipPlan là catalog GLOBAL ⇒ guard đếm subscription ACTIVE trên TOÀN BỘ hệ thống
   // (trước refactor chỉ đếm theo facility đang chọn). Ý đồ: không deactivate plan mà hội viên

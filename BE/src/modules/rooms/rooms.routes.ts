@@ -98,6 +98,10 @@ router.get("/:id", authenticate, roomsController.getRoomById);
  *               - capacity
  *               - areaType
  *             properties:
+ *               capabilities:
+ *                 type: object
+ *                 additionalProperties: { type: integer, minimum: 1 }
+ *                 description: Equipment names and quantities (empty means no equipment)
  *               name:
  *                 type: string
  *                 example: "Yoga Room A"
@@ -146,6 +150,10 @@ router.post(
  *           schema:
  *             type: object
  *             properties:
+ *               capabilities:
+ *                 type: object
+ *                 additionalProperties: { type: integer, minimum: 1 }
+ *                 description: Equipment names and quantities (empty means no equipment)
  *               name:
  *                 type: string
  *               capacity:

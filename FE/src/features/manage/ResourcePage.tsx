@@ -80,7 +80,6 @@ export function ResourcePage({
     null,
   );
   const [detailTab, setDetailTab] = useState("overview");
-  const [notice, setNotice] = useState("");
   const [bError, setBError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -170,7 +169,6 @@ export function ResourcePage({
   });
   function done() {
     setModal(null);
-    setNotice("Đã lưu thay đổi thành công.");
     void client.invalidateQueries();
   }
   async function deactivate() {
@@ -273,7 +271,11 @@ export function ResourcePage({
             aria-label="Hủy buổi do không đủ sĩ số"
             title="Hủy buổi do không đủ sĩ số"
             className="button small danger"
-            style={{ fontSize: "0.75rem", padding: "2px 6px", whiteSpace: "nowrap" }}
+            style={{
+              fontSize: "0.75rem",
+              padding: "2px 6px",
+              whiteSpace: "nowrap",
+            }}
             onClick={() => {
               const uc = underCapacityMap.get(String(row.id));
               setBError(undefined);
@@ -326,68 +328,107 @@ export function ResourcePage({
           </button>
         )}
       </div>
-      {notice && (
-        <div className="success" role="status">
-          {notice}
-          <button className="text-button" onClick={() => setNotice("")}>
-            Đóng
-          </button>
-        </div>
+      {r.slug === "membership-plans" && (
+        <p className="field-note">
+          Gói miễn phí được tự động cấp cho hội viên. Danh sách này chỉ quản lý
+          các gói trả phí.
+        </p>
       )}
-      {r.slug === "schedules" && role === "MANAGER" && underCapacitySchedules.length > 0 && (
-        <div
-          className="panel"
-          style={{
-            backgroundColor: "#fffbeb",
-            border: "1px solid #fde68a",
-            marginBottom: "16px",
-            padding: "16px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-            <h3 style={{ margin: 0, color: "#92400e", fontSize: "1rem", display: "flex", alignItems: "center", gap: "6px" }}>
-              ⚠️ Buổi học trong 48 giờ tới chưa đủ sĩ số tối thiểu ({underCapacitySchedules.length} buổi)
-            </h3>
-            <span style={{ fontSize: "0.85rem", color: "#b45309" }}>Yêu cầu đạt sĩ số tối thiểu (minCapacity)</span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {underCapacitySchedules.map((s: any) => (
-              <div
-                key={s.id}
+      {r.slug === "schedules" &&
+        role === "MANAGER" &&
+        underCapacitySchedules.length > 0 && (
+          <div
+            className="panel under-capacity-notice"
+            style={{
+              backgroundColor: "var(--member-warning-soft)",
+              border: "1px solid var(--member-warning-border)",
+              marginBottom: "16px",
+              padding: "16px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "8px",
+              }}
+            >
+              <h3
                 style={{
+                  margin: 0,
+                  color: "var(--member-warning)",
+                  fontSize: "1rem",
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "space-between",
-                  background: "#ffffff",
-                  padding: "10px 14px",
-                  borderRadius: "6px",
-                  border: "1px solid #fef3c7",
+                  gap: "6px",
                 }}
               >
-                <div>
-                  <strong>{s.className}</strong> · Phòng {s.roomName} ·{" "}
-                  <span>{new Date(s.startTime).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}</span>
-                  {" — "}
-                  <span style={{ color: "#b45309", fontWeight: 600 }}>
-                    Chưa đủ sĩ số ({s.bookedCount}/{s.minCapacity} học viên · Thiếu {s.shortfall})
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className="button small danger"
-                  onClick={() => {
-                    setBError(undefined);
-                    setCancelReason(`Lớp không đạt sĩ số tối thiểu (hiện có ${s.bookedCount}/${s.minCapacity} học viên)`);
-                    setModal({ kind: "delete", row: s });
+                ⚠️ Buổi học trong 48 giờ tới chưa đủ sĩ số tối thiểu (
+                {underCapacitySchedules.length} buổi)
+              </h3>
+              <span
+                style={{ fontSize: "0.85rem", color: "var(--member-warning)" }}
+              >
+                Theo dõi sĩ số trước giờ học
+              </span>
+            </div>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+            >
+              {underCapacitySchedules.map((s: any) => (
+                <div
+                  key={s.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    background: "var(--member-surface)",
+                    color: "var(--member-text)",
+                    padding: "10px 14px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--member-border)",
                   }}
                 >
-                  Hủy buổi do không đủ sĩ số
-                </button>
-              </div>
-            ))}
+                  <div>
+                    <strong>{s.className}</strong> · Phòng {s.roomName} ·{" "}
+                    <span>
+                      {new Date(s.startTime).toLocaleString("vi-VN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        day: "2-digit",
+                        month: "2-digit",
+                      })}
+                    </span>
+                    {" — "}
+                    <span
+                      style={{
+                        color: "var(--member-warning)",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Chưa đủ sĩ số ({s.bookedCount}/{s.minCapacity} học viên ·
+                      Thiếu {s.shortfall})
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="button small danger"
+                    onClick={() => {
+                      setBError(undefined);
+                      setCancelReason(
+                        `Lớp không đạt sĩ số tối thiểu (hiện có ${s.bookedCount}/${s.minCapacity} học viên)`,
+                      );
+                      setModal({ kind: "delete", row: s });
+                    }}
+                  >
+                    Hủy buổi do không đủ sĩ số
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
       <section className="panel">
         <div className="panel-heading">
           <div>
@@ -541,7 +582,7 @@ export function ResourcePage({
                                       className="badge warning"
                                       style={{
                                         backgroundColor: "#fef3c7",
-                                        color: "#92400e",
+                                        color: "var(--member-warning)",
                                         fontSize: "0.72rem",
                                         padding: "1px 5px",
                                         borderRadius: "4px",
@@ -667,7 +708,8 @@ export function ResourcePage({
               onCancel={() => setModal(null)}
               onBusyChange={setBusy}
             />
-          ) : r.slug === "schedules" && ["create", "edit"].includes(modal.kind) ? (
+          ) : r.slug === "schedules" &&
+            ["create", "edit"].includes(modal.kind) ? (
             <ScheduleForm
               initial={modal.kind === "edit" ? modal.row : {}}
               mode={modal.kind as "create" | "edit"}
@@ -799,15 +841,14 @@ export function ResourcePage({
                   </button>
                 </div>
               )}
-              {detailTab === "overview" && (
-                r.slug === "rooms" ? (
+              {detailTab === "overview" &&
+                (r.slug === "rooms" ? (
                   <RoomDetailView data={detail.data.data} />
                 ) : r.slug === "schedules" ? (
                   <ScheduleDetailView data={detail.data.data} />
                 ) : (
                   <Details value={detail.data.data} />
-                )
-              )}
+                ))}
               {detailTab === "overview" &&
                 r.slug === "schedules" &&
                 !readOnly && (
@@ -1220,7 +1261,7 @@ export function RoomDetailView({ data }: { data: RecordData }) {
         className="room-detail-header"
         style={{
           padding: "12px 24px",
-          borderBottom: "1px solid #e3ebe5",
+          borderBottom: "1px solid var(--member-border, #e3ebe5)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -1231,7 +1272,7 @@ export function RoomDetailView({ data }: { data: RecordData }) {
             {String(data.name || "Phòng tập")}
           </h3>
           {data.location ? (
-            <small style={{ color: "#53675a" }}>
+            <small style={{ color: "var(--member-muted, #53675a)" }}>
               Vị trí: {String(data.location)}
             </small>
           ) : null}
@@ -1256,50 +1297,18 @@ export function RoomDetailView({ data }: { data: RecordData }) {
           </div>
         ) : null}
       </dl>
-      <div style={{ padding: "0 24px 16px" }}>
-        <h4
-          style={{
-            fontSize: "14px",
-            fontWeight: 600,
-            color: "#304e3d",
-            marginBottom: "8px",
-          }}
-        >
-          Trang thiết bị & khả năng đáp ứng
-        </h4>
-        {capabilities.length > 0 ? (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-              gap: "8px",
-            }}
-          >
-            {capabilities.map((c, i) => (
-              <div
-                key={i}
-                style={{
-                  padding: "8px 12px",
-                  background: "#f8faf9",
-                  border: "1px solid #e3ebe5",
-                  borderRadius: "8px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                }}
-              >
-                <span>{label(String(c.key))}</span>
-                <strong>{String(c.quantity ?? c.minimum ?? "—")}</strong>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="detail-empty-item" style={{ margin: 0 }}>
-            <span>Chưa cấu hình trang thiết bị</span>
-          </div>
-        )}
-      </div>
-        {Boolean(data.createdAt || data.updatedAt) && (
-          <details className="detail-disclosure detail-meta">
+      {data.areaType === "INDOOR" && (
+        <div className="room-equipment-summary">
+          <h4>Dụng cụ trong phòng</h4>
+          <p>
+            {capabilities.some((row) => Number(row.quantity) > 0)
+              ? "Có dụng cụ"
+              : "Không có dụng cụ"}
+          </p>
+        </div>
+      )}
+      {Boolean(data.createdAt || data.updatedAt) && (
+        <details className="detail-disclosure detail-meta">
           <summary>Thông tin bổ sung</summary>
           <dl className="details">
             {data.createdAt ? (
@@ -1440,7 +1449,7 @@ export function ScheduleDetailView({ data }: { data: RecordData }) {
           style={{
             fontSize: "14px",
             fontWeight: 600,
-            color: "#304e3d",
+            color: "var(--member-text, #304e3d)",
             marginBottom: "8px",
           }}
         >
@@ -1459,8 +1468,8 @@ export function ScheduleDetailView({ data }: { data: RecordData }) {
                 key={i}
                 style={{
                   padding: "8px 12px",
-                  background: "#f8faf9",
-                  border: "1px solid #e3ebe5",
+                  background: "var(--member-surface-alt, #f8faf9)",
+                  border: "1px solid var(--member-border, #e3ebe5)",
                   borderRadius: "8px",
                   display: "flex",
                   justifyContent: "space-between",

@@ -39,7 +39,6 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
   const [tab, setTab] = useState("profile");
   const [editing, setEditing] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [success, setSuccess] = useState("");
   const [show, setShow] = useState(false);
   const mutation = useMutation({
     mutationFn: ({ key, body }: { key: string; body: Row }) =>
@@ -47,7 +46,6 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
     onSuccess: () => {
       if (tab === "password") return;
       setEditing(false);
-      setSuccess(tab === "profile" ? "Đã cập nhật hồ sơ." : "Đã đổi mật khẩu.");
       void client.invalidateQueries({ queryKey: ["me"] });
     },
     onError: (e) => {
@@ -134,7 +132,6 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
                 onClick={() => {
                   setTab(v);
                   setEditing(false);
-                  setSuccess("");
                   setErrors({});
                   mutation.reset();
                 }}
@@ -154,7 +151,6 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
                   className="button primary"
                   onClick={() => {
                     setEditing(true);
-                    setSuccess("");
                     setErrors({});
                     mutation.reset();
                   }}
@@ -201,7 +197,6 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
                 e.preventDefault();
                 if (mutation.isPending) return;
                 const f = new FormData(e.currentTarget);
-                setSuccess("");
                 let body: Row;
                 if (tab === "profile") {
                   const phone = String(f.get("phone") || "").trim();
@@ -389,11 +384,6 @@ export function CoachProfile({ user }: Pick<PortalProps, "user">) {
                 )}
               </fieldset>
             </form>
-          )}
-          {success && (
-            <p role="status" className="success">
-              {success}
-            </p>
           )}
         </section>
       </div>
