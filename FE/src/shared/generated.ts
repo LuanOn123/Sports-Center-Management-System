@@ -28,7 +28,7 @@ export type PostEnrollmentsBulkRequest = { "classId": string; "memberId"?: strin
 export type PostEnrollmentsIdTransferRequest = { "targetScheduleId": string };
 export type PatchCoachesIdRequest = { "fullName"?: string; "phone"?: string; "gender"?: "MALE" | "FEMALE" | "OTHER"; "dateOfBirth"?: string; "specialization"?: string; "experienceYears"?: number; "bio"?: string };
 export type PostClassesRequest = { "name": string; "description"?: string; "sportIds": Array<string>; "capacity": number; "classType"?: "REGULAR" | "PREMIUM"; "areaType": "POOL" | "INDOOR" | "OUTDOOR"; "attendancePolicy"?: "FIXED" | "RECURRING"; "plannedSessionCount"?: number; "defaultRoomId"?: string };
-export type PatchClassesIdRequest = { "name"?: string; "description"?: string; "sportIds"?: Array<string>; "capacity"?: number; "classType"?: "REGULAR" | "PREMIUM"; "areaType"?: "POOL" | "INDOOR" | "OUTDOOR"; "isActive"?: boolean; "attendancePolicy"?: "FIXED" | "RECURRING"; "plannedSessionCount"?: number; "defaultRoomId"?: string };
+export type PatchClassesIdRequest = { "name"?: string; "description"?: string; "sportIds"?: Array<string>; "capacity"?: number; "classType"?: "REGULAR" | "PREMIUM"; "areaType"?: "POOL" | "INDOOR" | "OUTDOOR"; "isActive"?: boolean; "attendancePolicy"?: "FIXED" | "RECURRING"; "plannedSessionCount"?: number; "defaultRoomId"?: string } & { refreshRequirements?: boolean; reason?: string };
 export type PostClassesIdCoachesRequest = { "coachId": string; "isPrimary"?: boolean };
 export type PostClassesIdCoachesSupportRequest = { "coachId": string };
 export type PostClassSchedulesActivityPlanRequest = {  };
@@ -147,3 +147,5 @@ export type UnderCapacitySchedule = { "id": string; "startTime": string; "endTim
 export type UnderCapacityScheduleListOk = { "success": boolean; "message": string; "data": Array<UnderCapacitySchedule> };
 
 export type MembershipStatusWithScheduled = { "effectiveTier": string; "activeSubscription": { "status": string; "endDate": string; "plan": { "name": string; "tier": string } } | null; "scheduledSubscription"?: { "id": string; "status": "SCHEDULED"; "startDate": string; "endDate": string; "tier": string; "plan": { "name": string; "tier": string } } | null; "daysRemaining": number };
+
+export type PostPaymentsIdRefundConfirmRequest = { reason: string; reference: string };

@@ -11,6 +11,8 @@ export const CreatePaymentSchema = z.object({
 });
 
 export const UpdatePaymentStatusSchema = z.object({
+  reason: z.string().trim().min(3).optional(),
+  reference: z.string().trim().min(3).max(200).optional(),
   status: z.enum(["PENDING", "SUCCESS", "FAILED", "REFUNDED"]),
 });
 

@@ -52,7 +52,10 @@
     "test:policy-a:membership": "tsx tests/policy-a-membership.integration.ts",
     "test:matrix:membership": "tsx tests/subscription-matrix.integration.ts",
     "test:business-gaps": "tsx tests/business-gaps.integration.ts",
-    "test:captcha": "tsx --test tests/turnstile.integration.test.ts"
+    "test:captcha": "tsx --test tests/turnstile.integration.test.ts",
+    "test:hardening": "tsx --test tests/business-rule-audit.repro.test.ts tests/membership-attribution.test.ts tests/term-membership.test.ts tests/schedule-batch.test.ts tests/coach-changes.test.ts",
+    "audit:preflight": "tsx src/scripts/business-rule-preflight.ts",
+    "test:hardening:integration": "node tests/run-hardening-isolation.mjs"
   },
   "dependencies": {
     "@getbrevo/brevo": "^6.0.3",

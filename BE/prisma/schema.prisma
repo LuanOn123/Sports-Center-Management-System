@@ -556,6 +556,10 @@ model WaitlistEntry {
 // ─────────────────────────────────────────
 
 model Payment {
+  refundRequestedAmount Decimal? @db.Decimal(12, 2)
+  refundRequestedAt DateTime?
+  refundReason String?
+  refundReference String?
   refundedAmount Decimal @default(0) @db.Decimal(12, 2)
   refundedAt DateTime?
   facilityId String @default("legacy-main")

@@ -1,3 +1,4 @@
+import { User as AuthUser } from "../../models/User.js";
 import { Server, Socket } from "socket.io";
 import { prisma } from "../../config/prisma.js";
 import { verifyAccessToken } from "../../utils/jwt.js";
@@ -46,7 +47,8 @@ export const setupSocket = (io: Server) => {
         where: { id: payload.id },
         select: { id: true, role: true, isActive: true },
       });
-      if (!user?.isActive || user.role !== payload.role)
+      const authUser = await AuthUser.findById(payload.id).select("tokenVersion isActive provisioningStatus").lean();
+      if (!authUser?.isActive || (authUser.provisioningStatus && authUser.provisioningStatus !== "READY") || (payload.tokenVersion ?? 0) !== (authUser.tokenVersion ?? 0) || !user?.isActive || user.role !== payload.role)
         return next(new Error("Unauthorized"));
       // AUD-09: token cũ (trước lần đổi mật khẩu) không được mở lại socket.
       const credential = await User.findById(payload.id).select("passwordChangedAt").lean();

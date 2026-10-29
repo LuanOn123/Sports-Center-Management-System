@@ -1,3 +1,5 @@
+import { isGrantSourceValid } from "../subscriptions/entitlement.service.js";
+import { effectiveCoachIds } from "../operations/effective-coaches.js";
 import { readAttendanceReport } from "../attendance/reception-attendance.service.js";
 import { requestContext } from "../../config/request-context.js";
 import { prisma } from "../../config/prisma.js";
@@ -15,7 +17,6 @@ import {
 } from "./enrollment-quota.service.js";
 import { checkFacilityMemberLimit } from "../facilities/facility-limits.service.js";
 import { readTermMembershipGrant, termMembershipCovers } from "./term-membership-policy.js";
-import { effectiveCoachIds } from "../operations/rules.js";
 
 export type BookableSchedule = {
   id: string;
@@ -89,6 +90,8 @@ export async function assertCanBook(
   const approvedTerm = termMembershipCovers(options.termMembershipGrant, {
     memberId: memberProfileId, classId: schedule.class.id, termId, startTime: schedule.startTime, endTime: schedule.endTime,
   });
+  if (approvedTerm && !(await isGrantSourceValid(tx, options.termMembershipGrant)))
+    throw new AppError("Quyền học theo kỳ đã bị thu hồi hoặc chưa đối soát được gói nguồn.", 403);
   // Chốt chặn 1: subscription phải ACTIVE và còn hạn đến ngày lớp học diễn ra.
   const activeSub = await findActiveSubscription(tx, memberProfileId);
 
@@ -99,7 +102,7 @@ export async function assertCanBook(
     );
   }
 
-  const lastSession = await tx.classSchedule.findFirst({ where: { classId: schedule.class.id, status: "SCHEDULED" }, orderBy: { endTime: "desc" } });
+  const lastSession = await tx.classSchedule.findFirst({ where: { classId: schedule.class.id, status: "SCHEDULED", ...(termId ? { termId } : {}) }, orderBy: { endTime: "desc" } });
   if (activeSub && !approvedTerm && activeSub.endDate < (lastSession?.endTime || schedule.endTime)) {
     const expiredDate = activeSub.endDate.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
     const classDate = schedule.startTime.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
@@ -546,7 +549,7 @@ export async function getScheduleEnrollments(
     if (!schedule) throw new AppError("Schedule not found", 404);
     const coachProfile = await prisma.coachProfile.findUnique({ where: { userId: actor.id } });
     const isAssigned =
-      Boolean(coachProfile) && effectiveCoachIds(schedule.coachId, schedule.class.coaches).includes(coachProfile!.id);
+      Boolean(coachProfile) && effectiveCoachIds(schedule).includes(coachProfile!.id);
     if (!isAssigned) throw new AppError("Forbidden: You are not assigned to this class", 403);
   }
 
@@ -607,20 +610,10 @@ export async function transferEnrollment(
   if (enrollment.scheduleId === targetScheduleId)
     throw new AppError("Target schedule is the same as the current schedule", 409);
 
+  if (role === "MEMBER" && enrollment.schedule.startTime.getTime() - Date.now() < ATTENDANCE.CANCELLATION_CUTOFF_MINUTES * 60000)
+    throw new AppError("Đã quá thời hạn tự chuyển buổi học. Vui lòng liên hệ nhân viên để được hỗ trợ.", 400);
   if (enrollment.schedule.startTime <= new Date())
     throw new AppError("Cannot transfer enrollment for a past or ongoing class", 400);
-
-  // R-01: chuyển buổi = nhả chỗ cũ ⇒ áp CÙNG hạn chót với tự hủy, nếu không hội viên có thể
-  // chuyển sát giờ sang buổi tương lai rồi hủy buổi đó để lách luật hủy muộn.
-  const cutoffMinutes = ATTENDANCE.CANCELLATION_CUTOFF_MINUTES;
-  if (role === "MEMBER" && cutoffMinutes > 0 &&
-      enrollment.schedule.startTime.getTime() - Date.now() < cutoffMinutes * 60 * 1000) {
-    throw new AppError(
-      `Đã quá hạn đổi buổi. Bạn chỉ có thể đổi buổi trước giờ học ít nhất ${cutoffMinutes} phút. Vui lòng liên hệ trung tâm để được hỗ trợ.`,
-      400,
-      { code: "LATE_TRANSFER_DISALLOWED", cutoffMinutes }
-    );
-  }
 
   const target = await prisma.classSchedule.findUnique({
     where: { id: targetScheduleId },

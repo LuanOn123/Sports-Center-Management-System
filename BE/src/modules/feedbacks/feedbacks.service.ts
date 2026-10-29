@@ -1,3 +1,4 @@
+import { requestContext } from "../../config/request-context.js";
 import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
@@ -11,13 +12,10 @@ const feedbackInclude = {
 
 /**
  * Member tạo feedback cho Coach.
- * Business rules (R-06):
- *  - "Đã học" = có mặt (Attendance PRESENT/LATE) hoặc Enrollment COMPLETED ở ít nhất 1 buổi
- *    ĐÃ DIỄN RA do HLV đó dạy (HLV chính khi buổi không có người thay, HLV dạy thay, hoặc HLV phụ).
- *    Chỉ đặt chỗ (BOOKED) cho buổi tương lai thì chưa được đánh giá.
- *  - Có classId ⇒ buổi đã học phải thuộc ĐÚNG lớp đó.
- *  - Mỗi (member, coach, class) chỉ 1 feedback; mỗi (member, coach) chỉ 1 feedback chung (không lớp).
- *    Gửi lại ⇒ sửa feedback cũ.
+ * Business rules:
+ *  - Member phải đã từng BOOKED hoặc COMPLETED ít nhất 1 buổi của Coach đó.
+ *  - Nếu truyền classId: phải thuộc lớp có Coach đó.
+ *  - Mỗi (memberId, coachId, classId) chỉ được feedback 1 lần (upsert cho phép sửa).
  */
 export async function createFeedback(data: CreateFeedbackInput, userId: string) {
   // Tìm memberProfile từ userId
@@ -31,68 +29,64 @@ export async function createFeedback(data: CreateFeedbackInput, userId: string) 
   });
   if (!coachProfile || !coachProfile.user.isActive) throw new AppError("Coach not found or inactive", 404);
 
-  const coachId = data.coachId;
-  const pastSessionTaughtByCoach = {
-    startTime: { lte: new Date() },
-    ...(data.classId ? { classId: data.classId } : {}),
-    OR: [
-      { coachId },
-      { coachId: null, class: { coaches: { some: { coachId } } } },
-      { class: { coaches: { some: { coachId, isPrimary: false } } } },
-    ],
-  };
-  const [attended, completed] = await Promise.all([
-    prisma.attendance.findFirst({
-      where: { memberId: memberProfile.id, status: { in: ["PRESENT", "LATE"] }, schedule: pastSessionTaughtByCoach },
-      select: { id: true },
-    }),
-    prisma.enrollment.findFirst({
-      where: { memberId: memberProfile.id, status: "COMPLETED", schedule: pastSessionTaughtByCoach },
-      select: { id: true },
-    }),
-  ]);
-  if (!attended && !completed) {
-    throw new AppError(
-      data.classId
-        ? "Bạn chỉ có thể đánh giá HLV ở lớp mà bạn đã tham gia ít nhất một buổi do HLV này dạy."
-        : "Bạn chỉ có thể đánh giá HLV sau khi đã tham gia ít nhất một buổi do HLV này dạy.",
-      403,
-      { code: "FEEDBACK_NOT_ELIGIBLE" },
-    );
+  // Kiểm tra member có từng học với coach này chưa
+  const hasAttended = await prisma.enrollment.findFirst({
+    where: {
+      memberId: memberProfile.id,
+      ...(data.classId ? { classId: data.classId } : {}),
+      status: { in: ["BOOKED", "COMPLETED"] },
+      schedule: {
+        class: {
+          coaches: { some: { coachId: data.coachId } },
+        },
+      },
+    },
+  });
+  if (!hasAttended) {
+    throw new AppError("Bạn chỉ có thể đánh giá HLV mà bạn đã hoặc đang học cùng.", 403);
   }
 
-  const content = {
-    rating: data.rating,
-    comment: data.comment,
-    isAnonymous: data.isAnonymous ?? false,
-  };
-
+  // Kiểm tra classId nếu có
   if (data.classId) {
-    return prisma.coachFeedback.upsert({
-      where: { coachId_memberId_classId: { coachId, memberId: memberProfile.id, classId: data.classId } },
-      create: { coachId, memberId: memberProfile.id, classId: data.classId, ...content },
-      update: content,
-      include: feedbackInclude,
+    const classExists = await prisma.class.findFirst({
+      where: { id: data.classId, coaches: { some: { coachId: data.coachId } } },
     });
+    if (!classExists) throw new AppError("Lớp học này không thuộc HLV được chỉ định.", 400);
   }
 
-  // Feedback chung (classId NULL): unique của PostgreSQL không chặn trùng NULL ⇒ tìm & sửa bản cũ;
-  // partial unique index "CoachFeedback_general_unique" chặn hai request tạo song song.
-  const upsertGeneral = async () => {
-    const existing = await prisma.coachFeedback.findFirst({
-      where: { coachId, memberId: memberProfile.id, classId: null },
-      select: { id: true },
-    });
-    return existing
-      ? prisma.coachFeedback.update({ where: { id: existing.id }, data: content, include: feedbackInclude })
-      : prisma.coachFeedback.create({ data: { coachId, memberId: memberProfile.id, ...content }, include: feedbackInclude });
-  };
-  try {
-    return await upsertGeneral();
-  } catch (err: any) {
-    if (err?.code === "P2002") return upsertGeneral();
-    throw err;
-  }
+  // Upsert: cho phép sửa nếu đã feedback rồi
+  if (!data.classId) return requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, () => prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('feedback:' || ${memberProfile.id}::text || ':' || ${data.coachId}::text))`;
+    const existing = await tx.coachFeedback.findFirst({ where: { coachId: data.coachId, memberId: memberProfile.id, classId: null } });
+    const values = { rating: data.rating, comment: data.comment, isAnonymous: data.isAnonymous ?? false };
+    return existing ? tx.coachFeedback.update({ where: { id: existing.id }, data: values, include: feedbackInclude })
+      : tx.coachFeedback.create({ data: { ...values, coachId: data.coachId, memberId: memberProfile.id }, include: feedbackInclude });
+  }));
+  const feedback = await prisma.coachFeedback.upsert({
+    where: {
+      coachId_memberId_classId: {
+        coachId: data.coachId,
+        memberId: memberProfile.id,
+        classId: data.classId ?? "",
+      },
+    },
+    create: {
+      coachId: data.coachId,
+      memberId: memberProfile.id,
+      classId: data.classId,
+      rating: data.rating,
+      comment: data.comment,
+      isAnonymous: data.isAnonymous ?? false,
+    },
+    update: {
+      rating: data.rating,
+      comment: data.comment,
+      isAnonymous: data.isAnonymous ?? false,
+    },
+    include: feedbackInclude,
+  });
+
+  return feedback;
 }
 
 /**

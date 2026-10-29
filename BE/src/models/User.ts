@@ -11,6 +11,10 @@ export interface IUser extends Document {
   avatarUrl?: string | null;
   role: "ADMIN" | "MANAGER" | "COACH" | "RECEPTIONIST" | "MEMBER";
   isActive: boolean;
+  tokenVersion: number;
+  provisioningLeaseToken?: string | null;
+  provisioningLeaseUntil?: Date | null;
+  provisioningStatus: "READY" | "PENDING" | "FAILED";
   resetPasswordOtp?: string | null;
   resetPasswordOtpExpiresAt?: Date | null;
   /** AUD-09: access token phát hành trước mốc này bị từ chối (đổi/đặt lại mật khẩu). */
@@ -33,6 +37,10 @@ const userSchema = new Schema(
     avatarUrl: { type: String, default: null },
     role: { type: String, enum: ["ADMIN", "MANAGER", "COACH", "RECEPTIONIST", "MEMBER"], default: "MEMBER" },
     isActive: { type: Boolean, default: true },
+    tokenVersion: { type: Number, default: 0 },
+    provisioningLeaseToken: { type: String, default: null, select: false },
+    provisioningLeaseUntil: { type: Date, default: null },
+    provisioningStatus: { type: String, enum: ["READY", "PENDING", "FAILED"], default: "READY" },
     resetPasswordOtp: { type: String, default: null },
     resetPasswordOtpExpiresAt: { type: Date, default: null },
     passwordChangedAt: { type: Date, default: null },
@@ -45,6 +53,8 @@ const userSchema = new Schema(
         ret.id = ret._id?.toString();
         delete ret._id;
         delete ret.__v;
+        delete ret.provisioningLeaseToken;
+        delete ret.provisioningLeaseUntil;
         delete ret.password;
       },
     },
@@ -54,6 +64,8 @@ const userSchema = new Schema(
         ret.id = ret._id?.toString();
         delete ret._id;
         delete ret.__v;
+        delete ret.provisioningLeaseToken;
+        delete ret.provisioningLeaseUntil;
       },
     },
   }

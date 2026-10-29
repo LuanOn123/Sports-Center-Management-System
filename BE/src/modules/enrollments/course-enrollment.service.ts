@@ -1,3 +1,4 @@
+import { isGrantSourceValid } from "../subscriptions/entitlement.service.js";
 import { requestContext } from "../../config/request-context.js";
 import { Prisma, EnrollmentStatus, MemberTier } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
@@ -177,11 +178,12 @@ export async function evaluateCourseEligibility(
     ? schedulesWithTerms[0].term : null;
   const grant = activeSub && term && sessions.every((session) => session.startTime >= term.startDate && session.endTime <= term.endDate)
     ? createTermMembershipGrant(activeSub, term, memberProfileId, cls.id, now) : null;
-  const retained = !!term && sessions.every((session) => {
+  let retained = !!term && sessions.every((session) => {
     const enrollment = myEnrollments.find((row) => row.scheduleId === session.id);
     return enrollment && ["BOOKED", "COMPLETED"].includes(enrollment.status) &&
       termMembershipCovers(enrollment.termMembershipGrant, { memberId: memberProfileId, classId: cls.id, termId: term.id, startTime: session.startTime, endTime: session.endTime });
   });
+  if (retained && !(await isGrantSourceValid(db, myEnrollments.find(row => row.scheduleId === sessions[0].id)?.termMembershipGrant))) retained = false;
   const retainedGrant = retained ? readTermMembershipGrant(myEnrollments.find((row) => row.scheduleId === sessions[0].id)?.termMembershipGrant) : null;
 
   // ── Cấp KỲ HỌC: thời gian mở đăng ký & trạng thái kỳ ────────────────────────

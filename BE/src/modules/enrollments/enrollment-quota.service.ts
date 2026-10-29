@@ -1,8 +1,8 @@
+import { readEffectiveSubscription } from "../subscriptions/entitlement.service.js";
 import { Prisma, MemberTier } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
-import { claimScheduledSubscription } from "../subscriptions/subscription-lifecycle.service.js";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
@@ -55,38 +55,7 @@ export async function findActiveSubscription(
   memberProfileId: string,
   now: Date = new Date()
 ) {
-  // Tự động kích hoạt (lazy activation) các gói SCHEDULED đã tới ngày bắt đầu.
-  // AUD-02: dùng CHUNG hàm claim với job (lock member + CAS + kiểm tra hạn) trong một transaction.
-  const scheduledReady = await db.membershipSubscription.findFirst({
-    where: {
-      memberId: memberProfileId,
-      status: "SCHEDULED",
-      startDate: { lte: now },
-      endDate: { gt: now },
-    },
-    orderBy: { startDate: "asc" },
-    select: { id: true, memberId: true },
-  });
-
-  if (scheduledReady) {
-    const claim = (tx: Prisma.TransactionClient) => claimScheduledSubscription(tx, scheduledReady, now);
-    if ("$transaction" in db && typeof (db as typeof prisma).$transaction === "function") {
-      await (db as typeof prisma).$transaction(claim);
-    } else {
-      await claim(db as Prisma.TransactionClient);
-    }
-  }
-
-  return db.membershipSubscription.findFirst({
-    where: {
-      memberId: memberProfileId,
-      status: "ACTIVE",
-      startDate: { lte: now },
-      endDate: { gte: now },
-    },
-    orderBy: [{ tier: "desc" }, { endDate: "desc" }],
-    include: { plan: true },
-  });
+  return readEffectiveSubscription(db, memberProfileId, now);
 }
 
 /**

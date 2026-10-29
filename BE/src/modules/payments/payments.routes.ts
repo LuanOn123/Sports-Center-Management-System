@@ -1,6 +1,9 @@
+import { z } from "zod";
+import { sendSuccess } from "../../utils/response.js";
+import { updatePaymentStatus } from "./payments.service.js";
 import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate.js";
-import { authorize } from "../../middlewares/authorize.js";
+import { authorize, authorizeExact } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
 import { CreatePaymentSchema, UpdatePaymentStatusSchema, PaymentQuerySchema, SepayCheckoutSchema, SepayMockConfirmSchema, SepayWebhookSchema } from "./payments.schema.js";
 import * as paymentsController from "./payments.controller.js";
@@ -143,6 +146,34 @@ router.get(
  *       404: { $ref: "#/components/responses/NotFound" }
  *       500: { $ref: "#/components/responses/ServerError" }
  */
+/**
+ * @swagger
+ * /payments/{id}/refund/confirm:
+ *   post:
+ *     summary: Confirm an actual refund using its receipt or bank reference
+ *     tags: [Payments]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [reason, reference]
+ *             properties:
+ *               reason: { type: string, minLength: 3 }
+ *               reference: { type: string, minLength: 3 }
+ *     responses:
+ *       200: { description: Refund confirmed }
+ *       409: { description: State changed or refund is not authorized }
+ */
+router.post("/:id/refund/confirm", authenticate, authorizeExact("ADMIN", "RECEPTIONIST"),
+  validate(z.object({ reason: z.string().trim().min(3).max(1000), reference: z.string().trim().min(3).max(200) })),
+  async (req, res) => { sendSuccess(res, await updatePaymentStatus(String(req.params.id), "REFUNDED", req.body), "Đã xác nhận hoàn tiền thực tế"); });
 router.patch(
   "/:id/status",
   authenticate, authorize("MANAGER"),

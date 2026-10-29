@@ -1585,7 +1585,7 @@
       "FE/src/features/reception/payments/PaymentsPage.tsx",
       "FE/src/shared/forms/SchemaForm.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:46",
+    "backend": "BE/src/modules/payments/payments.routes.ts:49",
     "handler": "paymentsController.createPayment",
     "status": "MATCH",
     "request": {
@@ -1648,7 +1648,7 @@
       "FE/src/features/reception/dashboard/ReceptionAnalytics.tsx",
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:82",
+    "backend": "BE/src/modules/payments/payments.routes.ts:85",
     "handler": "paymentsController.listPayments",
     "status": "MATCH",
     "request": null,
@@ -1731,7 +1731,7 @@
       "FE/src/features/reception/payments/PaymentsPage.tsx",
       "FE/src/pages/member/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:108",
+    "backend": "BE/src/modules/payments/payments.routes.ts:111",
     "handler": "paymentsController.getPaymentById",
     "status": "MATCH",
     "request": null,
@@ -1754,7 +1754,7 @@
     "consumers": [
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:146",
+    "backend": "BE/src/modules/payments/payments.routes.ts:177",
     "handler": "paymentsController.updatePaymentStatus",
     "status": "MATCH",
     "request": {
@@ -1793,7 +1793,7 @@
     "consumers": [
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:178",
+    "backend": "BE/src/modules/payments/payments.routes.ts:209",
     "handler": "paymentsController.retryPaymentActivation",
     "status": "MATCH",
     "request": null,
@@ -1819,7 +1819,7 @@
       "FE/src/shared/api.ts",
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:274",
+    "backend": "BE/src/modules/payments/payments.routes.ts:305",
     "handler": "paymentsController.sepayCheckout",
     "status": "MATCH",
     "request": {
@@ -1854,7 +1854,7 @@
     "consumers": [
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:394",
+    "backend": "BE/src/modules/payments/payments.routes.ts:425",
     "handler": "paymentsController.sepayWebhook",
     "status": "MATCH",
     "request": {
@@ -1935,7 +1935,7 @@
       "FE/src/shared/api.ts",
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:450",
+    "backend": "BE/src/modules/payments/payments.routes.ts:481",
     "handler": "paymentsController.sepayMockConfirm",
     "status": "MATCH",
     "request": {
@@ -1968,7 +1968,7 @@
     "consumers": [
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:521",
+    "backend": "BE/src/modules/payments/payments.routes.ts:552",
     "handler": "paymentsController.sepayGetCheckout",
     "status": "MATCH",
     "request": null,
@@ -3696,6 +3696,14 @@
         "defaultRoomId": {
           "type": "string",
           "description": "Phòng mặc định phù hợp loại khu vực và sức chứa lớp"
+        },
+        "refreshRequirements": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 1000
         }
       }
     },
@@ -5590,7 +5598,7 @@
       "FE/src/features/manage/AdminDashboard.tsx"
     ],
     "backend": "BE/src/modules/reports/reports.routes.ts:20",
-    "handler": "async (req, res) => {\r",
+    "handler": "async (req, res) => {",
     "status": "MATCH",
     "request": null,
     "query": [
@@ -5664,8 +5672,8 @@
       "FE/src/features/manage/ManagerUsers.tsx",
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:87",
-    "handler": "(req) =>\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:88",
+    "handler": "(req) =>",
     "status": "MATCH",
     "request": null,
     "query": [
@@ -5703,8 +5711,8 @@
       "FE/src/shared/coachEligibility.ts",
       "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:131",
-    "handler": "async (req) => {\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:132",
+    "handler": "async (req) => {",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -5727,8 +5735,8 @@
       "FE/src/features/operations/OperationsPage.tsx",
       "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:216",
-    "handler": "(req) =>\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:220",
+    "handler": "(req) =>",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -5761,8 +5769,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:141",
-    "handler": "async (req) => {\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:142",
+    "handler": "async (req) => {",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6189,8 +6197,8 @@
       "FE/src/features/operations/OperationsPage.tsx",
       "FE/src/features/manage/ResourcePage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:172",
-    "handler": "async (req) =>\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:174",
+    "handler": "async (req) =>",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6231,7 +6239,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:210",
+    "backend": "BE/src/modules/operations/operations.routes.ts:214",
     "handler": "(req) => updateSport(id(req), { requirements: req.body.values })",
     "status": "MATCH",
     "request": {
@@ -6273,8 +6281,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:315",
-    "handler": "() =>\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:320",
+    "handler": "() =>",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6294,8 +6302,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:318",
-    "handler": "(req) =>\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:323",
+    "handler": "(req) =>",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6333,8 +6341,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:321",
-    "handler": "(req) => {\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:326",
+    "handler": "(req) => {",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6354,8 +6362,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:331",
-    "handler": "(req) =>\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:336",
+    "handler": "(req) =>",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6413,8 +6421,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:411",
-    "handler": "async (req) => {\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:410",
+    "handler": "async (req) => {",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6434,7 +6442,7 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:435",
+    "backend": "BE/src/modules/operations/operations.routes.ts:434",
     "handler": "(req) => createStaffLeave(req.user, req.body)",
     "status": "MATCH",
     "request": {
@@ -6475,8 +6483,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:457",
-    "handler": "(req) =>\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:456",
+    "handler": "(req) =>",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6552,8 +6560,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:670",
-    "handler": "async (req) =>\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:673",
+    "handler": "async (req) =>",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6573,8 +6581,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:683",
-    "handler": "(req) => {\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:686",
+    "handler": "(req) => {",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6608,8 +6616,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:730",
-    "handler": "async (req) => {\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:733",
+    "handler": "async (req) => {",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6629,8 +6637,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:745",
-    "handler": "async (req) => {\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:748",
+    "handler": "async (req) => {",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6664,8 +6672,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:766",
-    "handler": "async (req) => {\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:769",
+    "handler": "async (req) => {",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6685,8 +6693,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:709",
-    "handler": "async (req) => {\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:712",
+    "handler": "async (req) => {",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6727,8 +6735,8 @@
       "FE/src/features/manage/AuditLogPage.tsx",
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:727",
-    "handler": "(req) =>\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:730",
+    "handler": "(req) =>",
     "status": "MATCH",
     "request": null,
     "query": [
@@ -6770,8 +6778,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:775",
-    "handler": "() =>\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:778",
+    "handler": "() =>",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6791,8 +6799,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:783",
-    "handler": "async (req) => {\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:786",
+    "handler": "async (req) => {",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6837,8 +6845,8 @@
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:829",
-    "handler": "(req) =>\r",
+    "backend": "BE/src/modules/operations/operations.routes.ts:832",
+    "handler": "(req) =>",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -7517,7 +7525,7 @@
     "consumers": [
       "FE/src/features/operations/CoachChangesPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:135",
+    "backend": "BE/src/modules/operations/operations.routes.ts:136",
     "handler": "(req) => listCoachChanges(req.user)",
     "status": "MATCH",
     "request": null,
@@ -7541,7 +7549,7 @@
     "consumers": [
       "FE/src/features/operations/CoachChangesPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:136",
+    "backend": "BE/src/modules/operations/operations.routes.ts:137",
     "handler": "(req) => requestableSessions(req.user)",
     "status": "MATCH",
     "request": null,
@@ -7565,7 +7573,7 @@
     "consumers": [
       "FE/src/features/operations/CoachChangesPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:137",
+    "backend": "BE/src/modules/operations/operations.routes.ts:138",
     "handler": "(req) => createCoachChange(req.user, req.body)",
     "status": "MATCH",
     "request": {
@@ -7605,7 +7613,7 @@
     "consumers": [
       "FE/src/features/operations/CoachChangesPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:138",
+    "backend": "BE/src/modules/operations/operations.routes.ts:139",
     "handler": "(req) => replacementCandidates(id(req))",
     "status": "MATCH",
     "request": null,
@@ -7629,7 +7637,7 @@
     "consumers": [
       "FE/src/features/operations/CoachChangesPage.tsx"
     ],
-    "backend": "BE/src/modules/operations/operations.routes.ts:139",
+    "backend": "BE/src/modules/operations/operations.routes.ts:140",
     "handler": "(req) => decideCoachChange(req.user, id(req), req.body)",
     "status": "MATCH",
     "request": {
@@ -7725,6 +7733,41 @@
       "400",
       "401",
       "403",
+      "409"
+    ]
+  },
+  {
+    "key": "POST /payments/{id}/refund/confirm",
+    "feature": "payments",
+    "method": "POST",
+    "path": "/payments/{id}/refund/confirm",
+    "roles": "Authenticated (service checks ownership)",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
+    ],
+    "backend": "BE/src/modules/payments/payments.routes.ts:174",
+    "handler": "async (req, res) => { sendSuccess(res, await updatePaymentStatus(String(req.params.id), \"REFUNDED\", req.body), \"Đã xác nhận hoàn tiền thực tế\"); }",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "reason",
+        "reference"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 3
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 3
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
       "409"
     ]
   }

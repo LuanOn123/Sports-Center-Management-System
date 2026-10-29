@@ -1,4 +1,6 @@
 # CURRENT BUSINESS FLOW AND RULES — Sports Center Management System (Backend)
+> **Cập nhật 29/10/2026:** các luật gia hạn, hoàn tiền, phân quyền HLV, snapshot và kỳ học đã được siết chặt. Xem `docs/audit/BUSINESS_RULE_HARDENING_IMPLEMENTATION_2026-10-29.vi.md` để biết hành vi hiện tại và quy trình migration. Nội dung mới thay thế những đoạn cũ mâu thuẫn; gói chờ chỉ được hoàn 100% khi chưa tới ngày hiệu lực, và yêu cầu hoàn tiền không đồng nghĩa đã trả tiền thực tế.
+
 
 > **Tài liệu mô tả HÀNH VI ĐÃ IMPLEMENT HIỆN TẠI** của backend, lấy repo làm nguồn sự thật.
 > Ngày tổng hợp: 10/7/2026. Backend only — không mô tả FE trừ khi trỏ đích danh file.

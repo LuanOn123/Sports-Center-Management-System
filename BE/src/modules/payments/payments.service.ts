@@ -1,6 +1,7 @@
+import { revokeSubscriptionBookings } from "../subscriptions/entitlement.service.js";
+import { lockMemberSubscription } from "../../utils/dbLocks.js";
 import { prisma } from "../../config/prisma.js";
 import { requestContext } from "../../config/request-context.js";
-import { lockMemberSubscription } from "../../utils/dbLocks.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 
@@ -127,19 +128,27 @@ export async function getPaymentById(id: string, currentUser: any) {
   return payment;
 }
 
-export async function updatePaymentStatus(id: string, status: string) {
+export async function updatePaymentStatus(id: string, status: string, confirmation?: { reason: string; reference: string }) {
   const payment = await prisma.payment.findUnique({ where: { id }, include: { invoice: true } });
   if (!payment) throw new AppError("Payment not found", 404);
 
   // Giao dịch online (SePay): trạng thái CHỈ được chốt bởi webhook/đối soát (settlement).
   // Đổi enum thủ công có thể tạo invoice mà KHÔNG cấp gói, hoặc refund mà gói vẫn ACTIVE.
-  if (payment.gateway) {
+  if (payment.gateway && status !== "REFUNDED") {
     throw new AppError(
       "Không thể đổi trạng thái thanh toán online thủ công. Giao dịch SePay được chốt qua webhook/đối soát.",
       400
     );
   }
 
+  if (status === "REFUNDED" && (!confirmation?.reason?.trim() || !confirmation.reference?.trim()))
+    throw new AppError("Xác nhận hoàn tiền phải có lý do và mã biên nhận/chuyển khoản thực tế.", 400);
+  if (status === "REFUNDED" && payment.gateway && !payment.refundRequestedAt)
+    throw new AppError("Giao dịch online chưa có yêu cầu hoàn tiền được duyệt.", 409);
+  if (status === "REFUNDED" && payment.status !== "SUCCESS" && payment.status !== "REFUNDED")
+    throw new AppError("Chỉ có thể hoàn khoản tiền đã thu thành công.", 409);
+  if (status === "REFUNDED" && !payment.refundRequestedAt && payment.status !== "REFUNDED")
+    throw new AppError("Chưa có yêu cầu hoàn tiền theo chính sách được duyệt.", 409);
   // BR-14: Strict state machine
   if (payment.status === status) return payment;
 
@@ -152,30 +161,18 @@ export async function updatePaymentStatus(id: string, status: string) {
 
   if (payment.planId && payment.status === "PENDING" && status === "SUCCESS") throw new AppError("Confirm this order through /counter-orders/:id/confirm", 409);
   const updateData: any = { status };
-  if (status === "REFUNDED") { updateData.refundedAmount = payment.amount; updateData.refundedAt = new Date(); }
+  if (status === "REFUNDED") { updateData.refundedAmount = payment.refundRequestedAmount ?? payment.amount; updateData.refundReference = confirmation!.reference; updateData.refundReason = confirmation!.reason; updateData.refundedAt = new Date(); }
   if (status === "SUCCESS") updateData.paidAt = new Date();
 
   await prisma.$transaction(async (tx) => {
+    await lockMemberSubscription(tx, payment.memberId);
     const changed = await tx.payment.updateMany({ where: { id, status: payment.status }, data: updateData });
     if (changed.count !== 1) throw new AppError("Payment state changed; reload before confirming", 409);
     if (status === "REFUNDED" && payment.subscriptionId) {
       const subscription = await tx.membershipSubscription.findUnique({ where: { id: payment.subscriptionId } });
-      // AUD-03: tiền đã hoàn ⇒ thu hồi cả quyền ĐANG dùng (ACTIVE) lẫn quyền TƯƠNG LAI (SCHEDULED);
-      // lock theo member + CAS để không đua với job kích hoạt / mua gói.
-      if (subscription) await lockMemberSubscription(tx, subscription.memberId);
-      const revoked = subscription
-        ? await tx.membershipSubscription.updateMany({
-            where: { id: subscription.id, status: { in: ["ACTIVE", "SCHEDULED"] } },
-            data: { status: "CANCELLED", cancelledAt: new Date() },
-          })
-        : { count: 0 };
-      if (subscription?.status === "ACTIVE" && revoked.count === 1) {
-        // Hủy gói = side-effect GLOBAL: bỏ scope facility cho đúng câu này để hủy
-        // booking của member ở MỌI cơ sở; where vẫn giới hạn memberId + BOOKED + tương lai.
-        await requestContext.run(
-          { ...requestContext.getStore(), facilityId: undefined },
-          () => tx.enrollment.updateMany({ where: { memberId: subscription.memberId, status: "BOOKED", schedule: { startTime: { gt: new Date() } } }, data: { status: "CANCELLED", cancelledAt: new Date() } }),
-        );
+      if (subscription && ["ACTIVE", "SCHEDULED", "SUSPENDED", "EXPIRED"].includes(subscription.status)) {
+        await tx.membershipSubscription.update({ where: { id: subscription.id }, data: { status: "CANCELLED", cancelledAt: new Date() } });
+        await revokeSubscriptionBookings(tx, subscription);
       }
     }
 

@@ -90,6 +90,7 @@ interface ClassItem {
   areaType: string;
   defaultRoomId?: string;
   capacity: number;
+  requirementsSnapshot?: Record<string, number>;
   sports?: { id: string; requirements?: { key: string; minimum: number }[] }[];
   isActive?: boolean;
 }
@@ -350,9 +351,7 @@ export function ScheduleForm({
       (r) =>
         r.areaType === selectedClass.areaType &&
         r.capacity >= selectedClass.capacity &&
-        (selectedClass.sports ?? []).every((sport) =>
-          hasEquipment(sport.requirements ?? [], r.capabilities, r.areaType),
-        ),
+        hasEquipment(selectedClass.requirementsSnapshot != null ? Object.entries(selectedClass.requirementsSnapshot).map(([key, minimum]) => ({ key, minimum })) : (selectedClass.sports ?? []).flatMap(s => s.requirements ?? []), r.capabilities, r.areaType),
     );
   }, [allRooms, selectedClass]);
 
@@ -366,9 +365,7 @@ export function ScheduleForm({
         !cls ||
         (room.areaType === cls.areaType &&
           room.capacity >= cls.capacity &&
-          (cls.sports ?? []).every((sport) =>
-            hasEquipment(sport.requirements ?? [], room.capabilities, room.areaType),
-          )),
+          hasEquipment(cls.requirementsSnapshot != null ? Object.entries(cls.requirementsSnapshot).map(([key, minimum]) => ({ key, minimum })) : (cls.sports ?? []).flatMap(s => s.requirements ?? []), room.capabilities, room.areaType)),
     );
     const preferred = compatible.find((room) => room.id === cls?.defaultRoomId);
     setRoomId(

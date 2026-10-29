@@ -1,3 +1,6 @@
+import { lockMemberSubscription } from "../../utils/dbLocks.js";
+import { activateMemberDue, isGrantSourceValid, readEffectiveSubscription } from "../subscriptions/entitlement.service.js";
+import { effectiveCoachIds } from "../operations/effective-coaches.js";
 import { randomInt } from "crypto";
 import { prisma } from "../../config/prisma.js";
 import { Prisma } from "@prisma/client";
@@ -10,7 +13,6 @@ import { notifyViaOutbox } from "../notifications/outbox.service.js";
 import { computeAttendanceBuckets } from "./attendance-analytics.service.js";
 import { expireStalePenalties } from "./attendance-penalties.service.js";
 import { termMembershipCovers } from "../enrollments/term-membership-policy.js";
-import { effectiveCoachIds } from "../operations/rules.js";
 
 
 /** §5: MEMBER không có quyền ghi attendance; COACH không được tự set EXCUSED — chỉ MANAGER. */
@@ -33,7 +35,7 @@ async function verifyCoachAccess(scheduleId: string, user: any) {
     const coachProfile = await prisma.coachProfile.findUnique({ where: { userId: user.id } });
     if (!coachProfile) throw new AppError("Coach profile not found", 404);
     
-    const isAssigned = effectiveCoachIds(schedule.coachId, schedule.class.coaches).includes(coachProfile.id);
+    const isAssigned = effectiveCoachIds(schedule).includes(coachProfile.id);
     if (!isAssigned) throw new AppError("Forbidden: You are not assigned to this class", 403);
   }
 }
@@ -76,7 +78,7 @@ export const getAttendancesBySchedule = async (
   if (actor.role === "COACH") {
     const coachProfile = await prisma.coachProfile.findUnique({ where: { userId: actor.id } });
     const isAssigned =
-      Boolean(coachProfile) && effectiveCoachIds(schedule.coachId, schedule.class.coaches).includes(coachProfile!.id);
+      Boolean(coachProfile) && effectiveCoachIds(schedule).includes(coachProfile!.id);
     if (!isAssigned) throw new AppError("Forbidden: You are not assigned to this class", 403);
   } else if (actor.role === "MEMBER") {
     const memberProfile = await prisma.memberProfile.findUnique({ where: { userId: actor.id } });
@@ -296,7 +298,7 @@ export const generateQrToken = async (scheduleId: string, user: any) => {
  * Member KHÔNG gửi `scheduleId` — buổi học chỉ được suy ra từ credential (schema .strict()).
  * Enrollment phải BOOKED/COMPLETED và có gói ACTIVE hoặc quyền học trọn kỳ đã được duyệt cho đúng buổi.
  */
-export const scanQr = async (input: { qrToken?: string; code?: string }, user: any) => {
+const scanQrInternal = async (input: { qrToken?: string; code?: string }, user: any) => {
   if (user.role !== "MEMBER") {
     throw new AppError("Only members can scan attendance QR codes", 403);
   }
@@ -326,18 +328,11 @@ export const scanQr = async (input: { qrToken?: string; code?: string }, user: a
 
   // 3. Chốt chặn 2: gói còn hạn hoặc snapshot quyền học trọn kỳ của buổi đã đăng ký.
   const now = new Date();
-  const activeSub = await prisma.membershipSubscription.findFirst({
-    where: {
-      memberId: memberProfile.id,
-      status: "ACTIVE",
-      startDate: { lte: now },
-      endDate: { gte: now },
-    },
-  });
+  const activeSub = await readEffectiveSubscription(prisma, memberProfile.id, now);
 
   const schedule = await prisma.classSchedule.findUnique({ where: { id: scheduleId } });
   if (!schedule) throw new AppError("Buổi học không tồn tại.", 404);
-  const approvedTerm = termMembershipCovers(enrollment.termMembershipGrant, {
+  const approvedTerm = await isGrantSourceValid(prisma, enrollment.termMembershipGrant) && termMembershipCovers(enrollment.termMembershipGrant, {
     memberId: memberProfile.id, classId: schedule.classId, termId: schedule.termId,
     startTime: schedule.startTime, endTime: schedule.endTime,
   });
@@ -560,3 +555,14 @@ export async function scanAttendanceWarnings(classId?: string, now = new Date())
 }
 
 export { classifyReceptionAttendance, getReceptionAttendanceMonitoring, getReceptionAttendanceDetail, sendReceptionAttendanceWarning, submitAttendanceViolationReport, reviewAttendanceViolationReport } from "./reception-attendance.service.js";
+
+export const scanQr = async (input: { qrToken?: string; code?: string }, user: any) => {
+  if (user.role !== "MEMBER") throw new AppError("Only members can scan attendance QR codes", 403);
+  const member = await prisma.memberProfile.findUnique({ where: { userId: user.id }, select: { id: true } });
+  if (!member) throw new AppError("Không tìm thấy hồ sơ hội viên.", 404);
+  return prisma.$transaction(async tx => {
+    await lockMemberSubscription(tx, member.id);
+    await activateMemberDue(tx, member.id);
+    return scanQrInternal(input, user);
+  });
+};

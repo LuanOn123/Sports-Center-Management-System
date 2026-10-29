@@ -1,3 +1,4 @@
+import { isGrantSourceValid } from "../subscriptions/entitlement.service.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { requestContext } from "../../config/request-context.js";
@@ -55,7 +56,8 @@ export async function checkIn(
       },
       include: { schedule: true },
     });
-    const approvedTermVisit = approvedClasses.some((row) => termMembershipCovers(row.termMembershipGrant, {
+    const eligibleSources = await Promise.all(approvedClasses.map(row => isGrantSourceValid(tx, row.termMembershipGrant)));
+    const approvedTermVisit = approvedClasses.some((row, index) => eligibleSources[index] && termMembershipCovers(row.termMembershipGrant, {
       memberId: memberProfileId, classId: row.classId, termId: row.schedule.termId,
       startTime: row.schedule.startTime, endTime: row.schedule.endTime,
     }));

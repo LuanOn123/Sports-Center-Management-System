@@ -16,13 +16,13 @@ export async function lockMemberSubscription(db: DbClient, memberId: string) {
 /**
  * Thứ tự lock bắt buộc cho mọi flow đặt chỗ / đổi chỗ / hình phạt:
  *
- *   0. `lockMemberSubscription()` — tự động được lấy bởi `lockMemberQuota()`
- *   1. `lockMemberQuota()`  — quota là tài nguyên theo MỘT memberId (không phải memberId × classId)
+ *   1. `lockMemberQuota()`  — membership → đồng bộ gói đến hạn → quota theo memberId
  *   2. `lockMemberClass()`  — chỗ đặt trong một (member × class)
  *   3. `lockSchedule()`     — sức chứa của một buổi
  *
  * `lockSchedules()` (nhiều buổi) cũng phải gọi SAU cùng thứ tự trên.
- * Tuyệt đối không lock ngược thứ tự ở bất kỳ service nào (deadlock).
+ * Promotion đã giữ schedule chỉ được try-lock member/quota/class; bận thì worker thử lại.
+ * Không chờ khóa theo thứ tự ngược vì có thể tạo deadlock.
  * Lock sống trong transaction, tự release khi commit/rollback.
  */
 
@@ -32,10 +32,9 @@ export async function lockMemberSubscription(db: DbClient, memberId: string) {
  * nếu không cả hai cùng đọc `used < limit` rồi cùng commit -> vượt quota.
  */
 export async function lockMemberQuota(db: DbClient, memberId: string) {
-  // Thứ tự chuẩn: memberSubscription -> memberQuota. Booking gọi lazy activation gói (khóa
-  // subscription) SAU khi đã giữ quota; khóa subscription trước ở đây để không ngược thứ tự
-  // với transfer/course-enrollment (advisory xact lock re-entrant trong cùng transaction).
   await lockMemberSubscription(db, memberId);
+  const { activateMemberDue } = await import("../modules/subscriptions/entitlement.service.js");
+  await activateMemberDue(db, memberId);
   await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('enrollment:member-quota:' || ${memberId}::text))`;
 }
 
@@ -46,24 +45,6 @@ export async function lockMemberQuota(db: DbClient, memberId: string) {
  */
 export async function lockMemberClass(db: DbClient, memberId: string, classId: string) {
   await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('enrollment:member-class:' || ${memberId}::text || ':' || ${classId}::text))`;
-}
-
-/**
- * R-05 — Thử lấy (KHÔNG chờ) đủ chuỗi lock của một hội viên được ĐÔN từ waitlist:
- * memberSubscription -> memberQuota -> (member × class), cùng key với các hàm lock ở trên.
- *
- * Transaction hủy chỗ đã giữ lock buổi học rồi mới tới lượt hội viên khác; nếu CHỜ lock của
- * họ sẽ ngược thứ tự chuẩn và deadlock với chính request đặt chỗ/vào waitlist của họ.
- * Trả `false` khi hội viên đang có thao tác khác giữ lock ⇒ caller bỏ qua người này.
- * Lock lấy được một phần vẫn giữ tới hết transaction (xact lock), nhưng không gây chờ vòng.
- */
-export async function tryLockMemberForPromotion(db: DbClient, memberId: string, classId: string) {
-  const rows = await db.$queryRaw<{ acquired: boolean }[]>`
-    SELECT pg_try_advisory_xact_lock(hashtext('membership:member:' || ${memberId}::text))
-       AND pg_try_advisory_xact_lock(hashtext('enrollment:member-quota:' || ${memberId}::text))
-       AND pg_try_advisory_xact_lock(hashtext('enrollment:member-class:' || ${memberId}::text || ':' || ${classId}::text))
-       AS acquired`;
-  return rows[0]?.acquired === true;
 }
 
 /** Serialize theo schedule (chống overbooking). Luôn gọi SAU lockMemberQuota/lockMemberClass. */
@@ -97,5 +78,8 @@ export async function lockPaymentWebhook(db: DbClient, paymentId: string) {
  * Lock sống trong transaction, tự release khi commit/rollback.
  */
 export async function lockMemberCheckIn(db: DbClient, memberId: string) {
+  await lockMemberSubscription(db, memberId);
+  const { activateMemberDue } = await import("../modules/subscriptions/entitlement.service.js");
+  await activateMemberDue(db, memberId);
   await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('facility-visit:member:' || ${memberId}::text))`;
 }

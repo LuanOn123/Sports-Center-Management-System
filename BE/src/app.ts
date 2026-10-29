@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { authenticate } from "./middlewares/authenticate.js";
 import { checkFacilityScope } from "./middlewares/facilityScope.js";
 import operationsRoutes from "./modules/operations/operations.routes.js";
@@ -37,12 +38,13 @@ import waitlistRoutes from "./modules/waitlist/waitlist.routes.js";
 import termRoutes from "./modules/terms/terms.routes.js";
 
 const app = express();
+app.use((_req, res, next) => { res.setHeader("X-Request-Id", randomUUID()); next(); });
 
 app.set("etag", false);
 
 // Global middlewares
 app.use(helmet());
-app.use(cors());
+app.use(cors({ exposedHeaders: ["X-Request-Id"] }));
 app.use(morgan("dev"));
 app.use(
   express.json({
