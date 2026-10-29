@@ -427,6 +427,8 @@ model ClassMember {
   @@unique([classId, coachId])
   @@index([classId])
   @@index([coachId])
+  // R-03: partial unique index "ClassMember_one_primary_per_class" (classId WHERE isPrimary = true)
+  // tạo bằng SQL tay trong migration 20261029120000_class_one_primary_coach — mỗi lớp tối đa 1 HLV chính.
 }
 
 model ClassSchedule {
@@ -870,6 +872,8 @@ model CoachFeedback {
   @@unique([coachId, memberId, classId])
   @@index([coachId])
   @@index([memberId])
+  // R-06: partial unique index "CoachFeedback_general_unique" (coachId, memberId WHERE classId IS NULL)
+  // tạo bằng SQL tay trong migration 20261029130000_coach_feedback_general_unique.
 }
 
 // ─────────────────────────────────────────

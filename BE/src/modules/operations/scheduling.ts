@@ -1,6 +1,6 @@
 import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
-import { mergeRequirements, missingCapabilities } from "./rules.js";
+import { classRequirements, missingCapabilities } from "./rules.js";
 
 export async function validateResources(
   db: any,
@@ -24,7 +24,7 @@ export async function validateResources(
   if (room.capacity < cls.capacity || room.areaType !== cls.areaType)
     throw new AppError("Room capacity or area is unsuitable", 400);
   const missing = missingCapabilities(
-    mergeRequirements(cls.sports.flatMap((sport: any) => sport.requirements ?? [])),
+    classRequirements(cls),
     room.capabilities,
     room.areaType,
   );

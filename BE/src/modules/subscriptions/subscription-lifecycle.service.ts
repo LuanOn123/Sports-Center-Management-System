@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { SUBSCRIPTION_LIFECYCLE } from "../../config/membership.js";
 import { sepayConfig } from "../../config/sepay.js";
@@ -20,7 +21,8 @@ export const LIFECYCLE_INTERVAL_MS = 15 * 60 * 1000;
  */
 export async function expireStaleSubscriptions(now: Date = new Date()): Promise<{ expired: number }> {
   const stale = await prisma.membershipSubscription.findMany({
-    where: { status: { in: ["ACTIVE", "SUSPENDED"] }, endDate: { lt: now } },
+    // SCHEDULED quá hạn mà chưa từng được kích hoạt cũng phải đóng, không treo mãi.
+    where: { status: { in: ["ACTIVE", "SUSPENDED", "SCHEDULED"] }, endDate: { lt: now } },
     select: {
       id: true,
       endDate: true,
@@ -34,7 +36,7 @@ export async function expireStaleSubscriptions(now: Date = new Date()): Promise<
   let expired = 0;
   for (const sub of stale) {
     const updated = await prisma.membershipSubscription.updateMany({
-      where: { id: sub.id, status: { in: ["ACTIVE", "SUSPENDED"] }, endDate: { lt: now } },
+      where: { id: sub.id, status: { in: ["ACTIVE", "SUSPENDED", "SCHEDULED"] }, endDate: { lt: now } },
       data: { status: "EXPIRED", suspendedAt: null, remainingDays: null },
     });
     if (updated.count === 0) continue; // purchase/gia hạn xen vào — bỏ qua
@@ -142,52 +144,63 @@ export async function closeStaleSepayPendingPayments(
 }
 
 /**
+ * AUD-02 — Kích hoạt MỘT gói SCHEDULED: nguồn duy nhất cho job và lazy activation.
+ * BẮT BUỘC gọi trong transaction: lock theo member (cùng key với purchase/renew/webhook/cancel),
+ * CAS `status = SCHEDULED` + còn trong khoảng hiệu lực ⇒ gói vừa bị hủy/hoàn tiền không bị hồi sinh,
+ * gói chờ đã quá hạn không suspend nhầm gói hiện tại.
+ */
+export async function claimScheduledSubscription(
+  tx: Prisma.TransactionClient,
+  sub: { id: string; memberId: string },
+  now: Date = new Date(),
+): Promise<boolean> {
+  await lockMemberSubscription(tx, sub.memberId);
+
+  // Claim gói SCHEDULED TRƯỚC: nếu đã bị hủy/kích hoạt bởi thao tác khác thì
+  // không đụng tới gói ACTIVE hiện tại (tránh suspend nhầm rồi commit).
+  const updated = await tx.membershipSubscription.updateMany({
+    where: { id: sub.id, status: "SCHEDULED", startDate: { lte: now }, endDate: { gt: now } },
+    data: { status: "ACTIVE" },
+  });
+  if (updated.count === 0) return false;
+
+  await tx.membershipSubscription.updateMany({
+    where: { memberId: sub.memberId, status: "ACTIVE", id: { not: sub.id } },
+    data: { status: "SUSPENDED", suspendedAt: now },
+  });
+
+  const activated = await tx.membershipSubscription.findUnique({
+    where: { id: sub.id },
+    select: { member: { select: { userId: true } }, plan: { select: { name: true, tier: true } } },
+  });
+  if (activated) {
+    await enqueueNotification(tx, {
+      userId: activated.member.userId,
+      type: "PAYMENT_SUCCESS",
+      title: "Gói tập của bạn đã được kích hoạt hôm nay!",
+      body: `Gói "${activated.plan.name}" (${activated.plan.tier}) của bạn đã chính thức bắt đầu hoạt động. Chúc bạn tập luyện hiệu quả!`,
+      metadata: { subscriptionId: sub.id },
+    });
+  }
+  return true;
+}
+
+/**
  * Tự động kích hoạt các gói SCHEDULED khi đã đến hoặc qua mốc startDate.
  * Đồng thời chuyển gói ACTIVE cũ (nếu có) sang SUSPENDED.
  */
 export async function activateScheduledSubscriptions(now: Date = new Date()): Promise<{ activated: number }> {
   const ready = await prisma.membershipSubscription.findMany({
-    where: { status: "SCHEDULED", startDate: { lte: now } },
-    include: {
-      member: { select: { userId: true } },
-      plan: { select: { name: true, tier: true, durationDays: true } },
-    },
+    where: { status: "SCHEDULED", startDate: { lte: now }, endDate: { gt: now } },
+    select: { id: true, memberId: true },
     orderBy: { startDate: "asc" },
     take: SUBSCRIPTION_LIFECYCLE.EXPIRE_BATCH,
   });
 
   let activated = 0;
   for (const sub of ready) {
-    const success = await prisma.$transaction(async (tx) => {
-      // G2: cùng lock với purchase/renew/webhook/cancel → giữ bất biến 1 member ≤ 1 ACTIVE
-      // khi job chạy song song với giao dịch mua/hủy của chính hội viên đó.
-      await lockMemberSubscription(tx, sub.memberId);
-
-      // Claim gói SCHEDULED TRƯỚC: nếu đã bị hủy/kích hoạt bởi thao tác khác thì
-      // không đụng tới gói ACTIVE hiện tại (tránh suspend nhầm rồi commit).
-      const updated = await tx.membershipSubscription.updateMany({
-        where: { id: sub.id, status: "SCHEDULED", startDate: { lte: now } },
-        data: { status: "ACTIVE" },
-      });
-
-      if (updated.count === 0) return false;
-
-      await tx.membershipSubscription.updateMany({
-        where: { memberId: sub.memberId, status: "ACTIVE", id: { not: sub.id } },
-        data: { status: "SUSPENDED", suspendedAt: now },
-      });
-
-      await enqueueNotification(tx, {
-        userId: sub.member.userId,
-        type: "PAYMENT_SUCCESS",
-        title: "Gói tập của bạn đã được kích hoạt hôm nay!",
-        body: `Gói "${sub.plan.name}" (${sub.plan.tier}) của bạn đã chính thức bắt đầu hoạt động. Chúc bạn tập luyện hiệu quả!`,
-        metadata: { subscriptionId: sub.id },
-      });
-
-      return true;
-    });
-
+    // G2: cùng lock với purchase/renew/webhook/cancel → giữ bất biến 1 member ≤ 1 ACTIVE.
+    const success = await prisma.$transaction((tx) => claimScheduledSubscription(tx, sub, now));
     if (success) activated++;
   }
 

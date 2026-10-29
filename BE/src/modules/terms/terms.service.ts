@@ -53,7 +53,7 @@ export async function listTerms(query: any) {
             OR: [
               { status: "IN_PROGRESS" },
               { status: "OPEN_REGISTRATION" },
-              { startDate: { lte: now }, endDate: { gte: now } },
+              { startDate: { lte: now }, endDate: { gte: now }, status: { not: "CLOSED" } }, // R-08: kỳ đóng sớm không còn là kỳ hiện tại
             ],
           },
         ],
@@ -144,7 +144,7 @@ export async function getCurrentTerm(facilityId?: string) {
         OR: [
           { status: "IN_PROGRESS" },
           { status: "OPEN_REGISTRATION" },
-          { startDate: { lte: now }, endDate: { gte: now } },
+          { startDate: { lte: now }, endDate: { gte: now }, status: { not: "CLOSED" } }, // R-08: kỳ đóng sớm không còn là kỳ hiện tại
         ],
       },
       orderBy: { startDate: "asc" },
@@ -164,7 +164,7 @@ export async function getCurrentTerm(facilityId?: string) {
           OR: [
             { status: "IN_PROGRESS" },
             { status: "OPEN_REGISTRATION" },
-            { startDate: { lte: now }, endDate: { gte: now } },
+            { startDate: { lte: now }, endDate: { gte: now }, status: { not: "CLOSED" } }, // R-08: kỳ đóng sớm không còn là kỳ hiện tại
           ],
         },
       ],
@@ -208,6 +208,19 @@ export async function updateTerm(id: string, data: any, managerFacilityId?: stri
 
   const newStartDate = data.startDate ? new Date(data.startDate) : term.startDate;
   const newEndDate = data.endDate ? new Date(data.endDate) : term.endDate;
+
+  // AUD-07: validate bất biến trên dữ liệu SAU KHI merge (PATCH một field vẫn không được đảo ngày).
+  const newRegStart = data.registrationStartDate ? new Date(data.registrationStartDate) : (term as any).registrationStartDate;
+  const newRegEnd = data.registrationEndDate ? new Date(data.registrationEndDate) : (term as any).registrationEndDate;
+  if (newEndDate <= newStartDate) {
+    throw new AppError("Ngày kết thúc kỳ học phải sau ngày bắt đầu", 400);
+  }
+  if (newRegStart && newRegEnd && newRegEnd <= newRegStart) {
+    throw new AppError("Ngày đóng cổng đăng ký phải sau ngày mở cổng đăng ký", 400);
+  }
+  if (newRegEnd && newRegEnd > newEndDate) {
+    throw new AppError("Ngày đóng đăng ký không được sau ngày kết thúc kỳ học", 400);
+  }
 
   // Safety check: không cho co hẹp dải ngày nếu đã có lịch học nằm ngoài dải ngày mới
   if (data.startDate || data.endDate) {
@@ -356,4 +369,38 @@ export async function assertCanScheduleInTerm(
     );
   }
   return term;
+}
+
+/**
+ * R-07: mọi buổi học phải thuộc MỘT kỳ học — các luật kỳ (cổng đăng ký, PLANNING/CLOSED,
+ * quyền học trọn kỳ, báo cáo kỳ) chỉ chạy khi buổi có termId.
+ * Có termId ⇒ kiểm tra như cũ. Không có ⇒ tự chọn kỳ chưa đóng bao trọn [start, end],
+ * ưu tiên kỳ riêng của cơ sở rồi tới kỳ toàn hệ thống; không có kỳ phù hợp ⇒ 400 TERM_REQUIRED.
+ */
+export async function resolveScheduleTerm(
+  db: any,
+  facilityId: string | undefined,
+  start: Date,
+  end: Date,
+  termId?: string | null,
+): Promise<string> {
+  if (termId) {
+    const term = await assertCanScheduleInTerm(termId, start, end, facilityId, db);
+    return term.id;
+  }
+  const covering = { startDate: { lte: start }, endDate: { gte: end }, status: { not: "CLOSED" as const } };
+  const term =
+    (facilityId
+      ? await db.term.findFirst({ where: { facilityId, ...covering }, orderBy: { startDate: "asc" } })
+      : null) ??
+    (await db.term.findFirst({ where: { facilityId: null, ...covering }, orderBy: { startDate: "asc" } }));
+  if (!term) {
+    const fmt = (d: Date) => d.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+    throw new AppError(
+      `Buổi học phải thuộc một kỳ học, nhưng không có kỳ học nào (chưa đóng) bao trọn thời gian ${fmt(start)} – ${fmt(end)}. Hãy tạo kỳ học hoặc chọn khoảng thời gian nằm trong một kỳ.`,
+      400,
+      { code: "TERM_REQUIRED" },
+    );
+  }
+  return term.id;
 }

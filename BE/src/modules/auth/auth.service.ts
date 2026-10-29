@@ -283,7 +283,8 @@ export async function changePassword(
   if (!valid) throw new AppError("Current password is incorrect", 400);
 
   const hashed = await hashPassword(newPassword);
-  await User.updateOne({ _id: userId }, { password: hashed });
+  // AUD-09: passwordChangedAt làm mọi access token cũ hết hiệu lực ngay (authenticate so với iat).
+  await User.updateOne({ _id: userId }, { password: hashed, passwordChangedAt: new Date() });
   await RefreshToken.deleteMany({ userId: user._id.toString() });
 
   disconnectUserSockets(userId);
@@ -373,7 +374,7 @@ export async function resetPassword(data: ResetPasswordInput) {
 
   await User.updateOne(
     { _id: user._id },
-    { password: hashed, resetPasswordOtp: null, resetPasswordOtpExpiresAt: null }
+    { password: hashed, resetPasswordOtp: null, resetPasswordOtpExpiresAt: null, passwordChangedAt: new Date() }
   );
   await RefreshToken.deleteMany({ userId });
 

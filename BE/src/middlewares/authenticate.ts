@@ -15,7 +15,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     const payload = verifyAccessToken(token);
     
     // BR-02: Ensure user is still active and role hasn't changed
-    const user = await User.findById(payload.id).select("role isActive").lean();
+    const user = await User.findById(payload.id).select("role isActive passwordChangedAt").lean();
 
     if (!user) {
       sendError(res, "Unauthorized: user not found", 401);
@@ -27,6 +27,13 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     }
     if (user.role !== payload.role) {
       sendError(res, "Unauthorized: role has changed, please login again", 401);
+      return;
+    }
+
+    // AUD-09: token phát hành trước lần đổi/đặt lại mật khẩu gần nhất không còn hiệu lực.
+    const changedAt = (user as any).passwordChangedAt as Date | null | undefined;
+    if (changedAt && (payload.iat ?? 0) < Math.floor(new Date(changedAt).getTime() / 1000)) {
+      sendError(res, "Unauthorized: password has changed, please login again", 401);
       return;
     }
 

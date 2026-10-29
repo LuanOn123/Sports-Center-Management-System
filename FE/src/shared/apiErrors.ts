@@ -32,6 +32,8 @@ const messages: Record<string, string> = {
     "Tài khoản đã bị khóa. Vui lòng liên hệ trung tâm.",
   "unauthorized: role has changed, please login again":
     "Vai trò tài khoản đã thay đổi. Vui lòng đăng nhập lại.",
+  "unauthorized: password has changed, please login again":
+    "Mật khẩu đã được thay đổi. Vui lòng đăng nhập lại.",
   "unauthorized: user not found":
     "Tài khoản không còn tồn tại. Vui lòng đăng nhập lại.",
   "your account has been deactivated":
@@ -128,6 +130,8 @@ const messages: Record<string, string> = {
     "Bạn không thể tự thay đổi vai trò đang sử dụng.",
   "cannot deactivate or demote the last active manager":
     "Phải giữ ít nhất một quản lý đang hoạt động trong hệ thống.",
+  "cannot deactivate or demote the last active admin":
+    "Phải giữ ít nhất một quản trị viên đang hoạt động trong hệ thống.",
   "cannot deactivate the last active manager":
     "Không thể khóa quản lý đang hoạt động cuối cùng.",
   "cannot change role: member has active subscriptions. cancel them first":

@@ -57,6 +57,30 @@ export async function inspectPlanPurchase(
     ? (requestedStartDate instanceof Date ? requestedStartDate : new Date(requestedStartDate))
     : undefined;
 
+  // AUD-01: tối đa MỘT gói trả phí đang chờ kích hoạt cho mỗi hội viên. Nếu không chặn,
+  // hai lần gia hạn liên tiếp đều tính startDate = endDate của gói ACTIVE ⇒ hai khoản tiền
+  // chỉ đem lại một chu kỳ (gói sau suspend gói trước). Cùng luật cho quầy, online, renew;
+  // webhook về muộn sẽ rơi vào REQUIRES_REVIEW thay vì cấp gói chồng ngày.
+  const pendingQueued = await db.membershipSubscription.findFirst({
+    where: {
+      memberId: memberProfileId,
+      status: "SCHEDULED",
+      tier: { not: "FREE" },
+      endDate: { gt: now },
+    },
+    orderBy: { startDate: "asc" },
+    include: { plan: { select: { name: true } } },
+  });
+  if (pendingQueued) {
+    const startStr = pendingQueued.startDate.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+    throw new AppError(
+      `Hội viên đã có gói ${pendingQueued.plan?.name ?? ""} chờ kích hoạt từ ngày ${startStr}. ` +
+        "Vui lòng đợi gói này kích hoạt hoặc hủy gói chờ trước khi mua gói khác.",
+      409,
+      { code: "PENDING_SUBSCRIPTION_EXISTS" },
+    );
+  }
+
   const currentActive = await db.membershipSubscription.findFirst({
     where: { memberId: memberProfileId, status: "ACTIVE" },
     include: {

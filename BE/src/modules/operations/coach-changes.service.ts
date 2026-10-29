@@ -197,6 +197,7 @@ export async function replacementCandidates(id: string) {
                 coachId: null,
                 class: { coaches: { some: { coachId: coach.id } } },
               },
+              { class: { coaches: { some: { coachId: coach.id, isPrimary: false } } } },
             ],
           },
         }),

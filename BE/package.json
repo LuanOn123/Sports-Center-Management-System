@@ -17,6 +17,7 @@
     "db:seed:mongo": "tsx src/scripts/seed-mongo.ts",
     "db:seed:full": "tsx src/scripts/seed-full.ts",
     "db:backfill:free-subscription": "tsx prisma/backfill-free-subscription.ts",
+    "db:backfill:schedule-terms": "tsx prisma/backfill-schedule-terms.ts",
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",

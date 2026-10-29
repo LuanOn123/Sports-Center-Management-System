@@ -192,7 +192,7 @@ export const UpdateScheduleSchema = z.object({
   endTime: z.string().optional(),
   status: z.enum(["SCHEDULED", "CANCELLED", "COMPLETED"]).optional(),
   reason: z.string().max(500).optional(),
-  termId: z.string().min(1).nullable().optional(),
+  termId: z.string().min(1).optional(),
 }).refine(
   (d) => {
     // Validate sớm khi request cung cấp đủ 2 mốc giờ mới.

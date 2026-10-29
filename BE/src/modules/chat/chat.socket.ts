@@ -1,6 +1,7 @@
 import { Server, Socket } from "socket.io";
 import { prisma } from "../../config/prisma.js";
 import { verifyAccessToken } from "../../utils/jwt.js";
+import { User } from "../../models/User.js";
 import { chatService } from "./chat.service.js";
 
 type SocketUser = { id: string; role: string };
@@ -46,6 +47,11 @@ export const setupSocket = (io: Server) => {
         select: { id: true, role: true, isActive: true },
       });
       if (!user?.isActive || user.role !== payload.role)
+        return next(new Error("Unauthorized"));
+      // AUD-09: token cũ (trước lần đổi mật khẩu) không được mở lại socket.
+      const credential = await User.findById(payload.id).select("passwordChangedAt").lean();
+      const changedAt = (credential as any)?.passwordChangedAt as Date | null | undefined;
+      if (changedAt && (payload.iat ?? 0) < Math.floor(new Date(changedAt).getTime() / 1000))
         return next(new Error("Unauthorized"));
       socket.data.user = { id: user.id, role: user.role } satisfies SocketUser;
       next();

@@ -1,5 +1,6 @@
 import { prisma } from "../../config/prisma.js";
 import { requestContext } from "../../config/request-context.js";
+import { lockMemberSubscription } from "../../utils/dbLocks.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 
@@ -159,8 +160,16 @@ export async function updatePaymentStatus(id: string, status: string) {
     if (changed.count !== 1) throw new AppError("Payment state changed; reload before confirming", 409);
     if (status === "REFUNDED" && payment.subscriptionId) {
       const subscription = await tx.membershipSubscription.findUnique({ where: { id: payment.subscriptionId } });
-      if (subscription?.status === "ACTIVE") {
-        await tx.membershipSubscription.update({ where: { id: subscription.id }, data: { status: "CANCELLED", cancelledAt: new Date() } });
+      // AUD-03: tiền đã hoàn ⇒ thu hồi cả quyền ĐANG dùng (ACTIVE) lẫn quyền TƯƠNG LAI (SCHEDULED);
+      // lock theo member + CAS để không đua với job kích hoạt / mua gói.
+      if (subscription) await lockMemberSubscription(tx, subscription.memberId);
+      const revoked = subscription
+        ? await tx.membershipSubscription.updateMany({
+            where: { id: subscription.id, status: { in: ["ACTIVE", "SCHEDULED"] } },
+            data: { status: "CANCELLED", cancelledAt: new Date() },
+          })
+        : { count: 0 };
+      if (subscription?.status === "ACTIVE" && revoked.count === 1) {
         // Hủy gói = side-effect GLOBAL: bỏ scope facility cho đúng câu này để hủy
         // booking của member ở MỌI cơ sở; where vẫn giới hạn memberId + BOOKED + tương lai.
         await requestContext.run(

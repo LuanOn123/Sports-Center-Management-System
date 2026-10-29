@@ -100,6 +100,7 @@ describe("workflow state boundaries", () => {
     for (const message of [
       "Unauthorized: account is locked",
       "Unauthorized: role has changed, please login again",
+      "Unauthorized: password has changed, please login again",
       "Unauthorized: user not found",
     ])
       expect(terminalSessionError(message)).toBe(true);

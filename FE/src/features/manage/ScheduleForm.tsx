@@ -717,7 +717,7 @@ export function ScheduleForm({
                 setError(undefined);
               }}
             >
-              <option value="">-- Không áp dụng kỳ học --</option>
+              <option value="">-- Tự chọn kỳ theo ngày học --</option>
               {termsList.map((t: any) => (
                 <option key={t.id} value={t.id}>
                   {t.name} ({formatDisplayDate(t.startDate?.slice(0, 10))} –{" "}

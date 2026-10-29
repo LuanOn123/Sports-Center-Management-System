@@ -15,6 +15,7 @@ import {
 } from "./enrollment-quota.service.js";
 import { checkFacilityMemberLimit } from "../facilities/facility-limits.service.js";
 import { readTermMembershipGrant, termMembershipCovers } from "./term-membership-policy.js";
+import { effectiveCoachIds } from "../operations/rules.js";
 
 export type BookableSchedule = {
   id: string;
@@ -545,7 +546,7 @@ export async function getScheduleEnrollments(
     if (!schedule) throw new AppError("Schedule not found", 404);
     const coachProfile = await prisma.coachProfile.findUnique({ where: { userId: actor.id } });
     const isAssigned =
-      Boolean(coachProfile) && schedule.class.coaches.some((c) => c.coachId === coachProfile!.id);
+      Boolean(coachProfile) && effectiveCoachIds(schedule.coachId, schedule.class.coaches).includes(coachProfile!.id);
     if (!isAssigned) throw new AppError("Forbidden: You are not assigned to this class", 403);
   }
 
@@ -608,6 +609,18 @@ export async function transferEnrollment(
 
   if (enrollment.schedule.startTime <= new Date())
     throw new AppError("Cannot transfer enrollment for a past or ongoing class", 400);
+
+  // R-01: chuyển buổi = nhả chỗ cũ ⇒ áp CÙNG hạn chót với tự hủy, nếu không hội viên có thể
+  // chuyển sát giờ sang buổi tương lai rồi hủy buổi đó để lách luật hủy muộn.
+  const cutoffMinutes = ATTENDANCE.CANCELLATION_CUTOFF_MINUTES;
+  if (role === "MEMBER" && cutoffMinutes > 0 &&
+      enrollment.schedule.startTime.getTime() - Date.now() < cutoffMinutes * 60 * 1000) {
+    throw new AppError(
+      `Đã quá hạn đổi buổi. Bạn chỉ có thể đổi buổi trước giờ học ít nhất ${cutoffMinutes} phút. Vui lòng liên hệ trung tâm để được hỗ trợ.`,
+      400,
+      { code: "LATE_TRANSFER_DISALLOWED", cutoffMinutes }
+    );
+  }
 
   const target = await prisma.classSchedule.findUnique({
     where: { id: targetScheduleId },

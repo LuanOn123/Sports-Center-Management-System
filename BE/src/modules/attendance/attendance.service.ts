@@ -10,6 +10,7 @@ import { notifyViaOutbox } from "../notifications/outbox.service.js";
 import { computeAttendanceBuckets } from "./attendance-analytics.service.js";
 import { expireStalePenalties } from "./attendance-penalties.service.js";
 import { termMembershipCovers } from "../enrollments/term-membership-policy.js";
+import { effectiveCoachIds } from "../operations/rules.js";
 
 
 /** §5: MEMBER không có quyền ghi attendance; COACH không được tự set EXCUSED — chỉ MANAGER. */
@@ -32,7 +33,7 @@ async function verifyCoachAccess(scheduleId: string, user: any) {
     const coachProfile = await prisma.coachProfile.findUnique({ where: { userId: user.id } });
     if (!coachProfile) throw new AppError("Coach profile not found", 404);
     
-    const isAssigned = schedule.coachId ? schedule.coachId === coachProfile.id : schedule.class.coaches.some(c => c.coachId === coachProfile.id);
+    const isAssigned = effectiveCoachIds(schedule.coachId, schedule.class.coaches).includes(coachProfile.id);
     if (!isAssigned) throw new AppError("Forbidden: You are not assigned to this class", 403);
   }
 }
@@ -75,7 +76,7 @@ export const getAttendancesBySchedule = async (
   if (actor.role === "COACH") {
     const coachProfile = await prisma.coachProfile.findUnique({ where: { userId: actor.id } });
     const isAssigned =
-      Boolean(coachProfile) && (schedule.coachId ? schedule.coachId === coachProfile!.id : schedule.class.coaches.some((c) => c.coachId === coachProfile!.id));
+      Boolean(coachProfile) && effectiveCoachIds(schedule.coachId, schedule.class.coaches).includes(coachProfile!.id);
     if (!isAssigned) throw new AppError("Forbidden: You are not assigned to this class", 403);
   } else if (actor.role === "MEMBER") {
     const memberProfile = await prisma.memberProfile.findUnique({ where: { userId: actor.id } });

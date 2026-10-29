@@ -49,7 +49,8 @@ export function CoachFeedback({
   const own = mine.data?.data.find(
     (f) =>
       f.coachId === coachId &&
-      (!contextClassId || f.classId === contextClassId),
+      // Đánh giá chung (không lớp) và đánh giá theo lớp là hai bản riêng.
+      (contextClassId ? f.classId === contextClassId : !f.classId),
   );
   const refresh = () => {
     void cache.invalidateQueries({ queryKey: ["feedback"] });

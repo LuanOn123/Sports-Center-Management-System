@@ -14,7 +14,7 @@ import { activateSubscriptionForPayment } from "../subscriptions/subscription-pu
 import { validateResources } from "./scheduling.js";
 import { getAuditFeed } from "./audit-feed.service.js";
 import {
-  createSchedule,
+  createScheduleBatchInTx,
   updateSchedule,
 } from "../class-schedules/class-schedules.service.js";
 import {
@@ -25,7 +25,7 @@ import {
 import { readAttendanceReport } from "../attendance/reception-attendance.service.js";
 import { enqueueNotification, flushNotificationOutbox } from "../notifications/outbox.service.js";
 import type { NotificationTypeEnum } from "../notifications/notifications.service.js";
-import { assertCanScheduleInTerm } from "../terms/terms.service.js";
+import { resolveScheduleTerm } from "../terms/terms.service.js";
 import { listCoachChanges, requestableSessions, createCoachChange, replacementCandidates, decideCoachChange } from "./coach-changes.service.js";
 const router = Router();
 const staff = authorize("ADMIN", "MANAGER");
@@ -162,6 +162,8 @@ route("get", "/leave-requests/:id/affected", [staff], async (req) => {
               coachId: null,
               class: { coaches: { some: { coachId: coachId } } },
             },
+            // HLV phụ vẫn dạy buổi có HLV thay chính (AUD-06/R-02).
+            { class: { coaches: { some: { coachId: coachId, isPrimary: false } } } },
           ],
         },
         include: { class: true, room: true },
@@ -288,6 +290,7 @@ route(
                   coachId: null,
                   class: { coaches: { some: { coachId } } },
                 },
+                { class: { coaches: { some: { coachId, isPrimary: false } } } },
               ],
             },
           });
@@ -361,11 +364,10 @@ route(
         });
         if (!slot) throw new AppError("Slot not found", 404);
 
-        if (req.body.termId) {
-          const patternStart = new Date(req.body.startDate + "T00:00:00+07:00");
-          const patternEnd = new Date(req.body.endDate + "T23:59:59+07:00");
-          await assertCanScheduleInTerm(req.body.termId, patternStart, patternEnd, slot.facilityId, tx);
-        }
+        // R-07: cả mẫu lịch thuộc một kỳ; không chọn kỳ ⇒ tự chọn kỳ bao trọn khoảng ngày.
+        const patternStart = new Date(req.body.startDate + "T00:00:00+07:00");
+        const patternEnd = new Date(req.body.endDate + "T23:59:59+07:00");
+        req.body.termId = await resolveScheduleTerm(tx, slot.facilityId, patternStart, patternEnd, req.body.termId);
 
         let sessions;
         try {
@@ -388,14 +390,15 @@ route(
             endDate: new Date(req.body.endDate + "T00:00:00+07:00"),
           },
         });
-        for (const session of sessions)
-          await createSchedule({
-            ...session,
-            classId: req.body.classId,
-            roomId: req.body.roomId,
-            termId: req.body.termId,
-          });
-        return { ...pattern, sessionsCreated: sessions.length };
+        // R-09: tạo cả mẫu bằng MỘT lượt kiểm tra + một lệnh ghi (số truy vấn không tăng theo
+        // số buổi). Trước đây mỗi buổi chạy lại toàn bộ kiểm tra ⇒ mẫu dài vượt timeout 30s.
+        const created = await createScheduleBatchInTx(tx, {
+          classId: req.body.classId,
+          roomId: req.body.roomId,
+          termId: req.body.termId,
+          schedules: sessions,
+        });
+        return { ...pattern, sessionsCreated: created.schedulesCreated };
       },
       { timeout: 30000 },
     ),
@@ -485,6 +488,8 @@ route("patch", "/leave-requests/:id", [staff, validate(decision)], (req) =>
                       coachId: null,
                       class: { coaches: { some: { coachId: coachId } } },
                     },
+                    // HLV phụ vẫn dạy buổi có HLV thay chính (AUD-06/R-02).
+                    { class: { coaches: { some: { coachId: coachId, isPrimary: false } } } },
                   ],
                 },
                 include: { class: { include: { coaches: true } } },

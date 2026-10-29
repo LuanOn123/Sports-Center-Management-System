@@ -13,7 +13,7 @@ import {
   getMembershipCoverageIntervals,
   isCoveredAt,
 } from "../attendance/attendance-analytics.service.js";
-import { assertCanScheduleInTerm } from "../terms/terms.service.js";
+import { assertCanScheduleInTerm, resolveScheduleTerm } from "../terms/terms.service.js";
 import { checkFacilityClassLimit, checkFacilitySportLimit } from "../facilities/facility-limits.service.js";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
@@ -247,10 +247,10 @@ function assertClassRoomAreaMatch(classAreaType: string, roomAreaType: string) {
   }
 }
 
-type ScheduleInput = { startTime: string; endTime: string };
+type ScheduleInput = { startTime: string | Date; endTime: string | Date };
 
 // Resource locks cover validation and the single bulk insert, including concurrent requests.
-async function createScheduleBatchInTx(tx: Prisma.TransactionClient, data: {
+export async function createScheduleBatchInTx(tx: Prisma.TransactionClient, data: {
   classId: string; roomId: string; termId?: string; schedules: ScheduleInput[];
 }) {
   const ordered = data.schedules.map((row) => ({ startTime: new Date(row.startTime), endTime: new Date(row.endTime) }))
@@ -278,15 +278,21 @@ async function createScheduleBatchInTx(tx: Prisma.TransactionClient, data: {
       { class: { coaches: { some: { coachId: { in: coachIds }, isPrimary: false } } } },
     ] }, select: { startTime: true, endTime: true },
   }));
-  if (ordered.some((row) => conflicts.some((existing) => row.startTime < existing.endTime && row.endTime > existing.startTime)))
-    throw new AppError("Phòng, lớp hoặc huấn luyện viên (kể cả HLV phụ) đã có lịch trùng giờ. Vui lòng chọn ca khác.", 409);
-  const terms = await tx.term.findMany({ where: { OR: [{ facilityId: room!.facilityId }, { facilityId: null }] }, orderBy: { startDate: "asc" } });
-  if (data.termId) await assertCanScheduleInTerm(data.termId, start, end, room!.facilityId, tx);
-  const rows = ordered.map((row) => {
-    const auto = terms.find((term) => term.facilityId === room!.facilityId && term.status !== "CLOSED" && term.startDate <= row.startTime && term.endDate >= row.endTime)
-      ?? terms.find((term) => term.status !== "CLOSED" && term.startDate <= row.startTime && term.endDate >= row.endTime);
-    return { ...row, classId: data.classId, roomId: data.roomId, termId: data.termId ?? auto?.id, status: "SCHEDULED" as const };
-  });
+  const clashing = ordered.filter((row) => conflicts.some((existing) => row.startTime < existing.endTime && row.endTime > existing.startTime));
+  if (clashing.length) {
+    // Nêu rõ buổi bị trùng để Manager sửa đúng chỗ thay vì đoán trong cả lô.
+    const fmt = (d: Date) => d.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" });
+    const shown = clashing.slice(0, 5).map((row) => fmt(row.startTime)).join("; ");
+    const more = clashing.length > 5 ? ` và ${clashing.length - 5} buổi khác` : "";
+    throw new AppError(
+      `Phòng, lớp hoặc huấn luyện viên (kể cả HLV phụ) đã có lịch trùng giờ ở ${clashing.length} buổi: ${shown}${more}. Vui lòng chọn ca khác.`,
+      409,
+      { code: "SCHEDULE_CONFLICT", conflictingSessions: clashing.map((row) => ({ startTime: row.startTime, endTime: row.endTime })) },
+    );
+  }
+  // R-07: cả lô thuộc ĐÚNG MỘT kỳ (không trộn buổi có kỳ / không kỳ, không vắt qua hai kỳ).
+  const termId = await resolveScheduleTerm(tx, room!.facilityId, start, end, data.termId);
+  const rows = ordered.map((row) => ({ ...row, classId: data.classId, roomId: data.roomId, termId, status: "SCHEDULED" as const }));
   const result = await tx.classSchedule.createMany({ data: rows });
   return { schedulesCreated: result.count };
 }
@@ -538,17 +544,21 @@ export async function updateSchedule(id: string, data: any) {
   let newTermId: string | null | undefined = undefined;
   const currentFacilityId = existing.room?.facilityId || existing.class?.facilityId;
   if (termTouched) {
+    // R-07: buổi học không được tách khỏi kỳ.
     if (data.termId === null) {
-      newTermId = null;
-    } else {
-      await assertCanScheduleInTerm(data.termId, startTime, endTime, currentFacilityId);
-      newTermId = data.termId;
+      throw new AppError("Buổi học phải thuộc một kỳ học, không thể bỏ kỳ học.", 400, { code: "TERM_REQUIRED" });
     }
+    await assertCanScheduleInTerm(data.termId, startTime, endTime, currentFacilityId);
+    newTermId = data.termId;
   } else if (data.startTime || data.endTime) {
     if (existing.termId) {
       await assertCanScheduleInTerm(existing.termId, startTime, endTime, currentFacilityId);
+    } else {
+      // Lịch cũ chưa có kỳ: dời giờ thì gắn luôn kỳ bao trọn thời gian mới.
+      newTermId = await resolveScheduleTerm(prisma, currentFacilityId, startTime, endTime);
     }
   }
+  const termChanged = termTouched || newTermId !== undefined;
 
   const timeOrRoomChanged = Boolean(
     data.startTime || data.endTime || data.roomId || data.coachId || termTouched
@@ -605,7 +615,7 @@ export async function updateSchedule(id: string, data: any) {
       await checkConflicts(tx, roomId, existing.classId, startTime, endTime, id, data.coachId ?? fresh.coachId ?? undefined);
 
       // A11: không dời lịch nếu phá chỗ đã hợp lệ (trùng giờ / ngoài hạn gói của member đang giữ chỗ).
-      await assertScheduleMoveKeepsBookingsValid(tx, { scheduleId: id, startTime, endTime, termId: termTouched ? newTermId : existing.termId });
+      await assertScheduleMoveKeepsBookingsValid(tx, { scheduleId: id, startTime, endTime, termId: termChanged ? newTermId : existing.termId });
 
       // A12: CAS trạng thái — lịch vừa bị hủy/hoàn tất trong lúc chờ lock thì không ghi.
       const moved = await tx.classSchedule.updateMany({
@@ -615,7 +625,7 @@ export async function updateSchedule(id: string, data: any) {
           endTime,
           roomId,
           ...(data.coachId ? { coachId: data.coachId } : {}),
-          ...(termTouched ? { termId: newTermId } : {}),
+          ...(termChanged ? { termId: newTermId } : {}),
         },
       });
       if (moved.count === 0) {

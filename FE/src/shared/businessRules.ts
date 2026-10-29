@@ -57,7 +57,7 @@ export function canCompleteSchedule(
 }
 
 export function terminalSessionError(message: string) {
-  return /^Unauthorized: (account is locked|role has changed, please login again|user not found)$/i.test(
+  return /^Unauthorized: (account is locked|role has changed, please login again|password has changed, please login again|user not found)$/i.test(
     message.trim(),
   );
 }

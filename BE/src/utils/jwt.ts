@@ -4,6 +4,8 @@ import { env } from "../config/env.js";
 export interface JwtPayload {
   id: string;
   role: string;
+  /** Issued-at (giây) do jsonwebtoken tự gắn khi ký. */
+  iat?: number;
 }
 
 export function signAccessToken(payload: JwtPayload): string {

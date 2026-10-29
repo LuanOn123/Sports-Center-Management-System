@@ -217,6 +217,8 @@ prisma.$use(async (params, next) => {
                     coachId: null,
                     class: { coaches: { some: { coachId: result.coachId } } },
                   },
+                  // HLV phụ vẫn dạy buổi có HLV thay chính (AUD-06/R-02).
+                  { class: { coaches: { some: { coachId: result.coachId, isPrimary: false } } } },
                 ],
               };
     if (!["createMany", "deleteMany", "updateMany"].includes(params.action)) {

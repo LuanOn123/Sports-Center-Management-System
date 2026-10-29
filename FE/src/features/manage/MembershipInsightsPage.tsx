@@ -45,7 +45,10 @@ export function MembershipInsightsPage({
         query: {
           startDate,
           endDate,
-          ...(global ? { facilityId: "ALL" } : {}),
+          // AUD-05: không gửi sentinel ALL — middleware sẽ coi nó xung đột với header X-Facility-Id.
+          // Admin không truyền facilityId ⇒ server tự hiểu là toàn hệ thống; chế độ cơ sở gửi
+          // đúng facilityId đang chọn (trùng header) để server lọc theo cơ sở.
+          ...(!global && facilityId ? { facilityId } : {}),
           ...(termId ? { termId } : {}),
         },
         signal,

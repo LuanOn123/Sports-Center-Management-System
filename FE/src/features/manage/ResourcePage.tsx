@@ -1254,7 +1254,8 @@ function CoachAssignments({
       <h3>Điều chỉnh phân công</h3>
       <p className="field-note">
         Hội viên đã đặt các buổi học sắp tới sẽ nhận thông báo khi thay đổi huấn
-        luyện viên.
+        luyện viên. Lớp còn buổi sắp tới thì không gỡ được HLV chính — hãy phân
+        công HLV chính mới để thay thế.
       </p>
       {coaches.map((c, i) => {
         const coachId = String(at(c, "coach.id") || "");
