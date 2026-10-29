@@ -1,3 +1,4 @@
+import { createScheduleBatch } from "../class-schedules/class-schedules.service.js";
 import { updateSport } from "../sports/sports.service.js";
 import { Router } from "express";
 import { z } from "zod";
@@ -158,6 +159,7 @@ route("get", "/leave-requests/:id/affected", [staff], async (req) => {
           endTime: { gt: leave.startTime },
           OR: [
             { coachId: coachId },
+                    { class: { coaches: { some: { coachId, isPrimary: false } } } },
             {
               coachId: null,
               class: { coaches: { some: { coachId: coachId } } },
@@ -175,6 +177,8 @@ route(
   [staff, validate(quantities)],
   async (req) =>
     prisma.$transaction(async (tx) => {
+      const roomId = id(req);
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('schedule:room:' || ${roomId}::text))`;
       if (!(await tx.room.findUnique({ where: { id: id(req) } })))
         throw new AppError("Room not found", 404);
       await tx.roomCapability.deleteMany({ where: { roomId: id(req) } });
@@ -284,6 +288,7 @@ route(
               endTime: { gt: new Date() },
               OR: [
                 { coachId },
+                { class: { coaches: { some: { coachId, isPrimary: false } } } },
                 {
                   coachId: null,
                   class: { coaches: { some: { coachId } } },
@@ -388,13 +393,7 @@ route(
             endDate: new Date(req.body.endDate + "T00:00:00+07:00"),
           },
         });
-        for (const session of sessions)
-          await createSchedule({
-            ...session,
-            classId: req.body.classId,
-            roomId: req.body.roomId,
-            termId: req.body.termId,
-          });
+        await createScheduleBatch({ classId: req.body.classId, roomId: req.body.roomId, termId: req.body.termId, schedules: sessions });
         return { ...pattern, sessionsCreated: sessions.length };
       },
       { timeout: 30000 },
@@ -481,6 +480,7 @@ route("patch", "/leave-requests/:id", [staff, validate(decision)], (req) =>
                   endTime: { gt: leave.startTime },
                   OR: [
                     { coachId: coachId },
+                    { class: { coaches: { some: { coachId, isPrimary: false } } } },
                     {
                       coachId: null,
                       class: { coaches: { some: { coachId: coachId } } },
@@ -538,6 +538,9 @@ route("patch", "/leave-requests/:id", [staff, validate(decision)], (req) =>
             { ...requestContext.getStore(), facilityId: sessionFacility },
             async () => {
               if (r.action === "REPLACE") {
+                const affectedSession = affected.find(s => s.id === r.scheduleId)!;
+                if (affectedSession.class.coaches.some(c => c.coachId === coachId && !c.isPrimary) && affectedSession.coachId !== coachId)
+                  throw new AppError("HLV đang nghỉ là HLV phụ. Hãy điều chỉnh phân công HLV phụ của lớp trước, hoặc dời/hủy buổi học; không thay nhầm HLV chính.", 409);
                 if (!r.coachId || r.coachId === coachId)
                   throw new AppError("Replacement coach required", 400);
                 await updateSchedule(r.scheduleId, {

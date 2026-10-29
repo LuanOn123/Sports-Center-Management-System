@@ -1,3 +1,4 @@
+import { requestContext } from "../../config/request-context.js";
 import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
@@ -32,6 +33,7 @@ export async function createFeedback(data: CreateFeedbackInput, userId: string) 
   const hasAttended = await prisma.enrollment.findFirst({
     where: {
       memberId: memberProfile.id,
+      ...(data.classId ? { classId: data.classId } : {}),
       status: { in: ["BOOKED", "COMPLETED"] },
       schedule: {
         class: {
@@ -53,6 +55,13 @@ export async function createFeedback(data: CreateFeedbackInput, userId: string) 
   }
 
   // Upsert: cho phép sửa nếu đã feedback rồi
+  if (!data.classId) return requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, () => prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('feedback:' || ${memberProfile.id}::text || ':' || ${data.coachId}::text))`;
+    const existing = await tx.coachFeedback.findFirst({ where: { coachId: data.coachId, memberId: memberProfile.id, classId: null } });
+    const values = { rating: data.rating, comment: data.comment, isAnonymous: data.isAnonymous ?? false };
+    return existing ? tx.coachFeedback.update({ where: { id: existing.id }, data: values, include: feedbackInclude })
+      : tx.coachFeedback.create({ data: { ...values, coachId: data.coachId, memberId: memberProfile.id }, include: feedbackInclude });
+  }));
   const feedback = await prisma.coachFeedback.upsert({
     where: {
       coachId_memberId_classId: {

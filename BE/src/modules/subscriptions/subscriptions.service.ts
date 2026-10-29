@@ -1,3 +1,6 @@
+import { activateDueSubscription } from "./entitlement.service.js";
+import { requestRefund } from "../payments/refunds.service.js";
+import { revokeSubscriptionBookings } from "./entitlement.service.js";
 import { prisma } from "../../config/prisma.js";
 import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
@@ -312,14 +315,19 @@ async function cancelScheduledSubscription(
   sub: {
     id: string;
     memberId: string;
+    startDate: Date;
     plan: { name: string };
     member: { userId: string };
     payments: { id: string; amount: unknown; facilityId: string | null }[];
   },
   cancelledBy: "MEMBER" | "MANAGER",
   reason?: string,
-) {
+): Promise<any> {
   const now = new Date();
+  if (sub.startDate <= now) {
+    await prisma.$transaction(tx => activateDueSubscription(tx, sub.id, sub.memberId, now));
+    return cancelledBy === "MEMBER" ? cancelSubscriptionBySelf(sub.id, sub.member.userId, reason) : updateSubscriptionStatus(sub.id, "CANCELLED");
+  }
   const originalPayment = sub.payments[0];
   const refundAmount = originalPayment ? Math.round(Number(originalPayment.amount)) : 0;
   const willRefund = refundAmount > 0;
@@ -335,29 +343,15 @@ async function cancelScheduledSubscription(
         code: "SUBSCRIPTION_STATE_CHANGED",
       });
 
+    await revokeSubscriptionBookings(tx, { id: sub.id, memberId: sub.memberId }, now);
     if (willRefund && originalPayment) {
-      await requestContext.run(
-        { ...requestContext.getStore(), facilityId: originalPayment.facilityId ?? undefined },
-        () =>
-          tx.payment.update({
-            where: { id: originalPayment.id },
-            data: {
-              status: "REFUNDED",
-              refundedAmount: refundAmount,
-              refundedAt: now,
-              note: `Hoàn 100% do hủy gói chưa kích hoạt (${cancelledBy === "MEMBER" ? "hội viên tự hủy" : "quản lý hủy"}). Lý do: ${reason ?? "Không có"}`,
-            },
-          }),
-      );
-      await tx.invoice.updateMany({
-        where: { paymentId: originalPayment.id, status: "ISSUED" },
-        data: { status: "CANCELLED" },
-      });
+      await requestRefund(tx, originalPayment, refundAmount, "Hủy gói tập theo chính sách hoàn tiền");
+
     }
 
     await enqueueNotification(tx, {
       userId: sub.member.userId,
-      type: willRefund ? "PAYMENT_REFUNDED" : "SUBSCRIPTION_CANCELLED",
+      type: "SUBSCRIPTION_CANCELLED",
       title: "Gói tập chờ kích hoạt đã bị hủy",
       body: willRefund
         ? `Gói "${sub.plan.name}" (chưa kích hoạt) đã bị hủy. Bạn được hoàn 100%: ${refundAmount.toLocaleString("vi-VN")}đ. Vui lòng liên hệ quầy lễ tân để nhận hoàn tiền.`
@@ -494,44 +488,21 @@ export async function updateSubscriptionStatus(id: string, status: string) {
       // Membership là GLOBAL ⇒ side-effect hủy booking phải chạy trên TOÀN BỘ cơ sở.
       // Chỉ bỏ scope cho ĐÚNG câu updateMany này; where vẫn bị chặn bởi
       // memberId + status BOOKED + buổi tương lai (không đụng member khác, không đụng lịch quá khứ).
-      await requestContext.run(
-        { ...requestContext.getStore(), facilityId: undefined },
-        () =>
-          tx.enrollment.updateMany({
-            where: {
-              memberId: sub.memberId,
-              status: "BOOKED",
-              schedule: { startTime: { gt: now } },
-            },
-            data: { status: "CANCELLED", cancelledAt: now },
-          }),
-      );
+      await revokeSubscriptionBookings(tx, { id: sub.id, memberId: sub.memberId }, now);
 
       // 3. Tạo bản ghi Payment hoàn tiền nếu đủ điều kiện.
       // Payment VẪN facility-scoped: chạy trong đúng facility phát hành payment
       // (originalPayment lấy từ sub.payments ⇒ thuộc membership này, đã qua check ownership).
       if (willRefund && originalPayment) {
-        await requestContext.run(
-          { ...requestContext.getStore(), facilityId: originalPayment.facilityId },
-          () =>
-            tx.payment.update({
-              where: { id: originalPayment.id },
-              data: {
-                status: "REFUNDED",
-                refundedAmount: refundAmount,
-                refundedAt: now,
-                note: `Hoàn tiền theo tỷ lệ ngày còn lại: ${daysLeft} ngày / ${originalPayment?.durationDaysSnapshot ?? Math.max(1, Math.round((sub.endDate.getTime() - sub.startDate.getTime()) / 86400000))} ngày. Số tiền hoàn: ${refundAmount.toLocaleString("vi-VN")}đ`,
-              },
-            }),
-        );
+        await requestRefund(tx, originalPayment, refundAmount, "Hủy gói tập theo chính sách hoàn tiền");
       }
 
       // 4. G10: thông báo ghi OUTBOX trong cùng transaction (gửi sau commit, có retry).
       await enqueueNotification(tx, willRefund
         ? {
             userId: sub.member.userId,
-            type: "PAYMENT_REFUNDED",
-            title: "Hoàn tiền gói tập",
+            type: "SUBSCRIPTION_CANCELLED",
+            title: "Đã tiếp nhận yêu cầu hoàn tiền",
             body: `Gói "${sub.plan.name}" đã bị hủy bởi quản lý. Số tiền hoàn: ${refundAmount.toLocaleString("vi-VN")}đ (${daysLeft} ngày còn lại / ${originalPayment?.durationDaysSnapshot ?? Math.max(1, Math.round((sub.endDate.getTime() - sub.startDate.getTime()) / 86400000))} ngày). Vui lòng ra quầy lễ tân để nhận hoàn tiền.`,
             metadata: { subscriptionId: id },
           }
@@ -568,6 +539,13 @@ export async function updateSubscriptionStatus(id: string, status: string) {
   }
   // ─────────────────────────────────────────────────────────────────────────
 
+  if (status === "CANCELLED") return prisma.$transaction(async tx => {
+    await lockMemberSubscription(tx, sub.memberId);
+    const changed = await tx.membershipSubscription.updateMany({ where: { id, status: sub.status }, data: { status: "CANCELLED", cancelledAt: now } });
+    if (changed.count !== 1) throw new AppError("Trạng thái gói đã thay đổi. Vui lòng tải lại.", 409);
+    await revokeSubscriptionBookings(tx, { id, memberId: sub.memberId }, now);
+    return tx.membershipSubscription.findUnique({ where: { id }, include: { plan: true } });
+  });
   // CANCELLED xử lý riêng ở trên; các trạng thái còn lại (SUSPENDED, EXPIRED, ACTIVE no-op)
   // đi qua update chung — resume → ACTIVE đã bị chặn 400 (SUBSCRIPTION_RESUME_FORBIDDEN) ở trên.
   const updated = await prisma.membershipSubscription.update({
@@ -669,36 +647,13 @@ export async function cancelSubscriptionBySelf(
 
     // 2. Hủy tất cả booking tương lai trên MỌI cơ sở (Membership là GLOBAL).
     // Chỉ bỏ scope cho câu updateMany này; where giới hạn memberId + BOOKED + tương lai.
-    await requestContext.run(
-      { ...requestContext.getStore(), facilityId: undefined },
-      () =>
-        tx.enrollment.updateMany({
-          where: {
-            memberId: sub.memberId,
-            status: "BOOKED",
-            schedule: { startTime: { gt: now } },
-          },
-          data: { status: "CANCELLED", cancelledAt: now },
-        }),
-    );
+    await revokeSubscriptionBookings(tx, { id: subscriptionId, memberId: sub.memberId }, now);
 
     // 3. Nếu hoàn tiền: đổi payment gốc thành REFUNDED.
     // Payment VẪN facility-scoped — chạy trong facility phát hành payment để
     // không bị DAL chặn (FORBIDDEN_SCOPE) và không mở rộng quyền với payment khác.
     if (willRefund && originalPayment) {
-      await requestContext.run(
-        { ...requestContext.getStore(), facilityId: originalPayment.facilityId },
-        () =>
-          tx.payment.update({
-            where: { id: originalPayment.id },
-            data: {
-              status: "REFUNDED",
-              refundedAmount: refundAmount,
-              refundedAt: now,
-              note: `Hoàn 30% do hủy gói (còn ${daysLeft} ngày). Lý do: ${reason ?? "Không có"}`,
-            },
-          }),
-      );
+      await requestRefund(tx, originalPayment, refundAmount, "Hủy gói tập theo chính sách hoàn tiền");
     }
 
     // 4. G10: thông báo ghi OUTBOX trong cùng transaction (gửi sau commit, có retry).

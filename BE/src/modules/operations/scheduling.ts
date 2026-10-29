@@ -24,7 +24,7 @@ export async function validateResources(
   if (room.capacity < cls.capacity || room.areaType !== cls.areaType)
     throw new AppError("Room capacity or area is unsuitable", 400);
   const missing = missingCapabilities(
-    mergeRequirements(cls.sports.flatMap((sport: any) => sport.requirements ?? [])),
+    (cls.requirementsSnapshot ?? mergeRequirements(cls.sports.flatMap((sport: any) => sport.requirements ?? []))) as Record<string, number>,
     room.capabilities,
     room.areaType,
   );
@@ -34,6 +34,8 @@ export async function validateResources(
     ...cls.coaches.filter((v: any) => !replacement || v.isPrimary === false).map((v: any) => v.coachId),
     ...(replacement ? [replacement] : []),
   ])];
+  if (!replacement && cls.coaches.filter((row: any) => row.isPrimary === true).length !== 1)
+    throw new AppError("Lớp phải có đúng một HLV chính trước khi xếp lịch.", 409);
   if (!coaches.length) throw new AppError("COACH_REQUIRED", 409);
   for (const coachId of coaches) {
     const coach = await db.coachProfile.findUnique({

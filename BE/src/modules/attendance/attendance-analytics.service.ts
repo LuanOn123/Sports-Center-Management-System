@@ -55,6 +55,8 @@ export async function getMembershipCoverageIntervals(
   const subs = await db.membershipSubscription.findMany({
     where: { memberId: { in: memberIds } },
     select: {
+      id: true,
+      payments: { select: { status: true, paidAt: true, refundedAt: true } },
       memberId: true,
       status: true,
       startDate: true,
@@ -71,11 +73,17 @@ export async function getMembershipCoverageIntervals(
     where: { memberId: { in: memberIds }, status: { in: ["BOOKED", "COMPLETED"] } },
     select: { memberId: true, classId: true, scheduleId: true, termMembershipGrant: true, schedule: { select: { termId: true } } },
   });
+  const sources = new Map(subs.map(sub => [sub.id, sub]));
   for (const row of approved) {
     const grant = readTermMembershipGrant(row.termMembershipGrant);
     if (!grant || grant.memberId !== row.memberId || grant.classId !== row.classId || grant.termId !== row.schedule.termId) continue;
+    const source = sources.get(grant.subscriptionId);
+    if (!source || !source.payments.some(p => p.paidAt && ["SUCCESS", "REFUNDED"].includes(p.status))) continue;
+    let validUntil = new Date(grant.validUntil);
+    if (source.cancelledAt && source.cancelledAt < validUntil) validUntil = source.cancelledAt;
+    for (const payment of source.payments) if (payment.refundedAt && payment.refundedAt < validUntil) validUntil = payment.refundedAt;
     map.set(row.memberId, [...(map.get(row.memberId) ?? []), {
-      from: new Date(grant.approvedAt), to: new Date(grant.validUntil),
+      from: new Date(grant.approvedAt), to: validUntil,
       scheduleId: row.scheduleId, classId: row.classId, termId: grant.termId,
     }]);
   }

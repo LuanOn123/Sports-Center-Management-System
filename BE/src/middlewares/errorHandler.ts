@@ -19,13 +19,17 @@ export function errorHandler(
   res: Response,
   next: NextFunction
 ): void {
-  console.error(`[ERROR] ${err.name}: ${err.message}`);
+  console.error("[ERROR]", { name: err.name, code: (err as any).code, requestId: res.getHeader?.("X-Request-Id") });
 
   if (err instanceof AppError) {
     sendError(res, err.message, err.statusCode, err.errors);
     return;
   }
 
+  if ((err as any).code === "P2034" || (err as any).code === "40P01") {
+    sendError(res, "Dữ liệu đang được xử lý đồng thời. Vui lòng tải lại và thử lại thao tác.", 409, { code: "CONCURRENT_MODIFICATION" });
+    return;
+  }
   // Prisma unique constraint violation
   if ((err as any).code === "P2002") {
     const fields = (err as any).meta?.target ?? "field";

@@ -45,7 +45,7 @@ export function MembershipInsightsPage({
         query: {
           startDate,
           endDate,
-          ...(global ? { facilityId: "ALL" } : {}),
+
           ...(termId ? { termId } : {}),
         },
         signal,

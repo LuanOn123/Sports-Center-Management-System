@@ -20080,3 +20080,7 @@ Responses/status codes:
 
 ## Verified workflow contracts
 Additional operations and missing bodies/parameters are preserved in workflow-contract-overrides.json, reviewed against the backend checkout. See WORKFLOW_ALIGNMENT.md and BACKEND_SYNC_2026-10-04.md.
+
+## Refund confirmation
+
+`POST /payments/{id}/refund/confirm`: ADMIN/RECEPTIONIST in facility scope; body `{ reason, reference }`. Records an actual refund; never initiates a bank transfer.

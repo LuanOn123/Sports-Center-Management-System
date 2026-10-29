@@ -152,14 +152,14 @@ export async function updateRoom(id: string, data: any) {
 }
 
 export async function deleteRoom(id: string) {
-  const room = await prisma.room.findUnique({ where: { id } });
-  if (!room) throw new AppError("Room not found", 404);
-  const scheduled = await prisma.classSchedule.count({
-    where: { roomId: id, status: "SCHEDULED", startTime: { gte: new Date() } },
+  return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('schedule:room:' || ${id}::text))`;
+    const room = await tx.room.findUnique({ where: { id } });
+    if (!room) throw new AppError("Room not found", 404);
+    if (await tx.classSchedule.count({ where: { roomId: id, status: "SCHEDULED", endTime: { gt: new Date() } } }))
+      throw new AppError("Không thể ngừng phòng đang có lịch hoạt động.", 409);
+    return tx.room.update({ where: { id }, data: { isActive: false } });
   });
-  if (scheduled > 0)
-    throw new AppError("Cannot deactivate room with upcoming schedules", 400);
-  return prisma.room.update({ where: { id }, data: { isActive: false } });
 }
 
 // ─── BULK TRANSFER SCHEDULES (Room hư → Room khác) ───────────────────────────
