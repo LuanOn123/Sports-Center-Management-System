@@ -17,8 +17,6 @@ export interface IUser extends Document {
   provisioningStatus: "READY" | "PENDING" | "FAILED";
   resetPasswordOtp?: string | null;
   resetPasswordOtpExpiresAt?: Date | null;
-  /** AUD-09: access token phát hành trước mốc này bị từ chối (đổi/đặt lại mật khẩu). */
-  passwordChangedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   id: string;
@@ -43,7 +41,6 @@ const userSchema = new Schema(
     provisioningStatus: { type: String, enum: ["READY", "PENDING", "FAILED"], default: "READY" },
     resetPasswordOtp: { type: String, default: null },
     resetPasswordOtpExpiresAt: { type: Date, default: null },
-    passwordChangedAt: { type: Date, default: null },
   },
   {
     timestamps: true,

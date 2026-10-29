@@ -6,35 +6,6 @@ export function mergeRequirements(rows: { key: string; minimum: number }[]) {
   }
   return result;
 }
-/**
- * AUD-10: điều kiện phòng của lớp lấy từ snapshot đóng băng lúc tạo/cập nhật môn của lớp
- * (BR-ROOM-02). Chỉ fallback sang yêu cầu live của môn khi lớp cũ chưa có snapshot.
- */
-export function classRequirements(cls: {
-  requirementsSnapshot?: unknown;
-  sports?: { requirements?: { key: string; minimum: number }[] }[];
-}) {
-  const snapshot = cls.requirementsSnapshot;
-  if (snapshot && typeof snapshot === "object" && !Array.isArray(snapshot)) {
-    return mergeRequirements(
-      Object.entries(snapshot as Record<string, unknown>)
-        .filter(([, minimum]) => typeof minimum === "number")
-        .map(([key, minimum]) => ({ key, minimum: minimum as number })),
-    );
-  }
-  return mergeRequirements((cls.sports ?? []).flatMap((sport) => sport.requirements ?? []));
-}
-/**
- * AUD-06: tập HLV thực sự dạy một buổi — nguồn duy nhất cho điểm danh, roster, duyệt nghỉ.
- * Buổi có HLV thay (`schedule.coachId`) ⇒ người thay THAY CHO HLV chính, HLV phụ vẫn dạy.
- */
-export function effectiveCoachIds(
-  scheduleCoachId: string | null | undefined,
-  classCoaches: { coachId: string; isPrimary: boolean }[],
-) {
-  if (!scheduleCoachId) return [...new Set(classCoaches.map((c) => c.coachId))];
-  return [...new Set([scheduleCoachId, ...classCoaches.filter((c) => !c.isPrimary).map((c) => c.coachId)])];
-}
 export function missingCapabilities(
   requirements: Record<string, number>,
   capabilities: { key: string; quantity: number }[],

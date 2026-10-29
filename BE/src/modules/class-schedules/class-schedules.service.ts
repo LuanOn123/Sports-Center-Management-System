@@ -279,8 +279,18 @@ async function createScheduleBatchInTx(tx: Prisma.TransactionClient, data: {
       { class: { coaches: { some: { coachId: { in: coachIds }, isPrimary: false } } } },
     ] }, select: { startTime: true, endTime: true },
   }));
-  if (ordered.some((row) => conflicts.some((existing) => row.startTime < existing.endTime && row.endTime > existing.startTime)))
-    throw new AppError("Phòng, lớp hoặc huấn luyện viên (kể cả HLV phụ) đã có lịch trùng giờ. Vui lòng chọn ca khác.", 409);
+  const clashing = ordered.filter((row) => conflicts.some((existing) => row.startTime < existing.endTime && row.endTime > existing.startTime));
+  if (clashing.length) {
+    // Nêu rõ buổi bị trùng để Manager sửa đúng chỗ thay vì đoán trong cả lô.
+    const fmt = (d: Date) => d.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" });
+    const shown = clashing.slice(0, 5).map((row) => fmt(row.startTime)).join("; ");
+    const more = clashing.length > 5 ? ` và ${clashing.length - 5} buổi khác` : "";
+    throw new AppError(
+      `Phòng, lớp hoặc huấn luyện viên (kể cả HLV phụ) đã có lịch trùng giờ ở ${clashing.length} buổi: ${shown}${more}. Vui lòng chọn ca khác.`,
+      409,
+      { code: "SCHEDULE_CONFLICT", conflictingSessions: clashing.map((row) => ({ startTime: row.startTime, endTime: row.endTime })) },
+    );
+  }
   const terms = await tx.term.findMany({ where: { OR: [{ facilityId: room!.facilityId }, { facilityId: null }] }, orderBy: { startDate: "asc" } });
   if (data.termId) await assertCanScheduleInTerm(data.termId, start, end, room!.facilityId, tx);
   const rows = ordered.map((row) => {

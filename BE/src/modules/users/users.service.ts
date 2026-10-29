@@ -130,8 +130,9 @@ async function updateUserInternal(id: string, data: UpdateUserInput, requesterId
     if (user.role === "MEMBER") {
       const mp = await MemberProfile.findOne({ userId });
       if (mp) {
+        // Gói FREE hệ thống luôn ACTIVE với mọi member ⇒ chỉ chặn khi còn gói TRẢ PHÍ đang dùng/chờ kích hoạt.
         const activeSubs = await prisma.membershipSubscription.count({
-          where: { memberId: mp._id.toString(), status: "ACTIVE" },
+          where: { memberId: mp._id.toString(), status: { in: ["ACTIVE", "SCHEDULED"] }, tier: { not: "FREE" } },
         });
         if (activeSubs > 0)
           throw new AppError("Cannot change role: MEMBER has active subscriptions. Cancel them first.", 400);

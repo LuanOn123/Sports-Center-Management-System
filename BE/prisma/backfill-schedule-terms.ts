@@ -1,7 +1,7 @@
 /**
  * One-time idempotent backfill (R-07): gắn kỳ học cho ClassSchedule cũ đang có termId = NULL.
- * Reuse `resolveScheduleTerm()` — cùng luật chọn kỳ với lúc tạo lịch (kỳ chưa đóng bao trọn
- * buổi học, ưu tiên kỳ riêng của cơ sở rồi tới kỳ toàn hệ thống).
+ * Cùng luật tự chọn kỳ với `createScheduleBatchInTx` lúc tạo lịch: kỳ chưa đóng bao trọn
+ * buổi học, ưu tiên kỳ riêng của cơ sở rồi tới kỳ toàn hệ thống.
  *
  * Chạy:
  *   npx tsx prisma/backfill-schedule-terms.ts            # dry-run: chỉ liệt kê, không mutate
@@ -19,7 +19,6 @@
 import "dotenv/config";
 import { prisma } from "../src/config/prisma.js";
 import { requestContext } from "../src/config/request-context.js";
-import { resolveScheduleTerm } from "../src/modules/terms/terms.service.js";
 
 async function main() {
   const apply = process.argv.includes("--apply");
@@ -31,22 +30,31 @@ async function main() {
     }),
   );
 
+  const terms = await requestContext.run({ facilityId: undefined, actorId: "system:backfill-schedule-terms" }, () =>
+    prisma.term.findMany({ where: { status: { not: "CLOSED" } }, orderBy: { startDate: "asc" } }),
+  );
+  const covering = (facilityId: string | null, start: Date, end: Date) => {
+    const fits = (term: (typeof terms)[number]) => term.startDate <= start && term.endDate >= end;
+    return (facilityId ? terms.find((term) => term.facilityId === facilityId && fits(term)) : undefined)
+      ?? terms.find((term) => term.facilityId === null && fits(term));
+  };
+
   const assigned: { id: string; termId: string }[] = [];
   const unresolved: { id: string; className: string; startTime: Date }[] = [];
   for (const schedule of schedules) {
     const facilityId = schedule.class.facilityId ?? undefined;
-    try {
-      const termId = await resolveScheduleTerm(prisma, facilityId, schedule.startTime, schedule.endTime);
-      if (apply) {
-        await requestContext.run(
-          { facilityId, actorId: "system:backfill-schedule-terms", reason: "R-07 backfill schedule term" },
-          () => prisma.classSchedule.updateMany({ where: { id: schedule.id, termId: null }, data: { termId } }),
-        );
-      }
-      assigned.push({ id: schedule.id, termId });
-    } catch {
+    const termId = covering(schedule.class.facilityId, schedule.startTime, schedule.endTime)?.id;
+    if (!termId) {
       unresolved.push({ id: schedule.id, className: schedule.class.name, startTime: schedule.startTime });
+      continue;
     }
+    if (apply) {
+      await requestContext.run(
+        { facilityId, actorId: "system:backfill-schedule-terms", reason: "R-07 backfill schedule term" },
+        () => prisma.classSchedule.updateMany({ where: { id: schedule.id, termId: null }, data: { termId } }),
+      );
+    }
+    assigned.push({ id: schedule.id, termId });
   }
 
   console.log(`[backfill-schedule-terms] mode=${apply ? "APPLY" : "DRY-RUN"} scanned=${schedules.length}`);

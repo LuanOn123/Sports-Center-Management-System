@@ -297,11 +297,13 @@ async function notifyCoachChange(
   classId: string,
   className: string,
   coachName: string,
-  action: "ASSIGNED" | "REMOVED",
-  isPrimary = true
+  action: "ASSIGNED" | "REMOVED" | "REPLACED",
+  isPrimary = true,
+  previousCoachName?: string
 ) {
   const upcomingSchedules = await prisma.classSchedule.findMany({
-    where: { classId, status: "SCHEDULED", startTime: { gt: new Date() } },
+    // Buổi đã có HLV dạy thay riêng (coachId) không đổi người dạy khi HLV chính của lớp đổi.
+    where: { classId, status: "SCHEDULED", startTime: { gt: new Date() }, ...(isPrimary ? { coachId: null } : {}) },
     include: {
       enrollments: {
         where: { status: "BOOKED" },
@@ -319,7 +321,9 @@ async function notifyCoachChange(
 
   if (userIdsToNotify.size > 0) {
     const title = action === "ASSIGNED" ? `Thay đổi HLV: Lớp ${className}` : `Thay đổi HLV: Lớp ${className}`;
-    const body = action === "ASSIGNED"
+    const body = action === "REPLACED"
+      ? `HLV ${coachName} sẽ thay HLV ${previousCoachName ?? ""} phụ trách lớp "${className}" mà bạn đã đặt lịch, áp dụng cho các buổi sắp tới.`
+      : action === "ASSIGNED"
       ? `${isPrimary ? "HLV" : "HLV hỗ trợ"} ${coachName} vừa được phân công ${isPrimary ? "phụ trách" : "hỗ trợ"} lớp "${className}" mà bạn đã đặt lịch. Cùng chờ đón các buổi tập sắp tới nhé!`
       : isPrimary
         ? `HLV ${coachName} sẽ ngừng phụ trách lớp "${className}" của bạn. Quản lý sẽ sớm phân công HLV thay thế.`
@@ -420,10 +424,16 @@ export async function assignCoach(classId: string, coachId: string, isPrimary: b
     where: { classId_coachId: { classId, coachId } }
   });
 
-  await prisma.$transaction(async (tx) => {
+  const previousPrimary = await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('class:assignment:' || ${classId}::text))`;
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('schedule:coach:' || ${coachId}::text))`;
     await assertNoUpcomingScheduleConflict(classId, coachId);
+    const previousPrimary = isPrimary
+      ? await tx.classMember.findFirst({
+          where: { classId, isPrimary: true },
+          include: { coach: { include: { user: { select: { fullName: true } } } } },
+        })
+      : null;
     if (!isPrimary) {
       const current = await tx.classMember.findUnique({ where: { classId_coachId: { classId, coachId } } });
       if (current?.isPrimary && await tx.classSchedule.count({ where: { classId, status: "SCHEDULED", endTime: { gt: new Date() } } }))
@@ -442,9 +452,14 @@ export async function assignCoach(classId: string, coachId: string, isPrimary: b
       update: { isPrimary },
       create: { classId, coachId, isPrimary },
     });
+    return previousPrimary;
   });
 
-  if (!existingAssignment) {
+  // Thông báo hội viên khi người phụ trách thực sự đổi: HLV mới vào lớp, hoặc HLV phụ được thăng làm chính.
+  const becamePrimary = isPrimary && !existingAssignment?.isPrimary;
+  if (becamePrimary && previousPrimary && previousPrimary.coachId !== coachId) {
+    await notifyCoachChange(classId, cls.name, coach.user.fullName, "REPLACED", true, previousPrimary.coach.user.fullName);
+  } else if (!existingAssignment || becamePrimary) {
     await notifyCoachChange(classId, cls.name, coach.user.fullName, "ASSIGNED", isPrimary);
   }
 

@@ -1,6 +1,7 @@
 import { requestContext } from "../../config/request-context.js";
 import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../middlewares/errorHandler.js";
+import { effectiveCoachWhere } from "../operations/effective-coaches.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import type { CreateFeedbackInput, UpdateFeedbackInput, FeedbackQueryInput } from "./feedbacks.schema.js";
 
@@ -13,9 +14,9 @@ const feedbackInclude = {
 /**
  * Member tạo feedback cho Coach.
  * Business rules:
- *  - Member phải đã từng BOOKED hoặc COMPLETED ít nhất 1 buổi của Coach đó.
- *  - Nếu truyền classId: phải thuộc lớp có Coach đó.
- *  - Mỗi (memberId, coachId, classId) chỉ được feedback 1 lần (upsert cho phép sửa).
+ *  - Member phải đã có mặt / hoàn thành ít nhất 1 buổi ĐÃ DIỄN RA do Coach đó thực dạy (R-06).
+ *  - Nếu truyền classId: buổi đó phải thuộc đúng lớp.
+ *  - Mỗi (memberId, coachId, classId) và mỗi (memberId, coachId) feedback chung chỉ 1 bản (gửi lại = sửa).
  */
 export async function createFeedback(data: CreateFeedbackInput, userId: string) {
   // Tìm memberProfile từ userId
@@ -29,29 +30,35 @@ export async function createFeedback(data: CreateFeedbackInput, userId: string) 
   });
   if (!coachProfile || !coachProfile.user.isActive) throw new AppError("Coach not found or inactive", 404);
 
-  // Kiểm tra member có từng học với coach này chưa
-  const hasAttended = await prisma.enrollment.findFirst({
-    where: {
-      memberId: memberProfile.id,
-      ...(data.classId ? { classId: data.classId } : {}),
-      status: { in: ["BOOKED", "COMPLETED"] },
-      schedule: {
-        class: {
-          coaches: { some: { coachId: data.coachId } },
-        },
-      },
-    },
-  });
-  if (!hasAttended) {
-    throw new AppError("Bạn chỉ có thể đánh giá HLV mà bạn đã hoặc đang học cùng.", 403);
-  }
-
-  // Kiểm tra classId nếu có
-  if (data.classId) {
-    const classExists = await prisma.class.findFirst({
-      where: { id: data.classId, coaches: { some: { coachId: data.coachId } } },
-    });
-    if (!classExists) throw new AppError("Lớp học này không thuộc HLV được chỉ định.", 400);
+  // R-06: "đã học" = có mặt (PRESENT/LATE) hoặc Enrollment COMPLETED ở ít nhất 1 buổi ĐÃ DIỄN RA
+  // do HLV này thực dạy (HLV chính khi không có người thay, HLV dạy thay, hoặc HLV phụ).
+  // Chỉ đặt chỗ buổi tương lai (BOOKED) chưa đủ. Có classId ⇒ buổi đó phải thuộc đúng lớp.
+  // Hội viên có thể học ở cơ sở khác ⇒ bỏ scope facility cho đúng hai câu đọc này.
+  const pastSessionTaughtByCoach = {
+    startTime: { lte: new Date() },
+    ...(data.classId ? { classId: data.classId } : {}),
+    ...effectiveCoachWhere(data.coachId),
+  };
+  const [attended, completed] = await requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, () =>
+    Promise.all([
+      prisma.attendance.findFirst({
+        where: { memberId: memberProfile.id, status: { in: ["PRESENT", "LATE"] }, schedule: pastSessionTaughtByCoach },
+        select: { id: true },
+      }),
+      prisma.enrollment.findFirst({
+        where: { memberId: memberProfile.id, status: "COMPLETED", schedule: pastSessionTaughtByCoach },
+        select: { id: true },
+      }),
+    ]),
+  );
+  if (!attended && !completed) {
+    throw new AppError(
+      data.classId
+        ? "Bạn chỉ có thể đánh giá HLV ở lớp mà bạn đã tham gia ít nhất một buổi do HLV này dạy."
+        : "Bạn chỉ có thể đánh giá HLV sau khi đã tham gia ít nhất một buổi do HLV này dạy.",
+      403,
+      { code: "FEEDBACK_NOT_ELIGIBLE" },
+    );
   }
 
   // Upsert: cho phép sửa nếu đã feedback rồi

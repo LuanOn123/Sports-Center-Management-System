@@ -57,8 +57,11 @@ export function canCompleteSchedule(
 }
 
 export function terminalSessionError(message: string) {
-  return /^Unauthorized: (account is locked|role has changed, please login again|password has changed, please login again|user not found)$/i.test(
-    message.trim(),
+  const text = message.trim();
+  // Phiên bị thu hồi (đổi mật khẩu, đổi role, khóa tài khoản — tokenVersion tăng): refresh cũng sẽ bị từ chối.
+  return (
+    /^Unauthorized: (account is locked|role has changed, please login again|user not found)$/i.test(text) ||
+    text === "Phiên đăng nhập đã bị thu hồi. Vui lòng đăng nhập lại."
   );
 }
 
