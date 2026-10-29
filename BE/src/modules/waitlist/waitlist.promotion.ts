@@ -41,12 +41,19 @@ export async function promoteNextEligible(
     // Lock theo member được promote để serialize với booking khác của họ.
     const keys = ["membership:member:" + entry.memberId, "enrollment:member-quota:" + entry.memberId,
       "enrollment:member-class:" + entry.memberId + ":" + freshSchedule.class.id];
+    // Xact advisory locks cannot be unlocked one by one, but rolling back to a savepoint releases
+    // the ones taken after it — so a skipped (busy) candidate keeps none of their locks.
+    await tx.$executeRaw`SAVEPOINT waitlist_candidate_locks`;
     let acquired = true;
     for (const key of keys) {
       const rows = await tx.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_xact_lock(hashtext(${key})) AS locked`;
       if (!rows[0]?.locked) { acquired = false; break; }
     }
-    if (!acquired) continue;
+    if (!acquired) {
+      await tx.$executeRaw`ROLLBACK TO SAVEPOINT waitlist_candidate_locks`;
+      continue;
+    }
+    await tx.$executeRaw`RELEASE SAVEPOINT waitlist_candidate_locks`;
     await activateMemberDue(tx, entry.memberId);
 
     let existing: any = null;

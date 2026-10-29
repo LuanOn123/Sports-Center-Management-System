@@ -28,6 +28,8 @@ export async function provisionAccount(
       !(await comparePassword(data.password, user.password)))
   )
     throw new AppError("Email is already in use", 409);
+  // Fail fast on business limits before any account document exists; re-checked under lock below.
+  if (facilityId && data.role === "COACH") await checkFacilityCoachLimit(facilityId);
 
   if (user) {
     user = await User.findOneAndUpdate(
@@ -212,6 +214,8 @@ export async function provisionAccount(
         },
       },
     ).catch(() => {});
+    // Business rejections (e.g. facility coach limit) keep their own message; retrying will not help.
+    if (error instanceof AppError) throw error;
     throw new AppError(
       "Chưa hoàn tất tạo tài khoản. Có thể gửi lại cùng email và mật khẩu để tiếp tục an toàn.",
       503,

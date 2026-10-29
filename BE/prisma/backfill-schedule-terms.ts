@@ -3,6 +3,9 @@
  * Cùng luật tự chọn kỳ với `createScheduleBatchInTx` lúc tạo lịch: kỳ chưa đóng bao trọn
  * buổi học, ưu tiên kỳ riêng của cơ sở rồi tới kỳ toàn hệ thống.
  *
+ * PHẢI chạy `--apply` TRƯỚC `npm run db:deploy`: migration 20261029000000_business_rule_hardening
+ * dừng lại nếu còn buổi SCHEDULED tương lai chưa có kỳ.
+ *
  * Chạy:
  *   npx tsx prisma/backfill-schedule-terms.ts            # dry-run: chỉ liệt kê, không mutate
  *   npx tsx prisma/backfill-schedule-terms.ts --apply    # áp dụng (idempotent)

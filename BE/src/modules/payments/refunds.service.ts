@@ -28,7 +28,7 @@ export async function requestRefund(
           "Giao dịch không đủ điều kiện yêu cầu hoàn tiền.",
           409,
         );
-      await tx.payment.updateMany({
+      const changed = await tx.payment.updateMany({
         where: { id: payment.id, status: "SUCCESS", refundRequestedAt: null },
         data: {
           refundRequestedAt: new Date(),
@@ -36,6 +36,13 @@ export async function requestRefund(
           refundReason: reason,
         },
       });
+      // Never promise a refund amount that was not recorded (already requested or state changed).
+      if (changed.count !== 1)
+        throw new AppError(
+          "Giao dịch đã có yêu cầu hoàn tiền hoặc vừa đổi trạng thái. Vui lòng tải lại.",
+          409,
+          { code: "REFUND_ALREADY_REQUESTED" },
+        );
     },
   );
 }

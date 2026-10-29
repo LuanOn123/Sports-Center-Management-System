@@ -130,7 +130,7 @@ async function updateUserInternal(id: string, data: UpdateUserInput, requesterId
     if (user.role === "MEMBER") {
       const mp = await MemberProfile.findOne({ userId });
       if (mp) {
-        // Gói FREE hệ thống luôn ACTIVE với mọi member ⇒ chỉ chặn khi còn gói TRẢ PHÍ đang dùng/chờ kích hoạt.
+        // Gói FREE hệ thống (ACTIVE khi chưa có gói trả phí) không phải cam kết ⇒ chỉ chặn khi còn gói TRẢ PHÍ đang dùng/chờ kích hoạt.
         const activeSubs = await prisma.membershipSubscription.count({
           where: { memberId: mp._id.toString(), status: { in: ["ACTIVE", "SCHEDULED"] }, tier: { not: "FREE" } },
         });

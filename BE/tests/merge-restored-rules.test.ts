@@ -119,3 +119,39 @@ test("schedule conflict error names exactly the clashing sessions", async () => 
         && /ở 1 buổi: 08:00 02\/01\/2099\. /.test(err.message) && err.errors.conflictingSessions.length === 1);
   });
 });
+
+test("facility coach limit is reported as the business error before any account document exists", async () => {
+  const mongoose = require("mongoose");
+  const { provisionAccount } = require("../src/modules/users/provisioning.service.js");
+  await fixture(async stub => {
+    let sessions = 0;
+    stub(User, "findOne", () => ({ select: async () => null }));
+    stub(mongoose, "startSession", async () => { sessions++; throw new Error("must not start"); });
+    stub(prisma.facility, "findUnique", async () => ({ id: "f", name: "A", maxCoaches: 1 }));
+    stub(prisma.facilityStaff, "count", async () => 1);
+    await assert.rejects(() => provisionAccount({ email: "c@x.vn", password: "secret1", fullName: "C", role: "COACH", sportIds: ["gym"] }, "f"),
+      (err: any) => err.statusCode === 400 && err.errors?.code === "FACILITY_COACH_LIMIT_EXCEEDED");
+    assert.equal(sessions, 0);
+  });
+});
+
+test("a refund request that was not recorded fails instead of promising an amount", async () => {
+  const { requestRefund } = require("../src/modules/payments/refunds.service.js");
+  const tx = { payment: { findUnique: async () => ({ id: "p", status: "SUCCESS", amount: 100 }), updateMany: async () => ({ count: 0 }) } };
+  await assert.rejects(() => requestRefund(tx, { id: "p" }, 30, "x"),
+    (err: any) => err.statusCode === 409 && err.errors?.code === "REFUND_ALREADY_REQUESTED");
+});
+
+test("a busy waitlist candidate releases the locks it managed to take", async () => {
+  const { promoteNextEligible } = require("../src/modules/waitlist/waitlist.promotion.js");
+  const statements: string[] = [];
+  let tries = 0;
+  const tx = {
+    waitlistEntry: { findMany: async () => [{ id: "w", memberId: "m" }] },
+    $executeRaw: async (strings: TemplateStringsArray) => { statements.push(strings.join("?")); return 0; },
+    $queryRaw: async () => [{ locked: ++tries === 1 }], // membership lock taken, quota lock busy
+  };
+  const result = await promoteNextEligible(tx, "s", { id: "s", startTime: new Date(), endTime: new Date(), class: { id: "c", classType: "X", capacity: 1 } });
+  assert.equal(result, null);
+  assert.deepEqual(statements, ["SAVEPOINT waitlist_candidate_locks", "ROLLBACK TO SAVEPOINT waitlist_candidate_locks"]);
+});
