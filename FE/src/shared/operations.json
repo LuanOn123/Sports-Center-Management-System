@@ -4257,6 +4257,14 @@
         "defaultRoomId": {
           "type": "string",
           "description": "Phòng mặc định phù hợp loại khu vực và sức chứa lớp"
+        },
+        "refreshRequirements": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 1000
         }
       }
     },
@@ -6450,7 +6458,10 @@
         "description": "Lọc ứng viên theo role. Admin truyền COACH để lấy HLV chưa phân công.",
         "schema": {
           "type": "string",
-          "enum": ["MANAGER", "COACH"]
+          "enum": [
+            "MANAGER",
+            "COACH"
+          ]
         }
       }
     ],
@@ -8198,168 +8209,538 @@
     "path": "/class-schedules/under-capacity",
     "method": "GET",
     "summary": "Lấy danh sách buổi học chưa đủ sĩ số tối thiểu (MANAGER/ADMIN)",
-    "security": [{ "BearerAuth": [] }],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
     "parameters": [
-      { "name": "X-Facility-Id", "in": "header", "required": false, "schema": { "type": "string" } },
-      { "name": "hoursAhead", "in": "query", "required": false, "schema": { "type": "number" } }
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "hoursAhead",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "number"
+        }
+      }
     ],
     "body": null,
-    "statusCodes": ["200", "401", "403", "500"]
+    "statusCodes": [
+      "200",
+      "401",
+      "403",
+      "500"
+    ]
   },
   "POST /enrollments/{id}/leave-request": {
     "path": "/enrollments/{id}/leave-request",
     "method": "POST",
     "summary": "Học viên gửi đơn xin nghỉ một buổi đã đăng ký",
-    "security": [{ "BearerAuth": [] }],
-    "parameters": [
-      { "name": "X-Facility-Id", "in": "header", "required": false, "schema": { "type": "string" } },
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+    "security": [
+      {
+        "BearerAuth": []
+      }
     ],
-    "body": { "type": "object", "required": ["reason"], "properties": { "reason": { "type": "string", "minLength": 3, "description": "Lý do xin nghỉ (3-1000 ký tự)" } } },
-    "statusCodes": ["201", "400", "401", "403", "404", "409", "500"]
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "required": [
+        "reason"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 3,
+          "description": "Lý do xin nghỉ (3-1000 ký tự)"
+        }
+      }
+    },
+    "statusCodes": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
   },
   "PATCH /enrollments/{id}/health-notes": {
     "path": "/enrollments/{id}/health-notes",
     "method": "PATCH",
     "summary": "Cập nhật ghi chú sức khỏe cho buổi học đã đăng ký",
-    "security": [{ "BearerAuth": [] }],
-    "parameters": [
-      { "name": "X-Facility-Id", "in": "header", "required": false, "schema": { "type": "string" } },
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+    "security": [
+      {
+        "BearerAuth": []
+      }
     ],
-    "body": { "type": "object", "properties": { "healthNotes": { "type": "string", "description": "Ghi chú sức khỏe (null để xóa)" }, "saveToProfile": { "type": "boolean", "default": false } } },
-    "statusCodes": ["200", "400", "401", "403", "404", "500"]
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "healthNotes": {
+          "type": "string",
+          "description": "Ghi chú sức khỏe (null để xóa)"
+        },
+        "saveToProfile": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
   },
   "GET /facilities/{facilityId}/limits": {
     "path": "/facilities/{facilityId}/limits",
     "method": "GET",
     "summary": "Xem hạn mức vận hành của cơ sở",
-    "security": [{ "BearerAuth": [] }],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
     "parameters": [
-      { "name": "facilityId", "in": "path", "required": true, "schema": { "type": "string" } }
+      {
+        "name": "facilityId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
     ],
     "body": null,
-    "statusCodes": ["200", "401", "403", "404", "500"]
+    "statusCodes": [
+      "200",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
   },
   "GET /terms": {
     "path": "/terms",
     "method": "GET",
     "summary": "Lấy danh sách kỳ học",
-    "security": [{ "BearerAuth": [] }],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
     "parameters": [
-      { "name": "X-Facility-Id", "in": "header", "required": false, "schema": { "type": "string" } },
-      { "name": "status", "in": "query", "required": false, "schema": { "type": "string", "enum": ["PLANNING", "OPEN_REGISTRATION", "IN_PROGRESS", "CLOSED"] } },
-      { "name": "year", "in": "query", "required": false, "schema": { "type": "number" } },
-      { "name": "page", "in": "query", "required": false, "schema": { "type": "number" } },
-      { "name": "limit", "in": "query", "required": false, "schema": { "type": "number" } }
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "status",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "PLANNING",
+            "OPEN_REGISTRATION",
+            "IN_PROGRESS",
+            "CLOSED"
+          ]
+        }
+      },
+      {
+        "name": "year",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "number"
+        }
+      },
+      {
+        "name": "page",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "number"
+        }
+      },
+      {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "number"
+        }
+      }
     ],
     "body": null,
-    "statusCodes": ["200", "401", "403", "500"]
+    "statusCodes": [
+      "200",
+      "401",
+      "403",
+      "500"
+    ]
   },
   "GET /terms/current": {
     "path": "/terms/current",
     "method": "GET",
     "summary": "Lấy thông tin kỳ học hiện tại",
-    "security": [{ "BearerAuth": [] }],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
     "parameters": [
-      { "name": "X-Facility-Id", "in": "header", "required": false, "schema": { "type": "string" } }
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      }
     ],
     "body": null,
-    "statusCodes": ["200", "401", "403", "404", "500"]
+    "statusCodes": [
+      "200",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
   },
   "GET /terms/{id}": {
     "path": "/terms/{id}",
     "method": "GET",
     "summary": "Xem chi tiết kỳ học",
-    "security": [{ "BearerAuth": [] }],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
     "parameters": [
-      { "name": "X-Facility-Id", "in": "header", "required": false, "schema": { "type": "string" } },
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
     ],
     "body": null,
-    "statusCodes": ["200", "401", "403", "404", "500"]
+    "statusCodes": [
+      "200",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
   },
   "POST /terms": {
     "path": "/terms",
     "method": "POST",
     "summary": "Tạo kỳ học mới (Admin)",
-    "security": [{ "BearerAuth": [] }],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
     "parameters": [
-      { "name": "X-Facility-Id", "in": "header", "required": false, "schema": { "type": "string" } }
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      }
     ],
     "body": {
       "type": "object",
-      "required": ["name", "startDate", "endDate", "registrationStartDate", "registrationEndDate"],
+      "required": [
+        "name",
+        "startDate",
+        "endDate",
+        "registrationStartDate",
+        "registrationEndDate"
+      ],
       "properties": {
-        "code": { "type": "string" },
-        "name": { "type": "string" },
-        "startDate": { "type": "string", "format": "date" },
-        "endDate": { "type": "string", "format": "date" },
-        "registrationStartDate": { "type": "string", "format": "date" },
-        "registrationEndDate": { "type": "string", "format": "date" },
-        "status": { "type": "string", "enum": ["PLANNING", "OPEN_REGISTRATION", "IN_PROGRESS", "CLOSED"] },
-        "description": { "type": "string" },
-        "facilityId": { "type": "string" }
+        "code": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "registrationStartDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "registrationEndDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "PLANNING",
+            "OPEN_REGISTRATION",
+            "IN_PROGRESS",
+            "CLOSED"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "facilityId": {
+          "type": "string"
+        }
       }
     },
-    "statusCodes": ["201", "400", "401", "403", "409", "500"]
+    "statusCodes": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "409",
+      "500"
+    ]
   },
   "PATCH /terms/{id}": {
     "path": "/terms/{id}",
     "method": "PATCH",
     "summary": "Cập nhật kỳ học (Admin)",
-    "security": [{ "BearerAuth": [] }],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
     "parameters": [
-      { "name": "X-Facility-Id", "in": "header", "required": false, "schema": { "type": "string" } },
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
     ],
     "body": {
       "type": "object",
       "properties": {
-        "code": { "type": "string" },
-        "name": { "type": "string" },
-        "startDate": { "type": "string", "format": "date" },
-        "endDate": { "type": "string", "format": "date" },
-        "registrationStartDate": { "type": "string", "format": "date" },
-        "registrationEndDate": { "type": "string", "format": "date" },
-        "status": { "type": "string", "enum": ["PLANNING", "OPEN_REGISTRATION", "IN_PROGRESS", "CLOSED"] },
-        "description": { "type": "string" },
-        "facilityId": { "type": "string" }
+        "code": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "registrationStartDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "registrationEndDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "PLANNING",
+            "OPEN_REGISTRATION",
+            "IN_PROGRESS",
+            "CLOSED"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "facilityId": {
+          "type": "string"
+        }
       }
     },
-    "statusCodes": ["200", "400", "401", "403", "404", "409", "500"]
+    "statusCodes": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "409",
+      "500"
+    ]
   },
   "DELETE /terms/{id}": {
     "path": "/terms/{id}",
     "method": "DELETE",
     "summary": "Xóa kỳ học (Admin)",
-    "security": [{ "BearerAuth": [] }],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
     "parameters": [
-      { "name": "X-Facility-Id", "in": "header", "required": false, "schema": { "type": "string" } },
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
     ],
     "body": null,
-    "statusCodes": ["200", "400", "401", "403", "404", "500"]
+    "statusCodes": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
   },
   "POST /members": {
     "path": "/members",
     "method": "POST",
     "summary": "Tạo hồ sơ thành viên cho người dùng (Admin/Manager)",
-    "security": [{ "BearerAuth": [] }],
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
     "parameters": [
-      { "name": "X-Facility-Id", "in": "header", "required": false, "schema": { "type": "string" } }
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      }
     ],
     "body": {
       "type": "object",
-      "required": ["userId"],
+      "required": [
+        "userId"
+      ],
       "properties": {
-        "userId": { "type": "string" },
-        "fitnessGoal": { "type": "string" },
-        "trainingLevel": { "type": "string", "enum": ["BEGINNER", "INTERMEDIATE", "ADVANCED"] },
-        "trainingPreference": { "type": "string" }
+        "userId": {
+          "type": "string"
+        },
+        "fitnessGoal": {
+          "type": "string"
+        },
+        "trainingLevel": {
+          "type": "string",
+          "enum": [
+            "BEGINNER",
+            "INTERMEDIATE",
+            "ADVANCED"
+          ]
+        },
+        "trainingPreference": {
+          "type": "string"
+        }
       }
     },
-    "statusCodes": ["201", "400", "401", "403", "409", "500"]
+    "statusCodes": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "409",
+      "500"
+    ]
   },
   "GET /coach-change-requests": {
     "path": "/coach-change-requests",
@@ -8565,8 +8946,7 @@
       "409",
       "500"
     ]
-  }
-,
+  },
   "POST /class-schedules/batch": {
     "path": "/class-schedules/batch",
     "method": "POST",
@@ -8623,5 +9003,55 @@
       "403",
       "409"
     ]
+  },
+  "POST /payments/{id}/refund/confirm": {
+    "path": "/payments/{id}/refund/confirm",
+    "method": "POST",
+    "summary": "Confirm an actual refund using its receipt or bank reference",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+      }
+    ],
+    "body": {
+      "type": "object",
+      "required": [
+        "reason",
+        "reference"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 3
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 3
+        }
+      }
+    },
+    "statusCodes": [
+      "200",
+      "409"
+    ]
   }
-}
+}

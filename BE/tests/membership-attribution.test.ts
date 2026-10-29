@@ -94,7 +94,7 @@ for (const currentActive of [false, true]) {
       endTime: new Date("2080-01-01T02:00:00Z"),
       class: { id: "gym", capacity: 20, classType: "REGULAR", facilityId: null } };
     const tx = {
-      membershipSubscription: { findFirst: async ({ where }: any) => where.status === "SCHEDULED" || !currentActive ? null :
+      membershipSubscription: { findFirst: async ({ where }: any) => where.id ? { id: "original-paid-sub" } : where.status === "SCHEDULED" || !currentActive ? null :
         { id: "unrelated-new-sub", tier: "PREMIUM", endDate: new Date("2099-01-01"), plan: { maxConcurrentClasses: 6 } } },
       classSchedule: { findFirst: async () => schedule },
       term: { findUnique: async () => ({ id: "term", status: "IN_PROGRESS", registrationStartDate: new Date("2000-01-01"), registrationEndDate: new Date("2099-01-01") }) },

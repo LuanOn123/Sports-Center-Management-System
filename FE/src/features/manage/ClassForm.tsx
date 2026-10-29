@@ -44,6 +44,8 @@ export function ClassForm({
     classSports(initial).map((s) => s.id),
   );
   const [search, setSearch] = useState("");
+  const [refreshRequirements, setRefreshRequirements] = useState(false);
+  const [refreshReason, setRefreshReason] = useState("");
   const [roomId, setRoomId] = useState(String(initial.defaultRoomId ?? ""));
   const [capacity, setCapacity] = useState(String(initial.capacity ?? ""));
   const [minCapacity, setMinCapacity] = useState(
@@ -70,18 +72,33 @@ export function ClassForm({
   });
   const allSports = sports.data?.data ?? [];
   const selected = allSports.filter((s) => sportIds.includes(s.id));
-  const allowedAreas = selected.length
-    ? ["INDOOR", "OUTDOOR", "POOL"].filter((area) =>
-        selected.every((s) => s.areaTypes.includes(area)),
-      )
-    : [];
+  const sameSports =
+    sportIds.length === classSports(initial).length &&
+    sportIds.every((id) => classSports(initial).some((s) => s.id === id));
+  const retainSnapshot = !!initial.id && sameSports && !refreshRequirements;
+  const snapshot = initial.requirementsSnapshot as
+    Record<string, number> | undefined;
+  const allowedAreas = retainSnapshot
+    ? [String(initial.areaType)]
+    : selected.length
+      ? ["INDOOR", "OUTDOOR", "POOL"].filter((area) =>
+          selected.every((s) => s.areaTypes.includes(area)),
+        )
+      : [];
   const eligibleRooms =
     rooms.data?.data.filter(
       (r) =>
         r.isActive &&
         allowedAreas.includes(r.areaType) &&
-        selected.every((sport) =>
-          hasEquipment(sport.requirements ?? [], r.capabilities, r.areaType),
+        hasEquipment(
+          retainSnapshot && snapshot != null
+            ? Object.entries(snapshot).map(([key, minimum]) => ({
+                key,
+                minimum,
+              }))
+            : selected.flatMap((s) => s.requirements ?? []),
+          r.capabilities,
+          r.areaType,
         ),
     ) ?? [];
   const room = eligibleRooms.find((r) => r.id === roomId);
@@ -189,6 +206,10 @@ export function ClassForm({
         ) {
           body.attendancePolicy = policy;
           if (policy === "FIXED") body.plannedSessionCount = Number(planned);
+        }
+        if (initial.id && refreshRequirements) {
+          body.refreshRequirements = true;
+          body.reason = refreshReason.trim();
         }
         onBusyChange?.(true);
         save.mutate(body);
@@ -410,6 +431,34 @@ export function ClassForm({
           <p className="field-note wide">
             Chính sách chuyên cần đã khóa vì lớp có lượt đăng ký.
           </p>
+        )}
+        {Boolean(initial.id) && (
+          <div className="wide">
+            <label>
+              <input
+                type="checkbox"
+                checked={refreshRequirements}
+                onChange={(e) => setRefreshRequirements(e.target.checked)}
+              />{" "}
+              Cập nhật điều kiện lớp theo bộ môn hiện tại
+            </label>
+            <p className="field-note">
+              Bỏ chọn để giữ điều kiện đã lưu của lớp. Hệ thống sẽ kiểm tra toàn
+              bộ phòng và lịch sắp tới trước khi cập nhật.
+            </p>
+            {refreshRequirements && (
+              <label>
+                Lý do cập nhật điều kiện
+                <input
+                  required
+                  minLength={3}
+                  maxLength={1000}
+                  value={refreshReason}
+                  onChange={(e) => setRefreshReason(e.target.value)}
+                />
+              </label>
+            )}
+          </div>
         )}
       </fieldset>
       {(error || save.error) && <ErrorState error={error || save.error} />}

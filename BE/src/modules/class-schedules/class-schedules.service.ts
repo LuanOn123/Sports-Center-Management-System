@@ -263,6 +263,7 @@ async function createScheduleBatchInTx(tx: Prisma.TransactionClient, data: {
     if (i && row.startTime < ordered[i - 1].endTime)
       throw new AppError("Các buổi trong lịch tạo mới không được trùng nhau.", 409);
   }
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('class:assignment:' || ${data.classId}::text))`;
   const coachIds = await getCoachIdsOfClass(tx, data.classId);
   await lockScheduleResources(tx, [data.roomId], coachIds);
   const start = ordered[0].startTime, end = ordered[ordered.length - 1].endTime;
@@ -285,8 +286,14 @@ async function createScheduleBatchInTx(tx: Prisma.TransactionClient, data: {
   const rows = ordered.map((row) => {
     const auto = terms.find((term) => term.facilityId === room!.facilityId && term.status !== "CLOSED" && term.startDate <= row.startTime && term.endDate >= row.endTime)
       ?? terms.find((term) => term.status !== "CLOSED" && term.startDate <= row.startTime && term.endDate >= row.endTime);
+    if (!data.termId && !auto) throw new AppError("Hãy chọn kỳ học hợp lệ bao phủ các buổi cần tạo.", 409, { code: "TERM_REQUIRED" });
     return { ...row, classId: data.classId, roomId: data.roomId, termId: data.termId ?? auto?.id, status: "SCHEDULED" as const };
   });
+  for (const termId of [...new Set(rows.map(row => row.termId!))].sort()) {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('term:' || ${termId}::text))`;
+    const related = rows.filter(row => row.termId === termId);
+    await assertCanScheduleInTerm(termId, related[0].startTime, related[related.length - 1].endTime, room!.facilityId, tx);
+  }
   const result = await tx.classSchedule.createMany({ data: rows });
   return { schedulesCreated: result.count };
 }
@@ -605,6 +612,12 @@ export async function updateSchedule(id: string, data: any) {
       await checkConflicts(tx, roomId, existing.classId, startTime, endTime, id, data.coachId ?? fresh.coachId ?? undefined);
 
       // A11: không dời lịch nếu phá chỗ đã hợp lệ (trùng giờ / ngoài hạn gói của member đang giữ chỗ).
+      const selectedTermId = termTouched ? newTermId : fresh.termId;
+      if (selectedTermId) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('term:' || ${selectedTermId}::text))`;
+        await assertCanScheduleInTerm(selectedTermId, startTime, endTime, room.facilityId, tx);
+      }
+      if (termTouched && !newTermId) throw new AppError("Không thể bỏ kỳ học khỏi lịch vận hành.", 409);
       await assertScheduleMoveKeepsBookingsValid(tx, { scheduleId: id, startTime, endTime, termId: termTouched ? newTermId : existing.termId });
 
       // A12: CAS trạng thái — lịch vừa bị hủy/hoàn tất trong lúc chờ lock thì không ghi.

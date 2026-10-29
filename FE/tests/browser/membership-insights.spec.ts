@@ -159,7 +159,7 @@ for (const role of ["ADMIN", "MANAGER"]) {
       .selectOption("term-a");
     await expect.poll(() => queries.at(-1)?.get("termId")).toBe("term-a");
     expect(queries.at(-1)?.get("startDate")).toBe("2026-10-01");
-    if (role === "ADMIN") expect(queries.at(-1)?.get("facilityId")).toBe("ALL");
+    if (role === "ADMIN") expect(queries.at(-1)?.has("facilityId")).toBe(false);
     else expect(queries.at(-1)?.has("facilityId")).toBe(false);
     await page
       .getByText("Hội viên sử dụng gói này để học lớp nào", { exact: true })

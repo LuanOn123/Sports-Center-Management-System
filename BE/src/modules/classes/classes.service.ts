@@ -150,7 +150,7 @@ export async function getClassRegistrations(id: string) {
   return { totalMembers: members.size, totalEnrollments: enrollments.length, members: [...members.values()], sessions };
 }
 
-export async function updateClass(id: string, data: any) {
+async function updateClassInternal(id: string, data: any) {
   const cls = await prisma.class.findUnique({ where: { id }, include: { sports: true } });
   if (!cls) throw new AppError("Class not found", 404);
 
@@ -195,6 +195,8 @@ export async function updateClass(id: string, data: any) {
     await assertDefaultRoom(data.defaultRoomId === undefined ? cls.defaultRoomId : data.defaultRoomId, effectiveAreaType, data.capacity ?? cls.capacity);
   }
 
+  const sportsChanged = data.sportIds && (data.sportIds.length !== cls.sports.length || data.sportIds.some((id: string) => !cls.sports.some(s => s.id === id)));
+  if (data.refreshRequirements && (!data.reason || data.reason.trim().length < 3)) throw new AppError("Cập nhật điều kiện lớp phải có lý do.", 400);
   let sportsToCheck = cls.sports;
   if (data.sportIds) {
     const sports = await prisma.sport.findMany({ where: { id: { in: data.sportIds }, isActive: true } });
@@ -202,7 +204,7 @@ export async function updateClass(id: string, data: any) {
     sportsToCheck = sports;
   }
 
-  if (data.areaType !== undefined || data.sportIds !== undefined) {
+  if ((data.areaType !== undefined && data.areaType !== cls.areaType) || sportsChanged || data.refreshRequirements) {
     assertSportsSupportAreaType(sportsToCheck, effectiveAreaType);
   }
 
@@ -224,7 +226,7 @@ export async function updateClass(id: string, data: any) {
     }
   }
 
-  const { sportIds, ...restData } = data;
+  const { sportIds, refreshRequirements, reason, ...restData } = data;
   const updateData: any = { ...restData };
 
   // FINAL: FIXED snapshot không silent đổi. Đổi policy/tổng khi đã có enrollment
@@ -281,7 +283,7 @@ export async function updateClass(id: string, data: any) {
   const effectiveSports = await prisma.sport.findMany({
     where: { id: { in: sportIds ?? cls.sports.map((sport) => sport.id) } }, include: { requirements: true },
   });
-  const requirements = mergeRequirements(effectiveSports.flatMap((sport) => sport.requirements));
+  const requirements = (sportsChanged || refreshRequirements ? mergeRequirements(effectiveSports.flatMap((sport) => sport.requirements)) : cls.requirementsSnapshot ?? mergeRequirements(effectiveSports.flatMap((sport) => sport.requirements))) as Record<string, number>;
   const upcoming = await prisma.classSchedule.findMany({ where: { classId: id, status: "SCHEDULED", endTime: { gt: new Date() } }, select: { roomId: true } });
   const roomIds = [...new Set([data.defaultRoomId ?? cls.defaultRoomId, ...upcoming.map((row) => row.roomId)].filter(Boolean))] as string[];
   const rooms = await prisma.room.findMany({ where: { id: { in: roomIds } }, include: { capabilities: true } });
@@ -419,6 +421,14 @@ export async function assignCoach(classId: string, coachId: string, isPrimary: b
   });
 
   await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('class:assignment:' || ${classId}::text))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('schedule:coach:' || ${coachId}::text))`;
+    await assertNoUpcomingScheduleConflict(classId, coachId);
+    if (!isPrimary) {
+      const current = await tx.classMember.findUnique({ where: { classId_coachId: { classId, coachId } } });
+      if (current?.isPrimary && await tx.classSchedule.count({ where: { classId, status: "SCHEDULED", endTime: { gt: new Date() } } }))
+        throw new AppError("Hãy phân công HLV chính thay thế trước khi chuyển HLV hiện tại thành HLV phụ.", 409);
+    }
     if (isPrimary) {
       // Unset existing primary atomically
       await tx.classMember.updateMany({
@@ -450,38 +460,9 @@ export async function assignCoach(classId: string, coachId: string, isPrimary: b
  * Idempotent: HLV đã là HLV hỗ trợ thì trả về chi tiết Class và không gửi lại thông báo.
  */
 export async function assignSupportCoach(classId: string, coachId: string) {
-  const cls = await prisma.class.findUnique({
-    where: { id: classId },
-    include: { sports: true },
-  });
-  if (!cls) throw new AppError("Class not found", 404);
-  if (!cls.isActive) throw new AppError("Class is inactive", 400);
-
-  const coach = await findAssignableCoach(coachId, cls.facilityId);
-  assertCoachHasClassSports(coach, cls.sports);
-
-  const existingAssignment = await prisma.classMember.findUnique({
-    where: { classId_coachId: { classId, coachId } },
-  });
-
-  // HLV chính không kiêm nhiệm HLV hỗ trợ: đổi vai trò phải dùng POST /classes/:id/coaches.
-  if (existingAssignment?.isPrimary) {
-    throw new AppError(
-      "Coach is the primary coach of this class. Reassign roles via POST /classes/:id/coaches",
-      409
-    );
-  }
-
-  // Đã là HLV hỗ trợ: idempotent, không tạo trùng và không gửi lại thông báo.
-  if (existingAssignment) return getClassById(classId);
-
-  await assertNoUpcomingScheduleConflict(classId, coachId);
-
-  await prisma.classMember.create({ data: { classId, coachId, isPrimary: false } });
-
-  await notifyCoachChange(classId, cls.name, coach.user.fullName, "ASSIGNED", false);
-
-  return getClassById(classId);
+  const existing = await prisma.classMember.findUnique({ where: { classId_coachId: { classId, coachId } } });
+  if (existing?.isPrimary) throw new AppError("HLV chính không thể đồng thời là HLV phụ. Hãy phân công người thay thế trước.", 409);
+  return assignCoach(classId, coachId, false);
 }
 
 export async function removeCoach(classId: string, coachId: string) {
@@ -491,7 +472,13 @@ export async function removeCoach(classId: string, coachId: string) {
   });
   if (!cm) throw new AppError("Coach assignment not found", 404);
   
-  await prisma.classMember.delete({ where: { classId_coachId: { classId, coachId } } });
+  await prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('class:assignment:' || ${classId}::text))`;
+    const current = await tx.classMember.findUnique({ where: { classId_coachId: { classId, coachId } } });
+    if (current?.isPrimary && await tx.classSchedule.count({ where: { classId, status: "SCHEDULED", endTime: { gt: new Date() } } }))
+      throw new AppError("Không thể gỡ HLV chính khi lớp còn lịch hoạt động. Hãy phân công người thay thế.", 409);
+    await tx.classMember.delete({ where: { classId_coachId: { classId, coachId } } });
+  });
   
   await notifyCoachChange(classId, cm.class.name, cm.coach.user.fullName, "REMOVED", cm.isPrimary);
 
@@ -499,13 +486,13 @@ export async function removeCoach(classId: string, coachId: string) {
 }
 
 export async function deleteClass(id: string) {
-  const cls = await prisma.class.findUnique({ where: { id } });
-  if (!cls) throw new AppError("Class not found", 404);
-  const upcoming = await prisma.classSchedule.count({
-    where: { classId: id, status: "SCHEDULED", startTime: { gte: new Date() } },
+  return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('class:assignment:' || ${id}::text))`;
+    if (!(await tx.class.findUnique({ where: { id } }))) throw new AppError("Class not found", 404);
+    if (await tx.classSchedule.count({ where: { classId: id, status: "SCHEDULED", endTime: { gt: new Date() } } }))
+      throw new AppError("Không thể ngừng lớp đang có lịch hoạt động.", 409);
+    return tx.class.update({ where: { id }, data: { isActive: false } });
   });
-  if (upcoming > 0) throw new AppError("Cannot deactivate class with upcoming schedules", 400);
-  return prisma.class.update({ where: { id }, data: { isActive: false } });
 }
 
 // ─────────────────────────────────────────
@@ -794,4 +781,15 @@ export async function getClassCoursePlan(
         }
       : null,
   };
+}
+
+export async function updateClass(id: string, data: any) {
+  return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('class:assignment:' || ${id}::text))`;
+    const current = await tx.class.findUnique({ where: { id }, select: { defaultRoomId: true } });
+    const sessions = await tx.classSchedule.findMany({ where: { classId: id, status: "SCHEDULED", endTime: { gt: new Date() } }, select: { roomId: true } });
+    const rooms = [...new Set([current?.defaultRoomId, data.defaultRoomId, ...sessions.map(s => s.roomId)].filter(Boolean))].sort() as string[];
+    for (const roomId of rooms) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('schedule:room:' || ${roomId}::text))`;
+    return updateClassInternal(id, data);
+  });
 }

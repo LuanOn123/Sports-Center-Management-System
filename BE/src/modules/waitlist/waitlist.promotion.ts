@@ -1,9 +1,10 @@
+import { activateMemberDue } from "../subscriptions/entitlement.service.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { requestContext } from "../../config/request-context.js";
-import { lockMemberClass, lockMemberQuota } from "../../utils/dbLocks.js";
+
 import { assertCanBook } from "../enrollments/enrollments.service.js";
 import { enqueueNotification, flushNotificationOutbox } from "../notifications/outbox.service.js";
 
@@ -38,8 +39,15 @@ export async function promoteNextEligible(
 
   for (const entry of waiting) {
     // Lock theo member được promote để serialize với booking khác của họ.
-    await lockMemberQuota(tx, entry.memberId);
-    await lockMemberClass(tx, entry.memberId, freshSchedule.class.id);
+    const keys = ["membership:member:" + entry.memberId, "enrollment:member-quota:" + entry.memberId,
+      "enrollment:member-class:" + entry.memberId + ":" + freshSchedule.class.id];
+    let acquired = true;
+    for (const key of keys) {
+      const rows = await tx.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_xact_lock(hashtext(${key})) AS locked`;
+      if (!rows[0]?.locked) { acquired = false; break; }
+    }
+    if (!acquired) continue;
+    await activateMemberDue(tx, entry.memberId);
 
     let existing: any = null;
     let subscriptionId: string | undefined;

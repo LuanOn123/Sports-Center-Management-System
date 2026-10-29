@@ -1,3 +1,7 @@
+import { RefreshToken } from "../../models/RefreshToken.js";
+import { requestContext } from "../../config/request-context.js";
+import { effectiveCoachWhere } from "../operations/effective-coaches.js";
+import { provisionAccount } from "./provisioning.service.js";
 import { synchronizeUserProjection } from "./user-projection.service.js";
 import { staffAssignmentView } from "../facilities/staff-assignment-view.js";
 import { User } from "../../models/User.js";
@@ -5,12 +9,9 @@ import { MemberProfile } from "../../models/MemberProfile.js";
 import { CoachProfile } from "../../models/CoachProfile.js";
 import { ManagerProfile } from "../../models/ManagerProfile.js";
 import { AppError } from "../../middlewares/errorHandler.js";
-import { hashPassword } from "../../utils/bcrypt.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { prisma } from "../../config/prisma.js";
-import { ensureActiveFreeSubscription } from "../subscriptions/free-subscription.service.js";
 import { disconnectUserSockets } from "../chat/chat.socket.js";
-import mongoose from "mongoose";
 import type { CreateUserInput, UpdateUserInput, UserQueryInput } from "./users.schema.js";
 
 function transformProfile(doc: any) {
@@ -93,104 +94,12 @@ export async function listUsers(query: UserQueryInput) {
   return { users, pagination: buildPaginationMeta(total, currentPage, pageSize) };
 }
 
-export async function createUser(data: CreateUserInput) {
-  const existing = await User.findOne({ email: data.email });
-  if (existing) throw new AppError("Email is already in use", 409);
-
+export async function createUser(data: CreateUserInput, facilityId?: string) {
   const sportIds = [...new Set(data.sportIds ?? [])];
-  if (data.role === "COACH") {
-    const count = await prisma.sport.count({ where: { id: { in: sportIds }, isActive: true } });
-    if (!sportIds.length || count !== sportIds.length)
-      throw new AppError("Vui lòng chọn bộ môn đang hoạt động cho HLV.", 400);
-  }
-  const hashed = await hashPassword(data.password);
-
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  try {
-    const user = new User({
-      email: data.email,
-      password: hashed,
-      fullName: data.fullName,
-      phone: data.phone || null,
-      gender: data.gender || null,
-      dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
-      role: data.role,
-    });
-    await user.save({ session });
-    const userId = user._id.toString();
-
-    if (data.role === "MEMBER") {
-      const mp = new MemberProfile({
-        userId,
-        fitnessGoal: data.fitnessGoal || null,
-        trainingLevel: data.trainingLevel || null,
-        trainingPreference: data.trainingPreference || null,
-      });
-      await mp.save({ session });
-    } else if (data.role === "COACH") {
-      const cp = new CoachProfile({ userId, experienceYears: data.experienceYears, bio: data.bio });
-      await cp.save({ session });
-    } else if (data.role === "MANAGER") {
-      const mgr = new ManagerProfile({ userId });
-      await mgr.save({ session });
-    }
-
-    await session.commitTransaction();
-
-    // DUAL-WRITE: Tạo bản sao trong PostgreSQL
-    await prisma.user.create({
-      data: {
-        id: userId,
-        email: user.email,
-        password: user.password,
-        fullName: user.fullName,
-        phone: user.phone,
-        gender: user.gender as any,
-        dateOfBirth: user.dateOfBirth,
-        role: user.role as any,
-      }
-    });
-
-    if (data.role === "MEMBER") {
-      const mp = await MemberProfile.findOne({ userId });
-      if (mp) {
-        await prisma.memberProfile.create({
-          data: {
-            id: mp._id.toString(),
-            userId: userId,
-            fitnessGoal: data.fitnessGoal || null,
-            trainingLevel: data.trainingLevel as any || null,
-            trainingPreference: data.trainingPreference || null,
-          }
-        });
-        await prisma.$transaction((tx) =>
-          ensureActiveFreeSubscription(tx, mp._id.toString())
-        );
-      }
-    } else if (data.role === "COACH") {
-      const cp = await CoachProfile.findOne({ userId });
-      if (cp) {
-        await prisma.coachProfile.create({
-          data: { id: cp._id.toString(), userId, experienceYears: data.experienceYears, bio: data.bio, specializations: { create: sportIds.map((sportId) => ({ sportId })) } }
-        });
-      }
-    } else if (data.role === "MANAGER") {
-      const mgr = await ManagerProfile.findOne({ userId });
-      if (mgr) {
-        await prisma.managerProfile.create({
-          data: { id: mgr._id.toString(), userId: userId }
-        });
-      }
-    }
-
-    return buildUserResponse(userId);
-  } catch (err) {
-    if (session.inTransaction()) await session.abortTransaction();
-    throw err;
-  } finally {
-    session.endSession();
-  }
+  if (data.role === "COACH" && (!sportIds.length || await prisma.sport.count({ where: { id: { in: sportIds }, isActive: true } }) !== sportIds.length))
+    throw new AppError("Vui lòng chọn bộ môn đang hoạt động cho HLV.", 400);
+  const userId = await provisionAccount({ ...data, sportIds }, facilityId);
+  return buildUserResponse(userId);
 }
 
 export async function getUserById(id: string) {
@@ -199,7 +108,7 @@ export async function getUserById(id: string) {
   return result;
 }
 
-export async function updateUser(id: string, data: UpdateUserInput, requesterId: string) {
+async function updateUserInternal(id: string, data: UpdateUserInput, requesterId: string) {
   const user = await User.findById(id);
   if (!user) throw new AppError("User not found", 404);
 
@@ -211,7 +120,7 @@ export async function updateUser(id: string, data: UpdateUserInput, requesterId:
   if (["MANAGER", "ADMIN"].includes(user.role) && (data.isActive === false || (data.role && data.role !== user.role))) {
     const activeManagers = await User.countDocuments({ role: user.role, isActive: true });
     if (activeManagers <= 1) {
-      throw new AppError("Cannot deactivate or demote the last active MANAGER", 400);
+      throw new AppError(`Không thể khóa hoặc đổi vai trò của ${user.role === "ADMIN" ? "quản trị viên" : "quản lý"} cuối cùng.`, 400);
     }
   }
 
@@ -257,7 +166,7 @@ export async function updateUser(id: string, data: UpdateUserInput, requesterId:
 
   // Create profile if role changed
   if (data.role && data.role !== user.role) {
-    await User.updateOne({ _id: id }, { role: data.role });
+    await User.updateOne({ _id: id }, { role: data.role, $inc: { tokenVersion: 1 } });
     const userId = user._id.toString();
     if (data.role === "COACH") {
       await CoachProfile.findOneAndUpdate({ userId }, { userId }, { upsert: true });
@@ -270,6 +179,8 @@ export async function updateUser(id: string, data: UpdateUserInput, requesterId:
 
   // Ngắt socket khi khóa tài khoản hoặc đổi role
   if (data.isActive === false || (data.role && data.role !== user.role)) {
+    if (data.isActive === false) await User.updateOne({ _id: id }, { $inc: { tokenVersion: 1 } });
+    await RefreshToken.deleteMany({ userId: id });
     disconnectUserSockets(id);
   }
 
@@ -277,20 +188,21 @@ export async function updateUser(id: string, data: UpdateUserInput, requesterId:
   return buildUserResponse(id);
 }
 
-export async function deactivateUser(id: string, requesterId: string) {
+async function deactivateUserInternal(id: string, requesterId: string) {
   if (id === requesterId) throw new AppError("Cannot deactivate your own account", 400);
 
   const user = await User.findById(id);
   if (!user) throw new AppError("User not found", 404);
 
   if (["MANAGER", "ADMIN"].includes(user.role)) {
-    const activeManagers = await User.countDocuments({ role: "MANAGER", isActive: true });
+    const activeManagers = await User.countDocuments({ role: user.role, isActive: true });
     if (activeManagers <= 1) {
-      throw new AppError("Cannot deactivate the last active MANAGER", 400);
+      throw new AppError(`Không thể khóa ${user.role === "ADMIN" ? "quản trị viên" : "quản lý"} cuối cùng.`, 400);
     }
   }
 
-  await User.updateOne({ _id: id }, { isActive: false });
+  await User.updateOne({ _id: id }, { isActive: false, $inc: { tokenVersion: 1 } });
+  await RefreshToken.deleteMany({ userId: id });
   disconnectUserSockets(id);
   await synchronizeUserProjection(id);
 
@@ -301,4 +213,27 @@ export async function deactivateUser(id: string, requesterId: string) {
     role: user.role,
     isActive: false,
   };
+}
+
+export async function updateUser(id: string, data: UpdateUserInput, requesterId: string) {
+  return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('users:administration'))`;
+    if (data.isActive === false || (data.role && data.role !== (await User.findById(id))?.role)) await assertAccountCanDeactivate(id, tx);
+    return updateUserInternal(id, data, requesterId);
+  });
+}
+export async function deactivateUser(id: string, requesterId: string) {
+  return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('users:administration'))`;
+    await assertAccountCanDeactivate(id, tx);
+    return deactivateUserInternal(id, requesterId);
+  });
+}
+async function assertAccountCanDeactivate(userId: string, tx: any) {
+  const profile = await prisma.coachProfile.findUnique({ where: { userId }, select: { id: true } });
+  if (!profile) return;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('schedule:coach:' || ${profile.id}::text))`;
+  const count = await requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, () => prisma.classSchedule.count({
+    where: { status: "SCHEDULED", endTime: { gt: new Date() }, ...effectiveCoachWhere(profile.id) } }));
+  if (count) throw new AppError("HLV còn lịch giảng dạy. Hãy điều phối người thay trước khi khóa tài khoản.", 409);
 }

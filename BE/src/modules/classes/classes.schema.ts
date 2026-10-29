@@ -38,6 +38,8 @@ export const CreateClassSchema = z.object({
 });
 
 export const UpdateClassSchema = z.object({
+  refreshRequirements: z.boolean().optional(),
+  reason: z.string().trim().min(3).max(1000).optional(),
   name: z.string().min(2).optional(),
   description: z.string().optional(),
   sportIds: z.array(z.string().min(1)).min(1, "Must assign at least one sport").max(1, "Mỗi lớp chỉ được dạy một bộ môn. Hãy tạo lớp riêng cho môn khác.").optional(),

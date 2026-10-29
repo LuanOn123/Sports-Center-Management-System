@@ -1,3 +1,4 @@
+import { activateMemberDue } from "./entitlement.service.js";
 import {
   MembershipPlan,
   MembershipSubscription,
@@ -57,6 +58,9 @@ export async function inspectPlanPurchase(
     ? (requestedStartDate instanceof Date ? requestedStartDate : new Date(requestedStartDate))
     : undefined;
 
+  if (reqDate && !Number.isFinite(reqDate.getTime())) throw new AppError("Ngày kích hoạt gói không hợp lệ.", 400);
+  const queued = await db.membershipSubscription.findFirst({ where: { memberId: memberProfileId, status: "SCHEDULED" } });
+  if (queued) throw new AppError("Bạn đã có một gói chờ kích hoạt. Hãy xử lý gói đang chờ trước khi mua gói mới.", 409, { code: "SCHEDULED_SUBSCRIPTION_EXISTS" });
   const currentActive = await db.membershipSubscription.findFirst({
     where: { memberId: memberProfileId, status: "ACTIVE" },
     include: {
@@ -220,12 +224,13 @@ export async function applyPlanSwitchRules(
   requestedStartDate?: Date | string,
   now: Date = new Date(),
 ): Promise<PlanPurchaseContext> {
+  await activateMemberDue(tx, memberProfileId, now);
   const context = await inspectPlanPurchase(tx, memberProfileId, plan, requestedStartDate, now);
 
-  if (context.currentActive && context.shouldSuspendCurrentActive) {
+  if (context.currentActive && (context.shouldSuspendCurrentActive || (context.targetStatus === "ACTIVE" && context.currentActive.endDate <= now))) {
     const suspended = await tx.membershipSubscription.updateMany({
       where: { id: context.currentActive.id, status: "ACTIVE" },
-      data: { status: "SUSPENDED", suspendedAt: now },
+      data: context.currentActive.endDate <= now ? { status: "EXPIRED" } : { status: "SUSPENDED", suspendedAt: now },
     });
     if (suspended.count !== 1) {
       throw new AppError(

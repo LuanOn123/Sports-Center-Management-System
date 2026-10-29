@@ -33,7 +33,7 @@ function fixture() {
     facilityStaff: { findFirst: async () => ({ isActive: true }) },
     leaveRequest: { findFirst: async ({ where }: any) => leaves.find((leave) => leave.coachId === where.coachId && where.OR.some((range: any) => leave.startTime < range.startTime.lt && leave.endTime > range.endTime.gt)) },
     classSchedule: { findMany: async () => conflicts, createMany: async ({ data }: any) => { inserts.push(...data); return { count: data.length }; } },
-    term: { findMany: async () => [] },
+    term: { findUnique: async () => ({ id: "term", facilityId: "facility-a", status: "OPEN_REGISTRATION", startDate: new Date("2099-01-01"), endDate: new Date("2099-12-31") }), findMany: async () => [{ id: "term", facilityId: "facility-a", status: "OPEN_REGISTRATION", startDate: new Date("2099-01-01"), endDate: new Date("2099-12-31") }] },
   };
   return { tx, cls, room, inserts, conflicts, leaves, checkedCoaches, reads: () => resourceReads };
 }
