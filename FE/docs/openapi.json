@@ -8055,6 +8055,15 @@
               "type": "string"
             },
             "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          },
+          {
+            "name": "coachId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Effective teaching coach; COACH may only request their own timetable."
           }
         ],
         "responses": {
