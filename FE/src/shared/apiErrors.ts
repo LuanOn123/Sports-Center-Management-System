@@ -246,6 +246,8 @@ export function localizeApiError(
   rawMessage = rawMessage.replace(/^ROOM_CAPABILITY_MISSING:\s*/i, "Phòng chưa đủ dụng cụ bắt buộc: ");
   const detail = errors as
     { code?: string; conflicts?: unknown[]; uncovered?: unknown[] } | undefined;
+  if (detail?.code === "SCHEDULED_SUBSCRIPTION_EXISTS") rawMessage = "Bạn đã có gói chờ kích hoạt. Hãy xử lý gói chờ trước khi mua hoặc gia hạn.";
+  if (detail?.code === "REFUND_ALREADY_REQUESTED") rawMessage = "Giao dịch đã có yêu cầu hoàn tiền hoặc vừa đổi trạng thái. Vui lòng tải lại.";
   if (detail?.code === "SCHEDULE_MOVE_IMPACT") {
     const names = (items?: unknown[]) =>
       (items || [])

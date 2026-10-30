@@ -163,7 +163,7 @@ export async function listSchedules(query: any) {
     : undefined;
 
   const include = {
-    class: { include: { sports: true } },
+    class: { include: { sports: true, coaches: { where: { isPrimary: true }, include: { coach: { include: { user: { select: { fullName: true } } } } } } } },
     room: true,
     term: true,
     _count: {

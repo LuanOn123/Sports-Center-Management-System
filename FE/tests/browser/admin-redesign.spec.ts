@@ -207,7 +207,7 @@ test("sport picker filters rooms and persists capacity and area", async ({
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Tên lớp học").fill("Yoga thư giãn");
   await dialog.getByText("Chọn bộ môn cho lớp", { exact: true }).click();
-  await dialog.getByRole("checkbox", { name: /Yoga/ }).check();
+  await dialog.getByRole("radio", { name: /Yoga/ }).check();
   const rooms = dialog.getByRole("combobox", { name: "Phòng tập cho lớp" });
   await expect(rooms.locator("option")).toHaveCount(2);
   await expect(rooms).toContainText("Phòng Yoga · 20 chỗ · Trong nhà");

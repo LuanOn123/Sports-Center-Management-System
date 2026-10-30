@@ -112,7 +112,7 @@ export function ManagerLayout({
               key={r.slug}
               path={`/manager/${r.slug}`}
               element={
-                <ResourcePage resource={r} userId={user.id} role="MANAGER" />
+                <ResourcePage key={r.slug} resource={r} userId={user.id} role="MANAGER" />
               }
             />
           ))}

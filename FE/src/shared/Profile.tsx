@@ -108,6 +108,7 @@ export function Profile({
                 ? "PATCH /auth/me"
                 : "PATCH /auth/me/change-password"
             }
+            profileRole={user.role}
             initial={tab === "profile" ? user : {}}
             onBusyChange={setBusy}
             onSuccess={() => {

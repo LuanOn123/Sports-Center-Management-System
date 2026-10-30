@@ -97,8 +97,8 @@ for (const width of [390, 1440]) {
     await page.getByRole("button", { name: "Chỉnh sửa thông tin" }).click();
     await page.getByLabel("Họ và tên", { exact: true }).fill("Lễ tân Mai mới");
     await page.getByRole("button", { name: "Lưu thay đổi" }).click();
-    await expect(page.getByRole("main").getByRole("status")).toContainText(
-      "Cập nhật thành công",
+    await expect(page.getByRole("region", { name: "Thông báo thao tác" })).toContainText(
+      "Đã lưu thay đổi thành công.",
     );
     await expect(page.locator(".member-profile-overview h2")).toHaveText(
       "Lễ tân Mai mới",

@@ -111,8 +111,8 @@ export function ResourcePage({
   });
   const visibleCalendarRange = calendarRange(calendarCursor, calendarView);
   const requestQuery = {
-    ...query,
-    ...(query.search !== undefined ? { search } : {}),
+    ...Object.fromEntries(Object.entries(query).filter(([name]) => params.some((p) => p.name === name))),
+    ...(query.search !== undefined && params.some((p) => p.name === "search") ? { search } : {}),
     ...(r.slug === "staff" ? { role: "RECEPTIONIST" } : {}),
     ...(r.slug === "schedules"
       ? {
@@ -133,7 +133,7 @@ export function ResourcePage({
   const scheduleCoachNames = useQuery({
     queryKey: ["schedule-coach-names", getFacilityId()],
     queryFn: ({ signal }) => allPages<RecordData>("GET /coaches", { signal }),
-    enabled: r.slug === "schedules" && role === "MANAGER",
+    enabled: r.slug === "schedules" && ["MANAGER", "ADMIN"].includes(role),
   });
   function withScheduleCoach(row: RecordData): RecordData {
     if (!row.coachId || at(row, "coach.user.fullName") || at(row, "coach.fullName")) return row;

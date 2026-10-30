@@ -511,6 +511,7 @@ export function MembershipPage() {
                 </div>
                 <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4 }}>
                   {formatMemberDate(scheduledSub.endDate)}
+                  <CancelSubscription subscription={scheduledSub} role="MEMBER" />
                 </div>
               </div>
             </div>
@@ -763,6 +764,7 @@ export function MembershipPage() {
                       className="button primary"
                       style={{ width: "100%", justifyContent: "center" }}
                       disabled={
+                        Boolean(scheduledSub) ||
                         subLoading ||
                         Boolean(subError) ||
                         Number(p.price) <= 0 ||

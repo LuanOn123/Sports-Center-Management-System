@@ -37,6 +37,7 @@ export function CancelSubscription({
         },
       ),
   });
+  const scheduled = subscription.status === "SCHEDULED";
   const estimate = refundEstimate(
     subscription.endDate,
     Number(
@@ -51,7 +52,7 @@ export function CancelSubscription({
     setOpen(false);
     if (mutation.isSuccess) void cache.invalidateQueries();
   };
-  if (subscription.status !== "ACTIVE" && !open) return null;
+  if (!["ACTIVE", "SCHEDULED"].includes(subscription.status) && !open) return null;
   return (
     <>
       <button
@@ -74,7 +75,7 @@ export function CancelSubscription({
           {mutation.isSuccess ? (
             <div className="confirm-copy">
               <p className="success" role="status">
-                Gói tập và các lượt đặt lớp tương lai đã được hủy.
+                {scheduled ? "Đã hủy gói chờ. Gói đang sử dụng được giữ nguyên." : "Gói tập và các lượt đặt lớp tương lai đã được hủy."}
               </p>
               <p>
                 {role === "MANAGER"
@@ -97,17 +98,16 @@ export function CancelSubscription({
                 <strong>
                   {String(at(subscription, "plan.name") || "gói tập")}
                 </strong>{" "}
-                sẽ chấm dứt quyền lợi và hủy toàn bộ lượt đặt lớp trong tương
-                lai ở mọi cơ sở.
+                {scheduled ? "chỉ hủy gói chờ này, không ảnh hưởng gói đang dùng." : "sẽ chấm dứt quyền lợi và hủy toàn bộ lượt đặt lớp trong tương lai ở mọi cơ sở."}
               </p>
               <p>
-                {role === "MEMBER"
+                {scheduled ? "Gói chưa kích hoạt: yêu cầu hoàn 100% khoản thanh toán gốc. Gói đang dùng được giữ nguyên." : role === "MEMBER"
                   ? "Còn trên 15 ngày: hoàn 30% khoản thanh toán gốc. Còn từ 15 ngày trở xuống: không hoàn tiền."
                   : "Hoàn tiền theo tỷ lệ số ngày còn lại trên thời hạn gói gốc."}
               </p>
               <p>
                 Dự kiến còn {estimate.daysLeft} ngày · Hoàn khoảng{" "}
-                <strong>{money(estimate.refundAmount)}</strong>.
+                <strong>{money(scheduled ? Number(subscription.payments?.find((p) => p.status === "SUCCESS")?.amount ?? subscription.plan?.price ?? 0) : estimate.refundAmount)}</strong>.
               </p>
               <p className="field-note">
                 Ước tính theo khoản đã thu nếu có, hoặc giá gói hiện tại. Số

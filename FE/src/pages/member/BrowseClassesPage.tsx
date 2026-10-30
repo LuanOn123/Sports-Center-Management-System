@@ -1,3 +1,4 @@
+import { FacilityPicker } from "../../shared/FacilityBoundary";
 import { sportNames } from "../../shared/sports";
 import { MemberTermBanner } from "../../shared/MemberTermBanner";
 import { useState } from "react";
@@ -156,6 +157,10 @@ export function BrowseClassesPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div className="member-desktop-facility">
+        <FacilityPicker label="Cơ sở tìm lớp" accessibleLabel="Cơ sở tìm lớp" />
+        <p>Chọn cơ sở để xem lớp học và lịch tập tại cơ sở đó.</p>
+      </div>
       {/* HEADER BANNER */}
       <div
         className="member-explore-hero"

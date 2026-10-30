@@ -90,11 +90,13 @@ export function SchemaForm({
   initial = {},
   fixed = {},
   choices = {},
+  profileRole,
   onBusyChange,
   onSuccess,
   onCancel,
 }: {
   operation: string;
+  profileRole?: string;
   params?: Record<string, string>;
   initial?: RecordData;
   fixed?: RecordData;
@@ -171,8 +173,8 @@ export function SchemaForm({
         continue;
       if (
         ["fitnessGoal", "trainingLevel", "trainingPreference"].includes(k) &&
-        values.role &&
-        values.role !== "MEMBER"
+        (profileRole ?? values.role) &&
+        (profileRole ?? values.role) !== "MEMBER"
       )
         continue;
       let v = values[k];
@@ -381,9 +383,7 @@ export function SchemaForm({
       {/POST \/subscriptions/.test(operation) && (
         <p className="confirm-copy">
           Chỉ lưu sau khi đã nhận đủ tiền. Hệ thống sẽ ghi nhận thanh toán thành
-          công và xuất hóa đơn ngay. Mua hoặc gia hạn thay thế gói đang hoạt
-          động bằng một gói mới. Kỳ mới bắt đầu ngay, không cộng ngày dư và
-          không nối tiếp sau ngày hết hạn cũ.
+          công và xuất hóa đơn ngay. Gia hạn cùng hạng nối tiếp sau ngày hết hạn. Nâng hạng có thể bắt đầu ngay hoặc lên lịch; hạ hạng chỉ bắt đầu sau khi gói hiện tại kết thúc. Mỗi hội viên chỉ có một gói chờ kích hoạt.
         </p>
       )}
       {operation === "POST /payments" && (
@@ -417,8 +417,8 @@ export function SchemaForm({
               !["fitnessGoal", "trainingLevel", "trainingPreference"].includes(
                 k,
               ) ||
-              values.role === undefined ||
-              values.role === "MEMBER",
+              (profileRole ?? values.role) === undefined ||
+              (profileRole ?? values.role) === "MEMBER",
           )
           .map(([k, s]) => {
             const required = Boolean(schema.required?.includes(k));

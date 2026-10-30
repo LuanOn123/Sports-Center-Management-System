@@ -293,7 +293,7 @@ test("reception views ended sessions without managing schedule or attendance", a
   await page.getByRole("button", { name: /Buổi đã kết thúc/ }).click();
   for (const name of ["Hoàn tất", "Chỉnh sửa", "Hủy lịch"]) await expect(page.getByRole("dialog").getByRole("button", { name, exact: true })).toHaveCount(0);
   expect(mutations).toEqual([]);
-  await page.getByRole("button", { name: "Học viên & điểm danh" }).click();
+  await page.getByRole("button", { name: "Học viên", exact: true }).click();
   await expect(
     page.locator("summary").filter({ hasText: "Chưa điểm danh" }),
   ).toBeVisible();

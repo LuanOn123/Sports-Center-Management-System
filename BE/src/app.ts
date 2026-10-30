@@ -81,7 +81,7 @@ app.use(
 
 // Health check
 app.get("/api/v1/health", (_req, res) => {
-  res.json({ success: true, message: "Sports Center API is running" });
+  res.json({ success: true, message: "Sports Center API is running", revision: process.env.RENDER_GIT_COMMIT || process.env.GIT_SHA || "local" });
 });
 
 // API routes

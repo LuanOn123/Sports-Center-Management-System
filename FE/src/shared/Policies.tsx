@@ -13,7 +13,7 @@ export function Policies({ role }: { role: string }) {
           Gói chỉ có hiệu lực khi đang hoạt động, đã đến ngày bắt đầu và chưa
           hết hạn. Gói đã ngừng quyền lợi, đã hủy hoặc hết hạn không cấp quyền đăng ký
           lớp. Lớp Premium yêu cầu gói Premium còn hiệu lực. Gói phải còn hạn
-          đến thời điểm buổi học bắt đầu.
+          đến thời điểm buổi học bắt đầu, trừ quyền học trọn kỳ đã được duyệt: khi đăng ký trọn khóa, gói còn ít nhất 50% tổng thời hạn đã mua được cấp quyền học lớp đó đến hết kỳ. Ngày hết hạn gói không thay đổi; quyền này không áp dụng cho lớp mới.
         </p>
         <p>
           Chỉ đăng ký lịch còn mở, chưa bắt đầu và còn chỗ. Mỗi hội viên chỉ có
@@ -28,8 +28,7 @@ export function Policies({ role }: { role: string }) {
           Buổi đầy có thể đăng ký chờ; khi có chỗ, hệ thống xét lại điều kiện đặt lớp.
         </p>
         <p>
-          Chỉ được hủy lượt đã đặt trước giờ bắt đầu. Hội viên chỉ được hủy lượt
-          của mình; huấn luyện viên không đăng ký hoặc hủy thay hội viên.
+          Hội viên liên hệ lễ tân khi cần hỗ trợ về lịch đã đăng ký. Giao diện hội viên không cung cấp xin nghỉ, đổi buổi hoặc hủy đặt chỗ. Huấn luyện viên không đăng ký hoặc hủy thay hội viên.
         </p>
       </section>
       <section className="panel workflow-card">
@@ -39,7 +38,7 @@ export function Policies({ role }: { role: string }) {
           cho sĩ số lớp. Khi hủy buổi học, các lượt đăng ký đang đặt sẽ bị hủy.
         </p>
         <p>
-          Quản lý hoặc lễ tân chỉ hoàn tất buổi học sau giờ kết thúc. Hoàn tất
+          Quản lý hoặc huấn luyện viên phụ trách chỉ hoàn tất buổi học sau giờ kết thúc. Hoàn tất
           lịch sẽ ghi vắng cho người chưa điểm danh. Điểm danh có bốn kết quả: có mặt,
           vắng mặt, đi muộn và vắng có phép; do quản lý hoặc huấn luyện viên phụ
           trách ghi nhận.
@@ -58,10 +57,8 @@ export function Policies({ role }: { role: string }) {
           Không ghi thêm một thanh toán trùng cho cùng khoản đã thu.
         </p>
         <p>
-          Mỗi hội viên có tối đa một gói ACTIVE. Mua hoặc gia hạn tạo gói mới
-          và ngừng quyền lợi gói cũ, không cộng ngày dư, không nối kỳ. Gói đã
-          ngừng, hết hạn hoặc hủy không thể khôi phục. Không được hạ hạng hoặc
-          chọn gói cùng hạng có thời hạn ngắn hơn thời hạn đã bán.
+          Mỗi hội viên có tối đa một gói ACTIVE. Gia hạn cùng hạng nối tiếp sau ngày hết hạn. Nâng hạng có thể bắt đầu ngay hoặc lên lịch; hạ hạng chỉ bắt đầu sau khi gói hiện tại kết thúc. Mỗi hội viên chỉ có một gói chờ kích hoạt. Gói đã
+          ngừng, hết hạn hoặc hủy không thể khôi phục. Gói chờ chưa kích hoạt có thể hủy theo chính sách hoàn 100%.
         </p>
         <p>
           Chỉ thanh toán thành công mới được ghi nhận hoàn tiền, do quản lý xử
