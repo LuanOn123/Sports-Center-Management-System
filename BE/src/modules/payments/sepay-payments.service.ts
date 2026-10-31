@@ -602,6 +602,8 @@ export async function retrySepayActivation(managerUserId: string, paymentId: str
       if (!fresh || fresh.subscriptionId) {
         throw new AppError("Giao dịch đã được kích hoạt bởi thao tác khác.", 409);
       }
+        if (fresh.status !== "SUCCESS" || fresh.refundRequestedAt)
+          throw new AppError("Giao dịch đã đổi trạng thái hoặc được duyệt hoàn tiền, không thể cấp gói.", 409);
 
       const member = await tx.memberProfile.findUnique({
         where: { id: fresh.memberId },

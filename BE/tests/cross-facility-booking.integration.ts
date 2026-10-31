@@ -293,8 +293,12 @@ async function main() {
 
     // Case 6: đọc/đổi trạng thái membership hoạt động dù đang chọn facility KHÁC facility phát hành.
     assert.equal((await scope(1, () => getSubscriptionById(subA.id))).id, subA.id);
-    const suspended = await scope(1, () => updateSubscriptionStatus(subA.id, "SUSPENDED"));
-    assert.equal(suspended.status, "SUSPENDED");
+    await assert.rejects(scope(1, () => updateSubscriptionStatus(subA.id, "SUSPENDED")),
+      (error: any) => error.statusCode === 409 && error.errors?.code === "SUBSCRIPTION_SUSPEND_FORBIDDEN" ||
+        error.statusCode === 409 && /ngừng quyền lợi thủ công/.test(error.message));
+    assert.equal((await prisma.membershipSubscription.findUniqueOrThrow({ where: { id: subA.id } })).status, "ACTIVE");
+    // Historical replacement fixture; only a purchase may write this state in production.
+    await prisma.membershipSubscription.update({ where: { id: subA.id }, data: { status: "SUSPENDED" } });
     // FINAL Policy A: SUSPENDED là terminal — resume qua API luôn bị 400 SUBSCRIPTION_RESUME_FORBIDDEN.
     await assert.rejects(
       scope(1, () => updateSubscriptionStatus(subA.id, "ACTIVE")),

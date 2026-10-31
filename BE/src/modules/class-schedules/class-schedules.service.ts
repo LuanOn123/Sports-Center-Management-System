@@ -559,6 +559,9 @@ export async function updateSchedule(id: string, data: any) {
 
   const startTime = data.startTime ? new Date(data.startTime) : existing.startTime;
   const endTime = data.endTime ? new Date(data.endTime) : existing.endTime;
+  if ((data.startTime || data.endTime) && startTime <= new Date())
+    throw new AppError("Không thể chuyển buổi học về quá khứ hoặc sửa giờ buổi đã bắt đầu.", 400,
+      { code: "SCHEDULE_IN_PAST" });
   const roomId = data.roomId ?? existing.roomId;
 
   if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
@@ -621,6 +624,8 @@ export async function updateSchedule(id: string, data: any) {
       await lockSchedule(tx, id);
       const fresh = await tx.classSchedule.findUnique({ where: { id } });
       if (!fresh) throw new AppError("Schedule not found", 404);
+      if ((data.startTime || data.endTime) && startTime <= new Date())
+        throw new AppError("Không thể chuyển buổi học về quá khứ.", 400, { code: "SCHEDULE_IN_PAST" });
       if (fresh.status !== "SCHEDULED") {
         throw new AppError("Lịch học đã thay đổi trạng thái, vui lòng tải lại.", 409, {
           code: "SCHEDULE_STATE_CHANGED",

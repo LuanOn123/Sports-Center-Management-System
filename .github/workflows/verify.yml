@@ -27,5 +27,5 @@ jobs:
         working-directory: FE
       - run: npx playwright test refund-confirmation.spec.ts membership-quick-actions.spec.ts manager-scope.spec.ts --workers=2
         working-directory: FE
-      - run: npm run test:qa:isolation
+      - run: npm run test:qa:isolation -- --live
         working-directory: BE

@@ -17,7 +17,7 @@ export function CancelSubscription({
     payments?: Array<{ amount: string | number; status: string }>;
     plan?: { price: string | number; durationDays: number };
   };
-  role: "MEMBER" | "MANAGER";
+  role: "MEMBER" | "RECEPTIONIST" | "ADMIN";
 }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -52,7 +52,8 @@ export function CancelSubscription({
     setOpen(false);
     if (mutation.isSuccess) void cache.invalidateQueries();
   };
-  if (!["ACTIVE", "SCHEDULED"].includes(subscription.status) && !open) return null;
+  if (!["ACTIVE", "SCHEDULED"].includes(subscription.status) && !open)
+    return null;
   return (
     <>
       <button
@@ -75,14 +76,14 @@ export function CancelSubscription({
           {mutation.isSuccess ? (
             <div className="confirm-copy">
               <p className="success" role="status">
-                {scheduled ? "Đã hủy gói chờ. Gói đang sử dụng được giữ nguyên." : "Gói tập và các lượt đặt lớp tương lai đã được hủy."}
+                {scheduled
+                  ? "Đã hủy gói chờ. Gói đang sử dụng được giữ nguyên."
+                  : "Đã hủy gói và thu hồi các lượt đặt lớp thuộc quyền của gói này."}
               </p>
               <p>
-                {role === "MANAGER"
-                  ? "Gói đã được xử lý theo chính sách hoàn tiền theo ngày còn lại. Xem giao dịch để biết số tiền hoàn chính thức."
-                  : mutation.data.data.willRefund
-                    ? `Số tiền hoàn: ${money(mutation.data.data.refundAmount)}. Vui lòng liên hệ quầy để nhận tiền.`
-                    : "Không phát sinh hoàn tiền."}
+                {mutation.data.data.willRefund
+                  ? `Đã yêu cầu hoàn ${money(mutation.data.data.refundAmount)}. Khoản tiền chỉ được ghi nhận đã hoàn sau khi quầy xác nhận biên nhận thực tế.`
+                  : "Không phát sinh hoàn tiền."}
               </p>
               {role === "MEMBER" && (
                 <p>
@@ -98,16 +99,33 @@ export function CancelSubscription({
                 <strong>
                   {String(at(subscription, "plan.name") || "gói tập")}
                 </strong>{" "}
-                {scheduled ? "chỉ hủy gói chờ này, không ảnh hưởng gói đang dùng." : "sẽ chấm dứt quyền lợi và hủy toàn bộ lượt đặt lớp trong tương lai ở mọi cơ sở."}
+                {scheduled
+                  ? "chỉ hủy gói chờ này, không ảnh hưởng gói đang dùng."
+                  : "sẽ chấm dứt quyền lợi và thu hồi các lượt đặt lớp từ gói này ở mọi cơ sở. Quyền từ gói độc lập hợp lệ được giữ lại."}
               </p>
               <p>
-                {scheduled ? "Gói chưa kích hoạt: yêu cầu hoàn 100% khoản thanh toán gốc. Gói đang dùng được giữ nguyên." : role === "MEMBER"
-                  ? "Còn trên 15 ngày: hoàn 30% khoản thanh toán gốc. Còn từ 15 ngày trở xuống: không hoàn tiền."
-                  : "Hoàn tiền theo tỷ lệ số ngày còn lại trên thời hạn gói gốc."}
+                {scheduled
+                  ? "Gói chưa kích hoạt: yêu cầu hoàn 100% khoản thanh toán gốc. Gói đang dùng được giữ nguyên."
+                  : role === "MEMBER"
+                    ? "Còn trên 15 ngày: hoàn 30% khoản thanh toán gốc. Còn từ 15 ngày trở xuống: không hoàn tiền."
+                    : "Hoàn tiền theo tỷ lệ số ngày còn lại trên thời hạn gói gốc."}
               </p>
               <p>
                 Dự kiến còn {estimate.daysLeft} ngày · Hoàn khoảng{" "}
-                <strong>{money(scheduled ? Number(subscription.payments?.find((p) => p.status === "SUCCESS")?.amount ?? subscription.plan?.price ?? 0) : estimate.refundAmount)}</strong>.
+                <strong>
+                  {money(
+                    scheduled
+                      ? Number(
+                          subscription.payments?.find(
+                            (p) => p.status === "SUCCESS",
+                          )?.amount ??
+                            subscription.plan?.price ??
+                            0,
+                        )
+                      : estimate.refundAmount,
+                  )}
+                </strong>
+                .
               </p>
               <p className="field-note">
                 Ước tính theo khoản đã thu nếu có, hoặc giá gói hiện tại. Số

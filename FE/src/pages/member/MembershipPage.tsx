@@ -3,6 +3,9 @@ import { CancelSubscription } from "../../shared/CancelSubscription";
 import "./membership.css";
 import {
   effectiveSubscription,
+  detectPlanSwitchType,
+  membershipDateInput,
+  membershipStartInstant,
   isEffectiveSubscription,
 } from "../../shared/businessRules";
 import { formatMemberDate } from "../../shared/memberFormat";
@@ -511,7 +514,10 @@ export function MembershipPage() {
                 </div>
                 <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4 }}>
                   {formatMemberDate(scheduledSub.endDate)}
-                  <CancelSubscription subscription={scheduledSub} role="MEMBER" />
+                  <CancelSubscription
+                    subscription={scheduledSub}
+                    role="MEMBER"
+                  />
                 </div>
               </div>
             </div>
@@ -542,29 +548,11 @@ export function MembershipPage() {
           <div className="membership-plan-grid">
             {plans.map((p) => {
               const isPremium = p.tier === "PREMIUM";
-              const isRenewal = Boolean(
-                activeSub &&
-                (activeSub.planId === p.id ||
-                  (activeSub.tier === p.tier &&
-                    Number(p.durationDays) ===
-                      Number(
-                        activeSub.durationDaysSnapshot ??
-                          activeSub.plan?.durationDays,
-                      ))),
-              );
-              const isUpgrade = Boolean(
-                activeSub && (rank[p.tier] ?? 0) > (rank[activeSub.tier] ?? 0),
-              );
-              const isDowngrade = Boolean(
-                activeSub &&
-                ((rank[p.tier] ?? 0) < (rank[activeSub.tier] ?? 0) ||
-                  (p.tier === activeSub.tier &&
-                    Number(p.durationDays) <
-                      Number(
-                        activeSub.durationDaysSnapshot ??
-                          activeSub.plan?.durationDays,
-                      ))),
-              );
+              const changeType = detectPlanSwitchType(activeSub, p);
+              const isRenewal = changeType === "RENEW_SAME_TIER";
+              const isUpgrade = changeType === "UPGRADE" ||
+                (activeSub?.tier === "FREE" && (rank[p.tier] ?? 0) > 0);
+              const isDowngrade = changeType === "DOWNGRADE";
               const registered = subscriptions.find(
                 (s) => s.planId === p.id && isEffectiveSubscription(s),
               );
@@ -774,14 +762,18 @@ export function MembershipPage() {
                         if (activeSub) {
                           setTransitionPlan(p);
                           if (isDowngrade) {
-                            setCustomStartDate(activeSub.endDate.slice(0, 10));
+                            setCustomStartDate(
+                              membershipDateInput(activeSub.endDate),
+                            );
                           } else if (isUpgrade) {
                             setUpgradeOption("immediate");
                             setCustomStartDate(
-                              new Date().toISOString().slice(0, 10),
+                              membershipDateInput(new Date().toISOString()),
                             );
                           } else {
-                            setCustomStartDate(activeSub.endDate.slice(0, 10));
+                            setCustomStartDate(
+                              membershipDateInput(activeSub.endDate),
+                            );
                           }
                         } else {
                           startCheckout(p);
@@ -924,13 +916,8 @@ export function MembershipPage() {
         <Modal
           eyebrow="CHUYỂN ĐỔI / GIA HẠN GÓI"
           title={
-            activeSub.planId === transitionPlan.id ||
-            (activeSub.tier === transitionPlan.tier &&
-              Number(transitionPlan.durationDays) ===
-                Number(
-                  activeSub.durationDaysSnapshot ??
-                    activeSub.plan?.durationDays,
-                ))
+            detectPlanSwitchType(activeSub, transitionPlan) ===
+            "RENEW_SAME_TIER"
               ? "Gia hạn gói tập"
               : (rank[transitionPlan.tier] ?? 0) > (rank[activeSub.tier] ?? 0)
                 ? "Nâng cấp gói tập"
@@ -979,13 +966,8 @@ export function MembershipPage() {
             </div>
 
             {/* RENEWAL NOTICE */}
-            {(activeSub.planId === transitionPlan.id ||
-              (activeSub.tier === transitionPlan.tier &&
-                Number(transitionPlan.durationDays) ===
-                  Number(
-                    activeSub.durationDaysSnapshot ??
-                      activeSub.plan?.durationDays,
-                  ))) && (
+            {detectPlanSwitchType(activeSub, transitionPlan) ===
+              "RENEW_SAME_TIER" && (
               <div
                 style={{
                   background: "rgba(16, 185, 129, 0.08)",
@@ -1105,10 +1087,10 @@ export function MembershipPage() {
                       <div style={{ marginTop: 10 }}>
                         <input
                           type="date"
-                          min={new Date().toISOString().slice(0, 10)}
+                          min={membershipDateInput(new Date().toISOString())}
                           value={
                             customStartDate ||
-                            new Date().toISOString().slice(0, 10)
+                            membershipDateInput(new Date().toISOString())
                           }
                           onChange={(e) => setCustomStartDate(e.target.value)}
                           style={{
@@ -1126,13 +1108,8 @@ export function MembershipPage() {
             )}
 
             {/* DOWNGRADE NOTICE */}
-            {((rank[transitionPlan.tier] ?? 0) < (rank[activeSub.tier] ?? 0) ||
-              (transitionPlan.tier === activeSub.tier &&
-                Number(transitionPlan.durationDays) <
-                  Number(
-                    activeSub.durationDaysSnapshot ??
-                      activeSub.plan?.durationDays,
-                  ))) && (
+            {detectPlanSwitchType(activeSub, transitionPlan) ===
+              "DOWNGRADE" && (
               <div
                 style={{ display: "flex", flexDirection: "column", gap: 14 }}
               >
@@ -1179,8 +1156,10 @@ export function MembershipPage() {
                   </label>
                   <input
                     type="date"
-                    min={activeSub.endDate.slice(0, 10)}
-                    value={customStartDate || activeSub.endDate.slice(0, 10)}
+                    min={membershipDateInput(activeSub.endDate)}
+                    value={
+                      customStartDate || membershipDateInput(activeSub.endDate)
+                    }
                     onChange={(e) => setCustomStartDate(e.target.value)}
                     style={{
                       padding: "8px 12px",
@@ -1231,25 +1210,21 @@ export function MembershipPage() {
                     (rank[transitionPlan.tier] ?? 0) >
                     (rank[activeSub.tier] ?? 0);
                   const isTDowngrade =
-                    (rank[transitionPlan.tier] ?? 0) <
-                      (rank[activeSub.tier] ?? 0) ||
-                    (transitionPlan.tier === activeSub.tier &&
-                      Number(transitionPlan.durationDays) <
-                        Number(
-                          activeSub.durationDaysSnapshot ??
-                            activeSub.plan?.durationDays,
-                        ));
+                    detectPlanSwitchType(activeSub, transitionPlan) ===
+                    "DOWNGRADE";
                   let finalStart: string | undefined;
                   if (isTUpgrade) {
                     finalStart =
                       upgradeOption === "immediate"
                         ? undefined
-                        : customStartDate;
+                        : membershipStartInstant(customStartDate);
                   } else if (isTDowngrade) {
-                    finalStart =
-                      customStartDate || activeSub.endDate.slice(0, 10);
+                    finalStart = membershipStartInstant(
+                      customStartDate || membershipDateInput(activeSub.endDate),
+                      activeSub.endDate,
+                    );
                   } else {
-                    finalStart = activeSub.endDate.slice(0, 10);
+                    finalStart = undefined; // Server selects the exact continuation instant.
                   }
                   startCheckout(transitionPlan, finalStart);
                 }}

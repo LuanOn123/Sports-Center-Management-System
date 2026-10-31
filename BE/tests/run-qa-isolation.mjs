@@ -51,8 +51,10 @@ try {
     await run(["node_modules/prisma/build/index.js", "migrate", "deploy"], env);
     return env;
   }
+  let fullEnvironment;
   for (const [name, seed] of [["basic", "prisma/seed.ts"], ["full", "src/scripts/seed-full.ts"]]) {
     const env = await environment(name);
+    if (name === "full") fullEnvironment = env;
     await run([cli, seed], env);
     await run([cli, seed], env);
     console.log(`PASS migrate + ${name} seed + repeat seed on isolated databases`);
@@ -67,6 +69,10 @@ try {
     const env = await environment(`suite${i}`);
     await run([cli, "--test", `tests/${suites[i]}`], env);
   }
+  if (process.argv.includes("--live")) await run([cli, "tests/strict-business-flows.live.cjs"], {
+    ...fullEnvironment, VIETQR_BANK_ID: "MB", VIETQR_ACCOUNT_NO: "0000000000", VIETQR_ACCOUNT_NAME: "LOCAL AUDIT",
+    SEPAY_API_TOKEN: "", MAIL_DRIVER: "console", TRUST_PROXY_HOPS: "0",
+  });
   console.log("PASS all QA isolation checks");
 } catch (error) {
   console.error(error.message); process.exitCode = 1;

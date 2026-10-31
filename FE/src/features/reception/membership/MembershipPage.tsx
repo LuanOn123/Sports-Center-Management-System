@@ -1,5 +1,4 @@
 import { CancelSubscription } from "../../../shared/CancelSubscription";
-import { downgradeReason, isEffectiveSubscription } from "../../../shared/businessRules";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { RecordData } from "../../../shared/api";
@@ -42,18 +41,11 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
   const hasPlans = (plans.data?.data || []).some(
     (p) => p.id && p.isActive !== false,
   );
-  const current = subscriptions.data?.data.find((s) => isEffectiveSubscription({ status: String(s.status), startDate: String(s.startDate), endDate: String(s.endDate) }));
-  const hasScheduled = subscriptions.data?.data.some((s) => s.status === "SCHEDULED");
+  const hasScheduled = subscriptions.data?.data.some(
+    (s) => s.status === "SCHEDULED",
+  );
   const choices = (plans.data?.data || [])
     .filter((p) => p.id && p.isActive !== false)
-    .filter(
-      (p) =>
-        !downgradeReason(
-          current as
-            { tier: unknown; plan?: { durationDays?: unknown } } | undefined,
-          { tier: p.tier, durationDays: p.durationDays },
-        ),
-    )
     .map((p) => ({
       value: String(p.id),
       label: `${display(p.name)} · ${money(p.price)} · ${display(p.durationDays)} ngày`,
@@ -91,9 +83,17 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
             )}
             <p>
               Đăng ký hoặc gia hạn sẽ ghi nhận đã thu tiền và phát hành hóa đơn
-              ngay. Chỉ xác nhận sau khi đã nhận đủ tiền. Gia hạn cùng hạng nối tiếp sau ngày hết hạn. Nâng hạng có thể bắt đầu ngay hoặc lên lịch; hạ hạng chỉ bắt đầu sau khi gói hiện tại kết thúc. Mỗi hội viên chỉ có một gói chờ kích hoạt.
+              ngay. Chỉ xác nhận sau khi đã nhận đủ tiền. Gia hạn cùng hạng nối
+              tiếp sau ngày hết hạn. Nâng hạng có thể bắt đầu ngay hoặc lên
+              lịch; hạ hạng chỉ bắt đầu sau khi gói hiện tại kết thúc. Mỗi hội
+              viên chỉ có một gói chờ kích hoạt.
             </p>
-            {hasScheduled && <p role="status">Hội viên đã có gói chờ kích hoạt. Hãy xử lý gói chờ trước khi đăng ký hoặc gia hạn.</p>}
+            {hasScheduled && (
+              <p role="status">
+                Hội viên đã có gói chờ kích hoạt. Hãy xử lý gói chờ trước khi
+                đăng ký hoặc gia hạn.
+              </p>
+            )}
             <button
               className="button primary"
               disabled={
@@ -127,24 +127,31 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
                     <>
                       <button
                         className="button small"
-                        disabled={hasScheduled || !hasPlans || !row.id || row.status !== "ACTIVE"}
+                        disabled={
+                          hasScheduled ||
+                          !hasPlans ||
+                          !row.id ||
+                          row.status !== "ACTIVE"
+                        }
                         onClick={() => setAction({ id: String(row.id) })}
                       >
                         Gia hạn
                       </button>
-                      {role === "MANAGER" && row.status === "ACTIVE" && (
-                        <CancelSubscription
-                          role="MANAGER"
-                          subscription={
-                            row as unknown as {
-                              id: string;
-                              endDate: string;
-                              status: string;
-                              plan: { price: number; durationDays: number };
+                      {(role === "RECEPTIONIST" || role === "ADMIN") &&
+                        ["ACTIVE", "SCHEDULED"].includes(String(row.status)) &&
+                        row.tier !== "FREE" && (
+                          <CancelSubscription
+                            role={role}
+                            subscription={
+                              row as unknown as {
+                                id: string;
+                                endDate: string;
+                                status: string;
+                                plan: { price: number; durationDays: number };
+                              }
                             }
-                          }
-                        />
-                      )}
+                          />
+                        )}
                       <StatusAction
                         operation="PATCH /subscriptions/{id}/status"
                         id={String(row.id)}
@@ -154,9 +161,7 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
                             remainingDays: row.remainingDays,
                           },
                           role,
-                        ).filter(
-                          (s) => s !== "CANCELLED" || row.status !== "ACTIVE",
-                        )}
+                        ).filter((s) => s !== "CANCELLED")}
                         explanation="Ngừng quyền lợi là trạng thái cuối, không thể khôi phục gói này. Số ngày còn lại chỉ lưu để đối soát, không cộng vào gói mới. Muốn dùng tiếp, hãy mua hoặc gia hạn để tạo gói mới."
                       />
                     </>

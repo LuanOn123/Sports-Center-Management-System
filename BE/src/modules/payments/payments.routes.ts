@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { sendSuccess } from "../../utils/response.js";
 import { updatePaymentStatus } from "./payments.service.js";
+import { requestUnactivatedRefund } from "./refunds.service.js";
 import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate.js";
 import { authorize, authorizeExact } from "../../middlewares/authorize.js";
@@ -174,6 +175,37 @@ router.get(
 router.post("/:id/refund/confirm", authenticate, authorizeExact("ADMIN", "RECEPTIONIST"),
   validate(z.object({ reason: z.string().trim().min(3).max(1000), reference: z.string().trim().min(3).max(200) })),
   async (req, res) => { sendSuccess(res, await updatePaymentStatus(String(req.params.id), "REFUNDED", req.body), "Đã xác nhận hoàn tiền thực tế"); });
+
+/**
+ * @swagger
+ * /payments/{id}/refund/request:
+ *   post:
+ *     summary: Admin approves a full refund for collected SePay funds without an activated subscription
+ *     tags: [Payments]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [reason]
+ *             properties:
+ *               reason: { type: string, minLength: 3, maxLength: 1000 }
+ *     responses:
+ *       200: { description: Refund approved; actual return still requires confirmation }
+ *       403: { description: Admin only }
+ *       409: { description: Payment has no eligible unactivated funds }
+ */
+router.post("/:id/refund/request", authenticate, authorizeExact("ADMIN"),
+  validate(z.object({ reason: z.string().trim().min(3).max(1000) }).strict()),
+  async (req, res) => sendSuccess(res,
+    await requestUnactivatedRefund(String(req.params.id), req.body.reason, req.user!.id),
+    "Đã duyệt yêu cầu hoàn tiền; cần xác nhận biên nhận sau khi trả tiền thực tế"));
 router.patch(
   "/:id/status",
   authenticate, authorize("RECEPTIONIST"),

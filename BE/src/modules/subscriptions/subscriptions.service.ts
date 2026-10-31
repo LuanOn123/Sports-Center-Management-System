@@ -193,6 +193,7 @@ export async function renewSubscription(
     const payment = await tx.payment.create({
       data: {
         memberId: existing.memberId,
+        planId: plan.id,
         subscriptionId: subscription.id,
         amount: plan.price,
         method: data.paymentMethod,
@@ -365,6 +366,10 @@ async function cancelScheduledSubscription(
 }
 
 export async function updateSubscriptionStatus(id: string, status: string) {
+  // SUSPENDED is a replacement state written only by the atomic purchase flow.
+  if (status === "SUSPENDED") throw new AppError(
+    "Không thể ngừng quyền lợi thủ công. Vui lòng hủy gói hoặc thực hiện đổi gói theo quy trình.", 409,
+    { code: "SUBSCRIPTION_SUSPEND_FORBIDDEN" });
   const now = new Date();
 
   const sub = await prisma.membershipSubscription.findUnique({
@@ -394,16 +399,6 @@ export async function updateSubscriptionStatus(id: string, status: string) {
   const updateData: any = { status };
   // A10: ghi mốc hủy để entitlement lịch sử biết quyền lợi kéo dài tới đâu.
   if (status === "CANCELLED") updateData.cancelledAt = now;
-
-  if (status === "SUSPENDED" && sub.status === "ACTIVE") {
-    // Gói cũ bị thay thế: lưu mốc thay thế + ngày còn lại để audit/đối soát.
-    // remainingDays CHỈ để hiển thị/đối soát, KHÔNG cộng vào gói mới
-    // (xem subscription-purchase.service.ts: remainingDays FREE = 0, paid không cộng dồn).
-    const msLeft = sub.endDate.getTime() - now.getTime();
-    const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
-    updateData.suspendedAt = now;
-    updateData.remainingDays = daysLeft;
-  }
 
   if (status === "ACTIVE" && sub.status === "SUSPENDED") {
     // FINAL Policy A: SUSPENDED là trạng thái cuối của gói cũ bị thay thế — KHÔNG resume.
@@ -503,14 +498,14 @@ export async function updateSubscriptionStatus(id: string, status: string) {
             userId: sub.member.userId,
             type: "SUBSCRIPTION_CANCELLED",
             title: "Đã tiếp nhận yêu cầu hoàn tiền",
-            body: `Gói "${sub.plan.name}" đã bị hủy bởi quản lý. Số tiền hoàn: ${refundAmount.toLocaleString("vi-VN")}đ (${daysLeft} ngày còn lại / ${originalPayment?.durationDaysSnapshot ?? Math.max(1, Math.round((sub.endDate.getTime() - sub.startDate.getTime()) / 86400000))} ngày). Vui lòng ra quầy lễ tân để nhận hoàn tiền.`,
+            body: `Gói "${sub.plan.name}" đã bị hủy bởi nhân viên. Số tiền hoàn: ${refundAmount.toLocaleString("vi-VN")}đ (${daysLeft} ngày còn lại / ${originalPayment?.durationDaysSnapshot ?? Math.max(1, Math.round((sub.endDate.getTime() - sub.startDate.getTime()) / 86400000))} ngày). Vui lòng ra quầy lễ tân để nhận hoàn tiền.`,
             metadata: { subscriptionId: id },
           }
         : {
             userId: sub.member.userId,
             type: "SUBSCRIPTION_CANCELLED",
             title: "Gói tập của bạn đã bị hủy",
-            body: `Gói "${sub.plan.name}" đã bị hủy bởi quản lý. Gói của bạn đã hết thời hạn nên không phát sinh hoàn tiền. Các lịch học tương lai đã tự động bị hủy. Nếu có thắc mắc, vui lòng liên hệ nhân viên.`,
+            body: `Gói "${sub.plan.name}" đã bị hủy bởi nhân viên. Gói của bạn đã hết thời hạn nên không phát sinh hoàn tiền. Các lịch học tương lai đã tự động bị hủy. Nếu có thắc mắc, vui lòng liên hệ nhân viên.`,
             metadata: { subscriptionId: id },
           });
     });

@@ -13,6 +13,7 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
   const [paymentId, setPaymentId] = useState("");
   const [status, setStatus] = useState("");
   const [refund, setRefund] = useState<RecordData | null>(null);
+  const [exception, setException] = useState<RecordData | null>(null);
   const id = String(member?.id || "");
   const payments = useReceptionList(
     "GET /payments",
@@ -36,6 +37,12 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
       <Heading title="Thanh toán & hóa đơn" />
       {refund && (
         <RefundConfirmation payment={refund} onClose={() => setRefund(null)} />
+      )}
+      {exception && (
+        <ExceptionRefund
+          payment={exception}
+          onClose={() => setException(null)}
+        />
       )}
       <MemberPicker
         value={member}
@@ -117,17 +124,30 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
                             nhận thanh toán.
                           </small>
                         )}
-                        {row.activationStatus === "REQUIRES_REVIEW" && (
-                          <div role="status">
-                            Cần đối soát — chưa kích hoạt gói
-                            {role === "ADMIN" && row.status === "SUCCESS" && (
-                              <RetryActivation id={String(row.id)} />
-                            )}
-                            {role !== "ADMIN" && (
-                              <small>Liên hệ quản trị viên để xử lý.</small>
-                            )}
-                          </div>
-                        )}
+                        {row.activationStatus === "REQUIRES_REVIEW" &&
+                          row.status === "SUCCESS" && (
+                            <div role="status">
+                              {row.refundRequestedAt
+                                ? "Đã duyệt yêu cầu hoàn — chờ trả tiền và xác nhận biên nhận"
+                                : "Cần đối soát — chưa kích hoạt gói"}
+                              {role === "ADMIN" &&
+                                !row.refundRequestedAt &&
+                                !row.subscriptionId && (
+                                  <>
+                                    <RetryActivation id={String(row.id)} />
+                                    <button
+                                      className="button small"
+                                      onClick={() => setException(row)}
+                                    >
+                                      Duyệt hoàn tiền chưa cấp gói
+                                    </button>
+                                  </>
+                                )}
+                              {role !== "ADMIN" && (
+                                <small>Liên hệ quản trị viên để xử lý.</small>
+                              )}
+                            </div>
+                          )}
                         {row.status === "SUCCESS" && row.refundRequestedAt && (
                           <button
                             className="button small"
@@ -194,6 +214,71 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
         </Modal>
       )}
     </>
+  );
+}
+
+function ExceptionRefund({
+  payment,
+  onClose,
+}: {
+  payment: RecordData;
+  onClose: () => void;
+}) {
+  const [reason, setReason] = useState("");
+  const cache = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: () =>
+      api("POST /payments/{id}/refund/request", {
+        params: { id: String(payment.id) },
+        body: { reason: reason.trim() },
+      }),
+    onSuccess: () => {
+      void cache.invalidateQueries();
+      onClose();
+    },
+  });
+  return (
+    <Modal
+      title="Duyệt hoàn tiền chưa cấp gói"
+      onClose={onClose}
+      dismissible={!mutation.isPending}
+    >
+      <p>
+        Yêu cầu hoàn toàn bộ {money(payment.amount)} cho khoản SePay đã thu
+        nhưng chưa cấp gói. Sau khi duyệt, hệ thống chặn kích hoạt lại khoản
+        này.
+      </p>
+      <p>
+        Đây là bước duyệt yêu cầu. Chỉ xác nhận đã hoàn sau khi trả tiền thực tế
+        và có biên nhận.
+      </p>
+      <label>
+        Lý do hoàn ngoại lệ
+        <textarea
+          value={reason}
+          maxLength={1000}
+          onChange={(event) => setReason(event.target.value)}
+          disabled={mutation.isPending}
+        />
+      </label>
+      {mutation.error && <ErrorState error={mutation.error} />}
+      <div className="modal-footer">
+        <button
+          className="button"
+          onClick={onClose}
+          disabled={mutation.isPending}
+        >
+          Quay lại
+        </button>
+        <button
+          className="button primary"
+          disabled={reason.trim().length < 3 || mutation.isPending}
+          onClick={() => mutation.mutate()}
+        >
+          {mutation.isPending ? "Đang duyệt…" : "Duyệt yêu cầu hoàn tiền"}
+        </button>
+      </div>
+    </Modal>
   );
 }
 export function InvoiceDialog({

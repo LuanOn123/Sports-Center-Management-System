@@ -141,7 +141,7 @@ router.patch("/:id", authorize("ADMIN", "MANAGER"), validate(UpdateAttendanceSch
  *             type: object
  *             required: [scheduleId]
  *             properties:
- *               scheduleId: { type: string, format: uuid }
+ *               scheduleId: { type: string, minLength: 1, maxLength: 200, description: "ID buổi học, bao gồm ID lịch sử và dữ liệu seed" }
  *     responses:
  *       200:
  *         description: QR token + manual backup code generated

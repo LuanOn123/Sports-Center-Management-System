@@ -5553,7 +5553,8 @@
       "properties": {
         "scheduleId": {
           "type": "string",
-          "format": "uuid"
+          "minLength": 1,
+          "maxLength": 200
         }
       }
     },
@@ -9060,6 +9061,53 @@
     },
     "statusCodes": [
       "200",
+      "409"
+    ]
+  },
+  "POST /payments/{id}/refund/request": {
+    "path": "/payments/{id}/refund/request",
+    "method": "POST",
+    "summary": "Admin approves a full refund for collected SePay funds without an activated subscription",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+      }
+    ],
+    "body": {
+      "type": "object",
+      "required": [
+        "reason"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 1000
+        }
+      }
+    },
+    "statusCodes": [
+      "200",
+      "403",
       "409"
     ]
   }

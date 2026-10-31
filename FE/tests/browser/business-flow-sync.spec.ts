@@ -239,7 +239,6 @@ test("full future session offers schedule-specific waitlist registration", async
     });
   });
   await page.goto("/member/classes/c1");
-  await page.getByText(/Xem.*buổi|Chi tiết.*buổi/).click();
   await page.getByRole("button", { name: "Vào danh sách chờ" }).click();
   await expect(
     page.getByRole("button", { name: "Đã vào danh sách chờ · thứ tự 3" }),

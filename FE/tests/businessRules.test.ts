@@ -69,7 +69,6 @@ describe("workflow state boundaries", () => {
       [],
     );
     expect(subscriptionTransitions({ status: "ACTIVE" }, "RECEPTIONIST")).toEqual([
-      "SUSPENDED",
       "CANCELLED",
     ]);
     expect(subscriptionTransitions({ status: "CANCELLED" }, "RECEPTIONIST")).toEqual(

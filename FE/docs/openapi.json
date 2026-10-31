@@ -9271,7 +9271,8 @@
                 "properties": {
                   "scheduleId": {
                     "type": "string",
-                    "format": "uuid"
+                    "minLength": 1,
+                    "maxLength": 200
                   }
                 }
               }
@@ -13142,6 +13143,64 @@
           },
           "409": {
             "description": "State changed or refund is not authorized"
+          }
+        }
+      }
+    },
+    "/payments/{id}/refund/request": {
+      "post": {
+        "summary": "Admin approves a full refund for collected SePay funds without an activated subscription",
+        "tags": [
+          "Payments"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "reason"
+                ],
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 1000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Refund approved; actual return still requires confirmation"
+          },
+          "403": {
+            "description": "Admin only"
+          },
+          "409": {
+            "description": "Payment has no eligible unactivated funds"
           }
         }
       }

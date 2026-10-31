@@ -298,6 +298,9 @@ export async function activateSubscriptionForPayment(
   const soldPayment = await tx.payment.findUniqueOrThrow({
     where: { id: params.paymentId },
   });
+  if (soldPayment.refundRequestedAt || soldPayment.status === "REFUNDED")
+    throw new AppError("Giao dịch đã được duyệt hoàn tiền, không thể cấp gói.", 409,
+      { code: "PAYMENT_REFUND_PENDING" });
   // Gateway callbacks use the persisted order's facility, without a caller header.
   if (!requestContext.getStore()?.facilityId)
     return requestContext.run(
