@@ -17,13 +17,19 @@ const OTP_SUBJECT = 'Mã xác nhận đổi mật khẩu - Sports Center';
 /** Mỗi driver tối đa từng này giây — FE abort request ở 60s nên phải dừng sớm hơn. */
 const SEND_TIMEOUT_MS = 15_000;
 
-type DriverName = 'brevo' | 'resend' | 'smtp' | 'console';
+type DriverName = 'emailjs' | 'brevo' | 'resend' | 'smtp' | 'console';
 /** Các driver gửi thật (driver `console` chỉ mô phỏng). */
-const REAL_DRIVERS: DriverName[] = ['brevo', 'resend', 'smtp'];
+const REAL_DRIVERS: DriverName[] = ['emailjs', 'brevo', 'resend', 'smtp'];
 
 /** Driver có đủ biến môi trường để thử gửi (thiếu config → bỏ qua, không tốn một lần thử). */
 function isConfigured(driver: DriverName): boolean {
   if (driver === 'console') return true;
+  if (driver === 'emailjs')
+    return Boolean(
+      process.env.EMAILJS_SERVICE_ID &&
+      process.env.EMAILJS_TEMPLATE_ID &&
+      process.env.EMAILJS_PUBLIC_KEY
+    );
   if (driver === 'brevo')
     return Boolean(process.env.BREVO_API_KEY) &&
       Boolean(process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER);
@@ -44,6 +50,39 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
+
+// ── 0. EmailJS REST API driver ─────────────────────────────────────────────
+async function sendViaEmailJS(to: string, otp: string): Promise<void> {
+  const serviceId = process.env.EMAILJS_SERVICE_ID;
+  const templateId = process.env.EMAILJS_TEMPLATE_ID;
+  const publicKey = process.env.EMAILJS_PUBLIC_KEY;
+  const privateKey = process.env.EMAILJS_PRIVATE_KEY;
+
+  const payload: Record<string, any> = {
+    service_id: serviceId,
+    template_id: templateId,
+    user_id: publicKey,
+    template_params: {
+      to_email: to,
+      passcode: otp,
+      otp: otp,
+    },
+  };
+  if (privateKey) {
+    payload.accessToken = privateKey;
+  }
+
+  const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`EmailJS error (${response.status}): ${errText}`);
+  }
+}
 
 // ── 1. Brevo HTTP API driver ──────────────────────────────────────────────
 async function sendViaBrevo(to: string, otp: string): Promise<void> {
@@ -109,6 +148,7 @@ async function sendViaSMTP(to: string, otp: string): Promise<void> {
 
 // ── Public API ────────────────────────────────────────────────────────────
 function runDriver(driver: DriverName, to: string, otp: string): Promise<void> {
+  if (driver === 'emailjs') return sendViaEmailJS(to, otp);
   if (driver === 'brevo') return sendViaBrevo(to, otp);
   if (driver === 'resend') return sendViaResend(to, otp);
   if (driver === 'smtp') return sendViaSMTP(to, otp);
@@ -125,7 +165,7 @@ export async function sendOtpEmail(to: string, otp: string): Promise<void> {
   // nhưng các driver còn lại vẫn giữ làm fallback khi driver đầu không gửi được.
   const rawDriver = (process.env.MAIL_DRIVER ?? '').trim().toLowerCase();
   if (rawDriver && !([...REAL_DRIVERS, 'console'] as string[]).includes(rawDriver)) {
-    throw new Error(`MAIL_DRIVER không hợp lệ: "${rawDriver}" (brevo | resend | smtp | console)`);
+    throw new Error(`MAIL_DRIVER không hợp lệ: "${rawDriver}" (emailjs | brevo | resend | smtp | console)`);
   }
 
   const order: DriverName[] =

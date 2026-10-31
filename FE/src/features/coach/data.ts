@@ -58,39 +58,22 @@ export function useSchedules(
   start: string,
   end: string,
 ) {
-  const ids = (classes || []).map(idOf).sort();
   return useQuery({
-    queryKey: ["coach", coachId, "schedules", ids, start, end],
+    queryKey: ["coach", coachId, "schedules", start, end],
     enabled: !!classes && !!coachId,
     queryFn: async ({ signal }) => {
-      // Query only assigned classes. Never fetch the entire centre and expose unrelated rosters.
-      const result: Row[] = [];
-      for (let offset = 0; offset < ids.length; offset += 4) {
-        const batch = await Promise.all(
-          ids.slice(offset, offset + 4).map(async (classId) => {
-            const list = await all(
-              "GET /class-schedules",
-              {
-                classId,
-                startAfter: `${start}T00:00:00+07:00`,
-                startBefore: `${end}T23:59:59.999+07:00`,
-              },
-              signal,
-            );
-            return list.filter(
-              (s) => s.classId === classId || idOf(s.class) === classId,
-            );
-          }),
-        );
-        result.push(...batch.flat());
-      }
-      return result.sort(
-        (a, b) =>
-          Date.parse(String(a.startTime)) - Date.parse(String(b.startTime)),
-      );
+      // The server scopes to the authenticated coach and resolves per-session replacements.
+      // A substitute can have no permanent class assignments.
+      const result = await all("GET /class-schedules", {
+        coachId,
+        startAfter: `${start}T00:00:00+07:00`,
+        startBefore: `${end}T23:59:59.999+07:00`,
+      }, signal);
+      return result.sort((a, b) => Date.parse(String(a.startTime)) - Date.parse(String(b.startTime)));
     },
   });
 }
+
 export function dateKey(value: unknown = new Date()) {
   const d = new Date(String(value));
   if (!Number.isFinite(d.getTime())) return "";

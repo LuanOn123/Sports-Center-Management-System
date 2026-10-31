@@ -1,3 +1,4 @@
+import { effectiveCoachWhere } from "../operations/effective-coaches.js";
 import { mergeRequirements } from "../operations/rules.js";
 import { requestContext } from "../../config/request-context.js";
 import { validateResources } from "../operations/scheduling.js";
@@ -116,11 +117,20 @@ export async function checkScheduleConflicts(
   return checkConflicts(db, roomId, classId, startTime, endTime, excludeScheduleId, effectiveCoach);
 }
 
-export async function listSchedules(query: any) {
+export async function listSchedules(query: any, actor?: { id: string; role: string }) {
   const page = Math.max(1, parseInt(query.page ?? "1") || 1);
   const limit = Math.min(100, Math.max(1, parseInt(query.limit ?? "10") || 10));
   const skip = (page - 1) * limit;
   const where: any = {};
+  let coachId = query.coachId;
+  // A coach can only request their own effective teaching timetable.
+  if (actor?.role === "COACH") {
+    const coach = await prisma.coachProfile.findUnique({ where: { userId: actor.id }, select: { id: true } });
+    if (!coach) throw new AppError("Coach profile not found", 404);
+    if (coachId && coachId !== coach.id) throw new AppError("Forbidden", 403);
+    coachId = coach.id;
+  }
+  if (coachId) Object.assign(where, effectiveCoachWhere(coachId));
   if (query.classId) where.classId = query.classId;
   if (query.roomId) where.roomId = query.roomId;
   if (query.termId) where.termId = query.termId;
@@ -189,7 +199,7 @@ export async function listSchedules(query: any) {
 
   // Weekday chỉ lọc được đúng theo múi giờ VN bằng SQL:
   // EXTRACT(ISODOW FROM startTime AT TIME ZONE 'Asia/Ho_Chi_Minh') IN (...).
-  const whereSql = buildWhereSql(where);
+  const whereSql = buildWhereSql(where, coachId);
   const countRows = await prisma.$queryRaw<{ total: bigint }[]>`
     SELECT COUNT(*)::bigint AS total FROM "ClassSchedule" AS s
     ${whereSql.fragment}
@@ -217,7 +227,7 @@ export async function listSchedules(query: any) {
 
 // Dựng WHERE SQL từ object `where` của Prisma cho GET list (khi cần lọc weekday).
 // Chỉ hỗ trợ đúng các key mà listSchedules đang dùng: classId/roomId/status + startTime/endTime.
-function buildWhereSql(where: any): { fragment: Prisma.Sql } {
+function buildWhereSql(where: any, coachId?: string): { fragment: Prisma.Sql } {
   const conds: Prisma.Sql[] = [Prisma.sql`TRUE`];
   const scopedFacility = requestContext.getStore()?.facilityId;
   if (scopedFacility) conds.push(Prisma.sql`s."classId" IN (SELECT id FROM "Class" WHERE "facilityId" = ${scopedFacility})`);
@@ -225,6 +235,11 @@ function buildWhereSql(where: any): { fragment: Prisma.Sql } {
   if (where.roomId) conds.push(Prisma.sql`s."roomId" = ${where.roomId}`);
   if (where.termId) conds.push(Prisma.sql`s."termId" = ${where.termId}`);
   if (where.status) conds.push(Prisma.sql`s."status"::text = ${where.status}`);
+  if (coachId) conds.push(Prisma.sql`(
+    s."coachId" = ${coachId}
+    OR (s."coachId" IS NULL AND EXISTS (SELECT 1 FROM "ClassMember" cm WHERE cm."classId" = s."classId" AND cm."coachId" = ${coachId}))
+    OR EXISTS (SELECT 1 FROM "ClassMember" cm WHERE cm."classId" = s."classId" AND cm."coachId" = ${coachId} AND cm."isPrimary" = false)
+  )`);
   const st = where.startTime;
   if (st?.gte) conds.push(Prisma.sql`s."startTime" >= ${st.gte}`);
   if (st?.gt) conds.push(Prisma.sql`s."startTime" > ${st.gt}`);

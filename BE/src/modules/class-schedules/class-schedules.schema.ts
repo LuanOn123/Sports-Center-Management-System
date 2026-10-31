@@ -206,6 +206,7 @@ export const ScheduleQuerySchema = z.object({
   page: z.string().optional(),
   limit: z.string().optional(),
   classId: z.string().min(1).optional(),
+  coachId: z.string().min(1).optional(),
   roomId: z.string().min(1).optional(),
   termId: z.string().min(1).optional(),
   status: z.enum(["SCHEDULED", "CANCELLED", "COMPLETED"]).optional(),

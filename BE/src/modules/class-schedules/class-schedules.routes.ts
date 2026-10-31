@@ -96,6 +96,11 @@ router.post(
  *           type: string
  *         description: Filter by class
  *       - in: query
+ *         name: coachId
+ *         schema:
+ *           type: string
+ *         description: Effective teaching coach (substitute, primary or support). COACH may only request their own timetable.
+ *       - in: query
  *         name: roomId
  *         schema:
  *           type: string
