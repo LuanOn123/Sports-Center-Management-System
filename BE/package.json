@@ -55,7 +55,9 @@
     "test:captcha": "tsx --test tests/turnstile.integration.test.ts",
     "test:hardening": "tsx --test tests/business-rule-audit.repro.test.ts tests/membership-attribution.test.ts tests/term-membership.test.ts tests/schedule-batch.test.ts tests/coach-changes.test.ts",
     "audit:preflight": "tsx src/scripts/business-rule-preflight.ts",
-    "test:hardening:integration": "node tests/run-hardening-isolation.mjs"
+    "test:hardening:integration": "node tests/run-hardening-isolation.mjs",
+    "test:qa:isolation": "node tests/run-qa-isolation.mjs",
+    "db:prepare:term-facility": "prisma db execute --file prisma/migrations/20261031000000_term_facility/migration.sql --schema prisma/schema.prisma"
   },
   "dependencies": {
     "@getbrevo/brevo": "^6.0.3",

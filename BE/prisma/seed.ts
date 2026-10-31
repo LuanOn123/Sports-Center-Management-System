@@ -1,3 +1,4 @@
+import { ensureSeedTerm } from "../src/scripts/seed-term.js";
 import "dotenv/config";
 import { PrismaClient, UserRole, MemberTier, ClassType, AreaType, PaymentMethod, PaymentStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -8,6 +9,9 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log("Seeding database...");
+  await prisma.facility.upsert({ where: { id: "legacy-main" }, update: {},
+    create: { id: "legacy-main", code: "legacy-main", name: "Sports Center", address: "Demo" } });
+  const term = await ensureSeedTerm(prisma, "legacy-main");
 
   const SALT = 12;
 
@@ -337,6 +341,18 @@ async function main() {
   // ─── CLASSES ─────────────────────────────────────────
   const coachProfile1 = await prisma.coachProfile.findUnique({ where: { userId: coach1.id } });
   const coachProfile2 = await prisma.coachProfile.findUnique({ where: { userId: coach2.id } });
+  for (const [userId, role] of [[manager.id, UserRole.MANAGER], [staff.id, UserRole.RECEPTIONIST],
+    [coach1.id, UserRole.COACH], [coach2.id, UserRole.COACH]] as const) {
+    await prisma.facilityStaff.upsert({
+      where: { userId_facilityId_role: { userId, facilityId: "legacy-main", role } },
+      create: { userId, facilityId: "legacy-main", role }, update: { isActive: true },
+    });
+  }
+  for (const [coachId, sportId] of [[coachProfile1?.id, yoga.id], [coachProfile2?.id, hiit.id]]) {
+    if (!coachId) continue;
+    await prisma.coachSpecialization.upsert({ where: { coachId_sportId: { coachId, sportId: sportId! } },
+      create: { coachId, sportId: sportId! }, update: {} });
+  }
 
   const yogaClass = await prisma.class.upsert({
     where: { id: "class-yoga-001" },
@@ -390,7 +406,7 @@ async function main() {
   if (coachProfile1) {
     await prisma.classMember.upsert({
       where: { classId_coachId: { classId: yogaClass.id, coachId: coachProfile1.id } },
-      update: {},
+      update: { isPrimary: true },
       create: { classId: yogaClass.id, coachId: coachProfile1.id, isPrimary: true },
     });
     await prisma.classMember.upsert({
@@ -427,6 +443,7 @@ async function main() {
     update: {},
     create: {
       id: "sch-yoga-001",
+      termId: term.id,
       classId: yogaClass.id,
       roomId: room1.id,
       startTime: tomorrow,
@@ -441,6 +458,7 @@ async function main() {
     update: {},
     create: {
       id: "sch-hiit-001",
+      termId: term.id,
       classId: hiitClass.id,
       roomId: room2.id,
       startTime: schedule2StartTime,
@@ -455,6 +473,7 @@ async function main() {
     update: {},
     create: {
       id: "sch-yoga-premium-001",
+      termId: term.id,
       classId: premiumYoga.id,
       roomId: room1.id,
       startTime: schedule3StartTime,

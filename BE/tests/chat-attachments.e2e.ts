@@ -1,3 +1,4 @@
+import "./helpers/business-e2e.js";
 /**
  * E2E THẬT (HTTP + PostgreSQL) cho D03 — bảo mật tệp đính kèm chat:
  * 1) Upload chỉ nhận allowlist theo MIME + MAGIC BYTES; tên file do server sinh.

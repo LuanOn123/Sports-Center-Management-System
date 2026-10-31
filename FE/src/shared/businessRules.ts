@@ -31,9 +31,9 @@ export function paymentTransitions(
   role: string,
   gateway?: unknown,
 ): string[] {
-  if (role !== "MANAGER" || gateway) return [];
+  if (!["ADMIN", "RECEPTIONIST"].includes(role) || gateway) return [];
   return status === "PENDING"
-    ? ["SUCCESS", "FAILED"]
+    ? ["FAILED"]
     : status === "SUCCESS"
       ? ["REFUNDED"]
       : [];
@@ -43,8 +43,9 @@ export function subscriptionTransitions(
   s: { status: unknown; remainingDays?: unknown },
   role: string,
 ): string[] {
-  if (role !== "MANAGER") return [];
+  if (!["ADMIN", "RECEPTIONIST"].includes(role)) return [];
   if (s.status === "ACTIVE") return ["SUSPENDED", "CANCELLED"];
+  if (s.status === "SCHEDULED") return ["CANCELLED"];
   // Policy A: historical subscriptions never resume; remainingDays is audit only.
   return [];
 }

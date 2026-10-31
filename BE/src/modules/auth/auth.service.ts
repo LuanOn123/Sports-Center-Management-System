@@ -228,10 +228,16 @@ export async function forgotPassword(data: ForgotPasswordInput) {
   const otp = String(randomInt(100_000, 999_999));
   const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
-  await User.updateOne(
-    { _id: user._id },
-    { resetPasswordOtp: hashOtp(otp), resetPasswordOtpExpiresAt: expiresAt }
+  const issued = await User.updateOne(
+    { _id: user._id, isActive: true, $or: [
+      { resetPasswordOtpSentAt: { $lte: new Date(Date.now() - 60_000) } },
+      { resetPasswordOtpSentAt: null },
+    ] },
+    { $set: { resetPasswordOtp: hashOtp(otp), resetPasswordOtpExpiresAt: expiresAt,
+      resetPasswordOtpAttempts: 0, resetPasswordOtpSentAt: new Date() } },
   );
+  // Same response for unknown accounts and requests during the resend cooldown.
+  if (!issued.modifiedCount) return;
 
   // AWAIT: trước đây lỗi gửi mail bị nuốt (`.catch(console.error)`) nên FE luôn
   // hiển thị "đã gửi" dù email không đi đâu cả. Giờ throw 502 để client báo lỗi thật.
@@ -247,7 +253,13 @@ export async function forgotPassword(data: ForgotPasswordInput) {
 }
 
 export async function resetPassword(data: ResetPasswordInput) {
-  const user = await User.findOne({ email: data.email });
+  // Reserve an attempt before comparing, including concurrent requests.
+  const user = await User.findOneAndUpdate({
+    email: data.email, isActive: true,
+    resetPasswordOtp: { $ne: null },
+    resetPasswordOtpExpiresAt: { $gt: new Date() },
+    $or: [{ resetPasswordOtpAttempts: { $lt: 5 } }, { resetPasswordOtpAttempts: { $exists: false } }],
+  }, { $inc: { resetPasswordOtpAttempts: 1 } }, { new: true });
   if (!user || !user.isActive) {
     throw new AppError("OTP không hợp lệ hoặc đã hết hạn.", 400);
   }
@@ -268,10 +280,12 @@ export async function resetPassword(data: ResetPasswordInput) {
   const hashed = await hashPassword(data.newPassword);
   const userId = user._id.toString();
 
-  await User.updateOne(
-    { _id: user._id },
+  const consumed = await User.updateOne(
+    { _id: user._id, isActive: true, resetPasswordOtp: inputHash,
+      resetPasswordOtpExpiresAt: { $gt: new Date() }, resetPasswordOtpAttempts: { $lte: 5 } },
     { password: hashed, resetPasswordOtp: null, resetPasswordOtpExpiresAt: null, $inc: { tokenVersion: 1 } }
   );
+  if (consumed.modifiedCount !== 1) throw new AppError("OTP không hợp lệ hoặc đã hết hạn.", 400);
   await RefreshToken.deleteMany({ userId });
 
   disconnectUserSockets(userId);

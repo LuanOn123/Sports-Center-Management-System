@@ -1,3 +1,4 @@
+import { createFixtureSchedule, cleanupFixtureSchedules } from "./fixture-schedule.js";
 /**
  * Regression test MF-01 / MF-02 — Hủy gói liên facility (read-only với business DB).
  *
@@ -74,8 +75,7 @@ async function main() {
     const future = new Date(Date.now() + 5 * DAY);
     const past = new Date(Date.now() - 5 * DAY);
     const mkSched = (classIdx: number, start: Date) =>
-      prisma.classSchedule
-        .create({
+      createFixtureSchedule(prisma, {
           data: {
             classId: classes[classIdx],
             roomId: rooms[classIdx],
@@ -201,12 +201,12 @@ async function main() {
     // ── Case 3: booking quá khứ giữ nguyên ────────────────────────
     const pastAfter = await prisma.enrollment.findMany({
       where: { id: { in: [e1past.id, e1done.id] } },
-      select: { status: true },
+      select: { id: true, status: true },
       orderBy: { id: "asc" },
     });
     check(
       "Case3: booking quá khứ giữ nguyên (BOOKED / COMPLETED)",
-      pastAfter[0]?.status === "BOOKED" && pastAfter[1]?.status === "COMPLETED",
+      pastAfter.find(row => row.id === e1past.id)?.status === "BOOKED" && pastAfter.find(row => row.id === e1done.id)?.status === "COMPLETED",
       pastAfter,
     );
 
@@ -227,8 +227,8 @@ async function main() {
     check("Case5: KHÔNG còn FORBIDDEN_SCOPE — hủy + hoàn tiền tại B thành công", !c5err, { message: c5err?.message, statusCode: c5err?.statusCode });
     check("Case5: membership CANCELLED", sub2?.status === "CANCELLED", sub2?.status);
     check(
-      "Case5: payment REFUNDED đúng 30% (300.000đ) và có refundedAt",
-      pay2?.status === "REFUNDED" && Number(pay2.refundedAmount) === 300000 && pay2.refundedAt !== null,
+      "Case5: yêu cầu hoàn 30% (300.000đ), chưa xác nhận hoàn",
+      pay2?.status === "SUCCESS" && Number(pay2.refundRequestedAmount) === 300000 && pay2.refundRequestedAt !== null && pay2.refundedAt === null,
       { status: pay2?.status, refundedAmount: pay2?.refundedAmount },
     );
     check(
@@ -237,7 +237,7 @@ async function main() {
       m2book,
     );
 
-    // ── Case 5b: Manager hủy qua updateSubscriptionStatus (cùng pattern) ──
+    // ── Case 5b: Nhân viên hủy qua updateSubscriptionStatus (cùng pattern) ──
     let c5berr: any = null;
     try {
       await scope(1, () => updateSubscriptionStatus(m4.subId, "CANCELLED"));
@@ -249,8 +249,8 @@ async function main() {
     const m4book = await prisma.enrollment.findMany({ where: { memberId: m4.profileId }, select: { status: true } });
     check("Case5b: Manager hủy từ facility B KHÔNG lỗi", !c5berr, { message: c5berr?.message, statusCode: c5berr?.statusCode });
     check(
-      "Case5b: membership CANCELLED + payment REFUNDED + booking tại A CANCELLED",
-      sub4?.status === "CANCELLED" && pay4?.status === "REFUNDED" && m4book.every((e) => e.status === "CANCELLED"),
+      "Case5b: membership CANCELLED + yêu cầu hoàn tiền + booking tại A CANCELLED",
+      sub4?.status === "CANCELLED" && pay4?.status === "SUCCESS" && !!pay4.refundRequestedAt && m4book.every((e) => e.status === "CANCELLED"),
       { sub: sub4?.status, pay: pay4?.status, enroll: m4book },
     );
 
@@ -327,6 +327,7 @@ async function main() {
     await prisma.auditLog.deleteMany({ where: { facilityId: { in: facilities } } });
     await prisma.memberProfile.deleteMany({ where: { id: { in: profiles } } });
     await prisma.user.deleteMany({ where: { id: { in: users } } });
+    await cleanupFixtureSchedules(prisma);
     await prisma.facility.deleteMany({ where: { id: { in: facilities } } });
     console.log("\nĐã dọn sạch fixture cross-facility-cancel.");
     await prisma.$disconnect();

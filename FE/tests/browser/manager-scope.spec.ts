@@ -57,6 +57,7 @@ async function manager(page: Page) {
       data = {
         id: "room-a",
         name: "Phòng Yoga A",
+        areaType: "INDOOR",
         capabilities: [{ key: "mats", quantity: 12 }],
       };
     else if (path === "/rooms/room-a/capabilities") {
@@ -98,7 +99,7 @@ async function manager(page: Page) {
   return { writes, calls };
 }
 
-test("Manager has eight main features and obsolete URLs redirect safely", async ({
+test("Manager navigation and obsolete URLs match the current operational scope", async ({
   page,
 }) => {
   await manager(page);
@@ -107,18 +108,19 @@ test("Manager has eight main features and obsolete URLs redirect safely", async 
   const nav = page.locator(".sidebar nav");
   for (const name of [
     "Tổng quan",
-    "Người dùng",
+    "Nhân sự cơ sở",
+    "Huấn luyện viên",
+    "Kỳ học",
     "Phòng tập",
     "Lớp học",
     "Lịch hoạt động",
-    "Nghỉ phép",
+    "Đổi HLV theo buổi",
     "Yêu cầu hỗ trợ",
     "Báo cáo doanh thu",
   ])
     await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
   for (const [old, next] of Object.entries({
     members: "users",
-    coaches: "users",
     staff: "users",
     sports: "classes",
     bookings: "classes",
@@ -146,7 +148,7 @@ test("Coach assignment confirms own facility and refreshes both pools", async ({
   const { writes } = await manager(page);
   await page.goto("/manager/users");
   await page
-    .getByRole("button", { name: "Coach chưa phân công", exact: true })
+    .getByRole("button", { name: "Huấn luyện viên chưa phân công (Admin)", exact: true })
     .click();
   await page.getByRole("button", { name: "Phân công vào cơ sở" }).click();
   await expect(page.getByRole("dialog")).toContainText("Cơ sở A");
@@ -155,7 +157,7 @@ test("Coach assignment confirms own facility and refreshes both pools", async ({
     .getByRole("button", { name: "Xác nhận phân công", exact: true })
     .click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.getByText("Không có nhân sự phù hợp")).toBeVisible();
+  await expect(page.getByText("Không có Huấn luyện viên nào đang chờ phân công từ hệ thống.")).toBeVisible();
   expect(writes).toEqual([
     {
       path: "/facilities/facility-a/staff",
@@ -166,7 +168,7 @@ test("Coach assignment confirms own facility and refreshes both pools", async ({
     .getByRole("button", { name: "Nhân sự cơ sở", exact: true })
     .click();
   await expect(page.getByText("Coach An", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Hồ sơ Coach", exact: true }).click();
+  await page.getByRole("button", { name: "Xem hồ sơ", exact: true }).click();
   await page
     .getByRole("button", { name: "Bộ môn giảng dạy", exact: true })
     .click();
@@ -202,13 +204,14 @@ test("room coordination and activity calendar use the same sessions", async ({
   await page
     .getByRole("button", { name: "Cấu hình phòng", exact: true })
     .click();
-  await expect(page.getByLabel("Mã cấu hình 1")).toHaveValue("mats");
-  await page.getByLabel("Số lượng").fill("15");
+  await expect(page.getByRole("radio", { name: "Có dụng cụ", exact: true })).toBeChecked();
+  await page.getByRole("radio", { name: "Không có dụng cụ", exact: true }).check();
+  await page.getByRole("radio", { name: "Có dụng cụ", exact: true }).check();
   await page.getByRole("button", { name: "Lưu cấu hình" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(writes[0]).toEqual({
     path: "/rooms/room-a/capabilities",
-    body: { values: { mats: 15 } },
+    body: { values: { training_equipment: 1 } },
   });
   await page.goto("/manager/schedules");
   await expect(page.getByText("Yoga cùng Coach An").first()).toBeVisible();
@@ -335,7 +338,7 @@ test("Manager reviews Reception leave and filters staff support", async ({
   await page.getByRole("button", { name: "Xử lý đơn nghỉ" }).click();
   const dialog = page.getByRole("dialog");
   await dialog
-    .getByLabel("Lý do", { exact: true })
+    .getByLabel("Lý do quyết định", { exact: true })
     .fill("Đã bố trí nhân sự trực thay");
   await dialog
     .getByRole("button", { name: "Lưu quyết định", exact: true })

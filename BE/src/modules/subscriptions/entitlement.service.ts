@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { requestContext } from "../../config/request-context.js";
-import { lockMemberSubscription } from "../../utils/dbLocks.js";
-import { readTermMembershipGrant } from "../enrollments/term-membership-policy.js";
+import { lockMemberQuota, lockMemberClass, lockSchedule, lockMemberSubscription } from "../../utils/dbLocks.js";
+import { readTermMembershipGrant, termMembershipCovers } from "../enrollments/term-membership-policy.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 
 export async function isGrantSourceValid(db: any, value: unknown) {
@@ -117,65 +117,56 @@ export async function revokeSubscriptionBookings(
 ) {
   const context = requestContext.getStore();
   return requestContext.run({ ...context, facilityId: undefined }, async () => {
-    const where: Prisma.EnrollmentWhereInput = {
-      memberId: subscription.memberId,
-      status: "BOOKED",
-      schedule: { endTime: { gt: now } },
-      OR: [
-        { subscriptionId: subscription.id },
-        {
-          termMembershipGrant: {
-            path: ["subscriptionId"],
-            equals: subscription.id,
-          },
-        },
-      ],
-    };
-    const before = context?.actorId
-      ? await tx.enrollment.findMany({
-          where,
-          select: {
-            id: true,
-            status: true,
-            subscriptionId: true,
-            class: { select: { facilityId: true } },
-          },
-        })
-      : [];
-    const changed = await tx.enrollment.updateMany({
-      where,
-      data: {
-        status: "CANCELLED",
-        cancelledAt: now,
-        termMembershipGrant: Prisma.DbNull,
-      },
+    await lockMemberQuota(tx, subscription.memberId);
+    const candidates = await tx.enrollment.findMany({
+      where: { memberId: subscription.memberId, status: "BOOKED", schedule: { endTime: { gt: now } } },
+      include: { schedule: true, class: { select: { facilityId: true, classType: true } } },
     });
-    for (const facilityId of new Set(
-      before.map((row) => row.class.facilityId),
-    )) {
-      const rows = before.filter((row) => row.class.facilityId === facilityId);
-      await requestContext.run({ ...context, facilityId }, () =>
-        tx.auditLog.create({
-          data: {
-            facilityId,
-            actorId: context!.actorId!,
-            entity: "Enrollment",
-            entityId: subscription.id,
-            action: "revokeEntitlement",
-            before: rows.map((row) => ({
-              id: row.id,
-              status: row.status,
-              subscriptionId: row.subscriptionId,
-            })),
-            after: rows.map((row) => ({
-              id: row.id,
-              status: "CANCELLED",
-              cancelledAt: now.toISOString(),
-            })),
-            reason: context?.reason ?? "Subscription cancelled or refunded",
-          },
-        }),
-      );
+    const alternatives = await tx.membershipSubscription.findMany({
+      where: { memberId: subscription.memberId, id: { not: subscription.id }, cancelledAt: null,
+        tier: { not: "FREE" }, status: { in: ["ACTIVE", "SCHEDULED"] },
+        payments: { some: { status: "SUCCESS" } } },
+    });
+    const ids: string[] = [];
+    for (const row of candidates) {
+      const grant = readTermMembershipGrant(row.termMembershipGrant);
+      const fundedBySource = row.subscriptionId === subscription.id || grant?.subscriptionId === subscription.id;
+      if (fundedBySource) { ids.push(row.id); continue; }
+      // Unknown legacy sources are retained only when an independent paid right covers the session.
+      if (row.subscriptionId !== null) continue;
+      if (grant && termMembershipCovers(row.termMembershipGrant, {
+        memberId: row.memberId, classId: row.classId, termId: row.schedule.termId,
+        startTime: row.schedule.startTime, endTime: row.schedule.endTime,
+      }) && await isGrantSourceValid(tx, row.termMembershipGrant)) continue;
+      const covered = alternatives.some(other => other.startDate <= row.schedule.startTime &&
+        other.endDate >= row.schedule.endTime && (row.class.classType !== "PREMIUM" || other.tier === "PREMIUM"));
+      if (!covered) ids.push(row.id);
+    }
+    const before = candidates.filter(row => ids.includes(row.id));
+    for (const classId of [...new Set(before.map(row => row.classId))].sort())
+      await lockMemberClass(tx, subscription.memberId, classId);
+    for (const scheduleId of [...new Set(before.map(row => row.scheduleId))].sort())
+      await lockSchedule(tx, scheduleId);
+    const where: Prisma.EnrollmentWhereInput = {
+      id: { in: ids }, memberId: subscription.memberId, status: "BOOKED",
+    };
+    const changed = await tx.enrollment.updateMany({
+      where, data: { status: "CANCELLED", cancelledAt: now, termMembershipGrant: Prisma.DbNull },
+    });
+    const { promoteNextEligible } = await import("../waitlist/waitlist.promotion.js");
+    for (const scheduleId of [...new Set(before.map(row => row.scheduleId))].sort()) {
+      const schedule = await tx.classSchedule.findUnique({ where: { id: scheduleId }, include: { class: true } });
+      if (schedule?.status === "SCHEDULED" && schedule.startTime > now)
+        await promoteNextEligible(tx, scheduleId, schedule);
+    }
+    if (context?.actorId) for (const facilityId of new Set(before.map(row => row.class.facilityId))) {
+      const rows = before.filter(row => row.class.facilityId === facilityId);
+      await requestContext.run({ ...context, facilityId }, () => tx.auditLog.create({
+        data: { facilityId, actorId: context.actorId!, entity: "Enrollment", entityId: subscription.id,
+          action: "revokeEntitlement", reason: context.reason ?? "Subscription cancelled or refunded",
+          before: rows.map(row => ({ id: row.id, status: row.status, subscriptionId: row.subscriptionId })),
+          after: rows.map(row => ({ id: row.id, status: "CANCELLED", cancelledAt: now.toISOString() })) },
+      }));
     }
     return changed;
   });

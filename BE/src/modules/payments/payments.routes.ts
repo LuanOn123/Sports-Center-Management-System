@@ -21,7 +21,7 @@ router.use((req, res, next) => {
  * @swagger
  * /payments:
  *   post:
- *     summary: Record a payment (auto-creates invoice on SUCCESS)
+ *     summary: Deprecated manual receipt (use counter orders or subscription purchase)
  *     tags: [Payments]
  *     requestBody:
  *       required: true
@@ -176,7 +176,7 @@ router.post("/:id/refund/confirm", authenticate, authorizeExact("ADMIN", "RECEPT
   async (req, res) => { sendSuccess(res, await updatePaymentStatus(String(req.params.id), "REFUNDED", req.body), "Đã xác nhận hoàn tiền thực tế"); });
 router.patch(
   "/:id/status",
-  authenticate, authorize("MANAGER"),
+  authenticate, authorize("RECEPTIONIST"),
   validate(UpdatePaymentStatusSchema),
   paymentsController.updatePaymentStatus
 );
@@ -185,7 +185,7 @@ router.patch(
  * @swagger
  * /payments/{id}/retry-activation:
  *   post:
- *     summary: Kích hoạt bù cho giao dịch online đã thu tiền nhưng chưa cấp gói (Manager only)
+ *     summary: Kích hoạt bù cho giao dịch online đã thu tiền nhưng chưa cấp gói (Admin only)
  *     description: |
  *       Dùng khi `activationStatus = REQUIRES_REVIEW` (tiền ĐÃ về nhưng gói không kích hoạt tự động,
  *       VD bị chặn hạ hạng trong lúc chờ chuyển khoản). Cấp gói theo ĐÚNG snapshot điều khoản của đơn.
@@ -208,7 +208,7 @@ router.patch(
  */
 router.post(
   "/:id/retry-activation",
-  authenticate, authorize("MANAGER"),
+  authenticate, authorizeExact("ADMIN"),
   paymentsController.retryPaymentActivation
 );
 

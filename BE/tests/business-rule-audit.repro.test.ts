@@ -172,8 +172,8 @@ for (const status of ["ACTIVE", "SCHEDULED", "EXPIRED"])
       stub(prisma, "$transaction", async (run: any) =>
         run({
           $executeRaw: async (sql: TemplateStringsArray, memberId: string) => {
-            assert.match(sql.join("?"), /membership:member:/);
-            assert.equal(memberId, "member");
+            assert.match(sql.join("?"), /membership:member:|enrollment:member-|enrollment:schedule:/);
+            assert.ok(["member", "session"].includes(memberId));
             memberLocked = true;
             return 0;
           },
@@ -186,14 +186,21 @@ for (const status of ["ACTIVE", "SCHEDULED", "EXPIRED"])
           },
           membershipSubscription: {
             findUnique: async () => sub,
+            findFirst: async () => null,
+            findMany: async () => [],
             update: async ({ data }: any) => Object.assign(sub, data),
           },
           enrollment: {
+            findMany: async () => [{ id: "funded", memberId: "member", subscriptionId: "source", termMembershipGrant: null,
+              classId: "class", scheduleId: "session", schedule: { startTime: new Date(0), endTime: new Date("2099-01-01") },
+              class: { facilityId: "facility", classType: "REGULAR" } },
+              { id: "other", memberId: "member", subscriptionId: "independent", termMembershipGrant: null }],
             updateMany: async (args: any) => {
               revoked = args;
               return { count: 1 };
             },
           },
+          classSchedule: { findUnique: async () => ({ status: "COMPLETED" }) },
         }),
       );
       await updatePaymentStatus("cash", "REFUNDED", {
@@ -202,7 +209,7 @@ for (const status of ["ACTIVE", "SCHEDULED", "EXPIRED"])
       });
       assert.equal(payment.status, "REFUNDED");
       assert.equal(sub.status, "CANCELLED");
-      assert.deepEqual(revoked.where.OR[0], { subscriptionId: "source" });
+      assert.deepEqual(revoked.where.id, { in: ["funded"] });
       assert.equal(revoked.where.memberId, "member");
       assert.equal(revoked.data.status, "CANCELLED");
     });

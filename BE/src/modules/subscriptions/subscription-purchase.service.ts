@@ -54,6 +54,7 @@ export async function inspectPlanPurchase(
   requestedStartDate?: Date | string,
   now: Date = new Date(),
 ): Promise<PlanPurchaseContext> {
+  if (plan.tier === "FREE") throw new AppError("Gói FREE chỉ được hệ thống tự động cấp.", 400, { code: "FREE_PLAN_NOT_FOR_SALE" });
   const reqDate = requestedStartDate
     ? (requestedStartDate instanceof Date ? requestedStartDate : new Date(requestedStartDate))
     : undefined;
@@ -93,7 +94,7 @@ export async function inspectPlanPurchase(
     return {
       currentActive: currentActive?.tier === "FREE" ? currentActive : null,
       changeType: "NEW",
-      isUpgrade: plan.tier !== "FREE",
+      isUpgrade: true,
       oldPlanName: currentActive?.plan.name ?? "",
       remainingDays: 0,
       calculatedStartDate,
@@ -115,6 +116,11 @@ export async function inspectPlanPurchase(
 
   // Case 1: Gia hạn cùng hạng (isSameTier) -> TỰ ĐỘNG NỐI TIẾP VÀO NGÀY HẾT HẠN GÓI CŨ
   if (isSameTier) {
+    // The renewal date is determined by the current period, never silently ignored.
+    const effectiveStart = currentActive.endDate > now ? currentActive.endDate : now;
+    if (reqDate && Math.abs(+reqDate - +effectiveStart) > 60_000)
+      throw new AppError("Gia hạn cùng hạng phải bắt đầu khi gói hiện tại kết thúc.", 400,
+        { code: "RENEWAL_START_DATE_CONFLICT", effectiveStartDate: effectiveStart.toISOString() });
     let calculatedStartDate: Date;
     let targetStatus: "ACTIVE" | "SCHEDULED";
 

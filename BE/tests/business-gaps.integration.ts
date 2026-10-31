@@ -1,3 +1,4 @@
+import { createFixtureSchedule, cleanupFixtureSchedules } from "./fixture-schedule.js";
 import dotenv from "dotenv";
 dotenv.config({ path: ".env", quiet: true });
 import assert from "node:assert/strict";
@@ -94,6 +95,7 @@ async function main() {
     const m1 = await mkMember("g2");
     const current = await mkSub(m1.member.id, "ACTIVE", new Date(Date.now() - 20 * DAY));
     const queued = await mkSub(m1.member.id, "SCHEDULED", new Date(Date.now() - 60000));
+    await mkPaid(m1.member.id, queued.id);
     const r1 = await activateScheduledSubscriptions(new Date());
     assert.ok(r1.activated >= 1);
     assert.equal((await prisma.membershipSubscription.findUniqueOrThrow({ where: { id: queued.id } })).status, "ACTIVE");
@@ -124,8 +126,9 @@ async function main() {
     assert.equal(cancelled.status, "CANCELLED");
     assert.equal(cancelled.refundAmount, 600000);
     const payAfter = await prisma.payment.findUniqueOrThrow({ where: { id: pay.id } });
-    assert.equal(payAfter.status, "REFUNDED");
-    assert.equal(Number(payAfter.refundedAmount), 600000);
+    assert.equal(payAfter.status, "SUCCESS");
+    assert.equal(Number(payAfter.refundRequestedAmount), 600000);
+    assert.ok(payAfter.refundRequestedAt);
     assert.equal(await prisma.membershipSubscription.count({ where: { memberId: m3.member.id, status: "ACTIVE" } }), 1);
     assert.ok(
       (await prisma.notificationOutbox.count({ where: { userId: m3.user.id } })) +
@@ -161,7 +164,7 @@ async function main() {
       data: { facilityId: facA.id, name: `wl-${run}`, capacity: 1, areaType: "INDOOR" },
     });
     classes.push(cls.id);
-    const slot = await prisma.classSchedule.create({
+    const slot = await createFixtureSchedule(prisma, {
       data: {
         classId: cls.id, roomId: roomA.id,
         startTime: new Date(Date.now() + 3 * DAY), endTime: new Date(Date.now() + 3 * DAY + 3600000),
@@ -216,7 +219,7 @@ async function main() {
     ok("Term: kỳ riêng của cơ sở A không xếp được lịch cho cơ sở B");
     await expectError(() => termsService.updateTerm(term.id, { status: "CLOSED" }, facB.id), 403, "Manager B sửa kỳ A");
     ok("Term: Manager cơ sở khác không sửa được kỳ (403)");
-    await prisma.classSchedule.create({
+    await createFixtureSchedule(prisma, {
       data: {
         classId: cls.id, roomId: roomA.id, termId: term.id,
         startTime: new Date(now + 5 * DAY), endTime: new Date(now + 5 * DAY + 3600000),
@@ -245,6 +248,7 @@ async function main() {
     await prisma.notification.deleteMany({ where: { userId: { in: users } } });
     await prisma.auditLog.deleteMany({ where: { facilityId: { in: facilities } } });
     await prisma.room.deleteMany({ where: { facilityId: { in: facilities } } });
+    await cleanupFixtureSchedules(prisma);
     await prisma.facility.deleteMany({ where: { id: { in: facilities } } });
     await prisma.user.deleteMany({ where: { id: { in: users } } });
     if (planId) await prisma.membershipPlan.delete({ where: { id: planId } }).catch(() => {});

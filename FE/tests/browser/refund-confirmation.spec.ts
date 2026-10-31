@@ -1,6 +1,32 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./fixtures";
 
+test("Admin can retry paid SePay activation and payments page has no arbitrary receipt action", async ({ page }) => {
+  await setup(page, "ADMIN");
+  let retried = false;
+  await page.route("**/api/v1/**", async route => {
+    const path = new URL(route.request().url()).pathname.replace("/api/v1", "");
+    if (path === "/payments/review-1/retry-activation" && route.request().method() === "POST") {
+      retried = true;
+      return route.fulfill({ json: { success: true, data: {} } });
+    }
+    if (path === "/members") return route.fulfill({ json: { success: true, data: [
+      { id: "member-1", user: { fullName: "Nguyễn Lan", email: "lan@example.invalid" } },
+    ] } });
+    if (path === "/payments") return route.fulfill({ json: { success: true, data: [
+      { id: "review-1", amount: 300000, status: "SUCCESS", gateway: "SEPAY", activationStatus: retried ? "ACTIVATED" : "REQUIRES_REVIEW" },
+    ] } });
+    if (path.startsWith("/invoices/member/")) return route.fulfill({ json: { success: true, data: [] } });
+    return route.fallback();
+  });
+  await page.goto("/admin/payments");
+  await page.getByRole("button", { name: "Chọn", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Ghi nhận thanh toán", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Thử kích hoạt lại", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Thử kích hoạt lại", exact: true })).toHaveCount(0);
+  expect(retried).toBe(true);
+});
+
 test("Admin records an actual refund with receipt, and cannot submit without evidence", async ({
   page,
 }) => {

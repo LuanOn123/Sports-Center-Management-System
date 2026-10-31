@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { passwordResetLimit } from "../../middlewares/passwordResetLimit.js";
 import { authenticate } from "../../middlewares/authenticate.js";
 import { validate } from "../../middlewares/validate.js";
 import { avatarUpload } from "../../middlewares/upload.js";
@@ -258,7 +259,7 @@ router.patch(
  *         description: Không gửi được email OTP (tất cả driver mail đều thất bại) — thử lại sau.
  *       500: { $ref: "#/components/responses/ServerError" }
  */
-router.post("/forgot-password", validate(ForgotPasswordSchema), authController.forgotPassword);
+router.post("/forgot-password", validate(ForgotPasswordSchema), passwordResetLimit("send"), authController.forgotPassword);
 
 /**
  * @swagger
@@ -286,6 +287,6 @@ router.post("/forgot-password", validate(ForgotPasswordSchema), authController.f
  *       400: { $ref: "#/components/responses/BadRequest" }
  *       500: { $ref: "#/components/responses/ServerError" }
  */
-router.post("/reset-password", validate(ResetPasswordSchema), authController.resetPassword);
+router.post("/reset-password", validate(ResetPasswordSchema), passwordResetLimit("verify"), authController.resetPassword);
 
 export default router;

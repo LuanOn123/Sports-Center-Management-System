@@ -161,7 +161,6 @@ async function main() {
     await prisma.membershipPlan.delete({ where: { id: plan30.id } });
     await prisma.auditLog.deleteMany({ where: { facilityId: facility.id } });
     await prisma.facility.delete({ where: { id: facility.id } });
-    await prisma.facility.delete({ where: { id: "legacy-main" } });
     await prisma.$disconnect();
   }
 }

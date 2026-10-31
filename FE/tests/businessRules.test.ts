@@ -39,39 +39,40 @@ describe("workflow state boundaries", () => {
       effectiveSubscription([s, { ...s, tier: "PREMIUM" }], now)?.tier,
     ).toBe("PREMIUM");
   });
-  it("payment states are terminal and refunds require manager", () => {
-    expect(paymentTransitions("PENDING", "MANAGER")).toEqual([
-      "SUCCESS",
+  it("counter payments cannot be manually marked paid; refunds require reception or admin", () => {
+    expect(paymentTransitions("PENDING", "RECEPTIONIST")).toEqual([
       "FAILED",
     ]);
-    expect(paymentTransitions("SUCCESS", "MANAGER")).toEqual(["REFUNDED"]);
-    expect(paymentTransitions("REFUNDED", "MANAGER")).toEqual([]);
-    expect(paymentTransitions("FAILED", "MANAGER")).toEqual([]);
+    expect(paymentTransitions("SUCCESS", "RECEPTIONIST")).toEqual(["REFUNDED"]);
+    expect(paymentTransitions("REFUNDED", "RECEPTIONIST")).toEqual([]);
+    expect(paymentTransitions("FAILED", "RECEPTIONIST")).toEqual([]);
+    expect(paymentTransitions("PENDING", "MANAGER")).toEqual([]);
+    expect(paymentTransitions("SUCCESS", "ADMIN")).toEqual(["REFUNDED"]);
     expect(paymentTransitions("SUCCESS", "STAFF")).toEqual([]);
-    expect(paymentTransitions("PENDING", "MANAGER", "SEPAY")).toEqual([]);
-    expect(paymentTransitions("SUCCESS", "MANAGER", "SEPAY")).toEqual([]);
-    expect(paymentTransitions("SUCCESS", "MANAGER", null)).toEqual([
+    expect(paymentTransitions("PENDING", "RECEPTIONIST", "SEPAY")).toEqual([]);
+    expect(paymentTransitions("SUCCESS", "RECEPTIONIST", "SEPAY")).toEqual([]);
+    expect(paymentTransitions("SUCCESS", "RECEPTIONIST", null)).toEqual([
       "REFUNDED",
     ]);
   });
   it("never resumes historical subscriptions, even with audited remaining days", () => {
-    expect(subscriptionTransitions({ status: "SUSPENDED" }, "MANAGER")).toEqual(
+    expect(subscriptionTransitions({ status: "SUSPENDED" }, "RECEPTIONIST")).toEqual(
       [],
     );
     expect(
       subscriptionTransitions(
         { status: "SUSPENDED", remainingDays: 4 },
-        "MANAGER",
+        "RECEPTIONIST",
       ),
     ).toEqual([]);
-    expect(subscriptionTransitions({ status: "EXPIRED" }, "MANAGER")).toEqual(
+    expect(subscriptionTransitions({ status: "EXPIRED" }, "RECEPTIONIST")).toEqual(
       [],
     );
-    expect(subscriptionTransitions({ status: "ACTIVE" }, "MANAGER")).toEqual([
+    expect(subscriptionTransitions({ status: "ACTIVE" }, "RECEPTIONIST")).toEqual([
       "SUSPENDED",
       "CANCELLED",
     ]);
-    expect(subscriptionTransitions({ status: "CANCELLED" }, "MANAGER")).toEqual(
+    expect(subscriptionTransitions({ status: "CANCELLED" }, "RECEPTIONIST")).toEqual(
       [],
     );
     expect(subscriptionTransitions({ status: "ACTIVE" }, "STAFF")).toEqual([]);
@@ -154,10 +155,10 @@ it("keeps member refund boundary separate from capped manager prorating", () => 
   expect(refundEstimate(end, 1000000, 30, "MEMBER", now - 1).refundAmount).toBe(
     300000,
   );
-  expect(refundEstimate(end, 1000000, 30, "MANAGER", now).refundAmount).toBe(
+  expect(refundEstimate(end, 1000000, 30, "RECEPTIONIST", now).refundAmount).toBe(
     500000,
   );
-  expect(refundEstimate(end, 1000000, 10, "MANAGER", now).refundAmount).toBe(
+  expect(refundEstimate(end, 1000000, 10, "RECEPTIONIST", now).refundAmount).toBe(
     1000000,
   );
 });

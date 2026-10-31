@@ -18,6 +18,20 @@ function transformProfile(doc: any) {
 
 export async function assertMemberFacilityAccess(memberProfileId: string, user?: { id: string; role: string }) {
   if (!user || user.role === "ADMIN") return;
+  if (user.role === "COACH") {
+    const coach = await prisma.coachProfile.findUnique({ where: { userId: user.id }, select: { id: true } });
+    if (!coach) throw new AppError("Member not found", 404);
+    const relation = await prisma.enrollment.findFirst({
+      where: { memberId: memberProfileId, status: { in: ["BOOKED", "COMPLETED"] },
+        OR: [
+          { class: { coaches: { some: { coachId: coach.id } } } },
+          { schedule: { coachId: coach.id } },
+        ] },
+      select: { id: true },
+    });
+    if (!relation) throw new AppError("Member not found", 404);
+    return;
+  }
   if (user.role === "RECEPTIONIST" || user.role === "MANAGER") {
     const facilityId = await getStaffFacilityId(user.id, user.role);
     const [hasSystemRelation, hasThisFacilityRelation] = await Promise.all([
@@ -131,6 +145,13 @@ export async function getMemberById(id: string, requestUser?: { id: string; role
 
   const memberProfileId = (memberProfile._id as any).toString();
   await assertMemberFacilityAccess(memberProfileId, requestUser);
+
+  if (requestUser?.role === "COACH") return {
+    id: memberProfileId,
+    trainingLevel: memberProfile.trainingLevel,
+    fitnessGoal: memberProfile.fitnessGoal,
+    user: { id: user._id.toString(), fullName: user.fullName, avatarUrl: user.avatarUrl },
+  };
 
   const subscriptions = await prisma.membershipSubscription.findMany({
     where: {

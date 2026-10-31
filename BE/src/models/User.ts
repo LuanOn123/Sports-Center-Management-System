@@ -17,6 +17,8 @@ export interface IUser extends Document {
   provisioningStatus: "READY" | "PENDING" | "FAILED";
   resetPasswordOtp?: string | null;
   resetPasswordOtpExpiresAt?: Date | null;
+  resetPasswordOtpAttempts: number;
+  resetPasswordOtpSentAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   id: string;
@@ -41,6 +43,8 @@ const userSchema = new Schema(
     provisioningStatus: { type: String, enum: ["READY", "PENDING", "FAILED"], default: "READY" },
     resetPasswordOtp: { type: String, default: null },
     resetPasswordOtpExpiresAt: { type: Date, default: null },
+    resetPasswordOtpAttempts: { type: Number, default: 0 },
+    resetPasswordOtpSentAt: { type: Date, default: null },
   },
   {
     timestamps: true,
@@ -53,6 +57,10 @@ const userSchema = new Schema(
         delete ret.provisioningLeaseToken;
         delete ret.provisioningLeaseUntil;
         delete ret.password;
+        delete ret.resetPasswordOtp;
+        delete ret.resetPasswordOtpExpiresAt;
+        delete ret.resetPasswordOtpAttempts;
+        delete ret.resetPasswordOtpSentAt;
       },
     },
     toObject: {

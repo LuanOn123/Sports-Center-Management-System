@@ -1,3 +1,4 @@
+import "./helpers/business-e2e.js";
 /**
  * E2E THẬT (HTTP + PostgreSQL) cho luồng điểm danh dự phòng khi Member không quét được QR.
  *

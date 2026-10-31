@@ -1,3 +1,4 @@
+import "./helpers/business-e2e.js";
 /**
  * E2E THẬT (HTTP + PostgreSQL) cho thanh toán ONLINE qua SePay (chuyển khoản VietQR):
  * - `POST /payments/sepay/checkout`     → Member tạo đơn PENDING + mã thanh toán + ảnh QR.

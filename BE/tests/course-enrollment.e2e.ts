@@ -1,3 +1,4 @@
+import "./helpers/business-e2e.js";
 /**
  * E2E THẬT (HTTP + PostgreSQL) cho luồng "ĐĂNG KÝ TRỌN KHÓA" (all-or-nothing):
  * - `GET  /classes/:id/course-plan`  → gom toàn bộ buổi sắp diễn ra thành 1 khóa học

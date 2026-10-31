@@ -1,75 +1,13 @@
 import { revokeSubscriptionBookings } from "../subscriptions/entitlement.service.js";
 import { lockMemberSubscription } from "../../utils/dbLocks.js";
 import { prisma } from "../../config/prisma.js";
-import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 
-async function createInvoice(memberId: string, paymentId: string, amount: number) {
-  return prisma.invoice.create({
-    data: {
-      invoiceNumber: `INV-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-      memberId,
-      paymentId,
-      subtotal: amount,
-      discount: 0,
-      total: amount,
-      status: "ISSUED",
-      issuedAt: new Date(),
-    },
-  });
-}
-
-export async function createPayment(data: any, createdById: string) {
-  // Resolve member
-  const memberProfile = await prisma.memberProfile.findFirst({
-    where: { OR: [{ id: data.memberId }, { userId: data.memberId }] },
-  });
-  if (!memberProfile) throw new AppError("Member not found", 404);
-
-  if (data.subscriptionId) {
-    const sub = await prisma.membershipSubscription.findUnique({
-      where: { id: data.subscriptionId },
-    });
-    if (!sub) throw new AppError("Subscription not found", 404);
-    if (sub.memberId !== memberProfile.id) {
-      throw new AppError("Subscription belongs to a different member", 400);
-    }
-  }
-
-  // Wrap in transaction for BR-05 (atomicity)
-  return prisma.$transaction(async (tx) => {
-    const payment = await tx.payment.create({
-      data: {
-        memberId: memberProfile.id,
-        subscriptionId: data.subscriptionId,
-        amount: data.amount,
-        method: data.method,
-        status: data.status ?? "SUCCESS",
-        note: data.note,
-        transactionCode: data.transactionCode,
-        paidAt: (data.status ?? "SUCCESS") === "SUCCESS" ? new Date() : undefined,
-        createdById,
-      },
-      include: { member: { include: { user: { select: { fullName: true } } } } },
-    });
-
-    let invoice = null;
-    if (payment.status === "SUCCESS") {
-      invoice = await tx.invoice.create({
-        data: {
-          invoiceNumber: `INV-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-          memberId: memberProfile.id,
-          paymentId: payment.id,
-          subtotal: data.amount,
-          discount: 0,
-          total: data.amount,
-          status: "ISSUED",
-          issuedAt: new Date(),
-        },
-      });
-    }
-    return { ...payment, invoice };
+/** Receipts must originate from an order with authoritative pricing. */
+export async function createPayment(_data: any, _createdById: string) {
+  throw new AppError("Vui lòng bán gói qua đơn tại quầy hoặc đăng ký/gia hạn gói. Không thể ghi khoản thu tự do.", 409, {
+    code: "PAYMENT_ORDER_REQUIRED",
   });
 }
 
@@ -140,6 +78,9 @@ export async function updatePaymentStatus(id: string, status: string, confirmati
       400
     );
   }
+  if (status === "SUCCESS")
+    throw new AppError("Xác nhận thu tiền qua đơn tại quầy để cấp gói và hóa đơn đồng thời.", 409,
+      { code: "PAYMENT_ORDER_REQUIRED" });
 
   if (status === "REFUNDED" && (!confirmation?.reason?.trim() || !confirmation.reference?.trim()))
     throw new AppError("Xác nhận hoàn tiền phải có lý do và mã biên nhận/chuyển khoản thực tế.", 400);

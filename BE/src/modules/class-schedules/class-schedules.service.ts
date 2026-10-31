@@ -256,6 +256,8 @@ async function createScheduleBatchInTx(tx: Prisma.TransactionClient, data: {
   const ordered = data.schedules.map((row) => ({ startTime: new Date(row.startTime), endTime: new Date(row.endTime) }))
     .sort((a, b) => +a.startTime - +b.startTime);
   if (!ordered.length || ordered.length > 500) throw new AppError("Chọn từ 1 đến 500 buổi học.", 400);
+  if (ordered.some(row => row.startTime <= new Date()))
+    throw new AppError("Không thể tạo buổi học trong quá khứ hoặc đã bắt đầu.", 400, { code: "SCHEDULE_IN_PAST" });
   for (let i = 0; i < ordered.length; i++) {
     const row = ordered[i];
     if (!Number.isFinite(+row.startTime) || !Number.isFinite(+row.endTime) || row.endTime <= row.startTime)

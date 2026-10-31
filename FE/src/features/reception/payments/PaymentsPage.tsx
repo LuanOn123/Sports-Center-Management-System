@@ -6,16 +6,9 @@ import { Details, ErrorState, Loading, Modal } from "../../../shared/ui";
 import { useReceptionDetail, useReceptionList } from "../api";
 import { StatusAction } from "../../../shared/StatusAction";
 import { paymentTransitions } from "../../../shared/businessRules";
-import {
-  ActionForm,
-  Heading,
-  ListState,
-  MemberPicker,
-  Table,
-} from "../components";
+import { Heading, ListState, MemberPicker, Table } from "../components";
 export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
   const [member, setMember] = useState<RecordData | null>(null);
-  const [record, setRecord] = useState(false);
   const [invoiceId, setInvoiceId] = useState("");
   const [paymentId, setPaymentId] = useState("");
   const [status, setStatus] = useState("");
@@ -33,23 +26,11 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
     { memberId: id },
     Boolean(id),
   );
-  const subscriptions = useReceptionList(
-    "GET /subscriptions/member/{memberId}",
-    {},
-    { memberId: id },
-    Boolean(id),
-  );
   const payment = useReceptionDetail(
     "GET /payments/{id}",
     { id: paymentId },
     Boolean(paymentId),
   );
-  const choices = (subscriptions.data?.data || [])
-    .filter((r) => r.id)
-    .map((r) => ({
-      value: String(r.id),
-      label: `${display(at(r, "plan.name"))} · ${display(r.endDate)} · ${display(r.status)}`,
-    }));
   return (
     <>
       <Heading title="Thanh toán & hóa đơn" />
@@ -60,7 +41,6 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
         value={member}
         onChange={(m) => {
           setMember(m);
-          setRecord(false);
           setInvoiceId("");
           setPaymentId("");
         }}
@@ -70,22 +50,9 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
           <section className="panel reception-section">
             <h2>Lịch sử thanh toán</h2>
             <p>
-              Đối chiếu khoản đã thu khi đăng ký hoặc gia hạn gói trước khi ghi
-              thêm thanh toán.
+              Khoản thu được tạo khi bán hoặc gia hạn gói. Vui lòng dùng chức
+              năng gói hội viên để ghi nhận đúng đơn và số tiền.
             </p>
-            <button
-              className="button primary"
-              disabled={subscriptions.isPending || subscriptions.isError}
-              onClick={() => setRecord(true)}
-            >
-              Ghi nhận thanh toán
-            </button>
-            {subscriptions.isError && (
-              <ErrorState
-                error={subscriptions.error}
-                retry={() => subscriptions.refetch()}
-              />
-            )}
             <label>
               Lọc trạng thái
               <select
@@ -151,9 +118,15 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
                           </small>
                         )}
                         {row.activationStatus === "REQUIRES_REVIEW" && (
-                          <span role="status">
+                          <div role="status">
                             Cần đối soát — chưa kích hoạt gói
-                          </span>
+                            {role === "ADMIN" && row.status === "SUCCESS" && (
+                              <RetryActivation id={String(row.id)} />
+                            )}
+                            {role !== "ADMIN" && (
+                              <small>Liên hệ quản trị viên để xử lý.</small>
+                            )}
+                          </div>
                         )}
                         {row.status === "SUCCESS" && row.refundRequestedAt && (
                           <button
@@ -205,15 +178,6 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
             </ListState>
           </section>
         </>
-      )}
-      {record && (
-        <ActionForm
-          title="Ghi nhận thanh toán"
-          operation="POST /payments"
-          fixed={{ memberId: id }}
-          choices={{ subscriptionId: choices }}
-          onClose={() => setRecord(false)}
-        />
       )}
       {invoiceId && (
         <InvoiceDialog id={invoiceId} onClose={() => setInvoiceId("")} />
@@ -371,5 +335,28 @@ function RefundConfirmation({
         </fieldset>
       </form>
     </Modal>
+  );
+}
+
+function RetryActivation({ id }: { id: string }) {
+  const client = useQueryClient();
+  const retry = useMutation({
+    mutationFn: () =>
+      api("POST /payments/{id}/retry-activation", { params: { id } }),
+    onSuccess: () => {
+      void client.invalidateQueries();
+    },
+  });
+  return (
+    <>
+      <button
+        className="button small"
+        disabled={retry.isPending}
+        onClick={() => retry.mutate()}
+      >
+        {retry.isPending ? "Đang xử lý…" : "Thử kích hoạt lại"}
+      </button>
+      {retry.isError && <ErrorState error={retry.error} />}
+    </>
   );
 }

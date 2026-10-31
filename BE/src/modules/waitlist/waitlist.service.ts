@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
-import { lockMemberClass, lockMemberQuota, lockSchedule } from "../../utils/dbLocks.js";
+import { lockMemberClass, lockMemberQuota, lockSchedule, lockMemberSubscription } from "../../utils/dbLocks.js";
 import { assertCanBook } from "../enrollments/enrollments.service.js";
 import { enqueueNotification, flushNotificationOutbox } from "../notifications/outbox.service.js";
 
@@ -40,9 +40,14 @@ export async function joinWaitlist(scheduleId: string, memberProfileId: string) 
 
   try {
     return await prisma.$transaction(async (tx) => {
+      await lockMemberSubscription(tx, memberProfileId);
       await lockMemberQuota(tx, memberProfileId);
       await lockMemberClass(tx, memberProfileId, schedule.classId);
       await lockSchedule(tx, scheduleId);
+      const fresh = await tx.classSchedule.findUnique({ where: { id: scheduleId }, include: { class: true } });
+      if (!fresh || fresh.status !== "SCHEDULED" || fresh.startTime <= new Date())
+        throw new AppError("Buổi học không còn nhận danh sách chờ.", 409);
+      await assertCanBook(tx, memberProfileId, fresh, { ignoreCapacity: true });
 
       const existingEnrollment = await tx.enrollment.findUnique({
         where: { memberId_scheduleId: { memberId: memberProfileId, scheduleId } },
