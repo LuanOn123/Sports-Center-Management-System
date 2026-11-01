@@ -1,3 +1,4 @@
+import { scheduleFixture } from "./helpers/schedule-fixture.js";
 /**
  * Regression test MF-01 / MF-02 — Hủy gói liên facility (read-only với business DB).
  *
@@ -21,6 +22,7 @@ async function main() {
     /^scms_verify_/,
   );
   const { prisma } = await import("../src/config/prisma.js");
+  const fixtureSchedules = scheduleFixture(prisma);
   const { cancelSubscriptionBySelf, updateSubscriptionStatus } = await import(
     "../src/modules/subscriptions/subscriptions.service.js"
   );
@@ -74,8 +76,7 @@ async function main() {
     const future = new Date(Date.now() + 5 * DAY);
     const past = new Date(Date.now() - 5 * DAY);
     const mkSched = (classIdx: number, start: Date) =>
-      prisma.classSchedule
-        .create({
+      fixtureSchedules.create({
           data: {
             classId: classes[classIdx],
             roomId: rooms[classIdx],
@@ -321,6 +322,7 @@ async function main() {
     await prisma.payment.deleteMany({ where: { id: { in: payments } } });
     await prisma.membershipSubscription.deleteMany({ where: { id: { in: subs } } });
     await prisma.classSchedule.deleteMany({ where: { classId: { in: classes } } });
+    await fixtureSchedules.cleanup();
     await prisma.class.deleteMany({ where: { id: { in: classes } } });
     await prisma.room.deleteMany({ where: { id: { in: rooms } } });
     await prisma.membershipPlan.deleteMany({ where: { id: { in: plans } } });

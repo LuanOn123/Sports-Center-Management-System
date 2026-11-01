@@ -1,3 +1,4 @@
+import { scheduleFixture } from "./helpers/schedule-fixture.js";
 import dotenv from "dotenv";
 dotenv.config({ path: ".env", quiet: true });
 import assert from "node:assert/strict";
@@ -10,6 +11,7 @@ async function main() {
     /^scms_verify_/,
   );
   const { prisma } = await import("../src/config/prisma.js");
+  const fixtureSchedules = scheduleFixture(prisma);
   const { bookClass, transferEnrollment } =
     await import("../src/modules/enrollments/enrollments.service.js");
   const { enrollWholeCourse } =
@@ -109,7 +111,7 @@ async function main() {
         data: { classId: cls.id, coachId: coach.id, isPrimary: true },
       });
       sessions.push(
-        await prisma.classSchedule.create({
+        await fixtureSchedules.create({
           data: {
             classId: cls.id,
             roomId: room.id,
@@ -201,7 +203,7 @@ async function main() {
     console.log(
       "PASS single-session and whole-course bookings reject overlap across facilities",
     );
-    const other = await prisma.classSchedule.create({
+    const other = await fixtureSchedules.create({
       data: {
         classId: sessions[1].classId,
         roomId: (
@@ -250,7 +252,7 @@ async function main() {
     // Case 4: quota là GLOBAL — A giữ 1 Class, B giữ 1 Class ⇒ used = 2 ở CẢ hai facility.
     // Buổi B2 ở facility B (10:00–11:00) cách booking A (08:00–09:00) 60 phút >= travel
     // buffer nên book được (không dùng buổi overlap — Case 5 đã chặn).
-    const laterB = await prisma.classSchedule.create({
+    const laterB = await fixtureSchedules.create({
       data: {
         classId: sessions[1].classId,
         roomId: (
@@ -314,7 +316,7 @@ async function main() {
     // gap == buffer cho qua) và laterB (same-facility, chỉ chạm biên 10:00).
     // Dời Z về 08:00–09:00 sẽ đụng booking tại A (cross-facility) ⇒ A11 chặn bằng 409
     // và GIỮ NGUYÊN thời gian Z.
-    const zSession = await prisma.classSchedule.create({
+    const zSession = await fixtureSchedules.create({
       data: {
         classId: sessions[1].classId,
         roomId: (
@@ -386,6 +388,7 @@ async function main() {
     await prisma.classMember.deleteMany({
       where: { classId: { in: classes } },
     });
+    await fixtureSchedules.cleanup();
     await prisma.class.deleteMany({ where: { id: { in: classes } } });
     await prisma.auditLog.deleteMany({
       where: { facilityId: { in: facilities } },

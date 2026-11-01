@@ -21,6 +21,7 @@ async function createInvoice(memberId: string, paymentId: string, amount: number
 }
 
 export async function createPayment(data: any, createdById: string) {
+  if (!data.subscriptionId) throw new AppError("Hãy bán gói qua đơn tại quầy; không ghi khoản thu không có gói nguồn.", 400, { code: "PAYMENT_SUBSCRIPTION_REQUIRED" });
   // Resolve member
   const memberProfile = await prisma.memberProfile.findFirst({
     where: { OR: [{ id: data.memberId }, { userId: data.memberId }] },
@@ -39,6 +40,12 @@ export async function createPayment(data: any, createdById: string) {
 
   // Wrap in transaction for BR-05 (atomicity)
   return prisma.$transaction(async (tx) => {
+    await lockMemberSubscription(tx, memberProfile.id);
+    const source = await tx.membershipSubscription.findUnique({ where: { id: data.subscriptionId }, include: { plan: true } });
+    if (!source || source.memberId !== memberProfile.id || source.tier === "FREE" || !["ACTIVE", "SCHEDULED"].includes(source.status)) throw new AppError("Gói nguồn không hợp lệ để ghi nhận thanh toán.", 409);
+    const expected = Number(source.priceSnapshot ?? source.plan.price);
+    if (Number(data.amount) !== expected || expected <= 0) throw new AppError("Số tiền phải khớp giá của gói nguồn.", 400);
+    if (await tx.payment.findFirst({ where: { subscriptionId: source.id, status: { in: ["PENDING", "SUCCESS"] } } })) throw new AppError("Gói đã có giao dịch. Hãy xử lý giao dịch hiện có, không thu trùng.", 409);
     const payment = await tx.payment.create({
       data: {
         memberId: memberProfile.id,

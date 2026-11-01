@@ -275,6 +275,7 @@ async function createScheduleBatchInTx(tx: Prisma.TransactionClient, data: {
     const row = ordered[i];
     if (!Number.isFinite(+row.startTime) || !Number.isFinite(+row.endTime) || row.endTime <= row.startTime)
       throw new AppError("Thời gian buổi học không hợp lệ.", 400);
+    if (row.startTime <= new Date()) throw new AppError("Không thể tạo buổi học trong quá khứ.", 400);
     if (i && row.startTime < ordered[i - 1].endTime)
       throw new AppError("Các buổi trong lịch tạo mới không được trùng nhau.", 409);
   }

@@ -117,6 +117,12 @@ export async function revokeSubscriptionBookings(
 ) {
   const context = requestContext.getStore();
   return requestContext.run({ ...context, facilityId: undefined }, async () => {
+    // Legacy rows have no funding attribution. Only release those seats when no
+    // other paid period can own them; never guess a source while another period exists.
+    const otherPaidPeriod = await tx.membershipSubscription.findFirst({
+      where: { memberId: subscription.memberId, id: { not: subscription.id }, tier: { not: "FREE" }, status: { in: ["ACTIVE", "SCHEDULED"] }, endDate: { gt: now } },
+      select: { id: true },
+    });
     const where: Prisma.EnrollmentWhereInput = {
       memberId: subscription.memberId,
       status: "BOOKED",
@@ -129,6 +135,7 @@ export async function revokeSubscriptionBookings(
             equals: subscription.id,
           },
         },
+        ...(!otherPaidPeriod ? [{ subscriptionId: null, termMembershipGrant: { equals: Prisma.AnyNull } }] : []),
       ],
     };
     const before = context?.actorId

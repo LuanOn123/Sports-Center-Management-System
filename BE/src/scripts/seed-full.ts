@@ -73,12 +73,12 @@ const USERS: SeedUser[] = [
     coach: { specialization: "Yoga Flow", experienceYears: 6, bio: "HLV Yoga 6 năm, chuyên Vinyasa và phục hồi." },
   },
   {
-    key: "coach.hiit", role: "COACH", fullName: "Đặng Tuấn Kiệt", gender: "MALE", facilities: ["seed-fac-q1", "seed-fac-q7"],
-    coach: { specialization: "HIIT Cardio, Boxing cơ bản", experienceYears: 8, bio: "HLV HIIT/Boxing, dạy ở cả Quận 1 và Quận 7." },
+    key: "coach.hiit", role: "COACH", fullName: "Đặng Tuấn Kiệt", gender: "MALE", facilities: ["seed-fac-q1"],
+    coach: { specialization: "HIIT Cardio, Boxing cơ bản", experienceYears: 8, bio: "HLV HIIT/Boxing tại Quận 1." },
   },
   {
     key: "coach.swim", role: "COACH", fullName: "Huỳnh Thanh Tâm", gender: "MALE", facilities: ["seed-fac-q7"],
-    coach: { specialization: "Bơi tự do", experienceYears: 10, bio: "Cựu VĐV bơi, có chứng chỉ cứu hộ." },
+    coach: { specialization: "Bơi tự do, HIIT", experienceYears: 10, bio: "Cựu VĐV bơi, có chứng chỉ cứu hộ." },
   },
   {
     key: "coach.badminton", role: "COACH", fullName: "Bùi Khánh Linh", gender: "FEMALE", facilities: ["seed-fac-q1"],
@@ -145,7 +145,7 @@ const SPORTS = [
 const SPECIALIZATIONS: Record<string, string[]> = {
   "coach.yoga": ["seed-sport-yoga"],
   "coach.hiit": ["seed-sport-hiit", "seed-sport-boxing"],
-  "coach.swim": ["seed-sport-swim"],
+  "coach.swim": ["seed-sport-hiit", "seed-sport-swim"],
   "coach.badminton": ["seed-sport-badminton", "seed-sport-yoga"],
   "coach.demo": ["seed-sport-yoga"],
   "coach.nospec": [],
@@ -192,7 +192,7 @@ const CLASSES: SeedClass[] = [
   { key: "badminton-weekend", facilityId: "seed-fac-q1", name: "Cầu lông cuối tuần", description: "Cầu lông đôi T7/CN.", sports: ["seed-sport-badminton"], capacity: 12, classType: "REGULAR", areaType: "INDOOR", roomId: "seed-room-q1-badminton", coach: "coach.badminton", weekdays: [6, 7], slot: "evening2" },
   { key: "yoga-full", facilityId: "seed-fac-q1", name: "Yoga nhóm nhỏ (đã đầy)", description: "Sức chứa 2 — đã đủ chỗ, dùng test CLASS_FULL.", sports: ["seed-sport-yoga"], capacity: 2, classType: "REGULAR", areaType: "INDOOR", roomId: "seed-room-q1-yoga", coach: "coach.badminton", weekdays: [2, 4], slot: "noon" },
   { key: "swim-q7", facilityId: "seed-fac-q7", name: "Bơi tự do Quận 7", description: "Bơi T2/T4/T6.", sports: ["seed-sport-swim"], capacity: 20, classType: "REGULAR", areaType: "POOL", roomId: "seed-room-q7-pool", coach: "coach.swim", weekdays: [1, 3, 5], slot: "evening1" },
-  { key: "hiit-q7", facilityId: "seed-fac-q7", name: "HIIT Quận 7", description: "HIIT T2/T4 — HLV dạy chung với Quận 1.", sports: ["seed-sport-hiit"], capacity: 15, classType: "REGULAR", areaType: "INDOOR", roomId: "seed-room-q7-hiit", coach: "coach.hiit", weekdays: [1, 3], slot: "evening2" },
+  { key: "hiit-q7", facilityId: "seed-fac-q7", name: "HIIT Quận 7", description: "HIIT T2/T4 tại Quận 7.", sports: ["seed-sport-hiit"], capacity: 15, classType: "REGULAR", areaType: "INDOOR", roomId: "seed-room-q7-hiit", coach: "coach.swim", weekdays: [1, 3], slot: "evening2" },
 ];
 
 /** Lớp demo điểm danh: 1 buổi đang diễn ra (mở QR) + 1 buổi sau 3 giờ (chưa tới giờ). */
@@ -384,7 +384,13 @@ async function upsertClass(c: Omit<SeedClass, "weekdays" | "slot">) {
 async function upsertSchedule(id: string, classId: string, roomId: string, startTime: Date, endTime: Date, status: "SCHEDULED" | "COMPLETED" | "CANCELLED") {
   const existing = await prisma.classSchedule.findUnique({ where: { id } });
   if (!existing) {
-    await prisma.classSchedule.create({ data: { id, classId, roomId, startTime, endTime, status } });
+    const room = await prisma.room.findUniqueOrThrow({ where: { id: roomId }, select: { facilityId: true } });
+    const term = await prisma.term.upsert({
+      where: { code: `DEMO_${room.facilityId.replace("seed-fac-", "").toUpperCase()}` }, update: {},
+      create: { code: `DEMO_${room.facilityId.replace("seed-fac-", "").toUpperCase()}`, name: "Seed demo", facilityId: room.facilityId,
+        startDate: vnDayStart(-PAST_DAYS - 1), endDate: vnDayStart(FUTURE_DAYS + 2), registrationStartDate: vnDayStart(-PAST_DAYS - 2), registrationEndDate: vnDayStart(FUTURE_DAYS + 1), status: "IN_PROGRESS" },
+    });
+    await prisma.classSchedule.create({ data: { id, classId, roomId, startTime, endTime, status, termId: term.id } });
     bump("schedules");
   }
   return existing ?? { id, startTime, endTime, status };
@@ -411,12 +417,13 @@ async function seedClasses() {
     }
     scheduleIdsByClass[c.key] = list;
 
+    const patternTerm = await prisma.term.findUniqueOrThrow({ where: { code: `DEMO_${c.facilityId.replace("seed-fac-", "").toUpperCase()}` } });
     const patternId = `seed-pattern-${c.key}`;
     const facilityCode = FACILITIES.find((f) => f.id === c.facilityId)!.code.toLowerCase();
     await ensureCreated("schedulePatterns", () => prisma.schedulePattern.findUnique({ where: { id: patternId } }), () =>
       prisma.schedulePattern.create({
         data: {
-          id: patternId, facilityId: c.facilityId, classId, roomId: c.roomId, weekdays: c.weekdays,
+          id: patternId, facilityId: c.facilityId, termId: patternTerm.id, classId, roomId: c.roomId, weekdays: c.weekdays,
           slotId: `seed-slot-${facilityCode}-${c.slot}`, startDate: vnDayStart(-PAST_DAYS), endDate: vnDayStart(FUTURE_DAYS),
         },
       }),

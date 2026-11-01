@@ -19,6 +19,7 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
   const [invoiceId, setInvoiceId] = useState("");
   const [paymentId, setPaymentId] = useState("");
   const [status, setStatus] = useState("");
+  const [retryPayment, setRetryPayment] = useState<RecordData | null>(null);
   const [refund, setRefund] = useState<RecordData | null>(null);
   const id = String(member?.id || "");
   const payments = useReceptionList(
@@ -45,7 +46,17 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
     Boolean(paymentId),
   );
   const choices = (subscriptions.data?.data || [])
-    .filter((r) => r.id)
+    .filter(
+      (r) =>
+        r.id &&
+        ["ACTIVE", "SCHEDULED"].includes(String(r.status)) &&
+        r.tier !== "FREE" &&
+        !(payments.data?.data || []).some(
+          (payment) =>
+            payment.subscriptionId === r.id &&
+            ["PENDING", "SUCCESS"].includes(String(payment.status)),
+        ),
+    )
     .map((r) => ({
       value: String(r.id),
       label: `${display(at(r, "plan.name"))} · ${display(r.endDate)} · ${display(r.status)}`,
@@ -53,6 +64,14 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
   return (
     <>
       <Heading title="Thanh toán & hóa đơn" />
+      {retryPayment && (
+        <ActionForm
+          title="Đối soát và thử kích hoạt gói"
+          operation="POST /payments/{id}/retry-activation"
+          params={{ id: String(retryPayment.id) }}
+          onClose={() => setRetryPayment(null)}
+        />
+      )}
       {refund && (
         <RefundConfirmation payment={refund} onClose={() => setRefund(null)} />
       )}
@@ -155,6 +174,17 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
                             Cần đối soát — chưa kích hoạt gói
                           </span>
                         )}
+                        {role === "ADMIN" &&
+                          row.gateway === "SEPAY" &&
+                          row.status === "SUCCESS" &&
+                          row.activationStatus === "REQUIRES_REVIEW" && (
+                            <button
+                              className="button small"
+                              onClick={() => setRetryPayment(row)}
+                            >
+                              Đối soát / thử kích hoạt
+                            </button>
+                          )}
                         {row.status === "SUCCESS" && row.refundRequestedAt && (
                           <button
                             className="button small"
@@ -170,7 +200,11 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
                             String(row.status),
                             role,
                             row.gateway,
-                          ).filter((s) => s !== "REFUNDED")}
+                          ).filter(
+                            (s) =>
+                              s !== "REFUNDED" &&
+                              !(row.planId && s === "SUCCESS"),
+                          )}
                           explanation="Hoàn tiền phải qua bước xác nhận biên nhận thực tế; quyền học từ gói đó sẽ được thu hồi."
                         />
                       </>

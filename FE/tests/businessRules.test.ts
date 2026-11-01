@@ -15,6 +15,12 @@ import { translateApiMessage } from "../src/shared/apiErrors";
 import { ATTENDANCE } from "../../BE/src/config/attendance";
 const now = Date.parse("2026-09-18T06:00:00Z");
 describe("workflow state boundaries", () => {
+  it("Admin can manage subscription and manual payment states without widening reception rights", () => {
+    expect(subscriptionTransitions({ status: "ACTIVE" }, "ADMIN")).toEqual(["SUSPENDED", "CANCELLED"]);
+    expect(paymentTransitions("PENDING", "ADMIN")).toEqual(["SUCCESS", "FAILED"]);
+    expect(paymentTransitions("PENDING", "ADMIN", "SEPAY")).toEqual([]);
+    expect(subscriptionTransitions({ status: "ACTIVE" }, "RECEPTIONIST")).toEqual([]);
+  });
   it("requires ACTIVE status and both date bounds for entitlement", () => {
     const s = {
       status: "ACTIVE",

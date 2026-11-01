@@ -1856,7 +1856,8 @@
       "required": [
         "memberId",
         "amount",
-        "method"
+        "method",
+        "subscriptionId"
       ],
       "properties": {
         "memberId": {

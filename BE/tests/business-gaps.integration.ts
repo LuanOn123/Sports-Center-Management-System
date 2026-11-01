@@ -1,3 +1,4 @@
+import { scheduleFixture } from "./helpers/schedule-fixture.js";
 import dotenv from "dotenv";
 dotenv.config({ path: ".env", quiet: true });
 import assert from "node:assert/strict";
@@ -22,6 +23,7 @@ async function main() {
     /^scms_verify_/,
   );
   const { prisma } = await import("../src/config/prisma.js");
+  const fixtureSchedules = scheduleFixture(prisma);
   const { activateScheduledSubscriptions } = await import(
     "../src/modules/subscriptions/subscription-lifecycle.service.js"
   );
@@ -94,6 +96,7 @@ async function main() {
     const m1 = await mkMember("g2");
     const current = await mkSub(m1.member.id, "ACTIVE", new Date(Date.now() - 20 * DAY));
     const queued = await mkSub(m1.member.id, "SCHEDULED", new Date(Date.now() - 60000));
+    await mkPaid(m1.member.id, queued.id);
     const r1 = await activateScheduledSubscriptions(new Date());
     assert.ok(r1.activated >= 1);
     assert.equal((await prisma.membershipSubscription.findUniqueOrThrow({ where: { id: queued.id } })).status, "ACTIVE");
@@ -161,7 +164,7 @@ async function main() {
       data: { facilityId: facA.id, name: `wl-${run}`, capacity: 1, areaType: "INDOOR" },
     });
     classes.push(cls.id);
-    const slot = await prisma.classSchedule.create({
+    const slot = await fixtureSchedules.create({
       data: {
         classId: cls.id, roomId: roomA.id,
         startTime: new Date(Date.now() + 3 * DAY), endTime: new Date(Date.now() + 3 * DAY + 3600000),
@@ -216,7 +219,7 @@ async function main() {
     ok("Term: kỳ riêng của cơ sở A không xếp được lịch cho cơ sở B");
     await expectError(() => termsService.updateTerm(term.id, { status: "CLOSED" }, facB.id), 403, "Manager B sửa kỳ A");
     ok("Term: Manager cơ sở khác không sửa được kỳ (403)");
-    await prisma.classSchedule.create({
+    await fixtureSchedules.create({
       data: {
         classId: cls.id, roomId: roomA.id, termId: term.id,
         startTime: new Date(now + 5 * DAY), endTime: new Date(now + 5 * DAY + 3600000),
@@ -236,6 +239,7 @@ async function main() {
     await prisma.facilityVisit.deleteMany({ where: { member: { userId: { in: users } } } });
     await prisma.enrollment.deleteMany({ where: { member: { userId: { in: users } } } });
     await prisma.classSchedule.deleteMany({ where: { classId: { in: classes } } });
+    await fixtureSchedules.cleanup();
     await prisma.class.deleteMany({ where: { id: { in: classes } } });
     await prisma.term.deleteMany({ where: { id: { in: terms } } });
     await prisma.invoice.deleteMany({ where: { member: { userId: { in: users } } } });

@@ -1593,7 +1593,8 @@
       "required": [
         "memberId",
         "amount",
-        "method"
+        "method",
+        "subscriptionId"
       ],
       "properties": {
         "memberId": {
@@ -1750,7 +1751,7 @@
     "feature": "payments",
     "method": "PATCH",
     "path": "/payments/{id}/status",
-    "roles": "MANAGER, ADMIN",
+    "roles": "ADMIN",
     "consumers": [
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
@@ -1789,7 +1790,7 @@
     "feature": "payments",
     "method": "POST",
     "path": "/payments/{id}/retry-activation",
-    "roles": "MANAGER, ADMIN",
+    "roles": "ADMIN",
     "consumers": [
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
@@ -2132,7 +2133,7 @@
       "FE/src/features/operations/OperationsPage.tsx",
       "FE/src/features/reception/membership/MembershipPage.tsx"
     ],
-    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:29",
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:31",
     "handler": "plansController.listPlans",
     "status": "MATCH",
     "request": null,
@@ -2190,7 +2191,7 @@
       "FE/src/features/manage/config.ts",
       "FE/src/api/membership.api.ts"
     ],
-    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:92",
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:94",
     "handler": "plansController.createPlan",
     "status": "MATCH",
     "request": {
@@ -2247,7 +2248,7 @@
     "consumers": [
       "FE/src/api/membership.api.ts"
     ],
-    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:49",
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:51",
     "handler": "plansController.getPlanById",
     "status": "MATCH",
     "request": null,
@@ -2268,7 +2269,7 @@
     "consumers": [
       "FE/src/api/membership.api.ts"
     ],
-    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:145",
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:147",
     "handler": "plansController.updatePlan",
     "status": "MATCH",
     "request": {
@@ -2318,7 +2319,7 @@
     "consumers": [
       "FE/src/api/membership.api.ts"
     ],
-    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:171",
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:173",
     "handler": "plansController.deletePlan",
     "status": "MATCH",
     "request": null,
@@ -3349,7 +3350,7 @@
     "feature": "coaches",
     "method": "PATCH",
     "path": "/coaches/{id}",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "MANAGER",
     "consumers": [
       "FE/src/features/manage/CoachProfileForm.tsx",
       "FE/src/features/manage/ResourcePage.tsx"
@@ -3766,7 +3767,7 @@
     "feature": "classes",
     "method": "POST",
     "path": "/classes/{id}/coaches",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "MANAGER",
     "consumers": [
       "FE/src/features/manage/CoachAssignmentForm.tsx",
       "FE/src/features/manage/ScheduleForm.tsx",
@@ -3807,7 +3808,7 @@
     "feature": "classes",
     "method": "POST",
     "path": "/classes/{id}/coaches/support",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "MANAGER",
     "consumers": [
       "FE/src/features/manage/CoachAssignmentForm.tsx",
       "FE/src/api/classes.api.ts"
@@ -3843,7 +3844,7 @@
     "feature": "classes",
     "method": "DELETE",
     "path": "/classes/{id}/coaches/{coachId}",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "MANAGER",
     "consumers": [
       "FE/src/features/manage/ResourcePage.tsx",
       "FE/src/api/classes.api.ts"
@@ -3867,7 +3868,7 @@
     "feature": "class-schedules",
     "method": "POST",
     "path": "/class-schedules/activity-plan",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "MANAGER",
     "consumers": [
       "FE/src/features/manage/ActivityPlanner.tsx",
       "FE/src/api/classes.api.ts"
@@ -3905,7 +3906,7 @@
       "FE/src/features/reception/classes/ClassesPage.tsx",
       "FE/src/features/reception/dashboard/DashboardPage.tsx"
     ],
-    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:170",
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:175",
     "handler": "schedulesController.listSchedules",
     "status": "MATCH",
     "request": null,
@@ -4021,6 +4022,15 @@
           "type": "integer",
           "default": 10
         }
+      },
+      {
+        "name": "coachId",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Effective teaching coach; COACH may only request their own timetable."
       }
     ],
     "responseStatuses": [
@@ -4035,12 +4045,12 @@
     "feature": "class-schedules",
     "method": "POST",
     "path": "/class-schedules",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "MANAGER",
     "consumers": [
       "FE/src/features/manage/config.ts",
       "FE/src/api/classes.api.ts"
     ],
-    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:257",
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:262",
     "handler": "schedulesController.createSchedule",
     "status": "MATCH",
     "request": {
@@ -4094,7 +4104,7 @@
       "FE/src/features/manage/ScheduleCoachForm.tsx",
       "FE/src/api/classes.api.ts"
     ],
-    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:210",
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:215",
     "handler": "schedulesController.getScheduleById",
     "status": "MATCH",
     "request": null,
@@ -4112,7 +4122,7 @@
     "feature": "class-schedules",
     "method": "PATCH",
     "path": "/class-schedules/{id}",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "MANAGER",
     "consumers": [
       "FE/src/features/manage/ResourcePage.tsx",
       "FE/src/features/manage/ScheduleCoachForm.tsx",
@@ -4120,7 +4130,7 @@
       "FE/src/shared/forms/SchemaForm.tsx",
       "FE/src/api/classes.api.ts"
     ],
-    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:310",
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:315",
     "handler": "schedulesController.updateSchedule",
     "status": "MATCH",
     "request": {
@@ -4168,11 +4178,11 @@
     "feature": "class-schedules",
     "method": "DELETE",
     "path": "/class-schedules/{id}",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "MANAGER",
     "consumers": [
       "FE/src/api/classes.api.ts"
     ],
-    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:340",
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:345",
     "handler": "schedulesController.deleteSchedule",
     "status": "MATCH",
     "request": null,
@@ -4191,12 +4201,12 @@
     "feature": "class-schedules",
     "method": "PATCH",
     "path": "/class-schedules/{id}/complete",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "MANAGER",
     "consumers": [
       "FE/src/features/manage/ResourcePage.tsx",
       "FE/src/api/classes.api.ts"
     ],
-    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:367",
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:372",
     "handler": "schedulesController.completeSchedule",
     "status": "MATCH",
     "request": null,
@@ -4405,7 +4415,7 @@
       "FE/src/features/reception/members/MembersPage.tsx",
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:50",
+    "backend": "BE/src/modules/auth/auth.routes.ts:51",
     "handler": "authController.register",
     "status": "MATCH",
     "request": {
@@ -4467,7 +4477,7 @@
       "FE/src/api/auth.api.ts",
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:77",
+    "backend": "BE/src/modules/auth/auth.routes.ts:78",
     "handler": "authController.login",
     "status": "MATCH",
     "request": {
@@ -4512,7 +4522,7 @@
       "FE/src/api/auth.api.ts",
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:101",
+    "backend": "BE/src/modules/auth/auth.routes.ts:102",
     "handler": "authController.logout",
     "status": "MATCH",
     "request": {
@@ -4544,7 +4554,7 @@
     "consumers": [
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:125",
+    "backend": "BE/src/modules/auth/auth.routes.ts:126",
     "handler": "authController.refreshToken",
     "status": "MATCH",
     "request": {
@@ -4576,7 +4586,7 @@
       "FE/src/api/auth.api.ts",
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:139",
+    "backend": "BE/src/modules/auth/auth.routes.ts:140",
     "handler": "authController.getMe",
     "status": "MATCH",
     "request": null,
@@ -4599,7 +4609,7 @@
       "FE/src/features/coach/CoachProfile.tsx",
       "FE/src/shared/Profile.tsx"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:168",
+    "backend": "BE/src/modules/auth/auth.routes.ts:169",
     "handler": "authController.updateMe",
     "status": "MATCH",
     "request": {
@@ -4661,7 +4671,7 @@
     "consumers": [
       "FE/src/shared/Avatar.tsx"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:203",
+    "backend": "BE/src/modules/auth/auth.routes.ts:204",
     "handler": "authController.uploadAvatar",
     "status": "MATCH",
     "request": null,
@@ -4686,7 +4696,7 @@
       "FE/src/shared/api.ts",
       "FE/src/shared/Profile.tsx"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:228",
+    "backend": "BE/src/modules/auth/auth.routes.ts:229",
     "handler": "authController.changePassword",
     "status": "MATCH",
     "request": {
@@ -4723,7 +4733,7 @@
     "consumers": [
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:261",
+    "backend": "BE/src/modules/auth/auth.routes.ts:262",
     "handler": "authController.forgotPassword",
     "status": "MATCH",
     "request": {
@@ -4755,7 +4765,7 @@
     "consumers": [
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:289",
+    "backend": "BE/src/modules/auth/auth.routes.ts:290",
     "handler": "authController.resetPassword",
     "status": "MATCH",
     "request": {
@@ -5352,7 +5362,7 @@
     "feature": "attendance",
     "method": "GET",
     "path": "/attendance/monitoring",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "RECEPTIONIST, MANAGER",
     "consumers": [],
     "backend": "BE/src/modules/attendance/attendance.routes.ts:590",
     "handler": "controller.getReceptionMonitoring",
@@ -5422,7 +5432,7 @@
     "feature": "attendance",
     "method": "GET",
     "path": "/attendance/monitoring/detail",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "RECEPTIONIST, MANAGER",
     "consumers": [],
     "backend": "BE/src/modules/attendance/attendance.routes.ts:596",
     "handler": "controller.getReceptionDetail",
@@ -5458,7 +5468,7 @@
     "feature": "attendance",
     "method": "POST",
     "path": "/attendance/warnings/send",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "RECEPTIONIST, MANAGER",
     "consumers": [],
     "backend": "BE/src/modules/attendance/attendance.routes.ts:602",
     "handler": "controller.sendReceptionWarning",
@@ -5491,7 +5501,7 @@
     "feature": "attendance",
     "method": "POST",
     "path": "/attendance/reports",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "RECEPTIONIST",
     "consumers": [],
     "backend": "BE/src/modules/attendance/attendance.routes.ts:608",
     "handler": "controller.submitViolationReport",
@@ -5530,7 +5540,7 @@
     "feature": "attendance",
     "method": "POST",
     "path": "/attendance/reports/{id}/review",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "MANAGER",
     "consumers": [
       "FE/src/features/operations/AttendanceReportReview.tsx"
     ],
@@ -5598,7 +5608,7 @@
       "FE/src/features/manage/AdminDashboard.tsx"
     ],
     "backend": "BE/src/modules/reports/reports.routes.ts:20",
-    "handler": "async (req, res) => {",
+    "handler": "async (req, res) => {\r",
     "status": "MATCH",
     "request": null,
     "query": [
@@ -5673,7 +5683,7 @@
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:88",
-    "handler": "(req) =>",
+    "handler": "(req) =>\r",
     "status": "MATCH",
     "request": null,
     "query": [
@@ -5712,7 +5722,7 @@
       "FE/src/features/manage/ResourcePage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:132",
-    "handler": "async (req) => {",
+    "handler": "async (req) => {\r",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -5728,7 +5738,7 @@
     "feature": "coaches",
     "method": "PUT",
     "path": "/coaches/{id}/specializations",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "MANAGER",
     "consumers": [
       "FE/src/features/manage/CoachProfileForm.tsx",
       "FE/src/features/manage/ManagerUsers.tsx",
@@ -5736,7 +5746,7 @@
       "FE/src/features/manage/ResourcePage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:220",
-    "handler": "(req) =>",
+    "handler": "(req) =>\r",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -5770,7 +5780,7 @@
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:142",
-    "handler": "async (req) => {",
+    "handler": "async (req) => {\r",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6198,7 +6208,7 @@
       "FE/src/features/manage/ResourcePage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:174",
-    "handler": "async (req) =>",
+    "handler": "async (req) =>\r",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6282,7 +6292,7 @@
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:320",
-    "handler": "() =>",
+    "handler": "() =>\r",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6303,7 +6313,7 @@
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:323",
-    "handler": "(req) =>",
+    "handler": "(req) =>\r",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6342,7 +6352,7 @@
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:326",
-    "handler": "(req) => {",
+    "handler": "(req) => {\r",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6363,7 +6373,7 @@
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:336",
-    "handler": "(req) =>",
+    "handler": "(req) =>\r",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6422,7 +6432,7 @@
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:410",
-    "handler": "async (req) => {",
+    "handler": "async (req) => {\r",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6438,7 +6448,7 @@
     "feature": "leave-requests",
     "method": "POST",
     "path": "/leave-requests",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "RECEPTIONIST",
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
@@ -6484,7 +6494,7 @@
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:456",
-    "handler": "(req) =>",
+    "handler": "(req) =>\r",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6561,7 +6571,7 @@
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:673",
-    "handler": "async (req) =>",
+    "handler": "async (req) =>\r",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6582,7 +6592,7 @@
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:686",
-    "handler": "(req) => {",
+    "handler": "(req) => {\r",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6617,7 +6627,7 @@
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:733",
-    "handler": "async (req) => {",
+    "handler": "async (req) => {\r",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6638,7 +6648,7 @@
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:748",
-    "handler": "async (req) => {",
+    "handler": "async (req) => {\r",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6673,7 +6683,7 @@
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:769",
-    "handler": "async (req) => {",
+    "handler": "async (req) => {\r",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6694,7 +6704,7 @@
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:712",
-    "handler": "async (req) => {",
+    "handler": "async (req) => {\r",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6736,7 +6746,7 @@
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:730",
-    "handler": "(req) =>",
+    "handler": "(req) =>\r",
     "status": "MATCH",
     "request": null,
     "query": [
@@ -6774,12 +6784,12 @@
     "feature": "counter-orders",
     "method": "GET",
     "path": "/counter-orders",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "RECEPTIONIST",
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:778",
-    "handler": "() =>",
+    "handler": "() =>\r",
     "status": "MATCH",
     "request": null,
     "query": [],
@@ -6795,12 +6805,12 @@
     "feature": "counter-orders",
     "method": "POST",
     "path": "/counter-orders",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "RECEPTIONIST",
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:786",
-    "handler": "async (req) => {",
+    "handler": "async (req) => {\r",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -6841,12 +6851,12 @@
     "feature": "counter-orders",
     "method": "POST",
     "path": "/counter-orders/{id}/confirm",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "RECEPTIONIST",
     "consumers": [
       "FE/src/features/operations/OperationsPage.tsx"
     ],
     "backend": "BE/src/modules/operations/operations.routes.ts:832",
-    "handler": "(req) =>",
+    "handler": "(req) =>\r",
     "status": "MATCH",
     "request": {
       "type": "object",
@@ -7080,12 +7090,12 @@
     "feature": "class-schedules",
     "method": "GET",
     "path": "/class-schedules/under-capacity",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "MANAGER",
     "consumers": [
       "FE/src/features/manage/ResourcePage.tsx",
       "FE/src/api/classes.api.ts"
     ],
-    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:184",
+    "backend": "BE/src/modules/class-schedules/class-schedules.routes.ts:189",
     "handler": "schedulesController.getUnderCapacitySchedules",
     "status": "MATCH",
     "request": null,
@@ -7521,7 +7531,7 @@
     "feature": "coach-change-requests",
     "method": "GET",
     "path": "/coach-change-requests",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "COACH, MANAGER, ADMIN",
     "consumers": [
       "FE/src/features/operations/CoachChangesPage.tsx"
     ],
@@ -7545,7 +7555,7 @@
     "feature": "coach-change-requests",
     "method": "GET",
     "path": "/coach-change-requests/sessions",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "COACH",
     "consumers": [
       "FE/src/features/operations/CoachChangesPage.tsx"
     ],
@@ -7569,7 +7579,7 @@
     "feature": "coach-change-requests",
     "method": "POST",
     "path": "/coach-change-requests",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "COACH",
     "consumers": [
       "FE/src/features/operations/CoachChangesPage.tsx"
     ],
@@ -7609,7 +7619,7 @@
     "feature": "coach-change-requests",
     "method": "GET",
     "path": "/coach-change-requests/{id}/candidates",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "MANAGER",
     "consumers": [
       "FE/src/features/operations/CoachChangesPage.tsx"
     ],
@@ -7633,7 +7643,7 @@
     "feature": "coach-change-requests",
     "method": "PATCH",
     "path": "/coach-change-requests/{id}",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "MANAGER",
     "consumers": [
       "FE/src/features/operations/CoachChangesPage.tsx"
     ],
@@ -7680,7 +7690,7 @@
     "feature": "class-schedules",
     "method": "POST",
     "path": "/class-schedules/batch",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "MANAGER",
     "consumers": [
       "FE/src/features/manage/ScheduleForm.tsx",
       "FE/src/api/classes.api.ts"
@@ -7741,7 +7751,7 @@
     "feature": "payments",
     "method": "POST",
     "path": "/payments/{id}/refund/confirm",
-    "roles": "Authenticated (service checks ownership)",
+    "roles": "ADMIN, RECEPTIONIST",
     "consumers": [
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],

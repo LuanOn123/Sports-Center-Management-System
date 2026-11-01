@@ -82,7 +82,7 @@ export async function assertCanBook(
   tx: Prisma.TransactionClient,
   memberProfileId: string,
   schedule: BookableSchedule,
-  options: { excludeEnrollmentId?: string; quotaExemptClassId?: string; onSubscriptionSelected?: (id: string) => void; termMembershipGrant?: unknown } = {}
+  options: { excludeEnrollmentId?: string; quotaExemptClassId?: string; onSubscriptionSelected?: (id: string) => void; termMembershipGrant?: unknown; waitlist?: boolean } = {}
 ) {
   const termId = schedule.termId ?? (await tx.classSchedule.findUnique({
     where: { id: schedule.id }, select: { termId: true },
@@ -186,7 +186,7 @@ export async function assertCanBook(
   const bookedCount = await tx.enrollment.count({
     where: { scheduleId: schedule.id, status: { in: ["BOOKED", "COMPLETED"] } },
   });
-  if (bookedCount >= schedule.class.capacity)
+  if (!options.waitlist && bookedCount >= schedule.class.capacity)
     throw new AppError("This class is full", 409);
 
   // Duplicate check (BR-07: cho phép kích hoạt lại enrollment đã CANCELLED).

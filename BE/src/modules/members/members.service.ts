@@ -1,3 +1,4 @@
+import { effectiveCoachWhere } from "../operations/effective-coaches.js";
 import { User } from "../../models/User.js";
 import { synchronizeUserProjection } from "../users/user-projection.service.js";
 import { MemberProfile } from "../../models/MemberProfile.js";
@@ -18,6 +19,15 @@ function transformProfile(doc: any) {
 
 export async function assertMemberFacilityAccess(memberProfileId: string, user?: { id: string; role: string }) {
   if (!user || user.role === "ADMIN") return;
+  if (user.role === "COACH") {
+    const coach = await prisma.coachProfile.findUnique({ where: { userId: user.id }, select: { id: true } });
+    const related = coach && await prisma.enrollment.findFirst({
+      where: { memberId: memberProfileId, status: { in: ["BOOKED", "COMPLETED"] }, schedule: effectiveCoachWhere(coach.id) },
+      select: { id: true },
+    });
+    if (!related) throw new AppError("Member not found", 404);
+    return;
+  }
   if (user.role === "RECEPTIONIST" || user.role === "MANAGER") {
     const facilityId = await getStaffFacilityId(user.id, user.role);
     const [hasSystemRelation, hasThisFacilityRelation] = await Promise.all([

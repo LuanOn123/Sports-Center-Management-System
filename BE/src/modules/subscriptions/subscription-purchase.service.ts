@@ -54,6 +54,7 @@ export async function inspectPlanPurchase(
   requestedStartDate?: Date | string,
   now: Date = new Date(),
 ): Promise<PlanPurchaseContext> {
+  if (plan.tier === "FREE" || Number(plan.price) <= 0) throw new AppError("Gói FREE được cấp tự động, không thể bán tại quầy hoặc thanh toán.", 400, { code: "FREE_PLAN_NOT_FOR_SALE" });
   const reqDate = requestedStartDate
     ? (requestedStartDate instanceof Date ? requestedStartDate : new Date(requestedStartDate))
     : undefined;
@@ -93,7 +94,7 @@ export async function inspectPlanPurchase(
     return {
       currentActive: currentActive?.tier === "FREE" ? currentActive : null,
       changeType: "NEW",
-      isUpgrade: plan.tier !== "FREE",
+      isUpgrade: true,
       oldPlanName: currentActive?.plan.name ?? "",
       remainingDays: 0,
       calculatedStartDate,

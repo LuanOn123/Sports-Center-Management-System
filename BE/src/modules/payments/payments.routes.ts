@@ -29,7 +29,7 @@ router.use((req, res, next) => {
  *         application/json:
  *           schema:
  *             type: object
- *             required: [memberId, amount, method]
+ *             required: [memberId, subscriptionId, amount, method]
  *             properties:
  *               memberId: { type: string }
  *               subscriptionId: { type: string }
@@ -176,7 +176,7 @@ router.post("/:id/refund/confirm", authenticate, authorizeExact("ADMIN", "RECEPT
   async (req, res) => { sendSuccess(res, await updatePaymentStatus(String(req.params.id), "REFUNDED", req.body), "Đã xác nhận hoàn tiền thực tế"); });
 router.patch(
   "/:id/status",
-  authenticate, authorize("MANAGER"),
+  authenticate, authorizeExact("ADMIN"),
   validate(UpdatePaymentStatusSchema),
   paymentsController.updatePaymentStatus
 );
@@ -208,7 +208,7 @@ router.patch(
  */
 router.post(
   "/:id/retry-activation",
-  authenticate, authorize("MANAGER"),
+  authenticate, authorizeExact("ADMIN"),
   paymentsController.retryPaymentActivation
 );
 

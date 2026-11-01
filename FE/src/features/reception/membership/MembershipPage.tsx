@@ -1,5 +1,8 @@
 import { CancelSubscription } from "../../../shared/CancelSubscription";
-import { downgradeReason, isEffectiveSubscription } from "../../../shared/businessRules";
+import {
+  downgradeReason,
+  isEffectiveSubscription,
+} from "../../../shared/businessRules";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { RecordData } from "../../../shared/api";
@@ -40,12 +43,27 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
   );
   const plans = useReceptionList("GET /membership-plans", { isActive: "true" });
   const hasPlans = (plans.data?.data || []).some(
-    (p) => p.id && p.isActive !== false,
+    (p) =>
+      p.id && p.isActive !== false && p.tier !== "FREE" && Number(p.price) > 0,
   );
-  const current = subscriptions.data?.data.find((s) => isEffectiveSubscription({ status: String(s.status), startDate: String(s.startDate), endDate: String(s.endDate) }));
-  const hasScheduled = subscriptions.data?.data.some((s) => s.status === "SCHEDULED");
+  const current = subscriptions.data?.data.find((s) =>
+    isEffectiveSubscription({
+      status: String(s.status),
+      startDate: String(s.startDate),
+      endDate: String(s.endDate),
+    }),
+  );
+  const hasScheduled = subscriptions.data?.data.some(
+    (s) => s.status === "SCHEDULED",
+  );
   const choices = (plans.data?.data || [])
-    .filter((p) => p.id && p.isActive !== false)
+    .filter(
+      (p) =>
+        p.id &&
+        p.isActive !== false &&
+        p.tier !== "FREE" &&
+        Number(p.price) > 0,
+    )
     .filter(
       (p) =>
         !downgradeReason(
@@ -91,9 +109,17 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
             )}
             <p>
               Đăng ký hoặc gia hạn sẽ ghi nhận đã thu tiền và phát hành hóa đơn
-              ngay. Chỉ xác nhận sau khi đã nhận đủ tiền. Gia hạn cùng hạng nối tiếp sau ngày hết hạn. Nâng hạng có thể bắt đầu ngay hoặc lên lịch; hạ hạng chỉ bắt đầu sau khi gói hiện tại kết thúc. Mỗi hội viên chỉ có một gói chờ kích hoạt.
+              ngay. Chỉ xác nhận sau khi đã nhận đủ tiền. Gia hạn cùng hạng nối
+              tiếp sau ngày hết hạn. Nâng hạng có thể bắt đầu ngay hoặc lên
+              lịch; hạ hạng chỉ bắt đầu sau khi gói hiện tại kết thúc. Mỗi hội
+              viên chỉ có một gói chờ kích hoạt.
             </p>
-            {hasScheduled && <p role="status">Hội viên đã có gói chờ kích hoạt. Hãy xử lý gói chờ trước khi đăng ký hoặc gia hạn.</p>}
+            {hasScheduled && (
+              <p role="status">
+                Hội viên đã có gói chờ kích hoạt. Hãy xử lý gói chờ trước khi
+                đăng ký hoặc gia hạn.
+              </p>
+            )}
             <button
               className="button primary"
               disabled={
@@ -127,24 +153,32 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
                     <>
                       <button
                         className="button small"
-                        disabled={hasScheduled || !hasPlans || !row.id || row.status !== "ACTIVE"}
+                        disabled={
+                          hasScheduled ||
+                          !hasPlans ||
+                          !row.id ||
+                          row.status !== "ACTIVE"
+                        }
                         onClick={() => setAction({ id: String(row.id) })}
                       >
                         Gia hạn
                       </button>
-                      {role === "MANAGER" && row.status === "ACTIVE" && (
-                        <CancelSubscription
-                          role="MANAGER"
-                          subscription={
-                            row as unknown as {
-                              id: string;
-                              endDate: string;
-                              status: string;
-                              plan: { price: number; durationDays: number };
+                      {["MANAGER", "ADMIN"].includes(role) &&
+                        ["ACTIVE", "SCHEDULED"].includes(
+                          String(row.status),
+                        ) && (
+                          <CancelSubscription
+                            role="MANAGER"
+                            subscription={
+                              row as unknown as {
+                                id: string;
+                                endDate: string;
+                                status: string;
+                                plan: { price: number; durationDays: number };
+                              }
                             }
-                          }
-                        />
-                      )}
+                          />
+                        )}
                       <StatusAction
                         operation="PATCH /subscriptions/{id}/status"
                         id={String(row.id)}

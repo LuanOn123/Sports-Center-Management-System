@@ -186,6 +186,7 @@ for (const status of ["ACTIVE", "SCHEDULED", "EXPIRED"])
           },
           membershipSubscription: {
             findUnique: async () => sub,
+            findFirst: async () => null,
             update: async ({ data }: any) => Object.assign(sub, data),
           },
           enrollment: {

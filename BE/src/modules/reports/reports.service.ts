@@ -112,6 +112,7 @@ export async function getMemberReport(startDate: string, endDate: string) {
     prisma.membershipSubscription.findMany({
       where: {
         status: "ACTIVE",
+        member: { user: { role: "MEMBER", isActive: true } },
         startDate: { lte: now },
         endDate: { gte: now },
       },

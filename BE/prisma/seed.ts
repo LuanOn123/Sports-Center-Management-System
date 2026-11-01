@@ -422,11 +422,16 @@ async function main() {
   nextWeek.setDate(nextWeek.getDate() + 7);
   nextWeek.setHours(18, 0, 0, 0);
 
+  const seedTerm = await prisma.term.upsert({
+    where: { code: "SEED_BASIC" }, update: {},
+    create: { code: "SEED_BASIC", name: "Seed demo", facilityId: yogaClass.facilityId, startDate: now, endDate: new Date(nextWeek.getTime() + 86400000), registrationStartDate: now, registrationEndDate: tomorrow, status: "OPEN_REGISTRATION" },
+  });
   const schedule1 = await prisma.classSchedule.upsert({
     where: { id: "sch-yoga-001" },
     update: {},
     create: {
       id: "sch-yoga-001",
+      termId: seedTerm.id,
       classId: yogaClass.id,
       roomId: room1.id,
       startTime: tomorrow,
@@ -441,6 +446,7 @@ async function main() {
     update: {},
     create: {
       id: "sch-hiit-001",
+      termId: seedTerm.id,
       classId: hiitClass.id,
       roomId: room2.id,
       startTime: schedule2StartTime,
@@ -455,6 +461,7 @@ async function main() {
     update: {},
     create: {
       id: "sch-yoga-premium-001",
+      termId: seedTerm.id,
       classId: premiumYoga.id,
       roomId: room1.id,
       startTime: schedule3StartTime,

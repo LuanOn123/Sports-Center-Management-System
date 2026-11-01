@@ -65,6 +65,7 @@ export async function joinWaitlist(scheduleId: string, memberProfileId: string) 
       if (bookedCount < schedule.class.capacity)
         throw new AppError("This class still has available slots. Please book directly.", 409);
 
+      await assertCanBook(tx, memberProfileId, schedule, { waitlist: true });
       const last = await tx.waitlistEntry.findFirst({
         where: { scheduleId },
         orderBy: { position: "desc" },
