@@ -20084,3 +20084,7 @@ Additional operations and missing bodies/parameters are preserved in workflow-co
 ## Refund confirmation
 
 `POST /payments/{id}/refund/confirm`: ADMIN/RECEPTIONIST in facility scope; body `{ reason, reference }`. Records an actual refund; never initiates a bank transfer.
+
+## Hoàn tiền ngoại lệ
+
+`POST /payments/{id}/refund/request`: ADMIN duyệt hoàn toàn bộ khoản SePay đã thu, chưa cấp gói và đang REQUIRES_REVIEW; body `{ reason }`. Việc trả tiền thực tế vẫn phải xác nhận qua `/refund/confirm`.

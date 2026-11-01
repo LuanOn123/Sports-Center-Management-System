@@ -38,13 +38,10 @@ import waitlistRoutes from "./modules/waitlist/waitlist.routes.js";
 import termRoutes from "./modules/terms/terms.routes.js";
 
 const app = express();
-// Set the exact number of trusted reverse-proxy hops for this deployment (0 locally).
-// Never trust arbitrary forwarded headers from a direct client.
-const proxyHops = Number(process.env.TRUST_PROXY_HOPS ?? 0);
-if (!Number.isInteger(proxyHops) || proxyHops < 0 || proxyHops > 5) {
-  throw new Error("TRUST_PROXY_HOPS must be an integer from 0 to 5");
-}
-app.set("trust proxy", proxyHops);
+// Set only for a deployment whose reverse-proxy hop count is known and trusted.
+const proxyHops = process.env.TRUST_PROXY_HOPS ?? "0";
+if (!/^[0-3]$/.test(proxyHops)) throw new Error("TRUST_PROXY_HOPS must be an integer from 0 to 3");
+app.set("trust proxy", Number(proxyHops));
 app.use((_req, res, next) => { res.setHeader("X-Request-Id", randomUUID()); next(); });
 
 app.set("etag", false);

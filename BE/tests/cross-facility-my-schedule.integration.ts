@@ -1,4 +1,4 @@
-import { scheduleFixture } from "./helpers/schedule-fixture.js";
+import { createFixtureSchedule, cleanupFixtureSchedules } from "./fixture-schedule.js";
 /**
  * Regression test MF-03 — "Lịch của tôi" (GET /enrollments/my) phải là GLOBAL,
  * nhất quán với Membership/Quota toàn cục, trong khi view vận hành vẫn facility-scoped.
@@ -20,7 +20,6 @@ async function main() {
     /^scms_verify_/,
   );
   const { prisma } = await import("../src/config/prisma.js");
-  const fixtureSchedules = scheduleFixture(prisma);
   const { getMyEnrollments, bookClass } = await import(
     "../src/modules/enrollments/enrollments.service.js"
   );
@@ -90,7 +89,7 @@ async function main() {
 
     const base = new Date(Date.now() + 5 * DAY);
     const mkSched = (roomIdx: number, classId: string, offsetMin: number, minutes = 60) =>
-      fixtureSchedules.create({
+      createFixtureSchedule(prisma, {
           data: {
             classId,
             roomId: rooms[roomIdx],
@@ -303,7 +302,6 @@ async function main() {
     await prisma.enrollment.deleteMany({ where: { memberId: { in: profiles } } });
     await prisma.membershipSubscription.deleteMany({ where: { id: { in: subs } } });
     await prisma.classSchedule.deleteMany({ where: { id: { in: schedules } } });
-    await fixtureSchedules.cleanup();
     await prisma.class.deleteMany({ where: { id: { in: classes } } });
     await prisma.room.deleteMany({ where: { id: { in: rooms } } });
     await prisma.membershipPlan.deleteMany({ where: { id: { in: plans } } });
@@ -312,6 +310,7 @@ async function main() {
     await prisma.memberProfile.deleteMany({ where: { id: { in: profiles } } });
     await prisma.user.deleteMany({ where: { id: { in: users } } });
     await prisma.auditLog.deleteMany({ where: { facilityId: { in: facilities } } });
+    await cleanupFixtureSchedules(prisma);
     await prisma.facility.deleteMany({ where: { id: { in: facilities } } });
     console.log("\nĐã dọn sạch fixture cross-facility-my-schedule.");
     await prisma.$disconnect();

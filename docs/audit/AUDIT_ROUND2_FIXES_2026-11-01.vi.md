@@ -1,5 +1,7 @@
 # Sửa lỗi theo báo cáo kiểm thử lần 2 — 01/11/2026
 
+> Báo cáo lịch sử trước khi merge main. Trạng thái mới và các quyết định thay thế nằm trong [MERGE_MAIN_2026-11-01.vi.md](MERGE_MAIN_2026-11-01.vi.md).
+
 Đối chiếu báo cáo tại commit `0f3db02`. Bản này sửa source local, chưa push/deploy và chưa thay đổi database Render.
 
 ## Các thay đổi

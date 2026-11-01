@@ -1,3 +1,4 @@
+import { ensureSeedTerm } from "./seed-term.js";
 /**
  * Seed dữ liệu test ĐẦY ĐỦ cho kiến trúc hiện tại (MongoDB giữ identity + PostgreSQL projection).
  *
@@ -12,6 +13,7 @@
  * Mật khẩu mọi tài khoản seed: Seed@123
  */
 import "dotenv/config";
+import { FREE_PLAN } from "../config/membership.js";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import { configureDns } from "../config/dns.js";
@@ -76,9 +78,11 @@ const USERS: SeedUser[] = [
     key: "coach.hiit", role: "COACH", fullName: "Đặng Tuấn Kiệt", gender: "MALE", facilities: ["seed-fac-q1"],
     coach: { specialization: "HIIT Cardio, Boxing cơ bản", experienceYears: 8, bio: "HLV HIIT/Boxing tại Quận 1." },
   },
+  { key: "coach.hiit.q7", role: "COACH", fullName: "Nguyễn Minh Khoa", gender: "MALE", facilities: ["seed-fac-q7"],
+    coach: { specialization: "HIIT Cardio", experienceYears: 5, bio: "HLV HIIT tại Quận 7." } },
   {
     key: "coach.swim", role: "COACH", fullName: "Huỳnh Thanh Tâm", gender: "MALE", facilities: ["seed-fac-q7"],
-    coach: { specialization: "Bơi tự do, HIIT", experienceYears: 10, bio: "Cựu VĐV bơi, có chứng chỉ cứu hộ." },
+    coach: { specialization: "Bơi tự do", experienceYears: 10, bio: "Cựu VĐV bơi, có chứng chỉ cứu hộ." },
   },
   {
     key: "coach.badminton", role: "COACH", fullName: "Bùi Khánh Linh", gender: "FEMALE", facilities: ["seed-fac-q1"],
@@ -144,8 +148,9 @@ const SPORTS = [
 
 const SPECIALIZATIONS: Record<string, string[]> = {
   "coach.yoga": ["seed-sport-yoga"],
+  "coach.hiit.q7": ["seed-sport-hiit"],
   "coach.hiit": ["seed-sport-hiit", "seed-sport-boxing"],
-  "coach.swim": ["seed-sport-hiit", "seed-sport-swim"],
+  "coach.swim": ["seed-sport-swim"],
   "coach.badminton": ["seed-sport-badminton", "seed-sport-yoga"],
   "coach.demo": ["seed-sport-yoga"],
   "coach.nospec": [],
@@ -192,7 +197,7 @@ const CLASSES: SeedClass[] = [
   { key: "badminton-weekend", facilityId: "seed-fac-q1", name: "Cầu lông cuối tuần", description: "Cầu lông đôi T7/CN.", sports: ["seed-sport-badminton"], capacity: 12, classType: "REGULAR", areaType: "INDOOR", roomId: "seed-room-q1-badminton", coach: "coach.badminton", weekdays: [6, 7], slot: "evening2" },
   { key: "yoga-full", facilityId: "seed-fac-q1", name: "Yoga nhóm nhỏ (đã đầy)", description: "Sức chứa 2 — đã đủ chỗ, dùng test CLASS_FULL.", sports: ["seed-sport-yoga"], capacity: 2, classType: "REGULAR", areaType: "INDOOR", roomId: "seed-room-q1-yoga", coach: "coach.badminton", weekdays: [2, 4], slot: "noon" },
   { key: "swim-q7", facilityId: "seed-fac-q7", name: "Bơi tự do Quận 7", description: "Bơi T2/T4/T6.", sports: ["seed-sport-swim"], capacity: 20, classType: "REGULAR", areaType: "POOL", roomId: "seed-room-q7-pool", coach: "coach.swim", weekdays: [1, 3, 5], slot: "evening1" },
-  { key: "hiit-q7", facilityId: "seed-fac-q7", name: "HIIT Quận 7", description: "HIIT T2/T4 tại Quận 7.", sports: ["seed-sport-hiit"], capacity: 15, classType: "REGULAR", areaType: "INDOOR", roomId: "seed-room-q7-hiit", coach: "coach.swim", weekdays: [1, 3], slot: "evening2" },
+  { key: "hiit-q7", facilityId: "seed-fac-q7", name: "HIIT Quận 7", description: "HIIT T2/T4 — HLV phụ trách riêng tại Quận 7.", sports: ["seed-sport-hiit"], capacity: 15, classType: "REGULAR", areaType: "INDOOR", roomId: "seed-room-q7-hiit", coach: "coach.hiit.q7", weekdays: [1, 3], slot: "evening2" },
 ];
 
 /** Lớp demo điểm danh: 1 buổi đang diễn ra (mở QR) + 1 buổi sau 3 giờ (chưa tới giờ). */
@@ -384,12 +389,8 @@ async function upsertClass(c: Omit<SeedClass, "weekdays" | "slot">) {
 async function upsertSchedule(id: string, classId: string, roomId: string, startTime: Date, endTime: Date, status: "SCHEDULED" | "COMPLETED" | "CANCELLED") {
   const existing = await prisma.classSchedule.findUnique({ where: { id } });
   if (!existing) {
-    const room = await prisma.room.findUniqueOrThrow({ where: { id: roomId }, select: { facilityId: true } });
-    const term = await prisma.term.upsert({
-      where: { code: `DEMO_${room.facilityId.replace("seed-fac-", "").toUpperCase()}` }, update: {},
-      create: { code: `DEMO_${room.facilityId.replace("seed-fac-", "").toUpperCase()}`, name: "Seed demo", facilityId: room.facilityId,
-        startDate: vnDayStart(-PAST_DAYS - 1), endDate: vnDayStart(FUTURE_DAYS + 2), registrationStartDate: vnDayStart(-PAST_DAYS - 2), registrationEndDate: vnDayStart(FUTURE_DAYS + 1), status: "IN_PROGRESS" },
-    });
+    const cls = await prisma.class.findUniqueOrThrow({ where: { id: classId }, select: { facilityId: true } });
+    const term = await ensureSeedTerm(prisma, cls.facilityId);
     await prisma.classSchedule.create({ data: { id, classId, roomId, startTime, endTime, status, termId: term.id } });
     bump("schedules");
   }
@@ -417,7 +418,7 @@ async function seedClasses() {
     }
     scheduleIdsByClass[c.key] = list;
 
-    const patternTerm = await prisma.term.findUniqueOrThrow({ where: { code: `DEMO_${c.facilityId.replace("seed-fac-", "").toUpperCase()}` } });
+    const patternTerm = await ensureSeedTerm(prisma, c.facilityId);
     const patternId = `seed-pattern-${c.key}`;
     const facilityCode = FACILITIES.find((f) => f.id === c.facilityId)!.code.toLowerCase();
     await ensureCreated("schedulePatterns", () => prisma.schedulePattern.findUnique({ where: { id: patternId } }), () =>
@@ -475,8 +476,8 @@ const facilityOfMember = (key: string) => (key === "member.q7" ? "seed-fac-q7" :
 const cashierOf = (facilityId: string) => (facilityId === "seed-fac-q7" ? "reception.q7" : "reception.q1");
 
 async function seedSubscriptions() {
-  const freePlan = await prisma.membershipPlan.findFirst({ where: { tier: "FREE", isActive: true }, orderBy: { createdAt: "asc" } });
-  if (!freePlan) throw new Error("Không tìm thấy gói FREE đang hoạt động — chạy server/đăng ký 1 lần để hệ thống tự tạo.");
+  const freePlan = await prisma.membershipPlan.findFirst({ where: { tier: "FREE", isActive: true }, orderBy: { createdAt: "asc" } })
+    ?? await prisma.membershipPlan.create({ data: { ...FREE_PLAN, maxConcurrentClasses: 0 } });
 
   let invoiceSeq = 0;
   for (const s of SUBSCRIPTIONS) {
@@ -582,6 +583,9 @@ async function seedEnrollments() {
     const memberId = memberIds[member];
     for (const classKey of classKeys) {
       const classId = `seed-class-${classKey}`;
+      const source = await prisma.membershipSubscription.findFirst({
+        where: { memberId, tier: { not: "FREE" }, status: "ACTIVE" }, orderBy: { startDate: "desc" },
+      });
       let pastIndex = 0;
       for (const s of scheduleIdsByClass[classKey] ?? []) {
         const past = s.endTime < now;
@@ -590,7 +594,7 @@ async function seedEnrollments() {
         await ensureCreated("enrollments", () => prisma.enrollment.findUnique({ where }), () =>
           prisma.enrollment.create({
             data: {
-              memberId, classId, scheduleId: s.id, status, bookedAt: vnDayStart(-PAST_DAYS - 1),
+              subscriptionId: source?.id, memberId, classId, scheduleId: s.id, status, bookedAt: vnDayStart(-PAST_DAYS - 1),
               cancelledAt: status === "CANCELLED" ? vnDayStart(0) : null,
             },
           }),

@@ -517,8 +517,7 @@
     "roles": "Authenticated (service checks ownership)",
     "consumers": [
       "FE/src/api/membership.api.ts",
-      "FE/src/features/reception/membership/MembershipPage.tsx",
-      "FE/src/features/reception/payments/PaymentsPage.tsx"
+      "FE/src/features/reception/membership/MembershipPage.tsx"
     ],
     "backend": "BE/src/modules/subscriptions/subscriptions.routes.ts:115",
     "handler": "subsController.getMemberSubscriptions",
@@ -589,7 +588,7 @@
     "feature": "subscriptions",
     "method": "PATCH",
     "path": "/subscriptions/{id}/status",
-    "roles": "MANAGER, ADMIN",
+    "roles": "RECEPTIONIST, ADMIN",
     "consumers": [
       "FE/src/features/reception/membership/MembershipPage.tsx",
       "FE/src/shared/CancelSubscription.tsx",
@@ -1582,10 +1581,10 @@
     "path": "/payments",
     "roles": "MANAGER, RECEPTIONIST, ADMIN",
     "consumers": [
-      "FE/src/features/reception/payments/PaymentsPage.tsx",
-      "FE/src/shared/forms/SchemaForm.tsx"
+      "FE/src/shared/forms/SchemaForm.tsx",
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:49",
+    "backend": "BE/src/modules/payments/payments.routes.ts:50",
     "handler": "paymentsController.createPayment",
     "status": "MATCH",
     "request": {
@@ -1593,8 +1592,7 @@
       "required": [
         "memberId",
         "amount",
-        "method",
-        "subscriptionId"
+        "method"
       ],
       "properties": {
         "memberId": {
@@ -1649,7 +1647,7 @@
       "FE/src/features/reception/dashboard/ReceptionAnalytics.tsx",
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:85",
+    "backend": "BE/src/modules/payments/payments.routes.ts:86",
     "handler": "paymentsController.listPayments",
     "status": "MATCH",
     "request": null,
@@ -1732,7 +1730,7 @@
       "FE/src/features/reception/payments/PaymentsPage.tsx",
       "FE/src/pages/member/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:111",
+    "backend": "BE/src/modules/payments/payments.routes.ts:112",
     "handler": "paymentsController.getPaymentById",
     "status": "MATCH",
     "request": null,
@@ -1751,11 +1749,11 @@
     "feature": "payments",
     "method": "PATCH",
     "path": "/payments/{id}/status",
-    "roles": "ADMIN",
+    "roles": "RECEPTIONIST, ADMIN",
     "consumers": [
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:177",
+    "backend": "BE/src/modules/payments/payments.routes.ts:209",
     "handler": "paymentsController.updatePaymentStatus",
     "status": "MATCH",
     "request": {
@@ -1794,7 +1792,7 @@
     "consumers": [
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:209",
+    "backend": "BE/src/modules/payments/payments.routes.ts:241",
     "handler": "paymentsController.retryPaymentActivation",
     "status": "MATCH",
     "request": null,
@@ -1820,7 +1818,7 @@
       "FE/src/shared/api.ts",
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:305",
+    "backend": "BE/src/modules/payments/payments.routes.ts:337",
     "handler": "paymentsController.sepayCheckout",
     "status": "MATCH",
     "request": {
@@ -1855,7 +1853,7 @@
     "consumers": [
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:425",
+    "backend": "BE/src/modules/payments/payments.routes.ts:457",
     "handler": "paymentsController.sepayWebhook",
     "status": "MATCH",
     "request": {
@@ -1936,7 +1934,7 @@
       "FE/src/shared/api.ts",
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:481",
+    "backend": "BE/src/modules/payments/payments.routes.ts:513",
     "handler": "paymentsController.sepayMockConfirm",
     "status": "MATCH",
     "request": {
@@ -1969,7 +1967,7 @@
     "consumers": [
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:552",
+    "backend": "BE/src/modules/payments/payments.routes.ts:584",
     "handler": "paymentsController.sepayGetCheckout",
     "status": "MATCH",
     "request": null,
@@ -2133,7 +2131,7 @@
       "FE/src/features/operations/OperationsPage.tsx",
       "FE/src/features/reception/membership/MembershipPage.tsx"
     ],
-    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:31",
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:34",
     "handler": "plansController.listPlans",
     "status": "MATCH",
     "request": null,
@@ -2191,7 +2189,7 @@
       "FE/src/features/manage/config.ts",
       "FE/src/api/membership.api.ts"
     ],
-    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:94",
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:97",
     "handler": "plansController.createPlan",
     "status": "MATCH",
     "request": {
@@ -2248,7 +2246,7 @@
     "consumers": [
       "FE/src/api/membership.api.ts"
     ],
-    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:51",
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:54",
     "handler": "plansController.getPlanById",
     "status": "MATCH",
     "request": null,
@@ -2269,7 +2267,7 @@
     "consumers": [
       "FE/src/api/membership.api.ts"
     ],
-    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:147",
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:150",
     "handler": "plansController.updatePlan",
     "status": "MATCH",
     "request": {
@@ -2319,7 +2317,7 @@
     "consumers": [
       "FE/src/api/membership.api.ts"
     ],
-    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:173",
+    "backend": "BE/src/modules/membership-plans/membership-plans.routes.ts:176",
     "handler": "plansController.deletePlan",
     "status": "MATCH",
     "request": null,
@@ -4938,7 +4936,8 @@
       "properties": {
         "scheduleId": {
           "type": "string",
-          "format": "uuid"
+          "minLength": 1,
+          "maxLength": 200
         }
       }
     },
@@ -7755,7 +7754,7 @@
     "consumers": [
       "FE/src/features/reception/payments/PaymentsPage.tsx"
     ],
-    "backend": "BE/src/modules/payments/payments.routes.ts:174",
+    "backend": "BE/src/modules/payments/payments.routes.ts:175",
     "handler": "async (req, res) => { sendSuccess(res, await updatePaymentStatus(String(req.params.id), \"REFUNDED\", req.body), \"Đã xác nhận hoàn tiền thực tế\"); }",
     "status": "MATCH",
     "request": {
@@ -7778,6 +7777,38 @@
     "query": [],
     "responseStatuses": [
       "200",
+      "409"
+    ]
+  },
+  {
+    "key": "POST /payments/{id}/refund/request",
+    "feature": "payments",
+    "method": "POST",
+    "path": "/payments/{id}/refund/request",
+    "roles": "ADMIN",
+    "consumers": [
+      "FE/src/features/reception/payments/PaymentsPage.tsx"
+    ],
+    "backend": "BE/src/modules/payments/payments.routes.ts:204",
+    "handler": "async (req, res) => sendSuccess(res,\r",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "reason"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 1000
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "403",
       "409"
     ]
   }

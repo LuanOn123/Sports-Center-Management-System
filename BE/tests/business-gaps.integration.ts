@@ -1,4 +1,4 @@
-import { scheduleFixture } from "./helpers/schedule-fixture.js";
+import { createFixtureSchedule, cleanupFixtureSchedules } from "./fixture-schedule.js";
 import dotenv from "dotenv";
 dotenv.config({ path: ".env", quiet: true });
 import assert from "node:assert/strict";
@@ -23,7 +23,6 @@ async function main() {
     /^scms_verify_/,
   );
   const { prisma } = await import("../src/config/prisma.js");
-  const fixtureSchedules = scheduleFixture(prisma);
   const { activateScheduledSubscriptions } = await import(
     "../src/modules/subscriptions/subscription-lifecycle.service.js"
   );
@@ -127,8 +126,9 @@ async function main() {
     assert.equal(cancelled.status, "CANCELLED");
     assert.equal(cancelled.refundAmount, 600000);
     const payAfter = await prisma.payment.findUniqueOrThrow({ where: { id: pay.id } });
-    assert.equal(payAfter.status, "REFUNDED");
-    assert.equal(Number(payAfter.refundedAmount), 600000);
+    assert.equal(payAfter.status, "SUCCESS");
+    assert.equal(Number(payAfter.refundRequestedAmount), 600000);
+    assert.ok(payAfter.refundRequestedAt);
     assert.equal(await prisma.membershipSubscription.count({ where: { memberId: m3.member.id, status: "ACTIVE" } }), 1);
     assert.ok(
       (await prisma.notificationOutbox.count({ where: { userId: m3.user.id } })) +
@@ -164,7 +164,7 @@ async function main() {
       data: { facilityId: facA.id, name: `wl-${run}`, capacity: 1, areaType: "INDOOR" },
     });
     classes.push(cls.id);
-    const slot = await fixtureSchedules.create({
+    const slot = await createFixtureSchedule(prisma, {
       data: {
         classId: cls.id, roomId: roomA.id,
         startTime: new Date(Date.now() + 3 * DAY), endTime: new Date(Date.now() + 3 * DAY + 3600000),
@@ -219,7 +219,7 @@ async function main() {
     ok("Term: kỳ riêng của cơ sở A không xếp được lịch cho cơ sở B");
     await expectError(() => termsService.updateTerm(term.id, { status: "CLOSED" }, facB.id), 403, "Manager B sửa kỳ A");
     ok("Term: Manager cơ sở khác không sửa được kỳ (403)");
-    await fixtureSchedules.create({
+    await createFixtureSchedule(prisma, {
       data: {
         classId: cls.id, roomId: roomA.id, termId: term.id,
         startTime: new Date(now + 5 * DAY), endTime: new Date(now + 5 * DAY + 3600000),
@@ -239,7 +239,6 @@ async function main() {
     await prisma.facilityVisit.deleteMany({ where: { member: { userId: { in: users } } } });
     await prisma.enrollment.deleteMany({ where: { member: { userId: { in: users } } } });
     await prisma.classSchedule.deleteMany({ where: { classId: { in: classes } } });
-    await fixtureSchedules.cleanup();
     await prisma.class.deleteMany({ where: { id: { in: classes } } });
     await prisma.term.deleteMany({ where: { id: { in: terms } } });
     await prisma.invoice.deleteMany({ where: { member: { userId: { in: users } } } });
@@ -249,6 +248,7 @@ async function main() {
     await prisma.notification.deleteMany({ where: { userId: { in: users } } });
     await prisma.auditLog.deleteMany({ where: { facilityId: { in: facilities } } });
     await prisma.room.deleteMany({ where: { facilityId: { in: facilities } } });
+    await cleanupFixtureSchedules(prisma);
     await prisma.facility.deleteMany({ where: { id: { in: facilities } } });
     await prisma.user.deleteMany({ where: { id: { in: users } } });
     if (planId) await prisma.membershipPlan.delete({ where: { id: planId } }).catch(() => {});

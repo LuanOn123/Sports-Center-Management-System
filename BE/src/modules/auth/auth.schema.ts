@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { dateOfBirth } from "../../utils/dateOfBirth.js";
 
 export const RegisterSchema = z.object({
   email: z.string().email("Invalid email address").transform(v => v.toLowerCase().trim()),
@@ -10,11 +11,7 @@ export const RegisterSchema = z.object({
     .or(z.literal("").transform(() => undefined))
     .optional(),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
-  dateOfBirth: z.string()
-    .refine(v => !v || !isNaN(Date.parse(v)), "Invalid date of birth")
-    .refine(v => !v || new Date(v) <= new Date(), "Date of birth cannot be in the future")
-    .refine(v => !v || new Date(v).getUTCFullYear() >= new Date().getUTCFullYear() - 120, "Date of birth is too far in the past")
-    .optional(),
+  dateOfBirth: dateOfBirth.optional(),
 });
 
 export const LoginSchema = z.object({
@@ -36,11 +33,7 @@ export const UpdateProfileSchema = z.object({
     .or(z.literal("").transform(() => undefined))
     .optional(),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
-  dateOfBirth: z.string()
-    .refine(v => !v || !isNaN(Date.parse(v)), "Invalid date of birth")
-    .refine(v => !v || new Date(v) <= new Date(), "Date of birth cannot be in the future")
-    .refine(v => !v || new Date(v).getUTCFullYear() >= new Date().getUTCFullYear() - 120, "Date of birth is too far in the past")
-    .optional(),
+  dateOfBirth: dateOfBirth.optional(),
   fitnessGoal: z.string().max(500).optional(),
   trainingLevel: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED"]).optional(),
   trainingPreference: z.string().max(500).optional(),

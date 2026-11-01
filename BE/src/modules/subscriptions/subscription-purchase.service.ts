@@ -54,7 +54,7 @@ export async function inspectPlanPurchase(
   requestedStartDate?: Date | string,
   now: Date = new Date(),
 ): Promise<PlanPurchaseContext> {
-  if (plan.tier === "FREE" || Number(plan.price) <= 0) throw new AppError("Gói FREE được cấp tự động, không thể bán tại quầy hoặc thanh toán.", 400, { code: "FREE_PLAN_NOT_FOR_SALE" });
+  if (plan.tier === "FREE") throw new AppError("Gói FREE chỉ được hệ thống tự động cấp.", 400, { code: "FREE_PLAN_NOT_FOR_SALE" });
   const reqDate = requestedStartDate
     ? (requestedStartDate instanceof Date ? requestedStartDate : new Date(requestedStartDate))
     : undefined;
@@ -116,6 +116,11 @@ export async function inspectPlanPurchase(
 
   // Case 1: Gia hạn cùng hạng (isSameTier) -> TỰ ĐỘNG NỐI TIẾP VÀO NGÀY HẾT HẠN GÓI CŨ
   if (isSameTier) {
+    // The renewal date is determined by the current period, never silently ignored.
+    const effectiveStart = currentActive.endDate > now ? currentActive.endDate : now;
+    if (reqDate && Math.abs(+reqDate - +effectiveStart) > 60_000)
+      throw new AppError("Gia hạn cùng hạng phải bắt đầu khi gói hiện tại kết thúc.", 400,
+        { code: "RENEWAL_START_DATE_CONFLICT", effectiveStartDate: effectiveStart.toISOString() });
     let calculatedStartDate: Date;
     let targetStatus: "ACTIVE" | "SCHEDULED";
 
@@ -293,6 +298,9 @@ export async function activateSubscriptionForPayment(
   const soldPayment = await tx.payment.findUniqueOrThrow({
     where: { id: params.paymentId },
   });
+  if (soldPayment.refundRequestedAt || soldPayment.status === "REFUNDED")
+    throw new AppError("Giao dịch đã được duyệt hoàn tiền, không thể cấp gói.", 409,
+      { code: "PAYMENT_REFUND_PENDING" });
   // Gateway callbacks use the persisted order's facility, without a caller header.
   if (!requestContext.getStore()?.facilityId)
     return requestContext.run(

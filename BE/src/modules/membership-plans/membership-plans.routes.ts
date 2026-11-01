@@ -1,4 +1,4 @@
-import { Router, type RequestHandler } from "express";
+import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate.js";
 import { authorize } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
@@ -6,8 +6,11 @@ import { CreatePlanSchema, UpdatePlanSchema, PlanQuerySchema } from "./membershi
 import * as plansController from "./membership-plans.controller.js";
 
 const router = Router();
-const optionalAuth: RequestHandler = (req, res, next) =>
-  req.headers.authorization ? authenticate(req, res, next) : next();
+// Public reads remain available; administrative filters require a verified identity.
+router.use((req, res, next) => {
+  if (req.method === "GET" && req.headers.authorization) return authenticate(req, res, next);
+  next();
+});
 
 /**
  * @swagger
@@ -28,7 +31,7 @@ const optionalAuth: RequestHandler = (req, res, next) =>
  *       400: { $ref: "#/components/responses/BadRequest" }
  *       500: { $ref: "#/components/responses/ServerError" }
  */
-router.get("/", optionalAuth, validate(PlanQuerySchema, "query"), plansController.listPlans);
+router.get("/", validate(PlanQuerySchema, "query"), plansController.listPlans);
 
 /**
  * @swagger
@@ -48,7 +51,7 @@ router.get("/", optionalAuth, validate(PlanQuerySchema, "query"), plansControlle
  *       404: { $ref: "#/components/responses/NotFound" }
  *       500: { $ref: "#/components/responses/ServerError" }
  */
-router.get("/:id", optionalAuth, plansController.getPlanById);
+router.get("/:id", plansController.getPlanById);
 
 /**
  * @swagger

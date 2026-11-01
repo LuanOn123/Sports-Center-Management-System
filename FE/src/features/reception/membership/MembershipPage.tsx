@@ -1,8 +1,4 @@
 import { CancelSubscription } from "../../../shared/CancelSubscription";
-import {
-  downgradeReason,
-  isEffectiveSubscription,
-} from "../../../shared/businessRules";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { RecordData } from "../../../shared/api";
@@ -43,35 +39,13 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
   );
   const plans = useReceptionList("GET /membership-plans", { isActive: "true" });
   const hasPlans = (plans.data?.data || []).some(
-    (p) =>
-      p.id && p.isActive !== false && p.tier !== "FREE" && Number(p.price) > 0,
-  );
-  const current = subscriptions.data?.data.find((s) =>
-    isEffectiveSubscription({
-      status: String(s.status),
-      startDate: String(s.startDate),
-      endDate: String(s.endDate),
-    }),
+    (p) => p.id && p.isActive !== false && p.tier !== "FREE" && Number(p.price) > 0,
   );
   const hasScheduled = subscriptions.data?.data.some(
     (s) => s.status === "SCHEDULED",
   );
   const choices = (plans.data?.data || [])
-    .filter(
-      (p) =>
-        p.id &&
-        p.isActive !== false &&
-        p.tier !== "FREE" &&
-        Number(p.price) > 0,
-    )
-    .filter(
-      (p) =>
-        !downgradeReason(
-          current as
-            { tier: unknown; plan?: { durationDays?: unknown } } | undefined,
-          { tier: p.tier, durationDays: p.durationDays },
-        ),
-    )
+    .filter((p) => p.id && p.isActive !== false && p.tier !== "FREE" && Number(p.price) > 0)
     .map((p) => ({
       value: String(p.id),
       label: `${display(p.name)} · ${money(p.price)} · ${display(p.durationDays)} ngày`,
@@ -163,12 +137,11 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
                       >
                         Gia hạn
                       </button>
-                      {["MANAGER", "ADMIN"].includes(role) &&
-                        ["ACTIVE", "SCHEDULED"].includes(
-                          String(row.status),
-                        ) && (
+                      {(role === "RECEPTIONIST" || role === "ADMIN") &&
+                        ["ACTIVE", "SCHEDULED"].includes(String(row.status)) &&
+                        row.tier !== "FREE" && (
                           <CancelSubscription
-                            role="MANAGER"
+                            role={role}
                             subscription={
                               row as unknown as {
                                 id: string;
@@ -188,9 +161,7 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
                             remainingDays: row.remainingDays,
                           },
                           role,
-                        ).filter(
-                          (s) => s !== "CANCELLED" || row.status !== "ACTIVE",
-                        )}
+                        ).filter((s) => s !== "CANCELLED")}
                         explanation="Ngừng quyền lợi là trạng thái cuối, không thể khôi phục gói này. Số ngày còn lại chỉ lưu để đối soát, không cộng vào gói mới. Muốn dùng tiếp, hãy mua hoặc gia hạn để tạo gói mới."
                       />
                     </>

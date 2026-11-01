@@ -15,11 +15,20 @@ import { translateApiMessage } from "../src/shared/apiErrors";
 import { ATTENDANCE } from "../../BE/src/config/attendance";
 const now = Date.parse("2026-09-18T06:00:00Z");
 describe("workflow state boundaries", () => {
-  it("Admin can manage subscription and manual payment states without widening reception rights", () => {
-    expect(subscriptionTransitions({ status: "ACTIVE" }, "ADMIN")).toEqual(["SUSPENDED", "CANCELLED"]);
-    expect(paymentTransitions("PENDING", "ADMIN")).toEqual(["SUCCESS", "FAILED"]);
-    expect(paymentTransitions("PENDING", "ADMIN", "SEPAY")).toEqual([]);
-    expect(subscriptionTransitions({ status: "ACTIVE" }, "RECEPTIONIST")).toEqual([]);
+  it("financial UI follows exact Admin/reception duties and forbids manual suspension or success", () => {
+    for (const role of ["ADMIN", "RECEPTIONIST"]) {
+      expect(subscriptionTransitions({ status: "ACTIVE" }, role)).toEqual([
+        "CANCELLED",
+      ]);
+      expect(subscriptionTransitions({ status: "SCHEDULED" }, role)).toEqual([
+        "CANCELLED",
+      ]);
+      expect(paymentTransitions("PENDING", role)).toEqual(["FAILED"]);
+      expect(paymentTransitions("PENDING", role, "SEPAY")).toEqual([]);
+    }
+    expect(subscriptionTransitions({ status: "ACTIVE" }, "MANAGER")).toEqual(
+      [],
+    );
   });
   it("requires ACTIVE status and both date bounds for entitlement", () => {
     const s = {
@@ -45,41 +54,39 @@ describe("workflow state boundaries", () => {
       effectiveSubscription([s, { ...s, tier: "PREMIUM" }], now)?.tier,
     ).toBe("PREMIUM");
   });
-  it("payment states are terminal and refunds require manager", () => {
-    expect(paymentTransitions("PENDING", "MANAGER")).toEqual([
-      "SUCCESS",
-      "FAILED",
-    ]);
-    expect(paymentTransitions("SUCCESS", "MANAGER")).toEqual(["REFUNDED"]);
-    expect(paymentTransitions("REFUNDED", "MANAGER")).toEqual([]);
-    expect(paymentTransitions("FAILED", "MANAGER")).toEqual([]);
+  it("counter payments cannot be manually marked paid; refunds require reception or admin", () => {
+    expect(paymentTransitions("PENDING", "RECEPTIONIST")).toEqual(["FAILED"]);
+    expect(paymentTransitions("SUCCESS", "RECEPTIONIST")).toEqual(["REFUNDED"]);
+    expect(paymentTransitions("REFUNDED", "RECEPTIONIST")).toEqual([]);
+    expect(paymentTransitions("FAILED", "RECEPTIONIST")).toEqual([]);
+    expect(paymentTransitions("PENDING", "MANAGER")).toEqual([]);
+    expect(paymentTransitions("SUCCESS", "ADMIN")).toEqual(["REFUNDED"]);
     expect(paymentTransitions("SUCCESS", "STAFF")).toEqual([]);
-    expect(paymentTransitions("PENDING", "MANAGER", "SEPAY")).toEqual([]);
-    expect(paymentTransitions("SUCCESS", "MANAGER", "SEPAY")).toEqual([]);
-    expect(paymentTransitions("SUCCESS", "MANAGER", null)).toEqual([
+    expect(paymentTransitions("PENDING", "RECEPTIONIST", "SEPAY")).toEqual([]);
+    expect(paymentTransitions("SUCCESS", "RECEPTIONIST", "SEPAY")).toEqual([]);
+    expect(paymentTransitions("SUCCESS", "RECEPTIONIST", null)).toEqual([
       "REFUNDED",
     ]);
   });
   it("never resumes historical subscriptions, even with audited remaining days", () => {
-    expect(subscriptionTransitions({ status: "SUSPENDED" }, "MANAGER")).toEqual(
-      [],
-    );
+    expect(
+      subscriptionTransitions({ status: "SUSPENDED" }, "RECEPTIONIST"),
+    ).toEqual([]);
     expect(
       subscriptionTransitions(
         { status: "SUSPENDED", remainingDays: 4 },
-        "MANAGER",
+        "RECEPTIONIST",
       ),
     ).toEqual([]);
-    expect(subscriptionTransitions({ status: "EXPIRED" }, "MANAGER")).toEqual(
-      [],
-    );
-    expect(subscriptionTransitions({ status: "ACTIVE" }, "MANAGER")).toEqual([
-      "SUSPENDED",
-      "CANCELLED",
-    ]);
-    expect(subscriptionTransitions({ status: "CANCELLED" }, "MANAGER")).toEqual(
-      [],
-    );
+    expect(
+      subscriptionTransitions({ status: "EXPIRED" }, "RECEPTIONIST"),
+    ).toEqual([]);
+    expect(
+      subscriptionTransitions({ status: "ACTIVE" }, "RECEPTIONIST"),
+    ).toEqual(["CANCELLED"]);
+    expect(
+      subscriptionTransitions({ status: "CANCELLED" }, "RECEPTIONIST"),
+    ).toEqual([]);
     expect(subscriptionTransitions({ status: "ACTIVE" }, "STAFF")).toEqual([]);
   });
   it("only closes scheduled sessions after their end", () => {
@@ -143,9 +150,9 @@ it("checks the sold duration snapshot even after a plan is edited", () => {
     downgradeReason(current, { tier: "MEMBERSHIP", durationDays: 90 }),
   ).toBe("");
   // Cross-tier downgrade is now ALLOWED (Smart Date Picker handles the UI)
-  expect(
-    downgradeReason(current, { tier: "FREE", durationDays: 3650 }),
-  ).toBe("");
+  expect(downgradeReason(current, { tier: "FREE", durationDays: 3650 })).toBe(
+    "",
+  );
   expect(
     downgradeReason(
       { ...current, tier: "FREE" },
@@ -160,12 +167,12 @@ it("keeps member refund boundary separate from capped manager prorating", () => 
   expect(refundEstimate(end, 1000000, 30, "MEMBER", now - 1).refundAmount).toBe(
     300000,
   );
-  expect(refundEstimate(end, 1000000, 30, "MANAGER", now).refundAmount).toBe(
-    500000,
-  );
-  expect(refundEstimate(end, 1000000, 10, "MANAGER", now).refundAmount).toBe(
-    1000000,
-  );
+  expect(
+    refundEstimate(end, 1000000, 30, "RECEPTIONIST", now).refundAmount,
+  ).toBe(500000);
+  expect(
+    refundEstimate(end, 1000000, 10, "RECEPTIONIST", now).refundAmount,
+  ).toBe(1000000);
 });
 
 it("opens attendance QR only within inclusive server time bounds for scheduled sessions", () => {

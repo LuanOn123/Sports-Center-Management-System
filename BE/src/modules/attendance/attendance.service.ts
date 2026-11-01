@@ -336,7 +336,7 @@ const scanQrInternal = async (input: { qrToken?: string; code?: string }, user: 
     memberId: memberProfile.id, classId: schedule.classId, termId: schedule.termId,
     startTime: schedule.startTime, endTime: schedule.endTime,
   });
-  if (!activeSub && !approvedTerm) {
+  if ((!activeSub || activeSub.tier === "FREE") && !approvedTerm) {
     throw new AppError(
       "Gói tập của bạn đã hết hạn. Vui lòng gia hạn để có thể vào lớp học.",
       403

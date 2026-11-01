@@ -15,8 +15,7 @@ import mongoose from "mongoose";
 
 // Own disposable infrastructure only. Never use DATABASE_URL/MONGO_URI from the host.
 const name = "scms-hardening-" + randomBytes(6).toString("hex");
-const auditRound2 = process.argv.includes("--audit-round2");
-const schema = auditRound2 ? "scms_verify_" + name.replaceAll("-", "_") : name.replaceAll("-", "_");
+const schema = name.replaceAll("-", "_");
 const folder = mkdtempSync(join(tmpdir(), "scms-hardening-"));
 const password = randomBytes(16).toString("hex");
 const mongod =
@@ -142,58 +141,47 @@ try {
     SCMS_QUERY_METRICS: "1",
     CANCELLATION_CUTOFF_MINUTES: "60",
   };
-  if (auditRound2) {
-    // Deploy the real migration history, not db push: catch missing schema migrations.
-    await run(["node_modules/prisma/build/index.js", "migrate", "deploy"], env);
-    for (const seed of ["prisma/seed.ts", "src/scripts/seed-full.ts"]) {
-      await run(["node_modules/tsx/dist/cli.mjs", seed], env);
-    }
-    for (const suite of ["cross-facility-booking.integration.ts", "cross-facility-cancel.integration.ts", "cross-facility-my-schedule.integration.ts", "business-gaps.integration.ts"]) {
-      await run(["node_modules/tsx/dist/cli.mjs", `tests/${suite}`], env);
-    }
-  } else {
-    const baseline = join(folder, "baseline.prisma");
-    const source = readFileSync("prisma/schema.prisma", "utf8").replace(
-      /^  refund(RequestedAmount|RequestedAt|Reason|Reference).*\r?\n/gm,
-      "",
+  const baseline = join(folder, "baseline.prisma");
+  const source = readFileSync("prisma/schema.prisma", "utf8").replace(
+    /^  refund(RequestedAmount|RequestedAt|Reason|Reference).*\r?\n/gm,
+    "",
+  );
+  writeFileSync(baseline, source);
+  await run(
+    [
+      "node_modules/prisma/build/index.js",
+      "db",
+      "push",
+      "--skip-generate",
+      "--schema",
+      baseline,
+    ],
+    env,
+  );
+  const migration =
+    `SET search_path TO "${schema}";\n` +
+    readFileSync(
+      "prisma/migrations/20261029000000_business_rule_hardening/migration.sql",
+      "utf8",
     );
-    writeFileSync(baseline, source);
-    await run(
-      [
-        "node_modules/prisma/build/index.js",
-        "db",
-        "push",
-        "--skip-generate",
-        "--schema",
-        baseline,
-      ],
-      env,
-    );
-    const migration =
-      `SET search_path TO "${schema}";\n` +
-      readFileSync(
-        "prisma/migrations/20261029000000_business_rule_hardening/migration.sql",
-        "utf8",
-      );
-    const applied = spawnSync(
-      "docker",
-      ["exec", "-i", name, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1"],
-      { input: migration, encoding: "utf8", windowsHide: true },
-    );
-    if (applied.status !== 0)
-      throw new Error("Hardening migration failed: " + applied.stderr);
-    console.log(
-      "PASS migration applied to disposable PostgreSQL schema; Mongo replica set ready.",
-    );
-    await run(
-      [
-        "node_modules/tsx/dist/cli.mjs",
-        "--test",
-        "tests/business-rule-hardening.integration.ts",
-      ],
-      env,
-    );
-  }
+  const applied = spawnSync(
+    "docker",
+    ["exec", "-i", name, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1"],
+    { input: migration, encoding: "utf8", windowsHide: true },
+  );
+  if (applied.status !== 0)
+    throw new Error("Hardening migration failed: " + applied.stderr);
+  console.log(
+    "PASS migration applied to disposable PostgreSQL schema; Mongo replica set ready.",
+  );
+  await run(
+    [
+      "node_modules/tsx/dist/cli.mjs",
+      "--test",
+      "tests/business-rule-hardening.integration.ts",
+    ],
+    env,
+  );
   await run(
     ["node_modules/tsx/dist/cli.mjs", "src/scripts/business-rule-preflight.ts"],
     env,

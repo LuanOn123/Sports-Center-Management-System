@@ -9,6 +9,16 @@ export function isEffectiveSubscription(
   );
 }
 
+/** Date inputs are Vietnamese calendar dates; API periods are exact instants. */
+export function membershipDateInput(instant: string) {
+  return new Date(Date.parse(instant) + 7 * 3600_000).toISOString().slice(0, 10);
+}
+
+export function membershipStartInstant(date: string, currentEnd?: string) {
+  if (currentEnd && date === membershipDateInput(currentEnd)) return currentEnd;
+  return `${date}T00:00:00+07:00`;
+}
+
 export function effectiveSubscription<
   T extends {
     status: string;
@@ -31,9 +41,9 @@ export function paymentTransitions(
   role: string,
   gateway?: unknown,
 ): string[] {
-  if (!["MANAGER", "ADMIN"].includes(role) || gateway) return [];
+  if (!["ADMIN", "RECEPTIONIST"].includes(role) || gateway) return [];
   return status === "PENDING"
-    ? ["SUCCESS", "FAILED"]
+    ? ["FAILED"]
     : status === "SUCCESS"
       ? ["REFUNDED"]
       : [];
@@ -43,8 +53,9 @@ export function subscriptionTransitions(
   s: { status: unknown; remainingDays?: unknown },
   role: string,
 ): string[] {
-  if (!["MANAGER", "ADMIN"].includes(role)) return [];
-  if (s.status === "ACTIVE") return ["SUSPENDED", "CANCELLED"];
+  if (!["ADMIN", "RECEPTIONIST"].includes(role)) return [];
+  if (s.status === "ACTIVE") return ["CANCELLED"];
+  if (s.status === "SCHEDULED") return ["CANCELLED"];
   // Policy A: historical subscriptions never resume; remainingDays is audit only.
   return [];
 }
@@ -114,7 +125,7 @@ export function downgradeReason(
     Number(plan.durationDays) <
       Number(current.durationDaysSnapshot ?? current.plan?.durationDays)
   )
-    return "Không thể mua gói ngắn hơn cùng hạng.";
+    return "Gói ngắn hơn cùng hạng sẽ gia hạn nối tiếp sau khi gói hiện tại hết hạn.";
   return "";
 }
 
@@ -122,7 +133,7 @@ export function refundEstimate(
   endDate: string,
   amount: number,
   durationDays: number,
-  role: "MEMBER" | "MANAGER",
+  role: "MEMBER" | "MANAGER" | "RECEPTIONIST" | "ADMIN",
   now = Date.now(),
 ) {
   const daysLeft = Math.max(

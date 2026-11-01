@@ -8,7 +8,6 @@ process.env.MONGO_URI = "mongodb://127.0.0.1:1/test";
 process.env.JWT_ACCESS_SECRET = "audit-regression-access";
 process.env.JWT_REFRESH_SECRET = "audit-regression-refresh";
 const { prisma } = require("../src/config/prisma.js");
-const { Prisma } = require("@prisma/client");
 const { User } = require("../src/models/User.js");
 const { RefreshToken } = require("../src/models/RefreshToken.js");
 const {
@@ -59,99 +58,95 @@ async function fixture(
   }
 }
 
-for (const hasOtherPeriod of [false, true])
-  test(`N1: legacy seats are released only without another paid period (${hasOtherPeriod})`, async () => {
+for (const coverage of ["none", "covered", "outside-dates", "wrong-tier"])
+  test(`N1: legacy booking eligibility — ${coverage}`, async () => {
+    const start = new Date(Date.now() + 86400000),
+      end = new Date(+start + 3600000);
     let filter: any;
     const tx = {
+      $executeRaw: async () => 0,
       membershipSubscription: {
-        findFirst: async ({ where }: any) => {
-          assert.deepEqual(where.status.in, ["ACTIVE", "SCHEDULED"]);
+        findFirst: async () => null,
+        findMany: async ({ where }: any) => {
           assert.equal(where.tier.not, "FREE");
-          return hasOtherPeriod ? { id: "other" } : null;
+          assert.deepEqual(where.payments, { some: { status: "SUCCESS" } });
+          return coverage === "none"
+            ? []
+            : [
+                {
+                  id: "other",
+                  tier: "MEMBERSHIP",
+                  startDate: new Date(+start - 3600000),
+                  endDate: new Date(
+                    +end + (coverage === "outside-dates" ? -7200000 : 3600000),
+                  ),
+                },
+              ];
         },
       },
       enrollment: {
+        findMany: async ({ where }: any) => {
+          assert.equal(where.status, "BOOKED");
+          assert.ok(where.schedule.endTime.gt instanceof Date);
+          return [
+            {
+              id: "legacy",
+              memberId: "member",
+              classId: "class",
+              scheduleId: "session",
+              subscriptionId: null,
+              termMembershipGrant: null,
+              schedule: { startTime: start, endTime: end },
+              class: {
+                facilityId: "facility",
+                classType: coverage === "wrong-tier" ? "PREMIUM" : "REGULAR",
+              },
+            },
+          ];
+        },
         updateMany: async ({ where, data }: any) => {
           filter = where;
           assert.equal(data.status, "CANCELLED");
-          return { count: 1 };
+          return { count: where.id.in.length };
         },
       },
+      classSchedule: { findUnique: async () => ({ status: "COMPLETED" }) },
     };
     await revokeSubscriptionBookings(tx, {
       id: "cancelled",
       memberId: "member",
     });
     assert.equal(filter.memberId, "member");
-    assert.equal(filter.status, "BOOKED");
-    assert.ok(filter.schedule.endTime.gt instanceof Date);
-    assert.ok(filter.OR.some((v: any) => v.subscriptionId === "cancelled"));
-    const legacy = filter.OR.find((v: any) => v.subscriptionId === null);
-    assert.equal(Boolean(legacy), !hasOtherPeriod);
-    if (legacy) assert.equal(legacy.termMembershipGrant.equals, Prisma.AnyNull);
+    assert.deepEqual(filter.id.in, coverage === "covered" ? [] : ["legacy"]);
   });
 
-test("H1: a manual receipt without a source subscription cannot write anything", async () => {
-  await assert.rejects(
-    () =>
-      createPayment(
-        { memberId: "m", amount: 999999999, method: "CASH" },
-        "staff",
-      ),
-    (e: any) =>
-      e.statusCode === 400 && e.errors.code === "PAYMENT_SUBSCRIPTION_REQUIRED",
-  );
-});
-for (const scenario of ["wrong-amount", "already-paid", "free", "valid"])
-  test(`H1: manual source validation — ${scenario}`, async () =>
+for (const subscriptionId of [
+  undefined,
+  "legacy-unpaid",
+  "already-paid",
+  "free",
+])
+  test(`H1: manual receipts cannot bypass order pricing (${subscriptionId})`, async () =>
     fixture(async (stub) => {
       let writes = 0;
-      const source = {
-        id: "sub",
-        memberId: "m",
-        tier: scenario === "free" ? "FREE" : "MEMBERSHIP",
-        status: "ACTIVE",
-        priceSnapshot: 300000,
-        plan: { price: 300000 },
-      };
-      stub(prisma.memberProfile, "findFirst", async () => ({ id: "m" }));
-      stub(prisma.membershipSubscription, "findUnique", async () => source);
-      stub(prisma, "$transaction", async (run: any) =>
-        run({
-          $executeRaw: async () => 0,
-          membershipSubscription: { findUnique: async () => source },
-          payment: {
-            findFirst: async () =>
-              scenario === "already-paid" ? { id: "receipt" } : null,
-            create: async ({ data }: any) => {
-              writes++;
-              return { ...data, id: "new-receipt" };
+      stub(prisma.payment, "create", async () => {
+        writes++;
+      });
+      await assert.rejects(
+        () =>
+          createPayment(
+            {
+              memberId: "m",
+              subscriptionId,
+              amount: 999999999,
+              method: "CASH",
             },
-          },
-          invoice: { create: async () => ({ id: "invoice" }) },
-        }),
+            "staff",
+          ),
+        (e: any) =>
+          e.statusCode === 409 && e.errors.code === "PAYMENT_ORDER_REQUIRED",
       );
-      const action = () =>
-        createPayment(
-          {
-            memberId: "m",
-            subscriptionId: "sub",
-            amount: scenario === "wrong-amount" ? 999999999 : 300000,
-            method: "CASH",
-          },
-          "staff",
-        );
-      if (scenario === "valid") {
-        assert.equal((await action()).id, "new-receipt");
-        assert.equal(writes, 1);
-      } else {
-        await assert.rejects(
-          action,
-          (e: any) =>
-            e.statusCode === (scenario === "wrong-amount" ? 400 : 409),
-        );
-        assert.equal(writes, 0);
-      }
+      assert.equal(writes, 0);
     }));
 
 test("H2: five wrong OTPs lock the code, including the correct sixth attempt", async () =>
@@ -165,14 +160,15 @@ test("H2: five wrong OTPs lock the code, including the correct sixth attempt", a
     };
     let attempts = 0,
       passwordWrites = 0;
-    stub(User, "findOne", async () => user);
-    stub(User, "updateOne", async (filter: any, update: any) => {
-      if (update.$inc?.resetPasswordOtpAttempts) {
-        assert.equal(filter.$or[0].resetPasswordOtpAttempts.$lt, 5);
-        if (attempts >= 5) return { modifiedCount: 0 };
-        attempts++;
-        return { modifiedCount: 1 };
-      }
+    stub(User, "findOneAndUpdate", async (filter: any, update: any) => {
+      assert.equal(filter.$or[0].resetPasswordOtpAttempts.$lt, 5);
+      assert.equal(filter.isActive, true);
+      assert.equal(update.$inc.resetPasswordOtpAttempts, 1);
+      if (attempts >= 5) return null;
+      attempts++;
+      return { ...user, resetPasswordOtpAttempts: attempts };
+    });
+    stub(User, "updateOne", async () => {
       passwordWrites++;
       return { modifiedCount: 1 };
     });
@@ -206,13 +202,14 @@ test("H2: an unused correct OTP resets once; compare-and-set blocks replay", asy
     };
     let consumed = false,
       revoked = 0;
-    stub(User, "findOne", async () => user);
+    stub(User, "findOneAndUpdate", async () =>
+      consumed ? null : { ...user, resetPasswordOtpAttempts: 1 },
+    );
     stub(User, "updateOne", async (filter: any, update: any) => {
-      if (update.$inc?.resetPasswordOtpAttempts)
-        return { modifiedCount: consumed ? 0 : 1 };
       assert.equal(filter.resetPasswordOtp, digest);
+      assert.equal(filter.isActive, true);
       assert.equal(update.$inc.tokenVersion, 1);
-      assert.equal(update.$set.resetPasswordOtp, null);
+      assert.equal(update.resetPasswordOtp, null);
       if (consumed) return { modifiedCount: 0 };
       consumed = true;
       return { modifiedCount: 1 };
@@ -239,36 +236,47 @@ test("H2: a resend inside the persisted cooldown does not issue or send another 
   fixture(async (stub) => {
     stub(User, "findOne", async () => ({ _id: "user", isActive: true }));
     stub(User, "updateOne", async (where: any, update: any) => {
-      assert.ok(where.$or[0].resetPasswordRequestedAt.$lte instanceof Date);
+      assert.ok(where.$or[0].resetPasswordOtpSentAt.$lte instanceof Date);
       assert.equal(update.$set.resetPasswordOtpAttempts, 0);
       return { modifiedCount: 0 };
     });
     await forgotPassword({ email: "demo@test.invalid" });
   }));
 
-test("H2: IP burst budget returns 429 without entering the auth handler", () => {
-  const limit = passwordResetLimit(2);
-  let next = 0,
-    status = 0,
-    retry = 0;
-  const res: any = {
-    setHeader: (_: string, v: number) => {
-      retry = v;
-    },
-    status: (v: number) => {
-      status = v;
-      return res;
-    },
-    json: () => res,
-  };
-  for (let i = 0; i < 3; i++)
-    limit({ ip: "127.0.0.1" } as any, res, () => {
-      next++;
-    });
-  assert.equal(next, 2);
-  assert.equal(status, 429);
-  assert.ok(retry > 0);
-});
+test("H2: shared account rate budget persists counters and rejects excess requests", async () =>
+  fixture(async (stub) => {
+    const {
+      PasswordResetLimit,
+    } = require("../src/middlewares/passwordResetLimit.js");
+    const counters = new Map<string, number>();
+    stub(
+      PasswordResetLimit,
+      "findOneAndUpdate",
+      async (where: any, update: any) => {
+        assert.match(where._id, /^[a-f0-9]{64}$/);
+        assert.ok(update.$setOnInsert.expiresAt instanceof Date);
+        const count = (counters.get(where._id) ?? 0) + 1;
+        counters.set(where._id, count);
+        return { count };
+      },
+    );
+    let admitted = 0,
+      rejected = 0;
+    const limit = passwordResetLimit("send");
+    for (let i = 0; i < 6; i++)
+      await limit(
+        { ip: "127.0.0.1", body: { email: "demo@test.invalid" } } as any,
+        {} as any,
+        (error: any) => {
+          if (error) {
+            assert.equal(error.statusCode, 429);
+            rejected++;
+          } else admitted++;
+        },
+      );
+    assert.equal(admitted, 5);
+    assert.equal(rejected, 1);
+  }));
 
 test("H3: active people use the same cohort as the total, and are deduplicated", async () =>
   fixture(async (stub) => {
@@ -372,7 +380,7 @@ test("L1: an expired member cannot join a full session's waitlist", async () =>
     stub(prisma, "$transaction", async (run: any) =>
       run({
         $executeRaw: async () => 0,
-        classSchedule: { findUnique: async () => ({ termId: null }) },
+        classSchedule: { findUnique: async () => schedule },
         membershipSubscription: { findFirst: async () => null },
         enrollment: { findUnique: async () => null, count: async () => 1 },
         waitlistEntry: {
@@ -418,6 +426,7 @@ test("L3: public inactive-plan filters cannot expose hidden plans; authenticated
     }));
     const app = express();
     app.use("/plans", routes);
+    app.use(require("../src/middlewares/errorHandler.js").errorHandler);
     const server = app.listen(0, "127.0.0.1");
     await new Promise<void>((resolve) => server.once("listening", resolve));
     const url = `http://127.0.0.1:${(server.address() as { port: number }).port}`;

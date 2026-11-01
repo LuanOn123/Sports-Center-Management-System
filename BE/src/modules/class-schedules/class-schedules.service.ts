@@ -271,11 +271,12 @@ async function createScheduleBatchInTx(tx: Prisma.TransactionClient, data: {
   const ordered = data.schedules.map((row) => ({ startTime: new Date(row.startTime), endTime: new Date(row.endTime) }))
     .sort((a, b) => +a.startTime - +b.startTime);
   if (!ordered.length || ordered.length > 500) throw new AppError("Chọn từ 1 đến 500 buổi học.", 400);
+  if (ordered.some(row => row.startTime <= new Date()))
+    throw new AppError("Không thể tạo buổi học trong quá khứ hoặc đã bắt đầu.", 400, { code: "SCHEDULE_IN_PAST" });
   for (let i = 0; i < ordered.length; i++) {
     const row = ordered[i];
     if (!Number.isFinite(+row.startTime) || !Number.isFinite(+row.endTime) || row.endTime <= row.startTime)
       throw new AppError("Thời gian buổi học không hợp lệ.", 400);
-    if (row.startTime <= new Date()) throw new AppError("Không thể tạo buổi học trong quá khứ.", 400);
     if (i && row.startTime < ordered[i - 1].endTime)
       throw new AppError("Các buổi trong lịch tạo mới không được trùng nhau.", 409);
   }
@@ -558,6 +559,9 @@ export async function updateSchedule(id: string, data: any) {
 
   const startTime = data.startTime ? new Date(data.startTime) : existing.startTime;
   const endTime = data.endTime ? new Date(data.endTime) : existing.endTime;
+  if ((data.startTime || data.endTime) && startTime <= new Date())
+    throw new AppError("Không thể chuyển buổi học về quá khứ hoặc sửa giờ buổi đã bắt đầu.", 400,
+      { code: "SCHEDULE_IN_PAST" });
   const roomId = data.roomId ?? existing.roomId;
 
   if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
@@ -620,6 +624,8 @@ export async function updateSchedule(id: string, data: any) {
       await lockSchedule(tx, id);
       const fresh = await tx.classSchedule.findUnique({ where: { id } });
       if (!fresh) throw new AppError("Schedule not found", 404);
+      if ((data.startTime || data.endTime) && startTime <= new Date())
+        throw new AppError("Không thể chuyển buổi học về quá khứ.", 400, { code: "SCHEDULE_IN_PAST" });
       if (fresh.status !== "SCHEDULED") {
         throw new AppError("Lịch học đã thay đổi trạng thái, vui lòng tải lại.", 409, {
           code: "SCHEDULE_STATE_CHANGED",

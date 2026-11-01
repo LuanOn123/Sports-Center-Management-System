@@ -4,7 +4,7 @@ import { sendSuccess, sendCreated } from "../../utils/response.js";
 
 export async function listPlans(req: Request, res: Response, next: NextFunction) {
   try {
-    const { plans, pagination } = await plansService.listPlans(req.user?.role === "ADMIN" ? req.query : { ...req.query, isActive: "true" });
+    const { plans, pagination } = await plansService.listPlans(req.query, req.user?.role === "ADMIN");
     sendSuccess(res, plans, "Plans retrieved successfully", 200, pagination);
   } catch (err) { next(err); }
 }
@@ -18,8 +18,7 @@ export async function createPlan(req: Request, res: Response, next: NextFunction
 
 export async function getPlanById(req: Request, res: Response, next: NextFunction) {
   try {
-    const plan = await plansService.getPlanById(req.params.id as string);
-    if (!plan.isActive && req.user?.role !== "ADMIN") { res.status(404).json({ success: false, message: "Plan not found" }); return; }
+    const plan = await plansService.getPlanById(req.params.id as string, req.user?.role === "ADMIN");
     sendSuccess(res, plan, "Plan retrieved successfully");
   } catch (err) { next(err); }
 }

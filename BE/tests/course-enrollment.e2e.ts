@@ -1,4 +1,4 @@
-import { installTurnstileFixture, withFixtureTurnstile } from "./helpers/turnstile-fixture.js";
+import "./helpers/business-e2e.js";
 /**
  * E2E THẬT (HTTP + PostgreSQL) cho luồng "ĐĂNG KÝ TRỌN KHÓA" (all-or-nothing):
  * - `GET  /classes/:id/course-plan`  → gom toàn bộ buổi sắp diễn ra thành 1 khóa học
@@ -40,7 +40,6 @@ async function http(
   path: string,
   opts: { token?: string; body?: unknown } = {}
 ): Promise<HttpResult> {
-  if (method === "POST" && path === "/auth/login") opts = { ...opts, body: withFixtureTurnstile(opts.body) };
   const res = await fetch(`${baseUrl}/api/v1${path}`, {
     method,
     headers: {
@@ -548,7 +547,6 @@ async function main(): Promise<void> {
       `SAFETY GUARD: DATABASE_URL schema "${guardSchema || "(default)"}" is not scms_verify_* — refusing to run write-capable E2E against a business/production database.`,
     );
   }
-  const restoreTurnstile = installTurnstileFixture();
   await connectTestMongo();
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", () => resolve()));
@@ -615,7 +613,6 @@ async function main(): Promise<void> {
     }
     server.close();
     await prisma.$disconnect();
-    restoreTurnstile();
     await disconnectTestMongo();
   }
 

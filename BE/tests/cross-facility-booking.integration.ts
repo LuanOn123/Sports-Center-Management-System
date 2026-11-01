@@ -1,4 +1,4 @@
-import { scheduleFixture } from "./helpers/schedule-fixture.js";
+import { createFixtureSchedule, cleanupFixtureSchedules } from "./fixture-schedule.js";
 import dotenv from "dotenv";
 dotenv.config({ path: ".env", quiet: true });
 import assert from "node:assert/strict";
@@ -11,7 +11,6 @@ async function main() {
     /^scms_verify_/,
   );
   const { prisma } = await import("../src/config/prisma.js");
-  const fixtureSchedules = scheduleFixture(prisma);
   const { bookClass, transferEnrollment } =
     await import("../src/modules/enrollments/enrollments.service.js");
   const { enrollWholeCourse } =
@@ -111,7 +110,7 @@ async function main() {
         data: { classId: cls.id, coachId: coach.id, isPrimary: true },
       });
       sessions.push(
-        await fixtureSchedules.create({
+        await createFixtureSchedule(prisma, {
           data: {
             classId: cls.id,
             roomId: room.id,
@@ -203,7 +202,7 @@ async function main() {
     console.log(
       "PASS single-session and whole-course bookings reject overlap across facilities",
     );
-    const other = await fixtureSchedules.create({
+    const other = await createFixtureSchedule(prisma, {
       data: {
         classId: sessions[1].classId,
         roomId: (
@@ -252,7 +251,7 @@ async function main() {
     // Case 4: quota là GLOBAL — A giữ 1 Class, B giữ 1 Class ⇒ used = 2 ở CẢ hai facility.
     // Buổi B2 ở facility B (10:00–11:00) cách booking A (08:00–09:00) 60 phút >= travel
     // buffer nên book được (không dùng buổi overlap — Case 5 đã chặn).
-    const laterB = await fixtureSchedules.create({
+    const laterB = await createFixtureSchedule(prisma, {
       data: {
         classId: sessions[1].classId,
         roomId: (
@@ -294,8 +293,12 @@ async function main() {
 
     // Case 6: đọc/đổi trạng thái membership hoạt động dù đang chọn facility KHÁC facility phát hành.
     assert.equal((await scope(1, () => getSubscriptionById(subA.id))).id, subA.id);
-    const suspended = await scope(1, () => updateSubscriptionStatus(subA.id, "SUSPENDED"));
-    assert.equal(suspended.status, "SUSPENDED");
+    await assert.rejects(scope(1, () => updateSubscriptionStatus(subA.id, "SUSPENDED")),
+      (error: any) => error.statusCode === 409 && error.errors?.code === "SUBSCRIPTION_SUSPEND_FORBIDDEN" ||
+        error.statusCode === 409 && /ngừng quyền lợi thủ công/.test(error.message));
+    assert.equal((await prisma.membershipSubscription.findUniqueOrThrow({ where: { id: subA.id } })).status, "ACTIVE");
+    // Historical replacement fixture; only a purchase may write this state in production.
+    await prisma.membershipSubscription.update({ where: { id: subA.id }, data: { status: "SUSPENDED" } });
     // FINAL Policy A: SUSPENDED là terminal — resume qua API luôn bị 400 SUBSCRIPTION_RESUME_FORBIDDEN.
     await assert.rejects(
       scope(1, () => updateSubscriptionStatus(subA.id, "ACTIVE")),
@@ -316,7 +319,7 @@ async function main() {
     // gap == buffer cho qua) và laterB (same-facility, chỉ chạm biên 10:00).
     // Dời Z về 08:00–09:00 sẽ đụng booking tại A (cross-facility) ⇒ A11 chặn bằng 409
     // và GIỮ NGUYÊN thời gian Z.
-    const zSession = await fixtureSchedules.create({
+    const zSession = await createFixtureSchedule(prisma, {
       data: {
         classId: sessions[1].classId,
         roomId: (
@@ -388,12 +391,12 @@ async function main() {
     await prisma.classMember.deleteMany({
       where: { classId: { in: classes } },
     });
-    await fixtureSchedules.cleanup();
     await prisma.class.deleteMany({ where: { id: { in: classes } } });
     await prisma.auditLog.deleteMany({
       where: { facilityId: { in: facilities } },
     });
     await prisma.room.deleteMany({ where: { facilityId: { in: facilities } } });
+    await cleanupFixtureSchedules(prisma);
     await prisma.facility.deleteMany({ where: { id: { in: facilities } } });
     await prisma.user.deleteMany({ where: { id: { in: users } } });
     if (planId) await prisma.membershipPlan.delete({ where: { id: planId } });

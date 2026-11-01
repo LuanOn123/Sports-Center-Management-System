@@ -1,36 +1,41 @@
+import { createHash } from "node:crypto";
+import { Schema, model } from "mongoose";
 import type { RequestHandler } from "express";
-/** IP burst protection. The authoritative five-attempt OTP budget is persisted in MongoDB. */
-export function passwordResetLimit(
-  max: number,
-  windowMs = 15 * 60_000,
-): RequestHandler {
-  const windows = new Map<string, { count: number; until: number }>();
-  return (req, res, next) => {
-    const now = Date.now();
-    for (const [key, value] of windows)
-      if (value.until <= now) windows.delete(key);
-    const key = req.ip || req.socket.remoteAddress || "unknown";
-    let entry = windows.get(key);
-    if (!entry) {
-      if (windows.size >= 10000) {
-        res
-          .status(429)
-          .json({ success: false, message: "Vui lòng thử lại sau." });
-        return;
+import { AppError } from "./errorHandler.js";
+
+// Shared, atomic counters survive process restarts and work across API replicas.
+const schema = new Schema({
+  _id: String,
+  count: { type: Number, required: true },
+  expiresAt: { type: Date, required: true, index: { expires: 0 } },
+});
+export const PasswordResetLimit = model("PasswordResetLimit", schema);
+
+export function passwordResetLimit(action: "send" | "verify"): RequestHandler {
+  return async (req, _res, next) => {
+    try {
+      const window = Math.floor(Date.now() / (15 * 60_000));
+      const email = String(req.body.email ?? "").trim().toLowerCase();
+      for (const [scope, value, max] of [
+        ["ip", req.ip ?? "unknown", action === "send" ? 20 : 50],
+        ["account", email, action === "send" ? 5 : 15],
+      ] as const) {
+        const id = createHash("sha256").update(`${action}:${scope}:${window}:${value}`).digest("hex");
+        let counter;
+        try {
+          counter = await PasswordResetLimit.findOneAndUpdate(
+            { _id: id },
+            { $inc: { count: 1 }, $setOnInsert: { expiresAt: new Date((window + 2) * 15 * 60_000) } },
+            { upsert: true, new: true },
+          );
+        } catch (error: any) {
+          if (error.code !== 11000) throw error;
+          counter = await PasswordResetLimit.findOneAndUpdate({ _id: id }, { $inc: { count: 1 } }, { new: true });
+        }
+        if (!counter || counter.count > max)
+          throw new AppError("Bạn đã thử quá nhiều lần. Vui lòng thử lại sau 15 phút.", 429);
       }
-      entry = { count: 0, until: now + windowMs };
-      windows.set(key, entry);
-    }
-    if (++entry.count > max) {
-      res.setHeader("Retry-After", Math.ceil((entry.until - now) / 1000));
-      res
-        .status(429)
-        .json({
-          success: false,
-          message: "Quá nhiều yêu cầu. Vui lòng thử lại sau.",
-        });
-      return;
-    }
-    next();
+      next();
+    } catch (error) { next(error); }
   };
 }

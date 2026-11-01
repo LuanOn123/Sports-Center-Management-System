@@ -15,9 +15,9 @@ Generated from live checkout route AST and FE operations. MATCH means method/pat
 | users | ADMIN | features/manage/ResourcePage.tsx | /users/{id} | DELETE | BE/src/modules/users/users.routes.ts:154 | MATCH |
 | subscriptions | MANAGER, RECEPTIONIST, ADMIN | features/reception/membership/MembershipPage.tsx<br>api/membership.api.ts | /subscriptions | POST | BE/src/modules/subscriptions/subscriptions.routes.ts:44 | MATCH |
 | subscriptions | MANAGER, RECEPTIONIST, ADMIN | features/reception/membership/MembershipPage.tsx<br>api/membership.api.ts | /subscriptions/{id}/renew | POST | BE/src/modules/subscriptions/subscriptions.routes.ts:87 | MATCH |
-| subscriptions | Authenticated (service checks ownership) | api/membership.api.ts<br>features/reception/membership/MembershipPage.tsx<br>features/reception/payments/PaymentsPage.tsx | /subscriptions/member/{memberId} | GET | BE/src/modules/subscriptions/subscriptions.routes.ts:115 | MATCH |
+| subscriptions | Authenticated (service checks ownership) | api/membership.api.ts<br>features/reception/membership/MembershipPage.tsx | /subscriptions/member/{memberId} | GET | BE/src/modules/subscriptions/subscriptions.routes.ts:115 | MATCH |
 | subscriptions | MANAGER, RECEPTIONIST, ADMIN | api/membership.api.ts | /subscriptions/{id} | GET | BE/src/modules/subscriptions/subscriptions.routes.ts:141 | MATCH |
-| subscriptions | MANAGER, ADMIN | features/reception/membership/MembershipPage.tsx<br>shared/CancelSubscription.tsx<br>api/membership.api.ts | /subscriptions/{id}/status | PATCH | BE/src/modules/subscriptions/subscriptions.routes.ts:229 | MATCH |
+| subscriptions | RECEPTIONIST, ADMIN | features/reception/membership/MembershipPage.tsx<br>shared/CancelSubscription.tsx<br>api/membership.api.ts | /subscriptions/{id}/status | PATCH | BE/src/modules/subscriptions/subscriptions.routes.ts:229 | MATCH |
 | subscriptions | MEMBER | shared/CancelSubscription.tsx<br>api/membership.api.ts | /subscriptions/{id}/cancel | PATCH | BE/src/modules/subscriptions/subscriptions.routes.ts:313 | MATCH |
 | sports | Public | api/classes.api.ts<br>features/coach/CoachProfile.tsx<br>features/manage/ActivityPlanner.tsx<br>features/manage/AdminFacilities.tsx<br>features/manage/ClassForm.tsx<br>features/manage/coachProfileData.ts<br>features/manage/config.ts<br>features/operations/OperationsPage.tsx<br>shared/forms/CreateCoachForm.tsx<br>shared/forms/SchemaForm.tsx | /sports | GET | BE/src/modules/sports/sports.routes.ts:57 | MATCH |
 | sports | ADMIN | features/manage/ActivityPlanner.tsx<br>features/manage/config.ts<br>features/operations/OperationsPage.tsx<br>shared/forms/SchemaForm.tsx<br>api/classes.api.ts | /sports | POST | BE/src/modules/sports/sports.routes.ts:122 | MATCH |
@@ -38,25 +38,25 @@ Generated from live checkout route AST and FE operations. MATCH means method/pat
 | reports | MANAGER, ADMIN | UNUSED_API (no direct consumer found) | /reports/subscription-logs | GET | BE/src/modules/reports/reports.routes.ts:229 | MATCH |
 | reports | MANAGER, ADMIN | features/manage/BusinessReports.tsx | /reports/attendance | GET | BE/src/modules/reports/reports.routes.ts:223 | MATCH |
 | reports | MANAGER, ADMIN | features/manage/BusinessReports.tsx | /reports/cross-facility-usage | GET | BE/src/modules/reports/reports.routes.ts:257 | MATCH |
-| payments | MANAGER, RECEPTIONIST, ADMIN | features/reception/payments/PaymentsPage.tsx<br>shared/forms/SchemaForm.tsx | /payments | POST | BE/src/modules/payments/payments.routes.ts:49 | MATCH |
-| payments | MANAGER, RECEPTIONIST, ADMIN | features/reception/dashboard/ReceptionAnalytics.tsx<br>features/reception/payments/PaymentsPage.tsx | /payments | GET | BE/src/modules/payments/payments.routes.ts:85 | MATCH |
-| payments | Authenticated (service checks ownership) | features/reception/payments/PaymentsPage.tsx<br>pages/member/PaymentsPage.tsx | /payments/{id} | GET | BE/src/modules/payments/payments.routes.ts:111 | MATCH |
-| payments | ADMIN | features/reception/payments/PaymentsPage.tsx | /payments/{id}/status | PATCH | BE/src/modules/payments/payments.routes.ts:177 | MATCH |
-| payments | ADMIN | features/reception/payments/PaymentsPage.tsx | /payments/{id}/retry-activation | POST | BE/src/modules/payments/payments.routes.ts:209 | MATCH |
-| payments | MEMBER | api/sepay.api.ts<br>shared/api.ts<br>features/reception/payments/PaymentsPage.tsx | /payments/sepay/checkout | POST | BE/src/modules/payments/payments.routes.ts:305 | MATCH |
-| payments | Authenticated (service checks ownership) | features/reception/payments/PaymentsPage.tsx | /payments/sepay/webhook | POST | BE/src/modules/payments/payments.routes.ts:425 | MATCH |
-| payments | MEMBER, MANAGER, RECEPTIONIST, ADMIN | api/sepay.api.ts<br>shared/api.ts<br>features/reception/payments/PaymentsPage.tsx | /payments/sepay/mock-confirm | POST | BE/src/modules/payments/payments.routes.ts:481 | MATCH |
-| payments | Authenticated (service checks ownership) | features/reception/payments/PaymentsPage.tsx | /payments/sepay/{id} | GET | BE/src/modules/payments/payments.routes.ts:552 | MATCH |
+| payments | MANAGER, RECEPTIONIST, ADMIN | shared/forms/SchemaForm.tsx<br>features/reception/payments/PaymentsPage.tsx | /payments | POST | BE/src/modules/payments/payments.routes.ts:50 | MATCH |
+| payments | MANAGER, RECEPTIONIST, ADMIN | features/reception/dashboard/ReceptionAnalytics.tsx<br>features/reception/payments/PaymentsPage.tsx | /payments | GET | BE/src/modules/payments/payments.routes.ts:86 | MATCH |
+| payments | Authenticated (service checks ownership) | features/reception/payments/PaymentsPage.tsx<br>pages/member/PaymentsPage.tsx | /payments/{id} | GET | BE/src/modules/payments/payments.routes.ts:112 | MATCH |
+| payments | RECEPTIONIST, ADMIN | features/reception/payments/PaymentsPage.tsx | /payments/{id}/status | PATCH | BE/src/modules/payments/payments.routes.ts:209 | MATCH |
+| payments | ADMIN | features/reception/payments/PaymentsPage.tsx | /payments/{id}/retry-activation | POST | BE/src/modules/payments/payments.routes.ts:241 | MATCH |
+| payments | MEMBER | api/sepay.api.ts<br>shared/api.ts<br>features/reception/payments/PaymentsPage.tsx | /payments/sepay/checkout | POST | BE/src/modules/payments/payments.routes.ts:337 | MATCH |
+| payments | Authenticated (service checks ownership) | features/reception/payments/PaymentsPage.tsx | /payments/sepay/webhook | POST | BE/src/modules/payments/payments.routes.ts:457 | MATCH |
+| payments | MEMBER, MANAGER, RECEPTIONIST, ADMIN | api/sepay.api.ts<br>shared/api.ts<br>features/reception/payments/PaymentsPage.tsx | /payments/sepay/mock-confirm | POST | BE/src/modules/payments/payments.routes.ts:513 | MATCH |
+| payments | Authenticated (service checks ownership) | features/reception/payments/PaymentsPage.tsx | /payments/sepay/{id} | GET | BE/src/modules/payments/payments.routes.ts:584 | MATCH |
 | notifications | Authenticated (service checks ownership) | shared/Communication.tsx | /notifications | GET | BE/src/modules/notifications/notifications.routes.ts:64 | MATCH |
 | notifications | Authenticated (service checks ownership) | shared/Communication.tsx | /notifications/unread-count | GET | BE/src/modules/notifications/notifications.routes.ts:80 | MATCH |
 | notifications | Authenticated (service checks ownership) | shared/Communication.tsx | /notifications/mark-all-read | PATCH | BE/src/modules/notifications/notifications.routes.ts:96 | MATCH |
 | notifications | Authenticated (service checks ownership) | shared/Communication.tsx | /notifications/{id}/read | PATCH | BE/src/modules/notifications/notifications.routes.ts:121 | MATCH |
 | notifications | MANAGER, RECEPTIONIST, ADMIN | shared/Communication.tsx | /notifications/trigger-upcoming-reminders | POST | BE/src/modules/notifications/notifications.routes.ts:138 | MATCH |
-| membership-plans | Public | api/membership.api.ts<br>features/manage/config.ts<br>features/operations/OperationsPage.tsx<br>features/reception/membership/MembershipPage.tsx | /membership-plans | GET | BE/src/modules/membership-plans/membership-plans.routes.ts:31 | MATCH |
-| membership-plans | ADMIN | features/manage/config.ts<br>api/membership.api.ts | /membership-plans | POST | BE/src/modules/membership-plans/membership-plans.routes.ts:94 | MATCH |
-| membership-plans | Public | api/membership.api.ts | /membership-plans/{id} | GET | BE/src/modules/membership-plans/membership-plans.routes.ts:51 | MATCH |
-| membership-plans | ADMIN | api/membership.api.ts | /membership-plans/{id} | PATCH | BE/src/modules/membership-plans/membership-plans.routes.ts:147 | MATCH |
-| membership-plans | ADMIN | api/membership.api.ts | /membership-plans/{id} | DELETE | BE/src/modules/membership-plans/membership-plans.routes.ts:173 | MATCH |
+| membership-plans | Public | api/membership.api.ts<br>features/manage/config.ts<br>features/operations/OperationsPage.tsx<br>features/reception/membership/MembershipPage.tsx | /membership-plans | GET | BE/src/modules/membership-plans/membership-plans.routes.ts:34 | MATCH |
+| membership-plans | ADMIN | features/manage/config.ts<br>api/membership.api.ts | /membership-plans | POST | BE/src/modules/membership-plans/membership-plans.routes.ts:97 | MATCH |
+| membership-plans | Public | api/membership.api.ts | /membership-plans/{id} | GET | BE/src/modules/membership-plans/membership-plans.routes.ts:54 | MATCH |
+| membership-plans | ADMIN | api/membership.api.ts | /membership-plans/{id} | PATCH | BE/src/modules/membership-plans/membership-plans.routes.ts:150 | MATCH |
+| membership-plans | ADMIN | api/membership.api.ts | /membership-plans/{id} | DELETE | BE/src/modules/membership-plans/membership-plans.routes.ts:176 | MATCH |
 | members | MANAGER, RECEPTIONIST, ADMIN | features/manage/config.ts<br>features/operations/OperationsPage.tsx<br>features/reception/components.tsx<br>features/reception/dashboard/DashboardPage.tsx<br>shared/FacilityVisits.tsx<br>features/reception/members/MembersPage.tsx<br>features/reception/membership/MembershipPage.tsx | /members | GET | BE/src/modules/members/members.routes.ts:43 | MATCH |
 | members | MANAGER, RECEPTIONIST, COACH, ADMIN | features/coach/CoachWorkspace.tsx<br>features/manage/UserCourseDetails.tsx<br>features/reception/members/MembersPage.tsx<br>features/reception/membership/MembershipPage.tsx | /members/{id} | GET | BE/src/modules/members/members.routes.ts:68 | MATCH |
 | members | MANAGER, RECEPTIONIST, ADMIN | features/manage/UserCourseDetails.tsx<br>features/reception/members/MembersPage.tsx<br>features/reception/membership/MembershipPage.tsx | /members/{id} | PATCH | BE/src/modules/members/members.routes.ts:107 | MATCH |
@@ -191,7 +191,8 @@ Generated from live checkout route AST and FE operations. MATCH means method/pat
 | coach-change-requests | MANAGER | features/operations/CoachChangesPage.tsx | /coach-change-requests/{id}/candidates | GET | BE/src/modules/operations/operations.routes.ts:139 | MATCH |
 | coach-change-requests | MANAGER | features/operations/CoachChangesPage.tsx | /coach-change-requests/{id} | PATCH | BE/src/modules/operations/operations.routes.ts:140 | MATCH |
 | class-schedules | MANAGER | features/manage/ScheduleForm.tsx<br>api/classes.api.ts | /class-schedules/batch | POST | BE/src/modules/class-schedules/class-schedules.routes.ts:49 | MATCH |
-| payments | ADMIN, RECEPTIONIST | features/reception/payments/PaymentsPage.tsx | /payments/{id}/refund/confirm | POST | BE/src/modules/payments/payments.routes.ts:174 | MATCH |
+| payments | ADMIN, RECEPTIONIST | features/reception/payments/PaymentsPage.tsx | /payments/{id}/refund/confirm | POST | BE/src/modules/payments/payments.routes.ts:175 | MATCH |
+| payments | ADMIN | features/reception/payments/PaymentsPage.tsx | /payments/{id}/refund/request | POST | BE/src/modules/payments/payments.routes.ts:204 | MATCH |
 
 Backend operations absent from FE catalog: none.
 

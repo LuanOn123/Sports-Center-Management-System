@@ -61,13 +61,14 @@ export function Policies({ role }: { role: string }) {
           ngừng, hết hạn hoặc hủy không thể khôi phục. Gói chờ chưa kích hoạt có thể hủy theo chính sách hoàn 100%.
         </p>
         <p>
-          Chỉ thanh toán thành công mới được ghi nhận hoàn tiền, do quản lý xử
+          Chỉ thanh toán thành công mới được ghi nhận hoàn tiền, do lễ tân hoặc quản trị viên xử
           lý. Hoàn tiền không tự chuyển tiền ngân hàng. Hoàn toàn bộ một giao dịch
-          tại quầy có thể hủy gói ACTIVE liên quan và các lượt đặt tương lai. Hủy gói ACTIVE sẽ hủy các lượt đặt lớp tương lai ở mọi cơ sở: hội viên tự
+          tại quầy có thể hủy gói ACTIVE liên quan và các lượt đặt từ quyền của gói đó ở mọi cơ sở. Quyền độc lập hợp lệ được giữ lại. Hội viên tự
           hủy được hoàn 30% khoản gốc khi còn trên 15 ngày, còn từ 15 ngày trở
-          xuống không hoàn; quản lý hủy được tính theo tỷ lệ ngày còn lại. Tiền
+          xuống không hoàn; nhân viên hủy được tính theo tỷ lệ ngày còn lại. Tiền
           hoàn nhận tại quầy.
         </p>
+        <p>Giao dịch SePay đã thu nhưng chưa cấp gói và đang cần đối soát có thể được quản trị viên duyệt yêu cầu hoàn toàn bộ. Sau khi duyệt, giao dịch không được kích hoạt lại; lễ tân hoặc quản trị viên xác nhận đã trả tiền kèm biên nhận thực tế.</p>
       </section>
       <section className="panel workflow-card">
         <h2>Tài khoản & thông tin cá nhân</h2>
