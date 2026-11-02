@@ -129,6 +129,13 @@ const PlannerScheduleSchema = z.object({
   path: ["endTime"],
 });
 
+export const CreateScheduleBatchSchema = z.object({
+  classId: z.string().min(1),
+  roomId: z.string().min(1),
+  termId: z.string().min(1).optional(),
+  schedules: z.array(PlannerScheduleSchema).min(1).max(500),
+});
+
 export const CreateActivityPlanSchema = z.object({
   termId: z.string().min(1).optional(),
   sport: z.union([
@@ -185,7 +192,7 @@ export const UpdateScheduleSchema = z.object({
   endTime: z.string().optional(),
   status: z.enum(["SCHEDULED", "CANCELLED", "COMPLETED"]).optional(),
   reason: z.string().max(500).optional(),
-  termId: z.string().min(1).nullable().optional(),
+  termId: z.string().min(1).optional(),
 }).refine(
   (d) => {
     // Validate sớm khi request cung cấp đủ 2 mốc giờ mới.
@@ -199,6 +206,7 @@ export const ScheduleQuerySchema = z.object({
   page: z.string().optional(),
   limit: z.string().optional(),
   classId: z.string().min(1).optional(),
+  coachId: z.string().min(1).optional(),
   roomId: z.string().min(1).optional(),
   termId: z.string().min(1).optional(),
   status: z.enum(["SCHEDULED", "CANCELLED", "COMPLETED"]).optional(),

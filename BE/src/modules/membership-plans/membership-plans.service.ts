@@ -4,14 +4,15 @@ import { buildPaginationMeta } from "../../utils/pagination.js";
 import { resolveMaxConcurrentClasses } from "../../config/membership.js";
 import type { CreatePlanInput, UpdatePlanInput } from "./membership-plans.schema.js";
 
-export async function listPlans(query: any) {
+export async function listPlans(query: any, includeInactive = false) {
   const page = Math.max(1, parseInt(query.page ?? "1") || 1);
   const limit = Math.min(100, Math.max(1, parseInt(query.limit ?? "10") || 10));
   const skip = (page - 1) * limit;
 
-  const where: any = {};
+  const where: any = { tier: { not: "FREE" } };
   if (query.tier) where.tier = query.tier;
-  if (query.isActive !== undefined) where.isActive = query.isActive === "true";
+  if (!includeInactive) where.isActive = true;
+  else if (query.isActive !== undefined) where.isActive = query.isActive === "true";
 
   const [total, plans] = await Promise.all([
     prisma.membershipPlan.count({ where }),
@@ -39,21 +40,24 @@ export async function createPlan(data: CreatePlanInput) {
   });
 }
 
-export async function getPlanById(id: string) {
+export async function getPlanById(id: string, includeInactive = false) {
   const plan = await prisma.membershipPlan.findUnique({ where: { id } });
-  if (!plan) throw new AppError("Membership plan not found", 404);
+  if (!plan || (!includeInactive && (!plan.isActive || plan.tier === "FREE"))) throw new AppError("Membership plan not found", 404);
   return plan;
 }
 
 export async function updatePlan(id: string, data: UpdatePlanInput) {
   const plan = await prisma.membershipPlan.findUnique({ where: { id } });
   if (!plan) throw new AppError("Membership plan not found", 404);
+  if (plan.tier === "FREE") throw new AppError("Gói miễn phí được hệ thống tự động cấp và không thể chỉnh sửa.", 409);
   return prisma.membershipPlan.update({ where: { id }, data });
 }
 
 export async function deletePlan(id: string) {
   const plan = await prisma.membershipPlan.findUnique({ where: { id } });
   if (!plan) throw new AppError("Membership plan not found", 404);
+
+  if (plan.tier === "FREE") throw new AppError("Gói miễn phí được hệ thống tự động cấp và không thể ngừng hoạt động.", 409);
 
   // MF-12: MembershipPlan là catalog GLOBAL ⇒ guard đếm subscription ACTIVE trên TOÀN BỘ hệ thống
   // (trước refactor chỉ đếm theo facility đang chọn). Ý đồ: không deactivate plan mà hội viên

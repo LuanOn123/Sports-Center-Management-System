@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { dateOfBirth } from "../../utils/dateOfBirth.js";
 
 export const UpdateMemberSchema = z.object({
   fullName: z.string().min(2).optional(),
   phone: z.string().regex(/^[0-9+\-() ]*$/, "Phone must not contain special characters").optional(),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
-  dateOfBirth: z.string().optional(),
+  dateOfBirth: dateOfBirth.optional(),
   fitnessGoal: z.string().optional(),
   trainingLevel: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED"]).optional(),
   trainingPreference: z.string().optional(),
@@ -26,10 +27,7 @@ export const CreateMemberSchema = z.object({
     .optional()
     .or(z.literal("").transform(() => undefined)),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
-  dateOfBirth: z.string()
-    .refine(v => !v || !isNaN(Date.parse(v)), "Invalid date of birth")
-    .refine(v => !v || new Date(v) <= new Date(), "Date of birth cannot be in the future")
-    .optional(),
+  dateOfBirth: dateOfBirth.optional(),
   fitnessGoal: z.string().max(500).optional(),
   trainingLevel: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED"]).optional(),
   trainingPreference: z.string().max(500).optional(),

@@ -1,3 +1,7 @@
+import {
+  EquipmentFields,
+  equipmentValues,
+} from "../../shared/forms/EquipmentFields";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type RecordData } from "../../shared/api";
@@ -15,6 +19,7 @@ import {
 type Room = {
   id: string;
   name: string;
+  areaType?: string;
   capabilities?: { key: string; quantity: number }[];
 };
 export function ManagerRooms({ userId }: { userId: string }) {
@@ -188,8 +193,8 @@ function CapabilitiesForm({
   onClose: () => void;
   onBusy: (value: boolean) => void;
 }) {
-  const [rows, setRows] = useState(
-    (room.capabilities || []).map((r) => ({ ...r, id: crypto.randomUUID() })),
+  const [values, setValues] = useState(
+    equipmentValues(room.capabilities, "quantity"),
   );
   const cache = useQueryClient();
   const mutation = useMutation({
@@ -197,9 +202,7 @@ function CapabilitiesForm({
       api("PUT /rooms/{id}/capabilities", {
         params: { id: room.id },
         body: {
-          values: Object.fromEntries(
-            rows.map((r) => [r.key.trim(), r.quantity]),
-          ),
+          values: room.areaType === "INDOOR" ? values : {},
         },
       }),
     onMutate: () => onBusy(true),
@@ -209,87 +212,26 @@ function CapabilitiesForm({
       onClose();
     },
   });
-  const duplicate = new Set(rows.map((r) => r.key.trim())).size !== rows.length;
   return (
     <form
       className="manager-config-form"
       onSubmit={(e) => {
         e.preventDefault();
-        if (!duplicate) mutation.mutate();
+        mutation.mutate();
       }}
     >
-      <p>
-        Nhập mã cấu hình tương ứng với yêu cầu của bộ môn. Thay đổi không phù
-        hợp với lịch sắp tới sẽ bị từ chối.
-      </p>
       <fieldset disabled={mutation.isPending}>
-        {rows.map((row, index) => (
-          <div className="filters" key={row.id}>
-            <label>
-              Mã cấu hình {index + 1}
-              <input
-                required
-                maxLength={80}
-                value={row.key}
-                onChange={(e) =>
-                  setRows(
-                    rows.map((r) =>
-                      r.id === row.id ? { ...r, key: e.target.value } : r,
-                    ),
-                  )
-                }
-              />
-            </label>
-            <label>
-              Số lượng
-              <input
-                type="number"
-                min={0}
-                step={1}
-                required
-                value={row.quantity}
-                onChange={(e) =>
-                  setRows(
-                    rows.map((r) =>
-                      r.id === row.id
-                        ? { ...r, quantity: Number(e.target.value) }
-                        : r,
-                    ),
-                  )
-                }
-              />
-            </label>
-            <button
-              type="button"
-              className="button"
-              onClick={() => setRows(rows.filter((r) => r.id !== row.id))}
-            >
-              Bỏ cấu hình {index + 1}
-            </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          className="button"
-          onClick={() =>
-            setRows([
-              ...rows,
-              { id: crypto.randomUUID(), key: "", quantity: 0 },
-            ])
-          }
-        >
-          Thêm cấu hình
-        </button>
-        {duplicate && <p role="alert">Mã cấu hình không được trùng.</p>}
+        {room.areaType === "INDOOR" ? (
+          <EquipmentFields value={values} onChange={setValues} />
+        ) : (
+          <p>Chỉ phòng trong nhà áp dụng lựa chọn có hoặc không có dụng cụ.</p>
+        )}
         {mutation.error && <ErrorState error={mutation.error} />}
         <div className="modal-footer">
           <button type="button" className="button" onClick={onClose}>
             Hủy
           </button>
-          <button
-            className="button primary"
-            disabled={duplicate || mutation.isPending}
-          >
+          <button className="button primary" disabled={mutation.isPending}>
             Lưu cấu hình
           </button>
         </div>

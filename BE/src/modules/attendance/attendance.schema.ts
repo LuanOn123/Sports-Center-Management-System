@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const CreateAttendanceSchema = z.object({
-  scheduleId: z.string().uuid(),
+  scheduleId: z.string().trim().min(1).max(200),
   // Identity projections use Mongo ObjectIds; retain valid legacy UUID profiles.
   memberId: z.union([z.string().regex(/^[a-fA-F0-9]{24}$/), z.string().uuid()]),
   status: z.enum(["PRESENT", "ABSENT", "LATE", "EXCUSED"]),
@@ -14,7 +14,7 @@ export const UpdateAttendanceSchema = z.object({
 });
 
 export const GenerateQrSchema = z.object({
-  scheduleId: z.string().uuid()
+  scheduleId: z.string().trim().min(1).max(200)
 });
 
 /** Mã dự phòng: 6 ký tự alphabet A-HJ-NP-Z2-9 (bỏ 0/O/1/I); nhận cả chữ thường/khoảng trắng thừa. */

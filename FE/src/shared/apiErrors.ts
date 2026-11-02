@@ -4,6 +4,10 @@ type FieldError = { field: string; message: string };
 
 const messages: Record<string, string> = {
   "coach_required": "Lớp chưa được phân công huấn luyện viên. Hãy chọn và gán HLV chính cho lớp trước khi tạo lịch.",
+  "coach_on_leave": "HLV chính hoặc HLV phụ có lịch nghỉ đã được duyệt trong thời gian này.",
+  "coach_specialization_required": "HLV chưa đủ chuyên môn để giảng dạy bộ môn của lớp.",
+  "invalid facility resources": "Lớp và phòng phải đang hoạt động và thuộc cùng cơ sở.",
+  "room capacity or area is unsuitable": "Phòng không phù hợp với khu vực hoặc sĩ số của lớp.",
   "receptionist_facility_required": "Tài khoản lễ tân cần được phân công đúng một cơ sở đang hoạt động. Liên hệ Admin để kiểm tra phân công.",
   "manager_facility_required": "Tài khoản quản lý cần được phân công đúng một cơ sở đang hoạt động. Liên hệ Admin để kiểm tra phân công.",
   "coach_not_assigned": "Coach chưa được phân công vào cơ sở này. Kiểm tra mục Người dùng trước khi xếp lớp.",
@@ -239,8 +243,11 @@ export function localizeApiError(
   status: number,
 ) {
   let rawMessage = typeof message === "string" ? message : "";
+  rawMessage = rawMessage.replace(/^ROOM_CAPABILITY_MISSING:\s*/i, "Phòng chưa đủ dụng cụ bắt buộc: ");
   const detail = errors as
     { code?: string; conflicts?: unknown[]; uncovered?: unknown[] } | undefined;
+  if (detail?.code === "SCHEDULED_SUBSCRIPTION_EXISTS") rawMessage = "Bạn đã có gói chờ kích hoạt. Hãy xử lý gói chờ trước khi mua hoặc gia hạn.";
+  if (detail?.code === "REFUND_ALREADY_REQUESTED") rawMessage = "Giao dịch đã có yêu cầu hoàn tiền hoặc vừa đổi trạng thái. Vui lòng tải lại.";
   if (detail?.code === "SCHEDULE_MOVE_IMPACT") {
     const names = (items?: unknown[]) =>
       (items || [])

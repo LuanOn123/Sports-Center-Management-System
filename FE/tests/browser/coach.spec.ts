@@ -180,7 +180,7 @@ test("coach dashboard scopes classes by profile ID and schedule by assigned clas
   expect(
     calls
       .filter((c) => c.path === "/class-schedules")
-      .every((c) => c.query.classId === "class-1"),
+      .every((c) => c.query.coachId === "coach-profile" && !c.query.classId),
   ).toBeTruthy();
   await expect(page.locator(".coach-session")).toContainText("09:00");
   expect(
@@ -387,8 +387,8 @@ test("profile validates names, phone and birthdate before API call", async ({
   await page.getByLabel("Số điện thoại", { exact: true }).fill("0901234567");
   await page.getByLabel("Ngày sinh", { exact: true }).fill("1995-03-01");
   await page.getByRole("button", { name: "Lưu thay đổi" }).click();
-  await expect(page.getByRole("main").getByRole("status")).toContainText(
-    "Đã cập nhật hồ sơ",
+  await expect(page.getByRole("region", { name: "Thông báo thao tác" })).toContainText(
+    "Đã lưu thay đổi thành công.",
   );
   expect(calls.find((c) => c.method === "PATCH")?.body).toMatchObject({
     fullName: "Nguyễn Minh An",
@@ -495,3 +495,14 @@ for (const width of [375, 768, 1440])
       fullPage: true,
     });
   });
+
+
+test("substitute with no permanent classes still sees their assigned session", async ({ page }) => {
+  const calls = await setupCoach(page, { empty: true });
+  await page.goto("/coach/schedule");
+  await expect(page.getByRole("button", { name: /Yoga nền tảng.*Xem học viên/ })).toBeVisible();
+  const requests = calls.filter(c => c.path === "/class-schedules");
+  expect(requests.length).toBeGreaterThan(0);
+  expect(requests.every(c => c.query.coachId === "coach-profile" && !c.query.classId)).toBe(true);
+  await expect(page.getByRole("combobox", { name: "Lớp học", exact: true })).toContainText("Yoga nền tảng");
+});

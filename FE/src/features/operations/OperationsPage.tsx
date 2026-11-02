@@ -644,7 +644,7 @@ function PatternForm({ onSuccess }: { onSuccess: () => void }) {
             value={selectedTermId}
             onChange={(e) => handleTermChange(e.target.value)}
           >
-            <option value="">-- Không áp dụng kỳ học (Nhập ngày thủ công) --</option>
+            <option value="">-- Tự chọn kỳ theo ngày (nhập ngày thủ công) --</option>
             {q.data.terms.map((t: any) => (
               <option key={String(t.id)} value={String(t.id)}>
                 {t.name} ({String(t.startDate || "").slice(0, 10)} – {String(t.endDate || "").slice(0, 10)})

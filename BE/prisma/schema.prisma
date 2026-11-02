@@ -332,6 +332,8 @@ model MembershipSubscription {
   @@index([planId])
   @@index([status])
   @@index([endDate])
+  enrollments Enrollment[]
+
 }
 
 // ─────────────────────────────────────────
@@ -425,6 +427,8 @@ model ClassMember {
   @@unique([classId, coachId])
   @@index([classId])
   @@index([coachId])
+  // R-03: partial unique index "class_one_primary_coach" (classId WHERE isPrimary) — mỗi lớp tối đa 1 HLV chính.
+  // Tạo bằng SQL tay trong migration 20261029000000_business_rule_hardening.
 }
 
 model ClassSchedule {
@@ -493,6 +497,10 @@ model Enrollment {
   class       Class            @relation(fields: [classId], references: [id])
   scheduleId  String
   schedule    ClassSchedule    @relation(fields: [scheduleId], references: [id])
+  /// Exact entitlement selected when this booking was made; NULL for legacy bookings.
+  subscriptionId String?
+  subscription MembershipSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
   status      EnrollmentStatus @default(BOOKED)
   healthNotes String?
   /// Server-owned eligibility snapshot for the approved class/term, independent of plan expiry.
@@ -506,6 +514,8 @@ model Enrollment {
   @@index([memberId])
   @@index([scheduleId])
   @@index([classId])
+  @@index([subscriptionId])
+
 }
 
 /// Trạng thái mục chờ (waitlist) cho buổi học đã full — Phase 2 Member × Facility.
@@ -546,6 +556,10 @@ model WaitlistEntry {
 // ─────────────────────────────────────────
 
 model Payment {
+  refundRequestedAmount Decimal? @db.Decimal(12, 2)
+  refundRequestedAt DateTime?
+  refundReason String?
+  refundReference String?
   refundedAmount Decimal @default(0) @db.Decimal(12, 2)
   refundedAt DateTime?
   facilityId String @default("legacy-main")
@@ -862,6 +876,8 @@ model CoachFeedback {
   @@unique([coachId, memberId, classId])
   @@index([coachId])
   @@index([memberId])
+  // R-06: partial unique index "feedback_one_generic_member_coach" (memberId, coachId WHERE classId IS NULL)
+  // tạo bằng SQL tay trong migration 20261029000000_business_rule_hardening.
 }
 
 // ─────────────────────────────────────────

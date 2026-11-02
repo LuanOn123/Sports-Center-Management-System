@@ -27,7 +27,7 @@ for (const width of [320, 375, 430, 768, 1024, 1280, 1440, 1920]) {
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth + 1,
         ),
-        route,
+        route + JSON.stringify(await page.locator("body *").evaluateAll(nodes => nodes.filter(n => n.getBoundingClientRect().right > innerWidth + 1).map(n => ({ tag: n.tagName, cls: n.className, width: n.getBoundingClientRect().width })).slice(0, 15))),
       ).toBe(true);
       if (
         [375, 1440].includes(width) &&

@@ -177,7 +177,7 @@ test("retains a partially saved form and retries without rewriting sports", asyn
   await dialog.getByRole("checkbox", { name: "Bơi", exact: true }).check();
   state.failProfile = true;
   await dialog.getByRole("button", { name: "Lưu thay đổi" }).click();
-  await expect(dialog.getByRole("status")).toContainText("Bộ môn đã được lưu");
+  await expect(dialog.getByRole("status").filter({ hasText: "Bộ môn đã được lưu" })).toContainText("Bộ môn đã được lưu");
   await expect(dialog.getByLabel("Số năm kinh nghiệm")).toHaveValue("0");
   await expect(
     dialog.getByRole("checkbox", { name: "Bơi", exact: true }),

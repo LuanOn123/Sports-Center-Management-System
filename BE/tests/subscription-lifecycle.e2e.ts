@@ -1,3 +1,4 @@
+import "./helpers/business-e2e.js";
 /**
  * E2E THẬT (HTTP + PostgreSQL) cho B07 (job vòng đời gói) + C11 (báo cáo doanh thu):
  * 1) `expireStaleSubscriptions` — gói quá endDate → EXPIRED + notification; chạy lại idempotent.

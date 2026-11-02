@@ -205,3 +205,26 @@ dialog::backdrop {
     }
   }
 }
+
+.portal-theme .detail-empty-item { background: var(--member-surface-alt); border-color: var(--member-border); color: var(--member-muted); }
+.equipment-fields { border: 1px solid var(--member-border, #d1ded6); border-radius: 12px; padding: 16px; min-width: 0; }
+.equipment-toggle { display: flex; align-items: center; gap: 10px; }
+.equipment-toggle input { width: auto; }
+.equipment-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(90px, 1fr) auto; gap: 12px; align-items: end; margin: 12px 0; }
+@media (max-width: 600px) { .equipment-row { grid-template-columns: minmax(0, 1fr); } }
+
+.equipment-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.equipment-option { display: flex; gap: 10px; align-items: center; padding: 16px; border: 1px solid var(--member-border); border-radius: 12px; background: var(--member-surface-alt); }
+.equipment-option.selected { border-color: var(--member-accent); }
+.equipment-option input { width: auto; min-height: auto; accent-color: var(--member-accent); }
+.room-equipment-summary { padding: 0 24px 16px; }
+.under-capacity-notice > div:first-child { flex-wrap: wrap; gap: 12px; }
+.under-capacity-notice > div > div { gap: 12px; flex-wrap: wrap; }
+.under-capacity-notice strong { color: var(--member-text); }
+
+.membership-usage-body { padding: 24px; min-width: 0; }
+.membership-usage-report { min-width: 0; }
+.membership-usage-report caption { text-align: left; padding: 12px 0; font-weight: 700; }
+.usage-data-note { border: 1px solid var(--member-warning-border); background: var(--member-warning-soft); color: var(--member-warning); padding: 14px; border-radius: 10px; }
+.usage-plan { border-top: 1px solid var(--member-border); margin-top: 24px; padding-top: 20px; }
+.usage-plan summary { cursor: pointer; padding: 16px 0; font-weight: 600; }

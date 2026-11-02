@@ -178,7 +178,7 @@ test("whole-course enrollment dialog wraps long content and blocks dismissal dur
   });
   await dialog.getByRole("button", { name: "Xác nhận đăng ký" }).click();
   await expect(
-    dialog.getByRole("button", { name: "Đang xử lý..." }),
+    dialog.getByRole("button", { name: "Đang xử lý…" }),
   ).toBeDisabled();
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();

@@ -44,6 +44,7 @@ export function EnrollConfirmModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     onConfirm({
       healthNotes: healthNotes.trim(),
       saveToProfile,
@@ -51,7 +52,7 @@ export function EnrollConfirmModal({
   };
 
   return (
-    <Modal onClose={onClose} title={title} maxWidth={560}>
+    <Modal onClose={onClose} title={title} maxWidth={560} dismissible={!loading}>
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         {/* Class summary box */}
         <div

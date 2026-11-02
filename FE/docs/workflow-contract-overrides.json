@@ -1257,5 +1257,400 @@
       "404",
       "500"
     ]
+  },
+  "POST /rooms": {
+    "path": "/rooms",
+    "method": "POST",
+    "summary": "Create a new room",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+      }
+    ],
+    "body": {
+      "type": "object",
+      "required": [
+        "name",
+        "capacity",
+        "areaType"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "Yoga Room A"
+        },
+        "capacity": {
+          "type": "integer",
+          "example": 20
+        },
+        "location": {
+          "type": "string",
+          "example": "Floor 1"
+        },
+        "areaType": {
+          "type": "string",
+          "enum": [
+            "POOL",
+            "INDOOR",
+            "OUTDOOR"
+          ],
+          "example": "INDOOR"
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "statusCodes": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "409",
+      "500"
+    ]
+  },
+  "PATCH /rooms/{id}": {
+    "path": "/rooms/{id}",
+    "method": "PATCH",
+    "summary": "Update room info",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "capacity": {
+          "type": "integer"
+        },
+        "location": {
+          "type": "string"
+        },
+        "areaType": {
+          "type": "string",
+          "enum": [
+            "POOL",
+            "INDOOR",
+            "OUTDOOR"
+          ],
+          "description": "New area type. Upcoming schedules must use a matching Class."
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  "POST /sports": {
+    "path": "/sports",
+    "method": "POST",
+    "summary": "Create a new sport",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+      }
+    ],
+    "body": {
+      "type": "object",
+      "required": [
+        "name",
+        "areaTypes"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "Yoga"
+        },
+        "description": {
+          "type": "string",
+          "example": "Yoga class improves flexibility"
+        },
+        "areaTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "POOL",
+              "INDOOR",
+              "OUTDOOR"
+            ]
+          },
+          "minItems": 1,
+          "example": [
+            "INDOOR"
+          ],
+          "description": "Area types this sport supports (at least one)"
+        },
+        "requirements": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "statusCodes": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "409",
+      "500"
+    ]
+  },
+  "PATCH /sports/{id}": {
+    "path": "/sports/{id}",
+    "method": "PATCH",
+    "summary": "Update sport",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "areaTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "POOL",
+              "INDOOR",
+              "OUTDOOR"
+            ]
+          },
+          "minItems": 1,
+          "description": "Area types this sport supports. Cannot remove a type used by an active Class."
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "requirements": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500"
+    ]
+  },
+  "POST /class-schedules/batch": {
+    "path": "/class-schedules/batch",
+    "method": "POST",
+    "summary": "Tạo lịch hàng loạt",
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "properties": {
+        "classId": {
+          "type": "string"
+        },
+        "roomId": {
+          "type": "string"
+        },
+        "termId": {
+          "type": "string"
+        },
+        "schedules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "startTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "endTime": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "startTime",
+              "endTime"
+            ]
+          }
+        }
+      },
+      "required": [
+        "classId",
+        "roomId",
+        "schedules"
+      ]
+    },
+    "statusCodes": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "409"
+    ]
+  },
+  "GET /reports/memberships": {
+    "path": "/reports/memberships",
+    "method": "GET",
+    "summary": "Membership subscription report (by status, tier, revenue)",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "query",
+        "name": "startDate",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "endDate",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+      },
+      {
+        "name": "termId",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "facilityId",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "500"
+    ]
   }
 }

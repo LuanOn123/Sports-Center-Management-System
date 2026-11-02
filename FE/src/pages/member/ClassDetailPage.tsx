@@ -1022,15 +1022,16 @@ export function ClassDetailPage() {
           assigned={selectedCoach}
           classId={cls.id}
           onClose={() => setSelectedCoach(null)}
+          // R-06: đánh giá theo đúng lớp này, sau khi đã học ít nhất một buổi đã diễn ra.
+          // Backend kiểm tra chính xác (điểm danh có mặt / buổi COMPLETED do đúng HLV dạy).
           canReview={Boolean(
             enrollments.data?.enrollments.some(
               (enrollment) =>
                 ["BOOKED", "COMPLETED"].includes(enrollment.status) &&
                 (enrollment.classId === cls.id ||
-                  enrollment.schedule?.class?.id === cls.id ||
-                  enrollment.schedule?.class?.coaches?.some(
-                    (coach) => coach.coach?.id === selectedCoach.coach.id,
-                  )),
+                  enrollment.schedule?.class?.id === cls.id) &&
+                Boolean(enrollment.schedule?.startTime) &&
+                Date.parse(String(enrollment.schedule?.startTime)) <= Date.now(),
             ),
           )}
         />

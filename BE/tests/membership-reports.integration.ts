@@ -244,6 +244,7 @@ async function main() {
       await deleteIdentities(mongoUsers);
       mongoUsers = [];
     } catch (e) {
+      if (process.env.NODE_ENV === "test") throw e;
       skipped++;
       console.log(`  [SKIP] MF-08 (cần MongoDB test): ${(e as Error).message}`);
     }

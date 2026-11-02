@@ -148,8 +148,8 @@ export function CoachProfileDialog({
           />
           {!canReview && (
             <p className="field-note">
-              Bạn có thể viết đánh giá khi đã hoặc đang học với huấn luyện viên
-              này.
+              Bạn có thể viết đánh giá sau khi đã tham gia ít nhất một buổi của
+              lớp này do huấn luyện viên dạy.
             </p>
           )}
         </div>

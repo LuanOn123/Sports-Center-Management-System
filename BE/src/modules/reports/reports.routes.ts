@@ -108,6 +108,14 @@ router.get("/enrollments", validate(DateRangeSchema, "query"), reportsController
  *         name: endDate
  *         required: true
  *         schema: { type: string }
+ *       - in: query
+ *         name: termId
+ *         schema: { type: string }
+ *         description: Only bookings for schedules belonging to this term
+ *       - in: query
+ *         name: facilityId
+ *         schema: { type: string }
+ *         description: Admin may select ALL; manager scope is enforced by the server
  *     responses:
  *       200: { $ref: "#/components/responses/MembershipReportOk" }
  *       400: { $ref: "#/components/responses/BadRequest" }

@@ -1,3 +1,5 @@
+import { isGrantSourceValid } from "../subscriptions/entitlement.service.js";
+import { effectiveCoachIds } from "../operations/effective-coaches.js";
 import { readAttendanceReport } from "../attendance/reception-attendance.service.js";
 import { requestContext } from "../../config/request-context.js";
 import { prisma } from "../../config/prisma.js";
@@ -14,7 +16,7 @@ import {
   findActiveSubscription,
 } from "./enrollment-quota.service.js";
 import { checkFacilityMemberLimit } from "../facilities/facility-limits.service.js";
-import { termMembershipCovers } from "./term-membership-policy.js";
+import { readTermMembershipGrant, termMembershipCovers } from "./term-membership-policy.js";
 
 export type BookableSchedule = {
   id: string;
@@ -80,7 +82,7 @@ export async function assertCanBook(
   tx: Prisma.TransactionClient,
   memberProfileId: string,
   schedule: BookableSchedule,
-  options: { excludeEnrollmentId?: string; quotaExemptClassId?: string; termMembershipGrant?: unknown } = {}
+  options: { excludeEnrollmentId?: string; quotaExemptClassId?: string; onSubscriptionSelected?: (id: string) => void; termMembershipGrant?: unknown; ignoreCapacity?: boolean } = {}
 ) {
   const termId = schedule.termId ?? (await tx.classSchedule.findUnique({
     where: { id: schedule.id }, select: { termId: true },
@@ -88,8 +90,13 @@ export async function assertCanBook(
   const approvedTerm = termMembershipCovers(options.termMembershipGrant, {
     memberId: memberProfileId, classId: schedule.class.id, termId, startTime: schedule.startTime, endTime: schedule.endTime,
   });
+  if (approvedTerm && !(await isGrantSourceValid(tx, options.termMembershipGrant)))
+    throw new AppError("Quyền học theo kỳ đã bị thu hồi hoặc chưa đối soát được gói nguồn.", 403);
   // Chốt chặn 1: subscription phải ACTIVE và còn hạn đến ngày lớp học diễn ra.
   const activeSub = await findActiveSubscription(tx, memberProfileId);
+  if (!approvedTerm && activeSub?.tier === "FREE")
+    throw new AppError("Gói FREE cho phép vào cơ sở nhưng không bao gồm quyền đặt lớp hoặc vào danh sách chờ.", 403,
+      { code: "PAID_MEMBERSHIP_REQUIRED" });
 
   if (!activeSub && !approvedTerm) {
     throw new AppError(
@@ -98,7 +105,7 @@ export async function assertCanBook(
     );
   }
 
-  const lastSession = await tx.classSchedule.findFirst({ where: { classId: schedule.class.id, status: "SCHEDULED" }, orderBy: { endTime: "desc" } });
+  const lastSession = await tx.classSchedule.findFirst({ where: { classId: schedule.class.id, status: "SCHEDULED", ...(termId ? { termId } : {}) }, orderBy: { endTime: "desc" } });
   if (activeSub && !approvedTerm && activeSub.endDate < (lastSession?.endTime || schedule.endTime)) {
     const expiredDate = activeSub.endDate.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
     const classDate = schedule.startTime.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
@@ -182,7 +189,7 @@ export async function assertCanBook(
   const bookedCount = await tx.enrollment.count({
     where: { scheduleId: schedule.id, status: { in: ["BOOKED", "COMPLETED"] } },
   });
-  if (bookedCount >= schedule.class.capacity)
+  if (!options.ignoreCapacity && bookedCount >= schedule.class.capacity)
     throw new AppError("This class is full", 409);
 
   // Duplicate check (BR-07: cho phép kích hoạt lại enrollment đã CANCELLED).
@@ -264,6 +271,10 @@ export async function assertCanBook(
     }
   }
 
+  const sourceSubscriptionId = approvedTerm
+    ? readTermMembershipGrant(options.termMembershipGrant)!.subscriptionId
+    : activeSub!.id;
+  options.onSubscriptionSelected?.(sourceSubscriptionId);
   return existing;
 }
 
@@ -321,7 +332,8 @@ export async function bookClass(
     }
 
     // 2-5. Gói tập / sức chứa / trùng chỗ / trùng giờ — dùng chung với transferEnrollment.
-    const existing = await assertCanBook(tx, memberProfileId, freshSchedule);
+    let subscriptionId: string | undefined;
+    const existing = await assertCanBook(tx, memberProfileId, freshSchedule, { onSubscriptionSelected: (id) => { subscriptionId = id; } });
 
     // 6. Create or Reactivate enrollment
     let enrolled;
@@ -332,6 +344,7 @@ export async function bookClass(
           status: "BOOKED",
           bookedAt: new Date(),
           cancelledAt: null,
+          subscriptionId,
           healthNotes: options.healthNotes !== undefined ? options.healthNotes : existing.healthNotes,
           termMembershipGrant: Prisma.DbNull,
         },
@@ -347,6 +360,7 @@ export async function bookClass(
           classId: freshSchedule.classId,
           scheduleId,
           status: "BOOKED",
+          subscriptionId,
           healthNotes: options.healthNotes ?? null,
         },
         include: {
@@ -538,7 +552,7 @@ export async function getScheduleEnrollments(
     if (!schedule) throw new AppError("Schedule not found", 404);
     const coachProfile = await prisma.coachProfile.findUnique({ where: { userId: actor.id } });
     const isAssigned =
-      Boolean(coachProfile) && schedule.class.coaches.some((c) => c.coachId === coachProfile!.id);
+      Boolean(coachProfile) && effectiveCoachIds(schedule).includes(coachProfile!.id);
     if (!isAssigned) throw new AppError("Forbidden: You are not assigned to this class", 403);
   }
 
@@ -599,6 +613,8 @@ export async function transferEnrollment(
   if (enrollment.scheduleId === targetScheduleId)
     throw new AppError("Target schedule is the same as the current schedule", 409);
 
+  if (role === "MEMBER" && enrollment.schedule.startTime.getTime() - Date.now() < ATTENDANCE.CANCELLATION_CUTOFF_MINUTES * 60000)
+    throw new AppError("Đã quá thời hạn tự chuyển buổi học. Vui lòng liên hệ nhân viên để được hỗ trợ.", 400);
   if (enrollment.schedule.startTime <= new Date())
     throw new AppError("Cannot transfer enrollment for a past or ongoing class", 400);
 
@@ -649,7 +665,9 @@ export async function transferEnrollment(
         409
       );
 
+    let subscriptionId: string | undefined;
     const existingTarget = await assertCanBook(tx, enrollment.memberId, target, {
+      onSubscriptionSelected: (id) => { subscriptionId = id; },
       excludeEnrollmentId: enrollment.id,
       // §9: transfer chỉ đổi buổi TRONG CÙNG Class (BR-08) => số Class không đổi, không tiêu quota mới.
       quotaExemptClassId: enrollment.classId,
@@ -666,11 +684,12 @@ export async function transferEnrollment(
     const transferred = existingTarget
       ? await tx.enrollment.update({
           where: { id: existingTarget.id },
-          data: { status: "BOOKED", bookedAt: new Date(), cancelledAt: null, termMembershipGrant: transferredGrant },
+          data: { status: "BOOKED", bookedAt: new Date(), cancelledAt: null, subscriptionId, termMembershipGrant: transferredGrant },
           include: enrollmentInclude,
         })
       : await tx.enrollment.create({
           data: {
+            subscriptionId,
             memberId: enrollment.memberId,
             classId: target.classId,
             scheduleId: targetScheduleId,

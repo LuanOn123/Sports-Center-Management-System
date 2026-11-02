@@ -9,6 +9,12 @@ export async function checkFacilityScope(
 ) {
   try {
     if (!req.user) throw new AppError("Unauthorized", 401);
+    const path = req.originalUrl?.split("?")[0];
+    // This exact Admin report is global by contract; other resources still require a facility.
+    if (req.method === "GET" && req.user.role === "ADMIN" && req.query.facilityId === undefined &&
+      ["/api/v1/reports/memberships", "/reports/memberships"].includes(path)) {
+      return requestContext.run({ actorId: req.user.id, role: "ADMIN" }, next);
+    }
     if (req.user.role === "MANAGER" || req.user.role === "RECEPTIONIST") {
       const roleName = req.user.role;
       const assignments = await prisma.facilityStaff.findMany({

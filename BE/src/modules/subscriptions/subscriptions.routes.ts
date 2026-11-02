@@ -228,7 +228,7 @@ router.get(
  */
 router.patch(
   "/:id/status",
-  authenticate, authorize("MANAGER"),
+  authenticate, authorize("RECEPTIONIST"),
   validate(UpdateStatusSchema),
   subsController.updateSubscriptionStatus
 );

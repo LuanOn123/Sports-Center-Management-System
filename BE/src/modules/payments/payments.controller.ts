@@ -23,7 +23,7 @@ export async function getPaymentById(req: Request, res: Response, next: NextFunc
 }
 export async function updatePaymentStatus(req: Request, res: Response, next: NextFunction) {
   try {
-    const payment = await paymentsService.updatePaymentStatus(req.params.id as string, req.body.status);
+    const payment = await paymentsService.updatePaymentStatus(req.params.id as string, req.body.status, req.body.reason && req.body.reference ? { reason: req.body.reason, reference: req.body.reference } : undefined);
     sendSuccess(res, payment, "Payment status updated");
   } catch (err) { next(err); }
 }

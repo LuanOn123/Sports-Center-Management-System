@@ -1,9 +1,10 @@
+import { activateMemberDue } from "../subscriptions/entitlement.service.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { requestContext } from "../../config/request-context.js";
-import { lockMemberClass, lockMemberQuota } from "../../utils/dbLocks.js";
+
 import { assertCanBook } from "../enrollments/enrollments.service.js";
 import { enqueueNotification, flushNotificationOutbox } from "../notifications/outbox.service.js";
 
@@ -38,12 +39,27 @@ export async function promoteNextEligible(
 
   for (const entry of waiting) {
     // Lock theo member được promote để serialize với booking khác của họ.
-    await lockMemberQuota(tx, entry.memberId);
-    await lockMemberClass(tx, entry.memberId, freshSchedule.class.id);
+    const keys = ["membership:member:" + entry.memberId, "enrollment:member-quota:" + entry.memberId,
+      "enrollment:member-class:" + entry.memberId + ":" + freshSchedule.class.id];
+    // Xact advisory locks cannot be unlocked one by one, but rolling back to a savepoint releases
+    // the ones taken after it — so a skipped (busy) candidate keeps none of their locks.
+    await tx.$executeRaw`SAVEPOINT waitlist_candidate_locks`;
+    let acquired = true;
+    for (const key of keys) {
+      const rows = await tx.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_xact_lock(hashtext(${key})) AS locked`;
+      if (!rows[0]?.locked) { acquired = false; break; }
+    }
+    if (!acquired) {
+      await tx.$executeRaw`ROLLBACK TO SAVEPOINT waitlist_candidate_locks`;
+      continue;
+    }
+    await tx.$executeRaw`RELEASE SAVEPOINT waitlist_candidate_locks`;
+    await activateMemberDue(tx, entry.memberId);
 
     let existing: any = null;
+    let subscriptionId: string | undefined;
     try {
-      existing = await assertCanBook(tx, entry.memberId, freshSchedule as any);
+      existing = await assertCanBook(tx, entry.memberId, freshSchedule as any, { onSubscriptionSelected: (id) => { subscriptionId = id; } });
     } catch {
       continue;
     }
@@ -57,7 +73,7 @@ export async function promoteNextEligible(
     const enrolled = existing
       ? await tx.enrollment.update({
           where: { id: existing.id },
-          data: { status: "BOOKED", bookedAt: new Date(), cancelledAt: null, termMembershipGrant: Prisma.DbNull },
+          data: { status: "BOOKED", bookedAt: new Date(), cancelledAt: null, subscriptionId, termMembershipGrant: Prisma.DbNull },
           include: {
             ...enrollmentInclude,
             member: { select: { id: true, userId: true } },
@@ -65,6 +81,7 @@ export async function promoteNextEligible(
         })
       : await tx.enrollment.create({
           data: {
+            subscriptionId,
             memberId: entry.memberId,
             classId: freshSchedule.class.id,
             scheduleId,

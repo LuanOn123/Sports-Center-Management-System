@@ -25,3 +25,9 @@ npm run test:term-membership
 Theo phạm vi bàn giao, migration được chuẩn bị để nhóm backend deploy; chưa áp dụng lên database từ tác vụ này. Bên deploy cần cấu hình `DATABASE_URL` và `DIRECT_DATABASE_URL` hợp lệ, chạy migration trước khi khởi động BE mới. Test nghiệp vụ dùng delegates cô lập, không ghi database thật.
 
 `GET /classes/:id/course-plan` bổ sung `registration.membershipCoverage` (nullable): `policy`, `qualifiedAt`, `validUntil`, `subscriptionEndDate`. FE dùng preview này và gửi `POST /enrollments/bulk` như cũ; không tự bỏ blocker do BE trả về.
+
+## Siết chặt 29/10/2026
+
+Grant giữ nguyên hiệu lực khi gói hết hạn tự nhiên, nhưng phải truy về nguồn chưa hủy/hoàn tiền. Hủy hoặc xác nhận hoàn tiền thu hồi đúng booking/grant của subscription nguồn, không hủy booking từ gói khác. Các lệnh đặt chỗ, quét QR và vào cơ sở đồng bộ gói đến hạn dưới cùng khóa member; GET chỉ đọc.
+
+Hủy gói tạo yêu cầu hoàn tiền; chỉ Admin/lễ tân xác nhận biên nhận thực tế mới ghi REFUNDED. Gói SCHEDULED đã tới ngày bắt đầu được đồng bộ sang luồng ACTIVE trước khi tính chính sách hủy.

@@ -4,6 +4,7 @@ import { authorizeExact } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
 import {
   CreateScheduleSchema,
+  CreateScheduleBatchSchema,
   CreateActivityPlanSchema,
   UpdateScheduleSchema,
   ScheduleQuerySchema,
@@ -12,6 +13,40 @@ import {
 import * as schedulesController from "./class-schedules.controller.js";
 
 const router = Router();
+/**
+ * @swagger
+ * /class-schedules/batch:
+ *   post:
+ *     summary: Create up to 500 non-overlapping sessions atomically
+ *     tags: [Class Schedules]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [classId, roomId, schedules]
+ *             properties:
+ *               classId: { type: string }
+ *               roomId: { type: string }
+ *               termId: { type: string }
+ *               schedules:
+ *                 type: array
+ *                 minItems: 1
+ *                 maxItems: 500
+ *                 items:
+ *                   type: object
+ *                   required: [startTime, endTime]
+ *                   properties:
+ *                     startTime: { type: string, format: date-time }
+ *                     endTime: { type: string, format: date-time }
+ *     responses:
+ *       201: { description: All sessions created }
+ *       400: { $ref: "#/components/responses/BadRequest" }
+ *       403: { $ref: "#/components/responses/Forbidden" }
+ *       409: { $ref: "#/components/responses/Conflict" }
+ */
+router.post("/batch", authenticate, authorizeExact("MANAGER"), validate(CreateScheduleBatchSchema), schedulesController.createScheduleBatch);
 
 /**
  * @swagger
@@ -60,6 +95,11 @@ router.post(
  *         schema:
  *           type: string
  *         description: Filter by class
+ *       - in: query
+ *         name: coachId
+ *         schema:
+ *           type: string
+ *         description: Effective teaching coach (substitute, primary or support). COACH may only request their own timetable.
  *       - in: query
  *         name: roomId
  *         schema:

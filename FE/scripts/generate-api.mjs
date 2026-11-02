@@ -105,7 +105,7 @@ for (const [p, methods] of Object.entries(doc.paths))
       .map((x) => x[0]?.toUpperCase() + x.slice(1))
       .join("");
     const responses = Object.fromEntries(
-      Object.entries(o.responses).map(([code, r]) => [
+      Object.entries(o.responses ?? {}).map(([code, r]) => [
         code,
         r.$ref ? doc.components.responses[r.$ref.split("/").pop()] : r,
       ]),

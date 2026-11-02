@@ -32,6 +32,8 @@ test("login enforces Turnstile before credentials and JWT issuance", async (t) =
       password: hash, isActive, facility: null }) };
   });
   const sessions = mock.method(RefreshToken, "create", async () => { events.push("session"); });
+  const originalFindProjection = prisma.user.findUnique;
+  Reflect.set(prisma.user, "findUnique", async () => ({ isActive, role }));
   const originalFindProfile = prisma.memberProfile.findUnique;
   Reflect.set(prisma.memberProfile, "findUnique", async () => null);
   const logs = mock.method(console, "error", () => {});
@@ -152,6 +154,7 @@ test("login enforces Turnstile before credentials and JWT issuance", async (t) =
   } finally {
     server.closeAllConnections();
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    prisma.user.findUnique = originalFindProjection;
     prisma.memberProfile.findUnique = originalFindProfile;
     mock.restoreAll();
     await prisma.$disconnect();

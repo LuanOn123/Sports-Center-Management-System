@@ -97,13 +97,13 @@ function fixture() {
     $transaction: async (callback: any) => callback(db),
     membershipSubscription: {
       findFirst: async ({ where }: any) =>
-        where.status === "SCHEDULED"
+        where.id ? { id: where.id } : where.status === "SCHEDULED"
           ? null
           : state.activeSub
             ? { ...state.activeSub, maxConcurrentClassesSnapshot: state.quota }
             : null,
       findMany: async () => [
-        { ...sub, memberId: "member-1", status: "EXPIRED" },
+        { ...sub, memberId: "member-1", status: "EXPIRED", payments: [{ status: "SUCCESS", paidAt: sub.startDate, refundedAt: null }] },
       ],
     },
     attendancePenalty: {
@@ -365,6 +365,8 @@ test("bulk registration stores the grant on every created enrollment", async (t)
 });
 
 test("QR check-in accepts an enrolled term grant after plan expiry", async (t) => {
+  replace(t, prismaConfig.prisma, "$transaction", async (callback: any) => callback(prismaConfig.prisma));
+  replace(t, prismaConfig.prisma, "$executeRaw", async () => []);
   const now = new Date();
   const oldSub = {
     ...sub,
@@ -396,7 +398,7 @@ test("QR check-in accepts an enrolled term grant after plan expiry", async (t) =
         termMembershipGrant: grant,
       }),
     },
-    membershipSubscription: { findFirst: async () => null },
+    membershipSubscription: { findFirst: async ({ where }: any) => where.id ? { id: where.id } : null },
     classSchedule: { findUnique: async () => schedule },
     attendance: {
       findUnique: async () => null,
@@ -432,7 +434,7 @@ test("facility entry after expiry is limited to an approved session at the corre
   const db: any = {
     $executeRaw: async () => [],
     facility: { findUnique: async () => ({ isActive: true }) },
-    membershipSubscription: { findFirst: async () => null },
+    membershipSubscription: { findFirst: async ({ where }: any) => where.id ? { id: where.id } : null },
     enrollment: { findMany: async ({ where }: any) => {
       assert.equal(where.memberId, "member-1");
       assert.equal(where.status, "BOOKED");

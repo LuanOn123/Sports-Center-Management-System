@@ -1,3 +1,4 @@
+import { hasEquipment } from "../../shared/forms/EquipmentFields";
 import { AreaTypePicker } from "../../shared/forms/AreaTypePicker";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -16,11 +17,7 @@ import { allPages } from "../../shared/pagedApi";
 import { display } from "../../shared/config";
 import { ErrorState, Loading } from "../../shared/ui";
 import { getFacilityId } from "../../shared/facility";
-import {
-  assertCoachCanTeach,
-  canTeach,
-  loadQualifiedCoaches,
-} from "../../shared/coachEligibility";
+import { canTeach, loadQualifiedCoaches } from "../../shared/coachEligibility";
 
 type AreaType = "INDOOR" | "OUTDOOR" | "POOL";
 type Step = {
@@ -45,7 +42,14 @@ function localDate(value: Date) {
   return `${year}-${month}-${day}`;
 }
 function datesBetween(from: string, to: string, selected: number[]) {
-  if (!from || !to || from > to) return [];
+  if (
+    !from ||
+    !to ||
+    from > to ||
+    !selected.length ||
+    +new Date(to) - +new Date(from) > 366 * 86400000
+  )
+    return [];
   const result: string[] = [];
   const cursor = new Date(`${from}T12:00:00`);
   const last = new Date(`${to}T12:00:00`);
@@ -152,7 +156,6 @@ export function ActivityPlanner({
   const [error, setError] = useState<unknown>();
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
-  const [createdClass, setCreatedClass] = useState<RecordData>();
   const [creationCompleted, setCreationCompleted] = useState(false);
   const [partialDataSaved, setPartialDataSaved] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
@@ -187,10 +190,20 @@ export function ActivityPlanner({
     () => datesBetween(fromDate, toDate, selectedDays),
     [fromDate, toDate, selectedDays],
   );
-  const compatibleRooms = (rooms.data?.data || []).filter(
-    (room) => room.areaType === areaType && Number(room.capacity) >= capacity,
-  );
   const selectedSport = sports.data?.data.find((sport) => sport.id === sportId);
+  const compatibleRooms = (rooms.data?.data || []).filter(
+    (room) =>
+      room.areaType === areaType &&
+      Number(room.capacity) >= capacity &&
+      hasEquipment(
+        (selectedSport?.requirements ?? []) as {
+          key: string;
+          minimum: number;
+        }[],
+        (room.capabilities ?? []) as { key: string; quantity: number }[],
+      String(room.areaType),
+      ),
+  );
   const sportCompatible =
     sportMode === "new"
       ? sportAreaType === areaType
@@ -241,8 +254,12 @@ export function ActivityPlanner({
       issues.push("Chưa chọn đủ ngày bắt đầu và ngày kết thúc.");
     else if (fromDate > toDate)
       issues.push("Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.");
+    else if (+new Date(toDate) - +new Date(fromDate) > 366 * 86400000)
+      issues.push("Khoảng tạo lịch tối đa 366 ngày.");
     if (!validSlots)
       issues.push("Khung giờ phải hợp lệ và không được chồng lấn.");
+    if (totalSchedules > 500)
+      issues.push("Tối đa 500 buổi mỗi lần tạo. Hãy rút ngắn khoảng ngày.");
     if (!selectedDays.length) issues.push("Chưa chọn thứ học trong tuần.");
     else if (fromDate && toDate && fromDate <= toDate && !dates.length)
       issues.push("Khoảng ngày đã chọn không chứa thứ học nào.");
@@ -266,6 +283,7 @@ export function ActivityPlanner({
     supportCoachId,
     toDate,
     validSlots,
+    totalSchedules,
   ]);
   const valid = currentValidationErrors.length === 0;
   function updateStep(index: number, patch: Partial<Step>) {
@@ -286,98 +304,58 @@ export function ActivityPlanner({
     }
     setBusy(true);
     setError(undefined);
-    setCreatedClass(undefined);
     setCreationCompleted(false);
     setPartialDataSaved(false);
     setValidationErrors([]);
-    const labels = [
-      "Dùng bộ môn đã chọn",
-      "Tạo lớp học",
-      "Phân công HLV chính",
-      ...(supportCoachId ? ["Phân công HLV hỗ trợ"] : []),
-      `Tạo ${totalSchedules} buổi lịch`,
-    ];
-    setSteps(
-      labels.map((label, index) => ({
-        label,
-        state: index === 0 ? "running" : "waiting",
-      })),
-    );
-    let activeStep = 0;
-    let hasSavedData = false;
-    try {
-      await assertCoachCanTeach(coachId, [sportId]);
-      if (supportCoachId) await assertCoachCanTeach(supportCoachId, [sportId]);
-      updateStep(activeStep++, { state: "done" });
-
-      updateStep(activeStep, { state: "running" });
-      const created = await api<RecordData>("POST /classes", {
-        body: {
-          name: className.trim(),
-          description: classDescription.trim() || undefined,
-          sportIds: [sportId],
-          defaultRoomId: roomId,
-          capacity,
-          classType,
-          areaType,
-        },
-      });
-      setCreatedClass(created.data);
-      hasSavedData = true;
-      const classId = String(created.data.id);
-      updateStep(activeStep++, { state: "done" });
-
-      updateStep(activeStep, { state: "running" });
-      await api("POST /classes/{id}/coaches", {
-        params: { id: classId },
-        body: { coachId, isPrimary: true },
-      });
-      updateStep(activeStep++, { state: "done" });
-
-      if (supportCoachId) {
-        updateStep(activeStep, { state: "running" });
-        await api("POST /classes/{id}/coaches/support", {
-          params: { id: classId },
-          body: { coachId: supportCoachId },
-        });
-        updateStep(activeStep++, { state: "done" });
-      }
-
-      updateStep(activeStep, {
+    setSteps([
+      {
+        label: `Tạo lớp, phân công HLV và ${totalSchedules} buổi lịch`,
         state: "running",
-        detail: `0/${totalSchedules} buổi`,
-      });
-      let createdCount = 0;
-      for (const date of dates) {
-        for (const slot of slots) {
-          await api("POST /class-schedules", {
-            body: {
-              classId,
-              roomId,
-              startTime: new Date(
-                `${date}T${slot.start}:00+07:00`,
-              ).toISOString(),
-              endTime: new Date(`${date}T${slot.end}:00+07:00`).toISOString(),
+      },
+    ]);
+    try {
+      const schedules = dates.flatMap((date) =>
+        slots.map((slot) => ({
+          startTime: new Date(`${date}T${slot.start}:00+07:00`).toISOString(),
+          endTime: new Date(`${date}T${slot.end}:00+07:00`).toISOString(),
+        })),
+      );
+      const result = await api<{ class: RecordData; schedulesCreated: number }>(
+        "POST /class-schedules/activity-plan",
+        {
+          body: {
+            sport:
+              sportMode === "new"
+                ? {
+                    mode: "new",
+                    name: sportName.trim(),
+                    description: sportDescription.trim(),
+                  }
+                : { mode: "existing", id: sportId },
+            class: {
+              name: className.trim(),
+              description: classDescription.trim(),
+              capacity,
+              classType,
+              areaType,
             },
-          });
-          createdCount += 1;
-          updateStep(activeStep, {
-            detail: `${createdCount}/${totalSchedules} buổi`,
-          });
-        }
-      }
-      updateStep(activeStep, {
-        state: "done",
-        detail: `${totalSchedules}/${totalSchedules} buổi`,
-      });
+            primaryCoachId: coachId,
+            supportCoachId: supportCoachId || undefined,
+            roomId,
+            schedules,
+          },
+        },
+      );
       setCreationCompleted(true);
+      updateStep(0, {
+        state: "done",
+        detail: `${result.data.schedulesCreated} buổi`,
+      });
       void cache.invalidateQueries({ queryKey: ["resource"] });
       void cache.invalidateQueries({ queryKey: ["planner"] });
     } catch (caught) {
-      updateStep(activeStep, { state: "error" });
-      setPartialDataSaved(hasSavedData);
+      updateStep(0, { state: "error" });
       setError(caught);
-      setErrorDialogOpen(true);
     } finally {
       setBusy(false);
     }
@@ -816,12 +794,6 @@ export function ActivityPlanner({
           </section>
         )}
         {error != null && <ErrorState error={error} />}
-        {creationCompleted && createdClass && error == null && !busy && (
-          <p className="success" role="status">
-            Đã tạo lớp “{display(createdClass.name)}” và {totalSchedules} buổi
-            lịch thành công.
-          </p>
-        )}
         {partialDataSaved && error != null && (
           <p className="field-note">
             Một số bước trước lỗi đã hoàn tất. Hãy kiểm tra dữ liệu đã tạo trước
@@ -831,17 +803,13 @@ export function ActivityPlanner({
         <div className="planner-submit">
           <div>
             <strong>{totalSchedules} buổi lịch</strong>
-            <small>
-              Hệ thống sẽ tạo lần lượt bộ môn, lớp, phân công HLV và từng buổi
-              lịch.
-            </small>
+            <small>Lưu lớp, phân công HLV và toàn bộ lịch trong một lần.</small>
           </div>
           {creationCompleted || partialDataSaved ? (
             <button
               type="button"
               className="button"
               onClick={() => {
-                setCreatedClass(undefined);
                 setCreationCompleted(false);
                 setPartialDataSaved(false);
                 setSteps([]);

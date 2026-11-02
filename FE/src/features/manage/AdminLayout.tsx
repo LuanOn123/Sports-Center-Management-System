@@ -1,3 +1,5 @@
+import { PaymentsPage } from "../reception/payments/PaymentsPage";
+import { MembershipInsightsPage } from "./MembershipInsightsPage";
 import { Navigate, Route, Routes } from "react-router-dom";
 import type { PortalProps } from "../../app/RoleRouter";
 import { PortalLayout } from "../../shared/PortalLayout";
@@ -12,6 +14,8 @@ import { AuditLogPage } from "./AuditLogPage";
 import { CoachChangesPage } from "../operations/CoachChangesPage";
 const items = [
   ["dashboard", "Tổng quan"],
+  ["membership-insights", "Nhu cầu gói & lớp"],
+  ["payments", "Thanh toán & hoàn tiền"],
   ["facilities", "Cơ sở"],
   ["terms", "Kỳ học"],
   ["users", "Người dùng"],
@@ -35,8 +39,16 @@ export function AdminLayout(props: PortalProps) {
       items={items}
     >
       <Routes>
+        <Route path="/admin/payments" element={<PaymentsPage role="ADMIN" />} />
+        <Route
+          path="/admin/membership-insights"
+          element={<MembershipInsightsPage global />}
+        />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/coach-changes" element={<CoachChangesPage role="ADMIN" />} />
+        <Route
+          path="/admin/coach-changes"
+          element={<CoachChangesPage role="ADMIN" />}
+        />
         <Route path="/admin/facilities" element={<AdminFacilities />} />
         <Route path="/admin/terms" element={<AdminTerms />} />
         <Route path="/admin/audit" element={<AuditLogPage />} />

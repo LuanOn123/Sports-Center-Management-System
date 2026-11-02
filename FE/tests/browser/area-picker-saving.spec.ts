@@ -55,7 +55,7 @@ for (const fail of [false, true]) {
       releaseSave();
     }
     if (fail) {
-      await expect(dialog.getByRole("alert")).toBeVisible();
+      await expect(dialog.locator(".error-state[role=alert]")).toBeVisible();
       for (const radio of await radios.all()) {
         await expect(radio).toBeEnabled();
         await expect(radio).toHaveCSS("opacity", "0");

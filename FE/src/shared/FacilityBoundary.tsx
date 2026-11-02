@@ -29,7 +29,7 @@ const FacilityContext = createContext<{
   busy: boolean;
   change: (id: string) => Promise<void>;
 } | null>(null);
-export function FacilityPicker() {
+export function FacilityPicker({ label = "Cơ sở", accessibleLabel = "Cơ sở đang làm việc" }: { label?: string; accessibleLabel?: string }) {
   const context = useContext(FacilityContext);
   if (!context) return null;
   // MF-11: nhãn "Cơ sở đang làm việc" nghĩa là cơ sở ĐANG thao tác/tập HIỆN TẠI —
@@ -39,10 +39,10 @@ export function FacilityPicker() {
     <label className="facility-switch" title="Cơ sở đang làm việc">
       <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
         <Building2 size={12} aria-hidden="true" />
-        <span>Cơ sở</span>
+        <span>{label}</span>
       </span>
       <select
-        aria-label="Cơ sở đang làm việc"
+        aria-label={accessibleLabel}
         disabled={context.busy}
         value={context.selected}
         onChange={(e) => void context.change(e.target.value)}

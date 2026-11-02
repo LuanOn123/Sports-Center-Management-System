@@ -1,3 +1,4 @@
+import { createUser } from "../users/users.service.js";
 import { Request, Response } from "express";
 import { prisma } from "../../config/prisma.js";
 import { sendSuccess, sendError } from "../../utils/response.js";
@@ -247,218 +248,21 @@ export async function removeStaff(req: Request, res: Response): Promise<void> {
 }
 
 export async function createFacilityCoach(req: Request, res: Response): Promise<void> {
-  const facilityId = req.user?.role === "MANAGER"
-    ? requestContext.getStore()!.facilityId!
-    : String(req.params.facilityId);
-
+  const facilityId = req.user?.role === "MANAGER" ? requestContext.getStore()!.facilityId! : String(req.params.facilityId);
   const data = CreateFacilityCoachSchema.parse(req.body);
-
   const facility = await prisma.facility.findUnique({ where: { id: facilityId } });
-  if (!facility || !facility.isActive) {
-    throw new AppError("Facility not found or inactive", 404);
-  }
-  await checkFacilityCoachLimit(facilityId);
-
-  const uniqueSportIds = [...new Set(data.sportIds)];
-  const sports = await prisma.sport.findMany({
-    where: { id: { in: uniqueSportIds }, isActive: true },
-  });
-  if (sports.length !== uniqueSportIds.length) {
-    throw new AppError("Một hoặc nhiều bộ môn không tồn tại hoặc đã ngừng hoạt động", 400, {
-      code: "INVALID_SPORTS",
-    });
-  }
-
-  const [existingMongo, existingPg] = await Promise.all([
-    User.findOne({ email: data.email }),
-    prisma.user.findUnique({ where: { email: data.email } }),
-  ]);
-  if (existingMongo || existingPg) {
-    throw new AppError("Email is already in use", 409);
-  }
-
-  const hashedPassword = await hashPassword(data.password || "Coach@123456");
-
-  const mongoUser = new User({
-    email: data.email,
-    password: hashedPassword,
-    fullName: data.fullName,
-    phone: data.phone || null,
-    gender: data.gender || null,
-    dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
-    role: "COACH",
-  });
-  await mongoUser.save();
-  const userId = mongoUser._id.toString();
-
-  const mongoProfile = new CoachProfile({
-    userId,
-    specialization: data.specialization || null,
-    experienceYears: data.experienceYears ?? null,
-    bio: data.bio || null,
-  });
-  await mongoProfile.save();
-  const coachProfileId = mongoProfile._id.toString();
-
-  try {
-    const result = await prisma.$transaction(async (tx) => {
-      const pgUser = await tx.user.create({
-        data: {
-          id: userId,
-          email: data.email,
-          password: hashedPassword,
-          fullName: data.fullName,
-          phone: data.phone || null,
-          gender: (data.gender as any) || null,
-          dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
-          role: "COACH",
-        },
-      });
-
-      const pgCoachProfile = await tx.coachProfile.create({
-        data: {
-          id: coachProfileId,
-          userId,
-          specialization: data.specialization || null,
-          experienceYears: data.experienceYears ?? null,
-          bio: data.bio || null,
-        },
-      });
-
-      const facilityStaff = await tx.facilityStaff.create({
-        data: {
-          userId,
-          facilityId,
-          role: "COACH",
-          isActive: true,
-        },
-      });
-
-      await tx.coachSpecialization.createMany({
-        data: uniqueSportIds.map((sportId) => ({
-          coachId: coachProfileId,
-          sportId,
-        })),
-      });
-
-      const specializations = await tx.coachSpecialization.findMany({
-        where: { coachId: coachProfileId },
-        include: { sport: { select: { id: true, name: true } } },
-      });
-
-      return { pgUser, pgCoachProfile, facilityStaff, specializations };
-    });
-
-    sendSuccess(
-      res,
-      {
-        id: userId,
-        email: mongoUser.email,
-        fullName: mongoUser.fullName,
-        phone: mongoUser.phone,
-        gender: mongoUser.gender,
-        role: "COACH",
-        isActive: true,
-        coachProfile: {
-          id: coachProfileId,
-          userId,
-          specialization: data.specialization || null,
-          experienceYears: data.experienceYears ?? null,
-          bio: data.bio || null,
-          specializations: result.specializations,
-        },
-        facilityStaff: result.facilityStaff,
-      },
-      "Coach created successfully",
-      201
-    );
-  } catch (error) {
-    await User.deleteOne({ _id: mongoUser._id }).catch(() => {});
-    await CoachProfile.deleteOne({ _id: mongoProfile._id }).catch(() => {});
-    throw error;
-  }
+  if (!facility?.isActive) throw new AppError("Facility not found or inactive", 404);
+  const user = await createUser({ ...data, role: "COACH", password: data.password || "Coach@123456" }, facilityId);
+  sendSuccess(res, user, "Tạo tài khoản thành công", 201);
 }
 
 export async function createFacilityReceptionist(req: Request, res: Response): Promise<void> {
-  const facilityId = req.user?.role === "MANAGER"
-    ? requestContext.getStore()!.facilityId!
-    : String(req.params.facilityId);
-
+  const facilityId = req.user?.role === "MANAGER" ? requestContext.getStore()!.facilityId! : String(req.params.facilityId);
   const data = CreateFacilityReceptionistSchema.parse(req.body);
-
   const facility = await prisma.facility.findUnique({ where: { id: facilityId } });
-  if (!facility || !facility.isActive) {
-    throw new AppError("Facility not found or inactive", 404);
-  }
-
-  const [existingMongo, existingPg] = await Promise.all([
-    User.findOne({ email: data.email }),
-    prisma.user.findUnique({ where: { email: data.email } }),
-  ]);
-  if (existingMongo || existingPg) {
-    throw new AppError("Email is already in use", 409);
-  }
-
-  const hashedPassword = await hashPassword(data.password || "Receptionist@123456");
-
-  const mongoUser = new User({
-    email: data.email,
-    password: hashedPassword,
-    fullName: data.fullName,
-    phone: data.phone || null,
-    gender: data.gender || null,
-    dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
-    role: "RECEPTIONIST",
-  });
-  await mongoUser.save();
-  const userId = mongoUser._id.toString();
-
-  try {
-    const result = await prisma.$transaction(async (tx) => {
-      const pgUser = await tx.user.create({
-        data: {
-          id: userId,
-          email: data.email,
-          password: hashedPassword,
-          fullName: data.fullName,
-          phone: data.phone || null,
-          gender: (data.gender as any) || null,
-          dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
-          role: "RECEPTIONIST",
-        },
-      });
-
-      const facilityStaff = await tx.facilityStaff.create({
-        data: {
-          userId,
-          facilityId,
-          role: "RECEPTIONIST",
-          isActive: true,
-        },
-      });
-
-      return { pgUser, facilityStaff };
-    });
-
-    sendSuccess(
-      res,
-      {
-        id: userId,
-        email: mongoUser.email,
-        fullName: mongoUser.fullName,
-        phone: mongoUser.phone,
-        gender: mongoUser.gender,
-        role: "RECEPTIONIST",
-        isActive: true,
-        facilityStaff: result.facilityStaff,
-      },
-      "Receptionist created successfully",
-      201
-    );
-  } catch (error) {
-    await User.deleteOne({ _id: mongoUser._id }).catch(() => {});
-    throw error;
-  }
+  if (!facility?.isActive) throw new AppError("Facility not found or inactive", 404);
+  const user = await createUser({ ...data, role: "RECEPTIONIST", password: data.password || "Receptionist@123456" }, facilityId);
+  sendSuccess(res, user, "Tạo tài khoản thành công", 201);
 }
 
 export async function getFacilityLimits(req: Request, res: Response): Promise<void> {

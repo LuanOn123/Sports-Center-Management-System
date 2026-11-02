@@ -53,7 +53,7 @@ export async function listTerms(query: any) {
             OR: [
               { status: "IN_PROGRESS" },
               { status: "OPEN_REGISTRATION" },
-              { startDate: { lte: now }, endDate: { gte: now } },
+              { status: { not: "CLOSED" }, startDate: { lte: now }, endDate: { gte: now } },
             ],
           },
         ],
@@ -144,7 +144,7 @@ export async function getCurrentTerm(facilityId?: string) {
         OR: [
           { status: "IN_PROGRESS" },
           { status: "OPEN_REGISTRATION" },
-          { startDate: { lte: now }, endDate: { gte: now } },
+          { status: { not: "CLOSED" }, startDate: { lte: now }, endDate: { gte: now } },
         ],
       },
       orderBy: { startDate: "asc" },
@@ -164,7 +164,7 @@ export async function getCurrentTerm(facilityId?: string) {
           OR: [
             { status: "IN_PROGRESS" },
             { status: "OPEN_REGISTRATION" },
-            { startDate: { lte: now }, endDate: { gte: now } },
+            { status: { not: "CLOSED" }, startDate: { lte: now }, endDate: { gte: now } },
           ],
         },
       ],
@@ -182,7 +182,7 @@ export async function getCurrentTerm(facilityId?: string) {
   return currentTerm;
 }
 
-export async function updateTerm(id: string, data: any, managerFacilityId?: string) {
+async function updateTermInternal(id: string, data: any, managerFacilityId?: string) {
   const term = await prisma.term.findUnique({ where: { id } });
   if (!term) throw new AppError("Không tìm thấy kỳ học", 404);
 
@@ -206,6 +206,14 @@ export async function updateTerm(id: string, data: any, managerFacilityId?: stri
     }
   }
 
+  const nextStatuses: Record<string, string[]> = { PLANNING: ["OPEN_REGISTRATION"], OPEN_REGISTRATION: ["IN_PROGRESS", "CLOSED"], IN_PROGRESS: ["CLOSED"], CLOSED: [] };
+  if (data.status && data.status !== term.status && !nextStatuses[term.status]?.includes(data.status))
+    throw new AppError("Không thể chuyển trạng thái kỳ học theo chiều ngược hoặc bỏ qua bước mở đăng ký.", 409);
+  const merged = { ...term, ...data };
+  const start = new Date(merged.startDate), end = new Date(merged.endDate);
+  const regStart = new Date(merged.registrationStartDate), regEnd = new Date(merged.registrationEndDate);
+  if (![start, end, regStart, regEnd].every(d => Number.isFinite(d.getTime())) || end <= start || regEnd <= regStart || regEnd > end)
+    throw new AppError("Khoảng ngày kỳ học hoặc thời gian đăng ký không hợp lệ.", 400);
   const newStartDate = data.startDate ? new Date(data.startDate) : term.startDate;
   const newEndDate = data.endDate ? new Date(data.endDate) : term.endDate;
 
@@ -356,4 +364,11 @@ export async function assertCanScheduleInTerm(
     );
   }
   return term;
+}
+
+export async function updateTerm(id: string, data: any, managerFacilityId?: string) {
+  return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('term:' || ${id}::text))`;
+    return updateTermInternal(id, data, managerFacilityId);
+  });
 }

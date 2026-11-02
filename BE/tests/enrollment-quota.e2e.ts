@@ -1,3 +1,4 @@
+import "./helpers/business-e2e.js";
 /**
  * E2E THẬT (HTTP + PostgreSQL) cho luật quota lớp học song song theo `MembershipPlan.maxConcurrentClasses`.
  *

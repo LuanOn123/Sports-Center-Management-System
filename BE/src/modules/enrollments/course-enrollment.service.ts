@@ -1,3 +1,4 @@
+import { isGrantSourceValid } from "../subscriptions/entitlement.service.js";
 import { requestContext } from "../../config/request-context.js";
 import { Prisma, EnrollmentStatus, MemberTier } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
@@ -67,7 +68,7 @@ export interface CourseEligibilitySession {
 export interface CourseEligibility {
   sessions: CourseEligibilitySession[];
   blockers: CourseEnrollmentBlocker[];
-  subscription: { tier: MemberTier; endDate: Date; planName: string | null } | null;
+  subscription: { id: string; tier: MemberTier; endDate: Date; planName: string | null } | null;
   termMembershipGrant?: import("./term-membership-policy.js").TermMembershipGrant | null;
   quota: {
     tier: MemberTier | null;
@@ -177,11 +178,12 @@ export async function evaluateCourseEligibility(
     ? schedulesWithTerms[0].term : null;
   const grant = activeSub && term && sessions.every((session) => session.startTime >= term.startDate && session.endTime <= term.endDate)
     ? createTermMembershipGrant(activeSub, term, memberProfileId, cls.id, now) : null;
-  const retained = !!term && sessions.every((session) => {
+  let retained = !!term && sessions.every((session) => {
     const enrollment = myEnrollments.find((row) => row.scheduleId === session.id);
     return enrollment && ["BOOKED", "COMPLETED"].includes(enrollment.status) &&
       termMembershipCovers(enrollment.termMembershipGrant, { memberId: memberProfileId, classId: cls.id, termId: term.id, startTime: session.startTime, endTime: session.endTime });
   });
+  if (retained && !(await isGrantSourceValid(db, myEnrollments.find(row => row.scheduleId === sessions[0].id)?.termMembershipGrant))) retained = false;
   const retainedGrant = retained ? readTermMembershipGrant(myEnrollments.find((row) => row.scheduleId === sessions[0].id)?.termMembershipGrant) : null;
 
   // ── Cấp KỲ HỌC: thời gian mở đăng ký & trạng thái kỳ ────────────────────────
@@ -397,7 +399,7 @@ export async function evaluateCourseEligibility(
     blockers,
     termMembershipGrant: retainedGrant ?? (activeSub && activeSub.endDate < lastSession.endTime ? grant : null),
     subscription: activeSub
-      ? { tier: activeSub.tier, endDate: activeSub.endDate, planName: activeSub.plan?.name ?? null }
+      ? { id: activeSub.id, tier: activeSub.tier, endDate: activeSub.endDate, planName: activeSub.plan?.name ?? null }
       : null,
     quota: {
       tier: quotaUsage.tier,
@@ -560,6 +562,7 @@ export async function enrollWholeCourse(
             where: { id: state.myEnrollment.id },
             data: {
               status: "BOOKED",
+              subscriptionId: eligibility.termMembershipGrant?.subscriptionId ?? eligibility.subscription?.id ?? null,
               bookedAt: now,
               cancelledAt: null,
               healthNotes: options.healthNotes !== undefined ? options.healthNotes : undefined,
@@ -583,6 +586,7 @@ export async function enrollWholeCourse(
               classId,
               scheduleId: state.scheduleId,
               status: "BOOKED",
+              subscriptionId: eligibility.termMembershipGrant?.subscriptionId ?? eligibility.subscription?.id ?? null,
               healthNotes: options.healthNotes ?? null,
               termMembershipGrant: eligibility.termMembershipGrant ?? Prisma.DbNull,
             },

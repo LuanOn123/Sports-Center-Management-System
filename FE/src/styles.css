@@ -3514,3 +3514,17 @@ textarea[aria-invalid="true"] {
 }
 
 /* Compact detail design is shared by every portal. */
+
+/* Compact portal header: allow the action group its own row on narrow phones. */
+@media (max-width: 360px) {
+  .app-layout .topbar { flex-wrap: wrap; }
+  .app-layout .topbar .topbar-actions { flex: 1 1 100%; min-width: 0; max-width: 100%; flex-wrap: wrap; margin-left: 0; }
+}
+
+.member-desktop-facility { display: none; }
+@media (min-width: 900px) {
+  .member-desktop-facility { display: flex; align-items: end; gap: 20px; }
+  .member-desktop-facility .facility-switch { display: grid; gap: 8px; flex: 0 0 280px; max-width: 320px; font-size: 14px; }
+  .member-desktop-facility .facility-switch select { width: 100%; min-height: 44px; }
+  .member-desktop-facility p { margin: 0 0 10px; color: var(--member-muted); font-size: 14px; }
+}

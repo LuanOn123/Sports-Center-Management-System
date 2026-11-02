@@ -1,8 +1,10 @@
+import { EquipmentValuesSchema } from "../operations/equipment.schema.js";
 import { z } from "zod";
 
 export const AreaTypeEnum = z.enum(["POOL", "INDOOR", "OUTDOOR"]);
 
 export const CreateRoomSchema = z.object({
+  capabilities: EquipmentValuesSchema.optional(),
   name: z.string().min(2),
   capacity: z.number().int().positive(),
   location: z.string().optional(),
@@ -10,6 +12,7 @@ export const CreateRoomSchema = z.object({
 });
 
 export const UpdateRoomSchema = z.object({
+  capabilities: EquipmentValuesSchema.optional(),
   name: z.string().min(2).optional(),
   capacity: z.number().int().positive().optional(),
   location: z.string().optional(),

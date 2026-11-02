@@ -85,6 +85,10 @@ export function CoachWorkspace({
     start,
     end,
   );
+  const calendarClasses = [...new Map([
+    ...(classes.data || []),
+    ...(schedules.data || []).map((s) => obj(s.class)),
+  ].filter((c) => idOf(c)).map((c) => [idOf(c), c])).values()];
   const list = (schedules.data || []).filter(
     (s) =>
       (!classFilter ||
@@ -280,7 +284,7 @@ export function CoachWorkspace({
                       onChange={(e) => setClassFilter(e.target.value)}
                     >
                       <option value="">Tất cả lớp của tôi</option>
-                      {classes.data.map((c) => (
+                      {calendarClasses.map((c) => (
                         <option key={idOf(c)} value={idOf(c)}>
                           {str(c.name)}
                         </option>

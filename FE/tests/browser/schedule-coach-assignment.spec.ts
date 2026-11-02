@@ -129,7 +129,7 @@ test("assigns from table actions and keeps conflict errors visible without closi
     .selectOption("profile-yoga");
   state.conflict = true;
   await dialog.getByRole("button", { name: "Lưu phân công" }).click();
-  await expect(dialog.getByRole("alert")).toContainText("trùng giờ");
+  await expect(dialog.locator(".error-state[role=alert]")).toContainText("trùng giờ");
   await expect(
     dialog.getByRole("combobox", { name: "Huấn luyện viên", exact: true }),
   ).toHaveValue("profile-yoga");
@@ -165,7 +165,7 @@ for (const changed of ["status", "specialization"] as const) {
     if (changed === "status") state.status = "CANCELLED";
     else state.revoked = true;
     await dialog.getByRole("button", { name: "Lưu phân công" }).click();
-    await expect(dialog.getByRole("alert")).toContainText(
+    await expect(dialog.locator(".error-state[role=alert]")).toContainText(
       changed === "status" ? "đổi trạng thái" : "không còn phù hợp",
     );
     expect(state.writes).toEqual([]);

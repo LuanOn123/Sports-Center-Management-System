@@ -11,91 +11,103 @@ const getGroqAI = () => {
   return new Groq({ apiKey: process.env.GROQ_API_KEY });
 };
 
-export async function chatWithAssistant(data: AiChatInput) {
-  // 1. Thu thập Context từ Database (RAG)
-  // 1.1 Cơ sở trung tâm (Facilities)
-  const facilities = await prisma.facility.findMany({
-    where: { isActive: true },
-    select: { name: true, address: true, contactInfo: true },
-    orderBy: { name: "asc" },
-  });
+// In-memory cache cho RAG Prompt context (giúp giảm thời gian query từ 2s xuống 0ms)
+let cachedPromptContext: { prompt: string; expiresAt: number } | null = null;
+const CACHE_TTL_MS = 60 * 1000; // 60 giây
 
-  // 1.2 Các bộ môn thể thao (Sports)
-  const sports = await prisma.sport.findMany({
-    where: { isActive: true },
-    select: { name: true, description: true },
-    orderBy: { name: "asc" },
-  });
+export async function getSportsCenterPromptContext(): Promise<string> {
+  const nowMs = Date.now();
+  if (cachedPromptContext && nowMs < cachedPromptContext.expiresAt) {
+    return cachedPromptContext.prompt;
+  }
 
-  // 1.3 Danh sách các khóa học / lớp học đang mở (Classes)
-  const classes = await prisma.class.findMany({
-    where: { isActive: true },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      classType: true,
-      areaType: true,
-      capacity: true,
-      facility: { select: { name: true } },
-      sports: { select: { name: true } },
-      coaches: {
-        select: {
-          isPrimary: true,
-          coach: { select: { user: { select: { fullName: true } } } },
-        },
-      },
-    },
-    orderBy: { name: "asc" },
-  });
+  const nowDate = new Date();
 
-  // 1.4 Danh sách gói tập đang mở bán (Membership Plans)
-  const plans = await prisma.membershipPlan.findMany({
-    where: { isActive: true },
-    select: { name: true, price: true, durationDays: true, tier: true, maxConcurrentClasses: true, description: true },
-    orderBy: { price: "asc" },
-  });
+  // Truy vấn song song (Parallel Promise.all) để tối ưu thời gian kết nối Database
+  const [facilities, sports, classes, plans, terms, schedules] = await Promise.all([
+    // 1. Cơ sở trung tâm (Facilities)
+    prisma.facility.findMany({
+      where: { isActive: true },
+      select: { name: true, address: true, contactInfo: true },
+      orderBy: { name: "asc" },
+    }),
 
-  // 1.5 Các kỳ học sắp hoặc đang diễn ra (Terms)
-  const terms = await prisma.term.findMany({
-    where: {
-      status: { in: ["OPEN_REGISTRATION", "IN_PROGRESS", "PLANNING"] },
-    },
-    select: {
-      name: true,
-      code: true,
-      status: true,
-      startDate: true,
-      endDate: true,
-      registrationStartDate: true,
-      registrationEndDate: true,
-      facility: { select: { name: true } },
-    },
-    orderBy: { startDate: "asc" },
-    take: 5,
-  });
+    // 2. Các bộ môn thể thao (Sports)
+    prisma.sport.findMany({
+      where: { isActive: true },
+      select: { name: true, description: true },
+      orderBy: { name: "asc" },
+    }),
 
-  // 1.6 Lịch học sắp tới (Class Schedules)
-  const now = new Date();
-  const schedules = await prisma.classSchedule.findMany({
-    where: { startTime: { gte: now }, class: { isActive: true } },
-    include: {
-      class: {
-        select: {
-          name: true,
-          facility: { select: { name: true } },
-          coaches: {
-            include: { coach: { include: { user: { select: { fullName: true } } } } },
+    // 3. Danh sách các khóa học / lớp học đang mở (Classes)
+    prisma.class.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        classType: true,
+        areaType: true,
+        capacity: true,
+        facility: { select: { name: true } },
+        sports: { select: { name: true } },
+        coaches: {
+          select: {
+            isPrimary: true,
+            coach: { select: { user: { select: { fullName: true } } } },
           },
         },
       },
-      room: { select: { name: true } },
-    },
-    orderBy: { startTime: "asc" },
-    take: 25,
-  });
+      orderBy: { name: "asc" },
+    }),
 
-  // 2. Xây dựng System Prompt (Prompt Hệ Thống)
+    // 4. Danh sách gói tập đang mở bán (Membership Plans)
+    prisma.membershipPlan.findMany({
+      where: { isActive: true },
+      select: { name: true, price: true, durationDays: true, tier: true, maxConcurrentClasses: true, description: true },
+      orderBy: { price: "asc" },
+    }),
+
+    // 5. Các kỳ học sắp hoặc đang diễn ra (Terms)
+    prisma.term.findMany({
+      where: {
+        status: { in: ["OPEN_REGISTRATION", "IN_PROGRESS", "PLANNING"] },
+      },
+      select: {
+        name: true,
+        code: true,
+        status: true,
+        startDate: true,
+        endDate: true,
+        registrationStartDate: true,
+        registrationEndDate: true,
+        facility: { select: { name: true } },
+      },
+      orderBy: { startDate: "asc" },
+      take: 5,
+    }),
+
+    // 6. Lịch học sắp tới (Class Schedules)
+    prisma.classSchedule.findMany({
+      where: { startTime: { gte: nowDate }, class: { isActive: true } },
+      include: {
+        class: {
+          select: {
+            name: true,
+            facility: { select: { name: true } },
+            coaches: {
+              include: { coach: { include: { user: { select: { fullName: true } } } } },
+            },
+          },
+        },
+        room: { select: { name: true } },
+      },
+      orderBy: { startTime: "asc" },
+      take: 25,
+    }),
+  ]);
+
+  // Xây dựng System Prompt
   let systemPrompt = `Bạn là trợ lý ảo thân thiện của trung tâm thể thao Sports Center. Tên của bạn là "Trợ Lý Sports Center".
 Hãy xưng hô là "em" và gọi người dùng là "anh/chị" hoặc "bạn". 
 Nhiệm vụ của bạn là giải đáp các thắc mắc về trung tâm thể thao dựa trên DỮ LIỆU THỰC TẾ dưới đây.
@@ -178,6 +190,17 @@ Nhiệm vụ của bạn là giải đáp các thắc mắc về trung tâm th�
   }
 
   systemPrompt += `\nLưu ý & Chính sách:\n- Câu trả lời nên ngắn gọn, dùng gạch đầu dòng Markdown rõ ràng, dễ nhìn.\n- Trung tâm hỗ trợ thanh toán trực tuyến qua mã QR SePay (tự động kích hoạt gói) và tại quầy.\n- Hội viên cần có gói tập phù hợp để đặt chỗ lớp học. Hạng MEMBERSHIP được học lớp REGULAR; Hạng PREMIUM được học cả REGULAR và PREMIUM.\n- Điểm danh bằng quét mã QR tại phòng tập hoặc dùng mã nhập tay từ HLV.`;
+
+  cachedPromptContext = {
+    prompt: systemPrompt,
+    expiresAt: nowMs + CACHE_TTL_MS,
+  };
+
+  return systemPrompt;
+}
+
+export async function chatWithAssistant(data: AiChatInput) {
+  const systemPrompt = await getSportsCenterPromptContext();
 
   const groq = getGroqAI();
   const messages: any[] = [{ role: "system", content: systemPrompt }];

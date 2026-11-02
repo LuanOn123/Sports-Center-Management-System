@@ -6,6 +6,11 @@ import { CreatePlanSchema, UpdatePlanSchema, PlanQuerySchema } from "./membershi
 import * as plansController from "./membership-plans.controller.js";
 
 const router = Router();
+// Public reads remain available; administrative filters require a verified identity.
+router.use((req, res, next) => {
+  if (req.method === "GET" && req.headers.authorization) return authenticate(req, res, next);
+  next();
+});
 
 /**
  * @swagger

@@ -1,3 +1,4 @@
+import { activateMemberDue } from "./entitlement.service.js";
 import {
   MembershipPlan,
   MembershipSubscription,
@@ -53,10 +54,14 @@ export async function inspectPlanPurchase(
   requestedStartDate?: Date | string,
   now: Date = new Date(),
 ): Promise<PlanPurchaseContext> {
+  if (plan.tier === "FREE") throw new AppError("Gói FREE chỉ được hệ thống tự động cấp.", 400, { code: "FREE_PLAN_NOT_FOR_SALE" });
   const reqDate = requestedStartDate
     ? (requestedStartDate instanceof Date ? requestedStartDate : new Date(requestedStartDate))
     : undefined;
 
+  if (reqDate && !Number.isFinite(reqDate.getTime())) throw new AppError("Ngày kích hoạt gói không hợp lệ.", 400);
+  const queued = await db.membershipSubscription.findFirst({ where: { memberId: memberProfileId, status: "SCHEDULED" } });
+  if (queued) throw new AppError("Bạn đã có một gói chờ kích hoạt. Hãy xử lý gói đang chờ trước khi mua gói mới.", 409, { code: "SCHEDULED_SUBSCRIPTION_EXISTS" });
   const currentActive = await db.membershipSubscription.findFirst({
     where: { memberId: memberProfileId, status: "ACTIVE" },
     include: {
@@ -89,7 +94,7 @@ export async function inspectPlanPurchase(
     return {
       currentActive: currentActive?.tier === "FREE" ? currentActive : null,
       changeType: "NEW",
-      isUpgrade: plan.tier !== "FREE",
+      isUpgrade: true,
       oldPlanName: currentActive?.plan.name ?? "",
       remainingDays: 0,
       calculatedStartDate,
@@ -111,6 +116,11 @@ export async function inspectPlanPurchase(
 
   // Case 1: Gia hạn cùng hạng (isSameTier) -> TỰ ĐỘNG NỐI TIẾP VÀO NGÀY HẾT HẠN GÓI CŨ
   if (isSameTier) {
+    // The renewal date is determined by the current period, never silently ignored.
+    const effectiveStart = currentActive.endDate > now ? currentActive.endDate : now;
+    if (reqDate && Math.abs(+reqDate - +effectiveStart) > 60_000)
+      throw new AppError("Gia hạn cùng hạng phải bắt đầu khi gói hiện tại kết thúc.", 400,
+        { code: "RENEWAL_START_DATE_CONFLICT", effectiveStartDate: effectiveStart.toISOString() });
     let calculatedStartDate: Date;
     let targetStatus: "ACTIVE" | "SCHEDULED";
 
@@ -220,12 +230,13 @@ export async function applyPlanSwitchRules(
   requestedStartDate?: Date | string,
   now: Date = new Date(),
 ): Promise<PlanPurchaseContext> {
+  await activateMemberDue(tx, memberProfileId, now);
   const context = await inspectPlanPurchase(tx, memberProfileId, plan, requestedStartDate, now);
 
-  if (context.currentActive && context.shouldSuspendCurrentActive) {
+  if (context.currentActive && (context.shouldSuspendCurrentActive || (context.targetStatus === "ACTIVE" && context.currentActive.endDate <= now))) {
     const suspended = await tx.membershipSubscription.updateMany({
       where: { id: context.currentActive.id, status: "ACTIVE" },
-      data: { status: "SUSPENDED", suspendedAt: now },
+      data: context.currentActive.endDate <= now ? { status: "EXPIRED" } : { status: "SUSPENDED", suspendedAt: now },
     });
     if (suspended.count !== 1) {
       throw new AppError(
@@ -287,6 +298,9 @@ export async function activateSubscriptionForPayment(
   const soldPayment = await tx.payment.findUniqueOrThrow({
     where: { id: params.paymentId },
   });
+  if (soldPayment.refundRequestedAt || soldPayment.status === "REFUNDED")
+    throw new AppError("Giao dịch đã được duyệt hoàn tiền, không thể cấp gói.", 409,
+      { code: "PAYMENT_REFUND_PENDING" });
   // Gateway callbacks use the persisted order's facility, without a caller header.
   if (!requestContext.getStore()?.facilityId)
     return requestContext.run(

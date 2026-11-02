@@ -1,3 +1,4 @@
+import { runWaitlistPromotions } from "./modules/waitlist/waitlist.worker.js";
 import "dotenv/config";
 import app from "./app.js";
 import { env } from "./config/env.js";
@@ -62,6 +63,16 @@ async function main() {
     );
   }, LIFECYCLE_INTERVAL_MS);
   lifecycleTimer.unref();
+  let promoting = false;
+  const retryWaitlist = async () => {
+    if (promoting) return;
+    promoting = true;
+    try { await runWaitlistPromotions(); } catch (error) { console.warn("[WAITLIST] retry failed", { code: (error as any).code }); }
+    finally { promoting = false; }
+  };
+  void retryWaitlist();
+  const waitlistTimer = setInterval(() => { void retryWaitlist(); }, 60000);
+  waitlistTimer.unref();
 
   server.on("error", (err: NodeJS.ErrnoException) => {
     if (err.code === "EADDRINUSE") {

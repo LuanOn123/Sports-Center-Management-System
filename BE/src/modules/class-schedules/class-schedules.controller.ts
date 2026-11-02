@@ -4,8 +4,14 @@ import { sendSuccess, sendCreated } from "../../utils/response.js";
 
 export async function listSchedules(req: Request, res: Response, next: NextFunction) {
   try {
-    const { schedules, pagination } = await schedulesService.listSchedules(req.query);
+    const { schedules, pagination } = await schedulesService.listSchedules(req.query, req.user);
     sendSuccess(res, schedules, "Schedules retrieved successfully", 200, pagination);
+  } catch (err) { next(err); }
+}
+export async function createScheduleBatch(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await schedulesService.createScheduleBatch(req.body);
+    sendCreated(res, result, `Đã tạo ${result.schedulesCreated} buổi học thành công.`);
   } catch (err) { next(err); }
 }
 export async function createSchedule(req: Request, res: Response, next: NextFunction) {
@@ -20,7 +26,7 @@ export async function createActivityPlan(req: Request, res: Response, next: Next
       req.body,
       req.user?.role === "ADMIN",
     );
-    sendCreated(res, result, "Activity plan created successfully");
+    sendCreated(res, result, `Đã tạo lớp và ${result.schedulesCreated} buổi học thành công.`);
   } catch (err) { next(err); }
 }
 export async function getScheduleById(req: Request, res: Response, next: NextFunction) {

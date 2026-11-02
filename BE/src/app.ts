@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { authenticate } from "./middlewares/authenticate.js";
 import { checkFacilityScope } from "./middlewares/facilityScope.js";
 import operationsRoutes from "./modules/operations/operations.routes.js";
@@ -37,12 +38,17 @@ import waitlistRoutes from "./modules/waitlist/waitlist.routes.js";
 import termRoutes from "./modules/terms/terms.routes.js";
 
 const app = express();
+// Set only for a deployment whose reverse-proxy hop count is known and trusted.
+const proxyHops = process.env.TRUST_PROXY_HOPS ?? "0";
+if (!/^[0-3]$/.test(proxyHops)) throw new Error("TRUST_PROXY_HOPS must be an integer from 0 to 3");
+app.set("trust proxy", Number(proxyHops));
+app.use((_req, res, next) => { res.setHeader("X-Request-Id", randomUUID()); next(); });
 
 app.set("etag", false);
 
 // Global middlewares
 app.use(helmet());
-app.use(cors());
+app.use(cors({ exposedHeaders: ["X-Request-Id"] }));
 app.use(morgan("dev"));
 app.use(
   express.json({
@@ -79,7 +85,7 @@ app.use(
 
 // Health check
 app.get("/api/v1/health", (_req, res) => {
-  res.json({ success: true, message: "Sports Center API is running" });
+  res.json({ success: true, message: "Sports Center API is running", revision: process.env.RENDER_GIT_COMMIT || process.env.GIT_SHA || "local" });
 });
 
 // API routes

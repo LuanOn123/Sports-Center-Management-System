@@ -1,3 +1,5 @@
+import { effectiveCoachWhere } from "../operations/effective-coaches.js";
+import { mergeRequirements } from "../operations/rules.js";
 import { requestContext } from "../../config/request-context.js";
 import { validateResources } from "../operations/scheduling.js";
 import { prisma } from "../../config/prisma.js";
@@ -12,7 +14,7 @@ import {
   getMembershipCoverageIntervals,
   isCoveredAt,
 } from "../attendance/attendance-analytics.service.js";
-import { assertCanScheduleInTerm, findTermForDate } from "../terms/terms.service.js";
+import { assertCanScheduleInTerm } from "../terms/terms.service.js";
 import { checkFacilityClassLimit, checkFacilitySportLimit } from "../facilities/facility-limits.service.js";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
@@ -68,7 +70,10 @@ async function checkConflicts(
   }
 
   // Coach conflict – get coaches of this class
-  const classCoaches = effectiveCoach ? [{ coachId: effectiveCoach }] : await db.classMember.findMany({ where: { classId } });
+  const assignments = await db.classMember.findMany({ where: { classId } });
+  const classCoaches = effectiveCoach
+    ? [...assignments.filter((row) => !row.isPrimary), { coachId: effectiveCoach }]
+    : assignments;
   for (const cm of classCoaches) {
     const coachConflict = await requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, () => db.classSchedule.findFirst({
       where: {
@@ -76,7 +81,7 @@ async function checkConflicts(
         id: excludeScheduleId ? { not: excludeScheduleId } : undefined,
         startTime: { lt: endTime },
         endTime: { gt: startTime },
-        OR: [{ coachId: cm.coachId }, { coachId: null, class: { coaches: { some: { coachId: cm.coachId } } } }],
+        OR: [{ coachId: cm.coachId }, { coachId: null, class: { coaches: { some: { coachId: cm.coachId } } } }, { class: { coaches: { some: { coachId: cm.coachId, isPrimary: false } } } }],
       },
       include: {
         class: {
@@ -112,11 +117,20 @@ export async function checkScheduleConflicts(
   return checkConflicts(db, roomId, classId, startTime, endTime, excludeScheduleId, effectiveCoach);
 }
 
-export async function listSchedules(query: any) {
+export async function listSchedules(query: any, actor?: { id: string; role: string }) {
   const page = Math.max(1, parseInt(query.page ?? "1") || 1);
   const limit = Math.min(100, Math.max(1, parseInt(query.limit ?? "10") || 10));
   const skip = (page - 1) * limit;
   const where: any = {};
+  let coachId = query.coachId;
+  // A coach can only request their own effective teaching timetable.
+  if (actor?.role === "COACH") {
+    const coach = await prisma.coachProfile.findUnique({ where: { userId: actor.id }, select: { id: true } });
+    if (!coach) throw new AppError("Coach profile not found", 404);
+    if (coachId && coachId !== coach.id) throw new AppError("Forbidden", 403);
+    coachId = coach.id;
+  }
+  if (coachId) Object.assign(where, effectiveCoachWhere(coachId));
   if (query.classId) where.classId = query.classId;
   if (query.roomId) where.roomId = query.roomId;
   if (query.termId) where.termId = query.termId;
@@ -159,7 +173,7 @@ export async function listSchedules(query: any) {
     : undefined;
 
   const include = {
-    class: { include: { sports: true } },
+    class: { include: { sports: true, coaches: { where: { isPrimary: true }, include: { coach: { include: { user: { select: { fullName: true } } } } } } } },
     room: true,
     term: true,
     _count: {
@@ -185,7 +199,7 @@ export async function listSchedules(query: any) {
 
   // Weekday chỉ lọc được đúng theo múi giờ VN bằng SQL:
   // EXTRACT(ISODOW FROM startTime AT TIME ZONE 'Asia/Ho_Chi_Minh') IN (...).
-  const whereSql = buildWhereSql(where);
+  const whereSql = buildWhereSql(where, coachId);
   const countRows = await prisma.$queryRaw<{ total: bigint }[]>`
     SELECT COUNT(*)::bigint AS total FROM "ClassSchedule" AS s
     ${whereSql.fragment}
@@ -213,7 +227,7 @@ export async function listSchedules(query: any) {
 
 // Dựng WHERE SQL từ object `where` của Prisma cho GET list (khi cần lọc weekday).
 // Chỉ hỗ trợ đúng các key mà listSchedules đang dùng: classId/roomId/status + startTime/endTime.
-function buildWhereSql(where: any): { fragment: Prisma.Sql } {
+function buildWhereSql(where: any, coachId?: string): { fragment: Prisma.Sql } {
   const conds: Prisma.Sql[] = [Prisma.sql`TRUE`];
   const scopedFacility = requestContext.getStore()?.facilityId;
   if (scopedFacility) conds.push(Prisma.sql`s."classId" IN (SELECT id FROM "Class" WHERE "facilityId" = ${scopedFacility})`);
@@ -221,6 +235,11 @@ function buildWhereSql(where: any): { fragment: Prisma.Sql } {
   if (where.roomId) conds.push(Prisma.sql`s."roomId" = ${where.roomId}`);
   if (where.termId) conds.push(Prisma.sql`s."termId" = ${where.termId}`);
   if (where.status) conds.push(Prisma.sql`s."status"::text = ${where.status}`);
+  if (coachId) conds.push(Prisma.sql`(
+    s."coachId" = ${coachId}
+    OR (s."coachId" IS NULL AND EXISTS (SELECT 1 FROM "ClassMember" cm WHERE cm."classId" = s."classId" AND cm."coachId" = ${coachId}))
+    OR EXISTS (SELECT 1 FROM "ClassMember" cm WHERE cm."classId" = s."classId" AND cm."coachId" = ${coachId} AND cm."isPrimary" = false)
+  )`);
   const st = where.startTime;
   if (st?.gte) conds.push(Prisma.sql`s."startTime" >= ${st.gte}`);
   if (st?.gt) conds.push(Prisma.sql`s."startTime" > ${st.gt}`);
@@ -243,49 +262,78 @@ function assertClassRoomAreaMatch(classAreaType: string, roomAreaType: string) {
   }
 }
 
+type ScheduleInput = { startTime: string; endTime: string };
+
+// Resource locks cover validation and the single bulk insert, including concurrent requests.
+async function createScheduleBatchInTx(tx: Prisma.TransactionClient, data: {
+  classId: string; roomId: string; termId?: string; schedules: ScheduleInput[];
+}) {
+  const ordered = data.schedules.map((row) => ({ startTime: new Date(row.startTime), endTime: new Date(row.endTime) }))
+    .sort((a, b) => +a.startTime - +b.startTime);
+  if (!ordered.length || ordered.length > 500) throw new AppError("Chọn từ 1 đến 500 buổi học.", 400);
+  if (ordered.some(row => row.startTime <= new Date()))
+    throw new AppError("Không thể tạo buổi học trong quá khứ hoặc đã bắt đầu.", 400, { code: "SCHEDULE_IN_PAST" });
+  for (let i = 0; i < ordered.length; i++) {
+    const row = ordered[i];
+    if (!Number.isFinite(+row.startTime) || !Number.isFinite(+row.endTime) || row.endTime <= row.startTime)
+      throw new AppError("Thời gian buổi học không hợp lệ.", 400);
+    if (i && row.startTime < ordered[i - 1].endTime)
+      throw new AppError("Các buổi trong lịch tạo mới không được trùng nhau.", 409);
+  }
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('class:assignment:' || ${data.classId}::text))`;
+  const coachIds = await getCoachIdsOfClass(tx, data.classId);
+  await lockScheduleResources(tx, [data.roomId], coachIds);
+  const start = ordered[0].startTime, end = ordered[ordered.length - 1].endTime;
+  // Validate static resources once; leave checks use actual sessions, not the gaps between them.
+  await validateResources(tx, data.roomId, data.classId, start, end, undefined, ordered);
+  const cls = await tx.class.findUnique({ where: { id: data.classId }, include: { sports: true } });
+  if (cls!.sports.length !== 1) throw new AppError("Lớp phải có đúng một bộ môn trước khi tạo lịch. Vui lòng chỉnh sửa lớp.", 409);
+  const room = await tx.room.findUnique({ where: { id: data.roomId } });
+  const conflicts = await requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, () => tx.classSchedule.findMany({
+    where: { status: "SCHEDULED", startTime: { lt: end }, endTime: { gt: start }, OR: [
+      { roomId: data.roomId }, { classId: data.classId }, { coachId: { in: coachIds } },
+      { coachId: null, class: { coaches: { some: { coachId: { in: coachIds } } } } },
+      { class: { coaches: { some: { coachId: { in: coachIds }, isPrimary: false } } } },
+    ] }, select: { startTime: true, endTime: true },
+  }));
+  const clashing = ordered.filter((row) => conflicts.some((existing) => row.startTime < existing.endTime && row.endTime > existing.startTime));
+  if (clashing.length) {
+    // Nêu rõ buổi bị trùng để Manager sửa đúng chỗ thay vì đoán trong cả lô.
+    const fmt = (d: Date) => d.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" });
+    const shown = clashing.slice(0, 5).map((row) => fmt(row.startTime)).join("; ");
+    const more = clashing.length > 5 ? ` và ${clashing.length - 5} buổi khác` : "";
+    throw new AppError(
+      `Phòng, lớp hoặc huấn luyện viên (kể cả HLV phụ) đã có lịch trùng giờ ở ${clashing.length} buổi: ${shown}${more}. Vui lòng chọn ca khác.`,
+      409,
+      { code: "SCHEDULE_CONFLICT", conflictingSessions: clashing.map((row) => ({ startTime: row.startTime, endTime: row.endTime })) },
+    );
+  }
+  const terms = await tx.term.findMany({ where: { OR: [{ facilityId: room!.facilityId }, { facilityId: null }] }, orderBy: { startDate: "asc" } });
+  if (data.termId) await assertCanScheduleInTerm(data.termId, start, end, room!.facilityId, tx);
+  const rows = ordered.map((row) => {
+    const auto = terms.find((term) => term.facilityId === room!.facilityId && term.status !== "CLOSED" && term.startDate <= row.startTime && term.endDate >= row.endTime)
+      ?? terms.find((term) => term.status !== "CLOSED" && term.startDate <= row.startTime && term.endDate >= row.endTime);
+    if (!data.termId && !auto) throw new AppError("Hãy chọn kỳ học hợp lệ bao phủ các buổi cần tạo.", 409, { code: "TERM_REQUIRED" });
+    return { ...row, classId: data.classId, roomId: data.roomId, termId: data.termId ?? auto?.id, status: "SCHEDULED" as const };
+  });
+  for (const termId of [...new Set(rows.map(row => row.termId!))].sort()) {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('term:' || ${termId}::text))`;
+    const related = rows.filter(row => row.termId === termId);
+    await assertCanScheduleInTerm(termId, related[0].startTime, related[related.length - 1].endTime, room!.facilityId, tx);
+  }
+  const result = await tx.classSchedule.createMany({ data: rows });
+  return { schedulesCreated: result.count };
+}
+
+export async function createScheduleBatch(data: any) {
+  return prisma.$transaction((tx) => createScheduleBatchInTx(tx, data), { timeout: 30000 });
+}
+
 export async function createSchedule(data: any) {
   return prisma.$transaction(async (tx) => {
-    const cls = await tx.class.findUnique({ where: { id: data.classId } });
-    if (!cls || !cls.isActive) throw new AppError("Class not found or inactive", 404);
-
-    const room = await tx.room.findUnique({ where: { id: data.roomId } });
-    if (!room || !room.isActive) throw new AppError("Room not found or inactive", 404);
-
-    const startTime = new Date(data.startTime);
-    const endTime = new Date(data.endTime);
-    if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
-      throw new AppError("Invalid startTime or endTime", 400);
-    }
-    if (endTime <= startTime) {
-      throw new AppError("endTime must be strictly greater than startTime", 400);
-    }
-
-    // Lock Room + toàn bộ Coach của Class theo thứ tự cố định trước khi check.
-    const coachIds = await getCoachIdsOfClass(tx, data.classId);
-    await lockScheduleResources(tx, [data.roomId], coachIds);
-
-    // Business rule: Class.areaType phải khớp Room.areaType trước mọi check khác.
-    assertClassRoomAreaMatch(cls.areaType, room.areaType);
-
-    if (room.capacity < cls.capacity) {
-      throw new AppError("Room capacity is too small for this class", 400);
-    }
-
-    await checkConflicts(tx, data.roomId, data.classId, startTime, endTime);
-
-    let termId = data.termId;
-    if (termId) {
-      await assertCanScheduleInTerm(termId, startTime, endTime, room.facilityId, tx);
-    } else {
-      const autoTerm = await findTermForDate(startTime, room.facilityId, tx);
-      if (autoTerm) termId = autoTerm.id;
-    }
-
-    return tx.classSchedule.create({
-      data: { classId: data.classId, roomId: data.roomId, startTime, endTime, status: "SCHEDULED", termId },
-      include: { class: { include: { sports: true } }, room: true, term: true },
-    });
-  });
+    await createScheduleBatchInTx(tx, { ...data, schedules: [{ startTime: data.startTime, endTime: data.endTime }] });
+    return tx.classSchedule.findFirst({ where: { classId: data.classId, roomId: data.roomId, startTime: new Date(data.startTime), status: "SCHEDULED" }, include: { class: { include: { sports: true } }, room: true, term: true } });
+  }, { timeout: 30000 });
 }
 
 /**
@@ -295,7 +343,7 @@ export async function createSchedule(data: any) {
  */
 export async function createActivityPlan(data: any, canCreateSport: boolean) {
   if (data.sport.mode === "new" && !canCreateSport) {
-    throw new AppError("Only managers can create a new sport", 403);
+    throw new AppError("Bộ môn mới cần được Admin tạo trước khi xếp lịch.", 403);
   }
 
   return prisma.$transaction(async (tx) => {
@@ -339,7 +387,7 @@ export async function createActivityPlan(data: any, canCreateSport: boolean) {
         },
       });
     } else {
-      sport = await tx.sport.findUnique({ where: { id: data.sport.id } });
+      sport = await tx.sport.findUnique({ where: { id: data.sport.id }, include: { requirements: true } });
       if (!sport || !sport.isActive) {
         throw new AppError("Sport not found or inactive", 404);
       }
@@ -359,6 +407,7 @@ export async function createActivityPlan(data: any, canCreateSport: boolean) {
 
     const cls = await tx.class.create({
       data: {
+        requirementsSnapshot: mergeRequirements((sport as any).requirements ?? []),
         name: data.class.name,
         defaultRoomId: data.roomId,
         description: data.class.description || undefined,
@@ -375,37 +424,8 @@ export async function createActivityPlan(data: any, canCreateSport: boolean) {
       },
     });
 
-    const createdSchedules = [];
-    for (const schedule of data.schedules) {
-      const startTime = new Date(schedule.startTime);
-      const endTime = new Date(schedule.endTime);
-      await checkConflicts(tx, room.id, cls.id, startTime, endTime);
-
-      let termId = data.termId;
-      if (termId) {
-        await assertCanScheduleInTerm(termId, startTime, endTime, room.facilityId, tx);
-      } else {
-        const autoTerm = await findTermForDate(startTime, room.facilityId, tx);
-        if (autoTerm) termId = autoTerm.id;
-      }
-
-      createdSchedules.push(await tx.classSchedule.create({
-        data: {
-          classId: cls.id,
-          roomId: room.id,
-          startTime,
-          endTime,
-          status: "SCHEDULED",
-          termId,
-        },
-      }));
-    }
-
-    return {
-      class: cls,
-      sport,
-      schedulesCreated: createdSchedules.length,
-    };
+    const result = await createScheduleBatchInTx(tx, { classId: cls.id, roomId: room.id, termId: data.termId, schedules: data.schedules });
+    return { class: cls, sport, ...result };
   }, { timeout: 30_000 });
 }
 
@@ -539,6 +559,9 @@ export async function updateSchedule(id: string, data: any) {
 
   const startTime = data.startTime ? new Date(data.startTime) : existing.startTime;
   const endTime = data.endTime ? new Date(data.endTime) : existing.endTime;
+  if ((data.startTime || data.endTime) && startTime <= new Date())
+    throw new AppError("Không thể chuyển buổi học về quá khứ hoặc sửa giờ buổi đã bắt đầu.", 400,
+      { code: "SCHEDULE_IN_PAST" });
   const roomId = data.roomId ?? existing.roomId;
 
   if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
@@ -601,6 +624,8 @@ export async function updateSchedule(id: string, data: any) {
       await lockSchedule(tx, id);
       const fresh = await tx.classSchedule.findUnique({ where: { id } });
       if (!fresh) throw new AppError("Schedule not found", 404);
+      if ((data.startTime || data.endTime) && startTime <= new Date())
+        throw new AppError("Không thể chuyển buổi học về quá khứ.", 400, { code: "SCHEDULE_IN_PAST" });
       if (fresh.status !== "SCHEDULED") {
         throw new AppError("Lịch học đã thay đổi trạng thái, vui lòng tải lại.", 409, {
           code: "SCHEDULE_STATE_CHANGED",
@@ -615,10 +640,16 @@ export async function updateSchedule(id: string, data: any) {
       assertClassRoomAreaMatch(existing.class.areaType, room.areaType);
 
       const coachIds = await getCoachIdsOfClass(tx, existing.classId);
-      await lockScheduleResources(tx, [fresh.roomId, roomId], [...coachIds, ...(data.coachId ? [data.coachId] : [])]);
-      await checkConflicts(tx, roomId, existing.classId, startTime, endTime, id, data.coachId);
+      await lockScheduleResources(tx, [fresh.roomId, roomId], [...coachIds, ...([data.coachId ?? fresh.coachId].filter(Boolean) as string[])]);
+      await checkConflicts(tx, roomId, existing.classId, startTime, endTime, id, data.coachId ?? fresh.coachId ?? undefined);
 
       // A11: không dời lịch nếu phá chỗ đã hợp lệ (trùng giờ / ngoài hạn gói của member đang giữ chỗ).
+      const selectedTermId = termTouched ? newTermId : fresh.termId;
+      if (selectedTermId) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('term:' || ${selectedTermId}::text))`;
+        await assertCanScheduleInTerm(selectedTermId, startTime, endTime, room.facilityId, tx);
+      }
+      if (termTouched && !newTermId) throw new AppError("Không thể bỏ kỳ học khỏi lịch vận hành.", 409);
       await assertScheduleMoveKeepsBookingsValid(tx, { scheduleId: id, startTime, endTime, termId: termTouched ? newTermId : existing.termId });
 
       // A12: CAS trạng thái — lịch vừa bị hủy/hoàn tất trong lúc chờ lock thì không ghi.

@@ -9,7 +9,6 @@ import { at, display } from "../../shared/config";
 import { ErrorState, Loading, Modal, SchemaForm } from "../../shared/ui";
 import { useReceptionList } from "./api";
 import { useDebouncedValue } from "../../shared/useDebouncedValue";
-import { Check } from "lucide-react";
 export function Heading({
   title,
   children,
@@ -164,36 +163,15 @@ export function ActionForm({
   onClose: () => void;
 }) {
   const cache = useQueryClient();
-  const [success, setSuccess] = useState(false);
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
   const done = () => {
-    setSuccess(true);
+    onClose();
     void cache.invalidateQueries();
   };
   return (
     <Modal title={title} onClose={onClose} dismissible={!busy}>
-      {success ? (
-        <div style={{ padding: "32px 24px", textAlign: "center" }}>
-          <span style={{
-            display: "inline-flex",
-            background: "var(--color-success-bg)",
-            borderRadius: "50%",
-            padding: "16px",
-            marginBottom: "16px",
-            color: "var(--color-success)",
-          }}>
-            <Check size={28} />
-          </span>
-          <p className="success" role="status"
-            style={{ display: "block", textAlign: "center" }}>
-            Đã lưu thay đổi thành công.
-          </p>
-          <button className="button primary" onClick={onClose}>
-            Đóng
-          </button>
-        </div>
-      ) : contract[operation]?.body ? (
+      {contract[operation]?.body ? (
         <SchemaForm
           operation={operation}
           params={params}

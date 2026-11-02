@@ -5,6 +5,7 @@ export interface ApiResponse<T = unknown> {
   message: string;
   data?: T;
   errors?: unknown;
+  requestId?: string;
   pagination?: PaginationMeta;
 }
 
@@ -38,6 +39,8 @@ export function sendError(
   errors?: unknown
 ): Response {
   const body: ApiResponse = { success: false, message };
+  const requestId = res.getHeader?.("X-Request-Id");
+  if (requestId) body.requestId = String(requestId);
   if (errors) body.errors = errors;
   return res.status(statusCode).json(body);
 }

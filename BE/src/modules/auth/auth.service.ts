@@ -1,3 +1,4 @@
+import { createUser } from "../users/users.service.js";
 import { User } from "../../models/User.js";
 import { verifyTurnstile } from "./turnstile.service.js";
 import { synchronizeUserProjection } from "../users/user-projection.service.js";
@@ -22,134 +23,29 @@ import { disconnectUserSockets } from "../chat/chat.socket.js";
 import { sendOtpEmail } from "../../utils/mailer.js";
 import { randomInt, createHash } from "crypto";
 import { prisma } from "../../config/prisma.js";
-import mongoose from "mongoose";
 import type { RegisterInput, UpdateProfileInput, ForgotPasswordInput, ResetPasswordInput } from "./auth.schema.js";
 
 export async function register(data: RegisterInput) {
-  // Kiểm tra email trùng ở CẢ HAI DB trước khi tạo gì cả —
-  // tránh để MongoDB commit xong rồi PostgreSQL mới báo lỗi duplicate.
-  const [existingMongo, existingPg] = await Promise.all([
-    User.findOne({ email: data.email }),
-    prisma.user.findUnique({ where: { email: data.email } }),
-  ]);
-  if (existingMongo || existingPg) throw new AppError("Email is already in use", 409);
-
-  const hashed = await hashPassword(data.password);
-
-  // ── Giai đoạn 1: MongoDB transaction ──────────────────────────────────────
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  let userId!: string;
-  let memberProfileId!: string;
-  let created!: InstanceType<typeof User>;
-  let memberProfile!: InstanceType<typeof MemberProfile>;
-
-  try {
-    created = new User({
-      email: data.email,
-      password: hashed,
-      fullName: data.fullName,
-      phone: data.phone || null,
-      gender: data.gender || null,
-      dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
-      role: "MEMBER",
-    });
-    await created.save({ session });
-    userId = created._id.toString();
-
-    memberProfile = new MemberProfile({ userId });
-    await memberProfile.save({ session });
-    memberProfileId = memberProfile._id.toString();
-
-    await session.commitTransaction();
-  } catch (err) {
-    await session.abortTransaction();
-    throw err;
-  } finally {
-    session.endSession();
-  }
-
-  // ── Giai đoạn 2: DUAL-WRITE sang PostgreSQL ───────────────────────────────
-  // Dùng upsert (idempotent) để tránh lỗi nếu bản ghi đã tồn tại từ data cũ.
-  // Nếu toàn bộ block này lỗi → compensating transaction: xóa doc MongoDB
-  // vừa commit để tránh tài khoản "nửa vời" (MongoDB có, PostgreSQL thiếu).
-  try {
-    await prisma.$transaction(async (tx) => {
-      await tx.user.upsert({
-        where: { id: userId },
-        create: {
-          id: userId,
-          email: created.email,
-          password: created.password,
-          fullName: created.fullName,
-          phone: created.phone,
-          gender: created.gender as any,
-          dateOfBirth: created.dateOfBirth,
-          role: "MEMBER",
-        },
-        update: {}, // không ghi đè nếu bản ghi đã tồn tại
-      });
-
-      await tx.memberProfile.upsert({
-        where: { userId },
-        create: { id: memberProfileId, userId },
-        update: {}, // không ghi đè nếu bản ghi đã tồn tại
-      });
-
-      // Tạo FREE subscription — advisory lock bên trong đảm bảo không duplicate
-      await ensureActiveFreeSubscription(tx, memberProfileId);
-    });
-  } catch (pgErr) {
-    // Compensating transaction: rollback MongoDB để không để lại tài khoản zombie.
-    console.error(
-      "[register] PostgreSQL sync failed, rolling back MongoDB user:",
-      userId,
-      pgErr,
-    );
-    await Promise.allSettled([
-      MemberProfile.deleteOne({ _id: memberProfile._id }),
-      User.deleteOne({ _id: created._id }),
-    ]);
-    throw new AppError(
-      "Đăng ký thất bại, vui lòng thử lại. Nếu vẫn lỗi hãy liên hệ hỗ trợ.",
-      500,
-    );
-  }
-
-  // Gửi thông báo chào mừng (fire-and-forget)
-  createNotification(
-    userId,
-    "MEMBER_REGISTERED",
-    "Chào mừng đến với Trung tâm Thể thao!",
-    `Xin chào ${created.fullName}! Tài khoản của bạn đã được tạo thành công. Hãy khám phá các gói tập và lớp học phù hợp với bạn.`,
-  ).catch(() => {});
-
-  return {
-    id: userId,
-    email: created.email,
-    fullName: created.fullName,
-    phone: created.phone,
-    gender: created.gender,
-    dateOfBirth: created.dateOfBirth,
-    role: created.role,
-    isActive: created.isActive,
-    memberProfile: memberProfile.toJSON(),
-  };
+  const created = await createUser({ ...data, role: "MEMBER" });
+  if (!created) throw new AppError("Chưa hoàn tất tạo tài khoản", 503);
+  createNotification(created.id, "MEMBER_REGISTERED", "Chào mừng đến với Trung tâm Thể thao!",
+    "Tài khoản đã được tạo thành công.").catch(() => {});
+  return { id: created.id, email: created.email, fullName: created.fullName, role: created.role, isActive: created.isActive };
 }
-
 
 export async function login(email: string, password: string, turnstileToken: string) {
   await verifyTurnstile(turnstileToken);
   const user = await User.findOne({ email }).select("+password");
   if (!user) throw new AppError("Invalid email or password", 401);
-  if (!user.isActive) throw new AppError("Your account has been deactivated", 403);
+  if (!user.isActive || (user.provisioningStatus && user.provisioningStatus !== "READY")) throw new AppError("Your account has been deactivated", 403);
 
   const valid = await comparePassword(password, user.password);
   if (!valid) throw new AppError("Invalid email or password", 401);
 
   const userId = user._id.toString();
-  const payload = { id: userId, role: user.role };
+  const projection = await prisma.user.findUnique({ where: { id: userId }, select: { isActive: true, role: true } });
+  if (!projection?.isActive || projection.role !== user.role) throw new AppError("Tài khoản chưa hoàn tất đồng bộ.", 503);
+  const payload = { id: userId, role: user.role, tokenVersion: user.tokenVersion ?? 0 };
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
 
@@ -191,9 +87,9 @@ export async function logout(token: string) {
 }
 
 export async function refreshAccessToken(token: string) {
-  let payload: { id: string; role: string };
+  let payload: { id: string; role: string; tokenVersion?: number };
   try {
-    payload = verifyRefreshToken(token) as { id: string; role: string };
+    payload = verifyRefreshToken(token) as { id: string; role: string; tokenVersion?: number };
   } catch {
     throw new AppError("Invalid or expired refresh token", 401);
   }
@@ -207,7 +103,8 @@ export async function refreshAccessToken(token: string) {
   const user = await User.findById(payload.id);
   if (!user || !user.isActive) throw new AppError("User not found or inactive", 401);
 
-  const accessToken = signAccessToken({ id: user._id.toString(), role: user.role });
+  if (payload.role !== user.role || (payload.tokenVersion ?? 0) !== (user.tokenVersion ?? 0) || (user.provisioningStatus && user.provisioningStatus !== "READY")) throw new AppError("Phiên đăng nhập đã bị thu hồi", 401);
+  const accessToken = signAccessToken({ id: user._id.toString(), role: user.role, tokenVersion: user.tokenVersion ?? 0 });
   return { accessToken };
 }
 
@@ -283,7 +180,7 @@ export async function changePassword(
   if (!valid) throw new AppError("Current password is incorrect", 400);
 
   const hashed = await hashPassword(newPassword);
-  await User.updateOne({ _id: userId }, { password: hashed });
+  await User.updateOne({ _id: userId }, { password: hashed, $inc: { tokenVersion: 1 } });
   await RefreshToken.deleteMany({ userId: user._id.toString() });
 
   disconnectUserSockets(userId);
@@ -331,10 +228,16 @@ export async function forgotPassword(data: ForgotPasswordInput) {
   const otp = String(randomInt(100_000, 999_999));
   const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
-  await User.updateOne(
-    { _id: user._id },
-    { resetPasswordOtp: hashOtp(otp), resetPasswordOtpExpiresAt: expiresAt }
+  const issued = await User.updateOne(
+    { _id: user._id, isActive: true, $or: [
+      { resetPasswordOtpSentAt: { $lte: new Date(Date.now() - 60_000) } },
+      { resetPasswordOtpSentAt: null },
+    ] },
+    { $set: { resetPasswordOtp: hashOtp(otp), resetPasswordOtpExpiresAt: expiresAt,
+      resetPasswordOtpAttempts: 0, resetPasswordOtpSentAt: new Date() } },
   );
+  // Same response for unknown accounts and requests during the resend cooldown.
+  if (!issued.modifiedCount) return;
 
   // AWAIT: trước đây lỗi gửi mail bị nuốt (`.catch(console.error)`) nên FE luôn
   // hiển thị "đã gửi" dù email không đi đâu cả. Giờ throw 502 để client báo lỗi thật.
@@ -350,7 +253,13 @@ export async function forgotPassword(data: ForgotPasswordInput) {
 }
 
 export async function resetPassword(data: ResetPasswordInput) {
-  const user = await User.findOne({ email: data.email });
+  // Reserve an attempt before comparing, including concurrent requests.
+  const user = await User.findOneAndUpdate({
+    email: data.email, isActive: true,
+    resetPasswordOtp: { $ne: null },
+    resetPasswordOtpExpiresAt: { $gt: new Date() },
+    $or: [{ resetPasswordOtpAttempts: { $lt: 5 } }, { resetPasswordOtpAttempts: { $exists: false } }],
+  }, { $inc: { resetPasswordOtpAttempts: 1 } }, { new: true });
   if (!user || !user.isActive) {
     throw new AppError("OTP không hợp lệ hoặc đã hết hạn.", 400);
   }
@@ -371,10 +280,12 @@ export async function resetPassword(data: ResetPasswordInput) {
   const hashed = await hashPassword(data.newPassword);
   const userId = user._id.toString();
 
-  await User.updateOne(
-    { _id: user._id },
-    { password: hashed, resetPasswordOtp: null, resetPasswordOtpExpiresAt: null }
+  const consumed = await User.updateOne(
+    { _id: user._id, isActive: true, resetPasswordOtp: inputHash,
+      resetPasswordOtpExpiresAt: { $gt: new Date() }, resetPasswordOtpAttempts: { $lte: 5 } },
+    { password: hashed, resetPasswordOtp: null, resetPasswordOtpExpiresAt: null, $inc: { tokenVersion: 1 } }
   );
+  if (consumed.modifiedCount !== 1) throw new AppError("OTP không hợp lệ hoặc đã hết hạn.", 400);
   await RefreshToken.deleteMany({ userId });
 
   disconnectUserSockets(userId);

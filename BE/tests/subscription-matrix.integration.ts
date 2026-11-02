@@ -14,6 +14,7 @@ const ok = (n: string) => {
 };
 
 async function runTests() {
+  assert.match(new URL(process.env.DATABASE_URL!).searchParams.get("schema") ?? "", /^scms_verify_/);
   console.log("\n=== TESTING MEMBERSHIP MATRIX (RENEW / UPGRADE / DOWNGRADE) ===\n");
 
   const run = randomUUID().slice(0, 8);

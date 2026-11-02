@@ -1,3 +1,4 @@
+import { hasEquipment } from "../../shared/forms/EquipmentFields";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, Search, X, MapPin, Users } from "lucide-react";
@@ -13,12 +14,14 @@ type Sport = {
   id: string;
   name: string;
   areaTypes: string[];
+  requirements?: { key: string; minimum: number }[];
   isActive: boolean;
 };
 type Room = {
   id: string;
   name: string;
   capacity: number;
+  capabilities?: { key: string; quantity: number }[];
   areaType: string;
   isActive: boolean;
 };
@@ -41,9 +44,13 @@ export function ClassForm({
     classSports(initial).map((s) => s.id),
   );
   const [search, setSearch] = useState("");
+  const [refreshRequirements, setRefreshRequirements] = useState(false);
+  const [refreshReason, setRefreshReason] = useState("");
   const [roomId, setRoomId] = useState(String(initial.defaultRoomId ?? ""));
   const [capacity, setCapacity] = useState(String(initial.capacity ?? ""));
-  const [minCapacity, setMinCapacity] = useState(String(initial.minCapacity ?? "1"));
+  const [minCapacity, setMinCapacity] = useState(
+    String(initial.minCapacity ?? "1"),
+  );
   const [classType, setClassType] = useState(
     String(initial.classType ?? "REGULAR"),
   );
@@ -65,14 +72,34 @@ export function ClassForm({
   });
   const allSports = sports.data?.data ?? [];
   const selected = allSports.filter((s) => sportIds.includes(s.id));
-  const allowedAreas = selected.length
-    ? ["INDOOR", "OUTDOOR", "POOL"].filter((area) =>
-        selected.every((s) => s.areaTypes.includes(area)),
-      )
-    : [];
+  const sameSports =
+    sportIds.length === classSports(initial).length &&
+    sportIds.every((id) => classSports(initial).some((s) => s.id === id));
+  const retainSnapshot = !!initial.id && sameSports && !refreshRequirements;
+  const snapshot = initial.requirementsSnapshot as
+    Record<string, number> | undefined;
+  const allowedAreas = retainSnapshot
+    ? [String(initial.areaType)]
+    : selected.length
+      ? ["INDOOR", "OUTDOOR", "POOL"].filter((area) =>
+          selected.every((s) => s.areaTypes.includes(area)),
+        )
+      : [];
   const eligibleRooms =
     rooms.data?.data.filter(
-      (r) => r.isActive && allowedAreas.includes(r.areaType),
+      (r) =>
+        r.isActive &&
+        allowedAreas.includes(r.areaType) &&
+        hasEquipment(
+          retainSnapshot && snapshot != null
+            ? Object.entries(snapshot).map(([key, minimum]) => ({
+                key,
+                minimum,
+              }))
+            : selected.flatMap((s) => s.requirements ?? []),
+          r.capabilities,
+          r.areaType,
+        ),
     ) ?? [];
   const room = eligibleRooms.find((r) => r.id === roomId);
   const save = useMutation({
@@ -111,7 +138,7 @@ export function ClassForm({
   function toggle(id: string) {
     const next = sportIds.includes(id)
       ? sportIds.filter((value) => value !== id)
-      : [...sportIds, id];
+      : [id];
     setSportIds(next);
     const nextSports = allSports.filter((s) => next.includes(s.id));
     if (
@@ -127,7 +154,11 @@ export function ClassForm({
       onSubmit={(event) => {
         event.preventDefault();
         setError(undefined);
-        if (!room || !selected.length || selected.some((s) => !s.isActive)) {
+        if (
+          !room ||
+          selected.length !== 1 ||
+          selected.some((s) => !s.isActive)
+        ) {
           setError(new Error("Chọn bộ môn đang hoạt động và phòng phù hợp."));
           return;
         }
@@ -139,7 +170,11 @@ export function ClassForm({
           return;
         }
         if (!Number.isInteger(minCount) || minCount < 1 || minCount > count) {
-          setError(new Error(`Sĩ số tối thiểu phải từ 1 đến ${count} (không vượt sĩ số tối đa).`));
+          setError(
+            new Error(
+              `Sĩ số tối thiểu phải từ 1 đến ${count} (không vượt sĩ số tối đa).`,
+            ),
+          );
           return;
         }
         if (
@@ -171,6 +206,10 @@ export function ClassForm({
         ) {
           body.attendancePolicy = policy;
           if (policy === "FIXED") body.plannedSessionCount = Number(planned);
+        }
+        if (initial.id && refreshRequirements) {
+          body.refreshRequirements = true;
+          body.reason = refreshReason.trim();
         }
         onBusyChange?.(true);
         save.mutate(body);
@@ -242,7 +281,8 @@ export function ClassForm({
                       .map((s) => (
                         <label className="sport-option" key={s.id}>
                           <input
-                            type="checkbox"
+                            type="radio"
+                            name="class-sport"
                             checked={sportIds.includes(s.id)}
                             onChange={() => toggle(s.id)}
                           />
@@ -344,9 +384,13 @@ export function ClassForm({
             value={minCapacity}
             onChange={(e) => setMinCapacity(e.target.value)}
           />
-          {Number(minCapacity) > 0 && Number(capacity) > 0 && Number(minCapacity) <= Number(capacity) && (
-            <span className="field-note">Buổi học sẽ bị cảnh báo hủy nếu có ít hơn {minCapacity} học viên</span>
-          )}
+          {Number(minCapacity) > 0 &&
+            Number(capacity) > 0 &&
+            Number(minCapacity) <= Number(capacity) && (
+              <span className="field-note">
+                Buổi học sẽ bị cảnh báo hủy nếu có ít hơn {minCapacity} học viên
+              </span>
+            )}
         </label>
         <label>
           Loại lớp
@@ -387,6 +431,34 @@ export function ClassForm({
           <p className="field-note wide">
             Chính sách chuyên cần đã khóa vì lớp có lượt đăng ký.
           </p>
+        )}
+        {Boolean(initial.id) && (
+          <div className="wide">
+            <label>
+              <input
+                type="checkbox"
+                checked={refreshRequirements}
+                onChange={(e) => setRefreshRequirements(e.target.checked)}
+              />{" "}
+              Cập nhật điều kiện lớp theo bộ môn hiện tại
+            </label>
+            <p className="field-note">
+              Bỏ chọn để giữ điều kiện đã lưu của lớp. Hệ thống sẽ kiểm tra toàn
+              bộ phòng và lịch sắp tới trước khi cập nhật.
+            </p>
+            {refreshRequirements && (
+              <label>
+                Lý do cập nhật điều kiện
+                <input
+                  required
+                  minLength={3}
+                  maxLength={1000}
+                  value={refreshReason}
+                  onChange={(e) => setRefreshReason(e.target.value)}
+                />
+              </label>
+            )}
+          </div>
         )}
       </fieldset>
       {(error || save.error) && <ErrorState error={error || save.error} />}
