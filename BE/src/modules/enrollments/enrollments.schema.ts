@@ -5,6 +5,7 @@ export const CreateEnrollmentSchema = z.object({
   memberId: z.string().optional(), // required when staff/manager books for a member
   healthNotes: z.string().trim().max(1000, "Ghi chú sức khỏe không quá 1000 ký tự").nullable().optional(),
   saveToProfile: z.boolean().optional(),
+  goal: z.string().trim().max(500, "Mục tiêu không quá 500 ký tự").nullable().optional(),
 });
 
 // Chuyển chỗ đặt sang buổi khác (không sửa lịch — chỉ đổi Enrollment).
@@ -26,6 +27,7 @@ export const EnrollWholeCourseSchema = z.object({
   memberId: z.string().optional(), // required when staff/manager enrolls for a member
   healthNotes: z.string().trim().max(1000, "Ghi chú sức khỏe không quá 1000 ký tự").nullable().optional(),
   saveToProfile: z.boolean().optional(),
+  goal: z.string().trim().max(500, "Mục tiêu không quá 500 ký tự").nullable().optional(),
 });
 
 export const UpdateEnrollmentHealthNotesSchema = z.object({

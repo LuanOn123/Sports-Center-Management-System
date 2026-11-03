@@ -12,6 +12,42 @@ export interface EnrollmentQuery {
   limit?: number;
 }
 
+export interface SlotEvaluationItem {
+  memberId: string;
+  goalId?: string | null;
+  goal: string;
+  currentProgress: number;
+  evaluation?: {
+    id: string;
+    previousProgress: number;
+    newProgress: number;
+    description?: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+}
+
+export interface MyClassGoal {
+  id: string;
+  classId: string;
+  goal: string;
+  progress: number;
+  status: string;
+  evaluations: Array<{
+    id: string;
+    scheduleId: string;
+    startTime: string;
+    endTime: string;
+    roomName?: string;
+    coachName: string;
+    previousProgress: number;
+    newProgress: number;
+    diff: number;
+    description?: string | null;
+    createdAt: string;
+  }>;
+}
+
 export const enrollmentsApi = {
   async bookClass(
     scheduleId: string,
@@ -19,6 +55,7 @@ export const enrollmentsApi = {
       healthNotes?: string | null;
       saveToProfile?: boolean;
       memberId?: string;
+      goal?: string | null;
     },
   ): Promise<Enrollment> {
     return apiClient.post<Enrollment>("/enrollments", {
@@ -30,6 +67,7 @@ export const enrollmentsApi = {
       ...(options?.saveToProfile !== undefined
         ? { saveToProfile: options.saveToProfile }
         : {}),
+      ...(options?.goal !== undefined ? { goal: options.goal } : {}),
     });
   },
 
@@ -39,6 +77,7 @@ export const enrollmentsApi = {
     options?: {
       healthNotes?: string | null;
       saveToProfile?: boolean;
+      goal?: string | null;
     },
   ): Promise<WholeCourseEnrollmentResult> {
     return apiClient.post<WholeCourseEnrollmentResult>("/enrollments/bulk", {
@@ -50,6 +89,7 @@ export const enrollmentsApi = {
       ...(options?.saveToProfile !== undefined
         ? { saveToProfile: options.saveToProfile }
         : {}),
+      ...(options?.goal !== undefined ? { goal: options.goal } : {}),
     });
   },
 
@@ -101,5 +141,38 @@ export const enrollmentsApi = {
 
   async getMyQuota(): Promise<ConcurrentClassQuota> {
     return apiClient.get<ConcurrentClassQuota>("/enrollments/my/quota");
+  },
+
+  async getScheduleEvaluations(scheduleId: string): Promise<SlotEvaluationItem[]> {
+    const res = await apiClient.get<{ success: boolean; data: SlotEvaluationItem[] }>(
+      `/attendance/schedules/${scheduleId}/evaluations`
+    );
+    return res.data;
+  },
+
+  async saveScheduleEvaluation(
+    scheduleId: string,
+    data: { memberId: string; progress: number; description?: string | null }
+  ): Promise<{ evaluation: any; goal: any }> {
+    const res = await apiClient.post<{ success: boolean; data: { evaluation: any; goal: any } }>(
+      `/attendance/schedules/${scheduleId}/evaluations`,
+      data
+    );
+    return res.data;
+  },
+
+  async getMyClassGoal(classId: string): Promise<MyClassGoal> {
+    const res = await apiClient.get<{ success: boolean; data: MyClassGoal }>(
+      `/attendance/classes/${classId}/my-goal`
+    );
+    return res.data;
+  },
+
+  async updateMyClassGoal(classId: string, goal: string): Promise<{ id: string; goal: string }> {
+    const res = await apiClient.patch<{ success: boolean; data: { id: string; goal: string } }>(
+      `/attendance/classes/${classId}/my-goal`,
+      { goal }
+    );
+    return res.data;
   },
 };

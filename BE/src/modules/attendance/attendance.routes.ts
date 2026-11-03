@@ -14,6 +14,8 @@ import {
   PenaltyApplySchema,
   PenaltyAppealSchema,
   PenaltyRevokeSchema,
+  SaveEvaluationSchema,
+  UpdateClassGoalSchema,
 } from "./attendance.schema.js";
 
 const router = Router();
@@ -615,6 +617,33 @@ router.post(
   "/reports/:id/review",
   authorizeExact("MANAGER"),
   controller.reviewViolationReport
+);
+
+// ─── GOAL TARGET & PROGRESS EVALUATIONS ────────────────────────────────────
+
+router.get(
+  "/schedules/:scheduleId/evaluations",
+  controller.getScheduleEvaluations
+);
+
+router.post(
+  "/schedules/:scheduleId/evaluations",
+  authorize("COACH", "MANAGER", "ADMIN"),
+  validate(SaveEvaluationSchema),
+  controller.saveScheduleEvaluation
+);
+
+router.get(
+  "/classes/:classId/my-goal",
+  authorize("MEMBER"),
+  controller.getMyClassGoal
+);
+
+router.patch(
+  "/classes/:classId/my-goal",
+  authorize("MEMBER"),
+  validate(UpdateClassGoalSchema),
+  controller.updateMyClassGoal
 );
 
 export default router;

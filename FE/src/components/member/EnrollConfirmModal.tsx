@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Modal } from "../../shared/ui";
-import { HeartPulse } from "lucide-react";
+import { HeartPulse, Target } from "lucide-react";
 
 export interface ClassSummaryInfo {
   name: string;
@@ -18,27 +18,31 @@ export function EnrollConfirmModal({
   title = "Xác nhận đăng ký & Lưu ý thể trạng",
   classSummary,
   initialHealthNotes = "",
+  initialGoal = "",
   loading = false,
   confirmText = "Xác nhận đăng ký",
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (data: { healthNotes: string; saveToProfile: boolean }) => void;
+  onConfirm: (data: { healthNotes: string; saveToProfile: boolean; goal?: string }) => void;
   title?: string;
   classSummary: ClassSummaryInfo;
   initialHealthNotes?: string | null;
+  initialGoal?: string | null;
   loading?: boolean;
   confirmText?: string;
 }) {
   const [healthNotes, setHealthNotes] = useState(initialHealthNotes || "");
+  const [goal, setGoal] = useState(initialGoal || "");
   const [saveToProfile, setSaveToProfile] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setHealthNotes(initialHealthNotes || "");
+      setGoal(initialGoal || "");
       setSaveToProfile(false);
     }
-  }, [isOpen, initialHealthNotes]);
+  }, [isOpen, initialHealthNotes, initialGoal]);
 
   if (!isOpen) return null;
 
@@ -48,6 +52,7 @@ export function EnrollConfirmModal({
     onConfirm({
       healthNotes: healthNotes.trim(),
       saveToProfile,
+      goal: goal.trim() || undefined,
     });
   };
 
@@ -90,6 +95,76 @@ export function EnrollConfirmModal({
             {classSummary.time && <span>• {classSummary.time}</span>}
             {classSummary.coach && <span>• HLV: {classSummary.coach}</span>}
             {classSummary.room && <span>• Phòng: {classSummary.room}</span>}
+          </div>
+        </div>
+
+        {/* Goal section */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <label
+            htmlFor="enroll-course-goal"
+            style={{
+              fontWeight: 600,
+              fontSize: 14,
+              color: "var(--member-text, #1e293b)",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <Target size={16} color="#0284c7" />
+            Mục tiêu của bạn trong khóa học này (Tùy chọn)
+          </label>
+          <div style={{ position: "relative" }}>
+            <input
+              id="enroll-course-goal"
+              type="text"
+              value={goal}
+              onChange={(e) => setGoal(e.target.value.slice(0, 500))}
+              placeholder="Ví dụ: Bơi ếch liên tục 50m, giữ thăng bằng 30s, nâng tạ 50kg..."
+              maxLength={500}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 8,
+                border: "1px solid var(--member-border, #cbd5e1)",
+                fontSize: 13,
+                lineHeight: 1.5,
+                boxSizing: "border-box",
+                fontFamily: "inherit",
+              }}
+            />
+            <div style={{ fontSize: 12, color: "var(--member-muted, #64748b)", marginTop: 4 }}>
+              Không bắt buộc. Nếu để trống, hệ thống sẽ tự động đặt mục tiêu "Hoàn thành khóa học".
+            </div>
+          </div>
+          {/* Progress initial preview */}
+          <div
+            style={{
+              padding: "10px 14px",
+              borderRadius: 8,
+              background: "rgba(2, 132, 199, 0.08)",
+              border: "1px solid rgba(2, 132, 199, 0.25)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontSize: 13,
+            }}
+          >
+            <span style={{ fontWeight: 500, color: "#0369a1" }}>
+              🎯 Tiến độ mục tiêu ban đầu:
+            </span>
+            <span
+              style={{
+                fontWeight: 700,
+                color: "#ef4444",
+                background: "#fee2e2",
+                padding: "2px 8px",
+                borderRadius: 6,
+                fontSize: 12,
+              }}
+            >
+              0% (Bắt đầu)
+            </span>
           </div>
         </div>
 
