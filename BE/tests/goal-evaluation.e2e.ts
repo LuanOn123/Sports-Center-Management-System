@@ -332,19 +332,19 @@ async function runTests() {
     check("Buổi 1: diff = +35%, có lời dặn", myGoalData?.evaluations[0]?.diff === 35 && myGoalData?.evaluations[0]?.description.includes("15m"));
     check("Buổi 2: diff = +40%, có lời dặn", myGoalData?.evaluations[1]?.diff === 40 && myGoalData?.evaluations[1]?.description.includes("35m"));
 
-    // TEST CASE 7: Member 1 chỉnh sửa mục tiêu của mình
-    console.log("\n--- TEST CASE 7: Member 1 chỉnh sửa mục tiêu khóa học ---");
+    // TEST CASE 7: Member không được phép sửa đổi mục tiêu sau khi đã đăng ký khóa học
+    console.log("\n--- TEST CASE 7: Member bị chặn sửa mục tiêu sau khi đã đăng ký (Bảo vệ tính toàn vẹn) ---");
     const updateGoalRes = await http("PATCH", `/attendance/classes/${cls.id}/my-goal`, {
       token: member1.token,
       body: { goal: "Bơi 100m không nghỉ và hoàn thiện bơi sải" },
     });
-    check("Sửa mục tiêu thành công (HTTP 200)", updateGoalRes.status === 200, updateGoalRes.body);
+    check("Hệ thống chặn sửa mục tiêu (HTTP 400)", updateGoalRes.status === 400, updateGoalRes.body);
 
-    const goalDbUpdated = await prisma.memberCourseGoal.findUnique({
+    const goalDbUnchanged = await prisma.memberCourseGoal.findUnique({
       where: { memberId_classId: { memberId: member1.memberProfileId, classId: cls.id } },
     });
-    check("Mục tiêu trong DB đã được cập nhật nội dung mới", goalDbUpdated?.goal === "Bơi 100m không nghỉ và hoàn thiện bơi sải");
-    check("Tiến độ vẫn được giữ nguyên (75%) sau khi sửa mục tiêu", goalDbUpdated?.progress === 75);
+    check("Mục tiêu gốc được giữ nguyên an toàn", goalDbUnchanged?.goal === "Bơi ếch 50m liên tục không nghỉ");
+    check("Tiến độ vẫn được giữ nguyên (75%)", goalDbUnchanged?.progress === 75);
 
   } finally {
     // Dọn dẹp fixture

@@ -4413,7 +4413,7 @@
       "FE/src/features/reception/members/MembersPage.tsx",
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:51",
+    "backend": "BE/src/modules/auth/auth.routes.ts:53",
     "handler": "authController.register",
     "status": "MATCH",
     "request": {
@@ -4454,6 +4454,10 @@
           "type": "string",
           "format": "date",
           "description": "Must be in the past"
+        },
+        "fitnessGoal": {
+          "type": "string",
+          "description": "Mục tiêu tập luyện của hội viên"
         }
       }
     },
@@ -4475,7 +4479,7 @@
       "FE/src/api/auth.api.ts",
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:78",
+    "backend": "BE/src/modules/auth/auth.routes.ts:80",
     "handler": "authController.login",
     "status": "MATCH",
     "request": {
@@ -4520,7 +4524,7 @@
       "FE/src/api/auth.api.ts",
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:102",
+    "backend": "BE/src/modules/auth/auth.routes.ts:157",
     "handler": "authController.logout",
     "status": "MATCH",
     "request": {
@@ -4552,7 +4556,7 @@
     "consumers": [
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:126",
+    "backend": "BE/src/modules/auth/auth.routes.ts:181",
     "handler": "authController.refreshToken",
     "status": "MATCH",
     "request": {
@@ -4584,7 +4588,7 @@
       "FE/src/api/auth.api.ts",
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:140",
+    "backend": "BE/src/modules/auth/auth.routes.ts:195",
     "handler": "authController.getMe",
     "status": "MATCH",
     "request": null,
@@ -4607,7 +4611,7 @@
       "FE/src/features/coach/CoachProfile.tsx",
       "FE/src/shared/Profile.tsx"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:169",
+    "backend": "BE/src/modules/auth/auth.routes.ts:224",
     "handler": "authController.updateMe",
     "status": "MATCH",
     "request": {
@@ -4669,7 +4673,7 @@
     "consumers": [
       "FE/src/shared/Avatar.tsx"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:204",
+    "backend": "BE/src/modules/auth/auth.routes.ts:259",
     "handler": "authController.uploadAvatar",
     "status": "MATCH",
     "request": null,
@@ -4694,7 +4698,7 @@
       "FE/src/shared/api.ts",
       "FE/src/shared/Profile.tsx"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:229",
+    "backend": "BE/src/modules/auth/auth.routes.ts:284",
     "handler": "authController.changePassword",
     "status": "MATCH",
     "request": {
@@ -4731,7 +4735,7 @@
     "consumers": [
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:262",
+    "backend": "BE/src/modules/auth/auth.routes.ts:317",
     "handler": "authController.forgotPassword",
     "status": "MATCH",
     "request": {
@@ -4763,7 +4767,7 @@
     "consumers": [
       "FE/src/shared/api.ts"
     ],
-    "backend": "BE/src/modules/auth/auth.routes.ts:290",
+    "backend": "BE/src/modules/auth/auth.routes.ts:345",
     "handler": "authController.resetPassword",
     "status": "MATCH",
     "request": {
@@ -4806,7 +4810,7 @@
     "consumers": [
       "FE/src/shared/Attendance.tsx"
     ],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:54",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:56",
     "handler": "controller.getAttendances",
     "status": "MATCH",
     "request": null,
@@ -4836,7 +4840,7 @@
     "consumers": [
       "FE/src/shared/Attendance.tsx"
     ],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:86",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:88",
     "handler": "controller.createAttendance",
     "status": "MATCH",
     "request": {
@@ -4886,7 +4890,7 @@
     "consumers": [
       "FE/src/shared/Attendance.tsx"
     ],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:115",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:117",
     "handler": "controller.updateAttendance",
     "status": "MATCH",
     "request": {
@@ -4925,7 +4929,7 @@
     "consumers": [
       "FE/src/shared/QrAttendance.tsx"
     ],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:166",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:168",
     "handler": "controller.generateQr",
     "status": "MATCH",
     "request": {
@@ -4960,7 +4964,7 @@
     "consumers": [
       "FE/src/shared/QrAttendance.tsx"
     ],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:254",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:256",
     "handler": "controller.scanQr",
     "status": "MATCH",
     "request": {
@@ -4999,7 +5003,7 @@
     "consumers": [
       "FE/src/pages/member/AttendancePage.tsx"
     ],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:302",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:304",
     "handler": "controller.getMyAttendance",
     "status": "MATCH",
     "request": null,
@@ -5058,7 +5062,7 @@
     "consumers": [
       "FE/src/pages/member/AttendancePage.tsx"
     ],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:363",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:365",
     "handler": "controller.getMyAttendanceSummary",
     "status": "MATCH",
     "request": null,
@@ -5080,7 +5084,7 @@
     "consumers": [
       "FE/src/features/manage/AttendancePenalties.tsx"
     ],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:391",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:393",
     "handler": "controller.scanWarnings",
     "status": "MATCH",
     "request": {
@@ -5110,7 +5114,7 @@
     "consumers": [
       "FE/src/features/manage/AttendancePenalties.tsx"
     ],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:423",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:425",
     "handler": "controller.listPenalties",
     "status": "MATCH",
     "request": null,
@@ -5175,7 +5179,7 @@
     "consumers": [
       "FE/src/features/manage/AttendancePenalties.tsx"
     ],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:464",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:466",
     "handler": "controller.previewPenalties",
     "status": "MATCH",
     "request": null,
@@ -5196,7 +5200,7 @@
     "consumers": [
       "FE/src/features/manage/AttendancePenalties.tsx"
     ],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:502",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:504",
     "handler": "controller.applyPenalty",
     "status": "MATCH",
     "request": {
@@ -5240,7 +5244,7 @@
     "consumers": [
       "FE/src/pages/member/AttendancePage.tsx"
     ],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:541",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:543",
     "handler": "controller.appealPenalty",
     "status": "MATCH",
     "request": {
@@ -5276,7 +5280,7 @@
     "consumers": [
       "FE/src/features/manage/AttendancePenalties.tsx"
     ],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:582",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:584",
     "handler": "controller.revokePenalty",
     "status": "MATCH",
     "request": {
@@ -5363,7 +5367,7 @@
     "path": "/attendance/monitoring",
     "roles": "RECEPTIONIST, MANAGER",
     "consumers": [],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:590",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:592",
     "handler": "controller.getReceptionMonitoring",
     "status": "MATCH",
     "request": null,
@@ -5433,7 +5437,7 @@
     "path": "/attendance/monitoring/detail",
     "roles": "RECEPTIONIST, MANAGER",
     "consumers": [],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:596",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:598",
     "handler": "controller.getReceptionDetail",
     "status": "MATCH",
     "request": null,
@@ -5469,7 +5473,7 @@
     "path": "/attendance/warnings/send",
     "roles": "RECEPTIONIST, MANAGER",
     "consumers": [],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:602",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:604",
     "handler": "controller.sendReceptionWarning",
     "status": "MATCH",
     "request": {
@@ -5502,7 +5506,7 @@
     "path": "/attendance/reports",
     "roles": "RECEPTIONIST",
     "consumers": [],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:608",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:610",
     "handler": "controller.submitViolationReport",
     "status": "MATCH",
     "request": {
@@ -5543,7 +5547,7 @@
     "consumers": [
       "FE/src/features/operations/AttendanceReportReview.tsx"
     ],
-    "backend": "BE/src/modules/attendance/attendance.routes.ts:614",
+    "backend": "BE/src/modules/attendance/attendance.routes.ts:616",
     "handler": "controller.reviewViolationReport",
     "status": "MATCH",
     "request": {
@@ -7810,6 +7814,90 @@
       "200",
       "403",
       "409"
+    ]
+  },
+  {
+    "key": "POST /auth/google-login",
+    "feature": "auth",
+    "method": "POST",
+    "path": "/auth/google-login",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/api/auth.api.ts",
+      "FE/src/shared/api.ts"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:104",
+    "handler": "authController.googleLogin",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "credential"
+      ],
+      "properties": {
+        "credential": {
+          "type": "string",
+          "description": "Google OAuth ID Token"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "200",
+      "400",
+      "404",
+      "500"
+    ]
+  },
+  {
+    "key": "POST /auth/google-register",
+    "feature": "auth",
+    "method": "POST",
+    "path": "/auth/google-register",
+    "roles": "Public",
+    "consumers": [
+      "FE/src/api/auth.api.ts",
+      "FE/src/shared/api.ts"
+    ],
+    "backend": "BE/src/modules/auth/auth.routes.ts:132",
+    "handler": "authController.googleRegister",
+    "status": "MATCH",
+    "request": {
+      "type": "object",
+      "required": [
+        "credential"
+      ],
+      "properties": {
+        "credential": {
+          "type": "string",
+          "description": "Google OAuth ID Token"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "MALE",
+            "FEMALE",
+            "OTHER"
+          ]
+        },
+        "dateOfBirth": {
+          "type": "string",
+          "format": "date"
+        },
+        "fitnessGoal": {
+          "type": "string"
+        }
+      }
+    },
+    "query": [],
+    "responseStatuses": [
+      "201",
+      "400",
+      "409",
+      "500"
     ]
   }
 ]

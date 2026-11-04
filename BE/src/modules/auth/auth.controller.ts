@@ -22,6 +22,25 @@ export async function login(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+export async function googleLogin(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { credential } = req.body;
+    const result = await authService.loginWithGoogle(credential);
+    sendSuccess(res, result, "Google login successful");
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function googleRegister(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await authService.registerWithGoogle(req.body);
+    sendCreated(res, result, "Google registration successful");
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function logout(req: Request, res: Response, next: NextFunction) {
   try {
     const { refreshToken } = req.body;
@@ -70,7 +89,6 @@ export async function uploadAvatar(req: Request, res: Response, next: NextFuncti
       sendError(res, "Avatar file is required (multipart field name: avatar)", 400);
       return;
     }
-    // Lưu ảnh theo driver đang cấu hình (local disk hoặc Cloudinary) rồi mới ghi URL vào DB.
     const avatarUrl = await storeAvatarImage(req.file, {
       ownerId: req.user!.id,
       publicBaseUrl: `${req.protocol}://${req.get("host")}`,
@@ -95,7 +113,6 @@ export async function changePassword(req: Request, res: Response, next: NextFunc
 export async function forgotPassword(req: Request, res: Response, next: NextFunction) {
   try {
     await authService.forgotPassword(req.body);
-    // Luôn trả thông điệp chung để chống user enumeration (không để lộ email có tồn tại hay không).
     sendSuccess(
       res,
       null,

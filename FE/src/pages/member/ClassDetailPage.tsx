@@ -13,9 +13,6 @@ import {
   Target,
   TrendingUp,
   MessageSquareQuote,
-  Edit3,
-  Check,
-  X,
 } from "lucide-react";
 import { getProgressTheme } from "../../shared/Attendance";
 import { classesApi } from "../../api/classes.api";
@@ -733,19 +730,6 @@ export function ClassDetailPage() {
     enabled: Boolean(id && currentUser?.role === "MEMBER"),
   });
 
-  const [editingGoal, setEditingGoal] = useState(false);
-  const [goalText, setGoalText] = useState("");
-
-  const updateGoalMutation = useMutation({
-    mutationFn: (newGoal: string) => enrollmentsApi.updateMyClassGoal(id!, newGoal),
-    onSuccess: (updated) => {
-      setEditingGoal(false);
-      queryClient.setQueryData(["my-class-goal", id], (old: any) =>
-        old ? { ...old, goal: updated.goal } : old
-      );
-    },
-  });
-
   const enrollCourseMutation = useMutation({
     mutationFn: (variables?: {
       healthNotes?: string;
@@ -1150,57 +1134,29 @@ export function ClassDetailPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 240 }}>
                 <strong style={{ fontSize: 13, color: "var(--member-muted, #64748b)", display: "block", marginBottom: 4 }}>
-                  MỤC TIÊU ĐÃ ĐẶT:
+                  MỤC TIÊU KHÓA HỌC:
                 </strong>
-                {editingGoal ? (
-                  <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-                    <input
-                      type="text"
-                      maxLength={500}
-                      value={goalText}
-                      onChange={(e) => setGoalText(e.target.value)}
-                      style={{
-                        flex: 1,
-                        minWidth: 200,
-                        padding: "8px 12px",
-                        borderRadius: 8,
-                        border: "1px solid #0284c7",
-                        fontSize: 14,
-                      }}
-                      placeholder="Nhập mục tiêu mới..."
-                    />
-                    <button
-                      className="button small primary"
-                      disabled={updateGoalMutation.isPending || !goalText.trim()}
-                      onClick={() => updateGoalMutation.mutate(goalText.trim())}
-                    >
-                      <Check size={14} /> Lưu
-                    </button>
-                    <button
-                      className="button small"
-                      onClick={() => setEditingGoal(false)}
-                    >
-                      <X size={14} /> Hủy
-                    </button>
-                  </div>
-                ) : (
-                  <span style={{ fontSize: 15, fontWeight: 700, color: "var(--member-text, #1e293b)" }}>
-                    {classGoalQuery.data.goal}
-                  </span>
-                )}
+                <span style={{ fontSize: 15, fontWeight: 700, color: "var(--member-text, #1e293b)" }}>
+                  {classGoalQuery.data.goal}
+                </span>
               </div>
-              {!editingGoal && (
-                <button
-                  className="button small"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12 }}
-                  onClick={() => {
-                    setGoalText(classGoalQuery.data?.goal || "");
-                    setEditingGoal(true);
-                  }}
-                >
-                  <Edit3 size={13} /> Sửa mục tiêu
-                </button>
-              )}
+              <span
+                style={{
+                  fontSize: 12,
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                  backgroundColor: "rgba(2, 132, 199, 0.08)",
+                  color: "#0284c7",
+                  border: "1px solid rgba(2, 132, 199, 0.2)",
+                  fontWeight: 500,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+                title="Mục tiêu được cố định theo khóa học để Huấn luyện viên theo dõi và đánh giá xuyên suốt"
+              >
+                🔒 Mục tiêu cố định theo khóa
+              </span>
             </div>
 
             {/* Thanh tiến độ trực quan */}

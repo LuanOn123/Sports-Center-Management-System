@@ -264,7 +264,26 @@ export async function getMyClassGoal(classId: string, userId: string) {
   });
   if (!member) throw new AppError("Member profile not found", 404);
 
-  const courseGoal = await ensureMemberCourseGoal(member.id, classId);
+  let courseGoal = await prisma.memberCourseGoal.findUnique({
+    where: { memberId_classId: { memberId: member.id, classId } },
+  });
+
+  if (!courseGoal) {
+    // Chỉ tự tạo nếu học viên thực sự đã đăng ký lớp này (hỗ trợ dữ liệu cũ)
+    const hasEnrollment = await prisma.enrollment.findFirst({
+      where: {
+        memberId: member.id,
+        status: { in: ["BOOKED", "COMPLETED"] },
+        OR: [{ classId }, { schedule: { classId } }],
+      },
+    });
+
+    if (!hasEnrollment) {
+      return null;
+    }
+
+    courseGoal = await ensureMemberCourseGoal(member.id, classId);
+  }
 
   const evaluations = await prisma.slotEvaluation.findMany({
     where: {
@@ -312,21 +331,12 @@ export async function getMyClassGoal(classId: string, userId: string) {
 }
 
 /**
- * Member chỉnh sửa mục tiêu của khóa học.
+ * Member không thể tự ý sửa mục tiêu sau khi đã đăng ký khóa học
+ * nhằm đảm bảo tính toàn vẹn của lộ trình giảng dạy và đánh giá của HLV.
  */
-export async function updateMyClassGoal(classId: string, userId: string, newGoal: string) {
-  const member = await prisma.memberProfile.findUnique({
-    where: { userId },
-  });
-  if (!member) throw new AppError("Member profile not found", 404);
-
-  const cleanGoal = newGoal.trim();
-  if (!cleanGoal) throw new AppError("Mục tiêu không được để trống", 400);
-
-  const courseGoal = await ensureMemberCourseGoal(member.id, classId, cleanGoal);
-
-  return prisma.memberCourseGoal.update({
-    where: { id: courseGoal.id },
-    data: { goal: cleanGoal },
-  });
+export async function updateMyClassGoal(_classId: string, _userId: string, _newGoal: string) {
+  throw new AppError(
+    "Mục tiêu khóa học đã được cố định sau khi đăng ký để Huấn luyện viên theo dõi đánh giá và không thể thay đổi.",
+    400
+  );
 }

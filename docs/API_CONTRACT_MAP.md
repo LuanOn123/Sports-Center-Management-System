@@ -106,35 +106,35 @@ Generated from live checkout route AST and FE operations. MATCH means method/pat
 | chat | Authenticated (service checks ownership) | UNUSED_API (no direct consumer found) | /chat/attachments/{id} | GET | BE/src/modules/chat/chat.routes.ts:125 | MATCH |
 | chat | Authenticated (service checks ownership) | shared/Communication.tsx | /chat/messages/read | PATCH | BE/src/modules/chat/chat.routes.ts:150 | MATCH |
 | chat | Authenticated (service checks ownership) | features/reception/dashboard/ReceptionAnalytics.tsx<br>shared/Communication.tsx | /chat/messages/unread-count | GET | BE/src/modules/chat/chat.routes.ts:165 | MATCH |
-| auth | Public | api/auth.api.ts<br>features/auth/Register.tsx<br>features/manage/ResourcePage.tsx<br>features/reception/members/MembersPage.tsx<br>shared/api.ts | /auth/register | POST | BE/src/modules/auth/auth.routes.ts:51 | MATCH |
-| auth | Public | api/auth.api.ts<br>shared/api.ts | /auth/login | POST | BE/src/modules/auth/auth.routes.ts:78 | MATCH |
-| auth | Authenticated (service checks ownership) | api/auth.api.ts<br>shared/api.ts | /auth/logout | POST | BE/src/modules/auth/auth.routes.ts:102 | MATCH |
-| auth | Public | shared/api.ts | /auth/refresh-token | POST | BE/src/modules/auth/auth.routes.ts:126 | MATCH |
-| auth | Authenticated (service checks ownership) | api/auth.api.ts<br>shared/api.ts | /auth/me | GET | BE/src/modules/auth/auth.routes.ts:140 | MATCH |
-| auth | Authenticated (service checks ownership) | api/auth.api.ts<br>features/coach/CoachProfile.tsx<br>shared/Profile.tsx | /auth/me | PATCH | BE/src/modules/auth/auth.routes.ts:169 | MATCH |
-| auth | Authenticated (service checks ownership) | shared/Avatar.tsx | /auth/me/avatar | POST | BE/src/modules/auth/auth.routes.ts:204 | MATCH |
-| auth | Authenticated (service checks ownership) | api/auth.api.ts<br>features/coach/CoachProfile.tsx<br>shared/api.ts<br>shared/Profile.tsx | /auth/me/change-password | PATCH | BE/src/modules/auth/auth.routes.ts:229 | MATCH |
-| auth | Public | shared/api.ts | /auth/forgot-password | POST | BE/src/modules/auth/auth.routes.ts:262 | MATCH |
-| auth | Public | shared/api.ts | /auth/reset-password | POST | BE/src/modules/auth/auth.routes.ts:290 | MATCH |
-| attendance | MEMBER, COACH, MANAGER, RECEPTIONIST, ADMIN | shared/Attendance.tsx | /attendance | GET | BE/src/modules/attendance/attendance.routes.ts:54 | MATCH |
-| attendance | COACH, MANAGER, ADMIN | shared/Attendance.tsx | /attendance | POST | BE/src/modules/attendance/attendance.routes.ts:86 | MATCH |
-| attendance | ADMIN, MANAGER | shared/Attendance.tsx | /attendance/{id} | PATCH | BE/src/modules/attendance/attendance.routes.ts:115 | MATCH |
-| attendance | COACH, MANAGER, ADMIN | shared/QrAttendance.tsx | /attendance/generate-qr | POST | BE/src/modules/attendance/attendance.routes.ts:166 | MATCH |
-| attendance | MEMBER | shared/QrAttendance.tsx | /attendance/scan-qr | POST | BE/src/modules/attendance/attendance.routes.ts:254 | MATCH |
-| attendance | MEMBER | pages/member/AttendancePage.tsx | /attendance/my | GET | BE/src/modules/attendance/attendance.routes.ts:302 | MATCH |
-| attendance | MEMBER | pages/member/AttendancePage.tsx | /attendance/my/summary | GET | BE/src/modules/attendance/attendance.routes.ts:363 | MATCH |
-| attendance | MANAGER, ADMIN | features/manage/AttendancePenalties.tsx | /attendance/warnings/scan | POST | BE/src/modules/attendance/attendance.routes.ts:391 | MATCH |
-| attendance | MANAGER, ADMIN | features/manage/AttendancePenalties.tsx | /attendance/penalties | GET | BE/src/modules/attendance/attendance.routes.ts:423 | MATCH |
-| attendance | MANAGER, ADMIN | features/manage/AttendancePenalties.tsx | /attendance/penalties/preview | POST | BE/src/modules/attendance/attendance.routes.ts:464 | MATCH |
-| attendance | MANAGER, ADMIN | features/manage/AttendancePenalties.tsx | /attendance/penalties/apply | POST | BE/src/modules/attendance/attendance.routes.ts:502 | MATCH |
-| attendance | MEMBER | pages/member/AttendancePage.tsx | /attendance/penalties/{id}/appeal | POST | BE/src/modules/attendance/attendance.routes.ts:541 | MATCH |
-| attendance | MANAGER, ADMIN | features/manage/AttendancePenalties.tsx | /attendance/penalties/{id}/revoke | POST | BE/src/modules/attendance/attendance.routes.ts:582 | MATCH |
+| auth | Public | api/auth.api.ts<br>features/auth/Register.tsx<br>features/manage/ResourcePage.tsx<br>features/reception/members/MembersPage.tsx<br>shared/api.ts | /auth/register | POST | BE/src/modules/auth/auth.routes.ts:53 | MATCH |
+| auth | Public | api/auth.api.ts<br>shared/api.ts | /auth/login | POST | BE/src/modules/auth/auth.routes.ts:80 | MATCH |
+| auth | Authenticated (service checks ownership) | api/auth.api.ts<br>shared/api.ts | /auth/logout | POST | BE/src/modules/auth/auth.routes.ts:157 | MATCH |
+| auth | Public | shared/api.ts | /auth/refresh-token | POST | BE/src/modules/auth/auth.routes.ts:181 | MATCH |
+| auth | Authenticated (service checks ownership) | api/auth.api.ts<br>shared/api.ts | /auth/me | GET | BE/src/modules/auth/auth.routes.ts:195 | MATCH |
+| auth | Authenticated (service checks ownership) | api/auth.api.ts<br>features/coach/CoachProfile.tsx<br>shared/Profile.tsx | /auth/me | PATCH | BE/src/modules/auth/auth.routes.ts:224 | MATCH |
+| auth | Authenticated (service checks ownership) | shared/Avatar.tsx | /auth/me/avatar | POST | BE/src/modules/auth/auth.routes.ts:259 | MATCH |
+| auth | Authenticated (service checks ownership) | api/auth.api.ts<br>features/coach/CoachProfile.tsx<br>shared/api.ts<br>shared/Profile.tsx | /auth/me/change-password | PATCH | BE/src/modules/auth/auth.routes.ts:284 | MATCH |
+| auth | Public | shared/api.ts | /auth/forgot-password | POST | BE/src/modules/auth/auth.routes.ts:317 | MATCH |
+| auth | Public | shared/api.ts | /auth/reset-password | POST | BE/src/modules/auth/auth.routes.ts:345 | MATCH |
+| attendance | MEMBER, COACH, MANAGER, RECEPTIONIST, ADMIN | shared/Attendance.tsx | /attendance | GET | BE/src/modules/attendance/attendance.routes.ts:56 | MATCH |
+| attendance | COACH, MANAGER, ADMIN | shared/Attendance.tsx | /attendance | POST | BE/src/modules/attendance/attendance.routes.ts:88 | MATCH |
+| attendance | ADMIN, MANAGER | shared/Attendance.tsx | /attendance/{id} | PATCH | BE/src/modules/attendance/attendance.routes.ts:117 | MATCH |
+| attendance | COACH, MANAGER, ADMIN | shared/QrAttendance.tsx | /attendance/generate-qr | POST | BE/src/modules/attendance/attendance.routes.ts:168 | MATCH |
+| attendance | MEMBER | shared/QrAttendance.tsx | /attendance/scan-qr | POST | BE/src/modules/attendance/attendance.routes.ts:256 | MATCH |
+| attendance | MEMBER | pages/member/AttendancePage.tsx | /attendance/my | GET | BE/src/modules/attendance/attendance.routes.ts:304 | MATCH |
+| attendance | MEMBER | pages/member/AttendancePage.tsx | /attendance/my/summary | GET | BE/src/modules/attendance/attendance.routes.ts:365 | MATCH |
+| attendance | MANAGER, ADMIN | features/manage/AttendancePenalties.tsx | /attendance/warnings/scan | POST | BE/src/modules/attendance/attendance.routes.ts:393 | MATCH |
+| attendance | MANAGER, ADMIN | features/manage/AttendancePenalties.tsx | /attendance/penalties | GET | BE/src/modules/attendance/attendance.routes.ts:425 | MATCH |
+| attendance | MANAGER, ADMIN | features/manage/AttendancePenalties.tsx | /attendance/penalties/preview | POST | BE/src/modules/attendance/attendance.routes.ts:466 | MATCH |
+| attendance | MANAGER, ADMIN | features/manage/AttendancePenalties.tsx | /attendance/penalties/apply | POST | BE/src/modules/attendance/attendance.routes.ts:504 | MATCH |
+| attendance | MEMBER | pages/member/AttendancePage.tsx | /attendance/penalties/{id}/appeal | POST | BE/src/modules/attendance/attendance.routes.ts:543 | MATCH |
+| attendance | MANAGER, ADMIN | features/manage/AttendancePenalties.tsx | /attendance/penalties/{id}/revoke | POST | BE/src/modules/attendance/attendance.routes.ts:584 | MATCH |
 | ai | Authenticated (service checks ownership) | features/ai/api.ts<br>shared/api.ts | /ai/chat | POST | BE/src/modules/ai/ai.routes.ts:54 | MATCH |
-| attendance | RECEPTIONIST, MANAGER | UNUSED_API (no direct consumer found) | /attendance/monitoring | GET | BE/src/modules/attendance/attendance.routes.ts:590 | MATCH |
-| attendance | RECEPTIONIST, MANAGER | UNUSED_API (no direct consumer found) | /attendance/monitoring/detail | GET | BE/src/modules/attendance/attendance.routes.ts:596 | MATCH |
-| attendance | RECEPTIONIST, MANAGER | UNUSED_API (no direct consumer found) | /attendance/warnings/send | POST | BE/src/modules/attendance/attendance.routes.ts:602 | MATCH |
-| attendance | RECEPTIONIST | UNUSED_API (no direct consumer found) | /attendance/reports | POST | BE/src/modules/attendance/attendance.routes.ts:608 | MATCH |
-| attendance | MANAGER | features/operations/AttendanceReportReview.tsx | /attendance/reports/{id}/review | POST | BE/src/modules/attendance/attendance.routes.ts:614 | MATCH |
+| attendance | RECEPTIONIST, MANAGER | UNUSED_API (no direct consumer found) | /attendance/monitoring | GET | BE/src/modules/attendance/attendance.routes.ts:592 | MATCH |
+| attendance | RECEPTIONIST, MANAGER | UNUSED_API (no direct consumer found) | /attendance/monitoring/detail | GET | BE/src/modules/attendance/attendance.routes.ts:598 | MATCH |
+| attendance | RECEPTIONIST, MANAGER | UNUSED_API (no direct consumer found) | /attendance/warnings/send | POST | BE/src/modules/attendance/attendance.routes.ts:604 | MATCH |
+| attendance | RECEPTIONIST | UNUSED_API (no direct consumer found) | /attendance/reports | POST | BE/src/modules/attendance/attendance.routes.ts:610 | MATCH |
+| attendance | MANAGER | features/operations/AttendanceReportReview.tsx | /attendance/reports/{id}/review | POST | BE/src/modules/attendance/attendance.routes.ts:616 | MATCH |
 | classes | MANAGER, RECEPTIONIST, ADMIN | features/manage/UserCourseDetails.tsx<br>api/classes.api.ts | /classes/{id}/registrations | GET | BE/src/modules/classes/classes.routes.ts:17 | MATCH |
 | reports | MANAGER, ADMIN | features/manage/AdminDashboard.tsx | /reports/facilities | GET | BE/src/modules/reports/reports.routes.ts:20 | MATCH |
 | facilities | ADMIN | features/manage/AdminFacilities.tsx<br>features/operations/OperationsPage.tsx | /facilities/{facilityId}/manager | PUT | BE/src/modules/facilities/facilities.route.ts:10 | MATCH |
@@ -193,7 +193,9 @@ Generated from live checkout route AST and FE operations. MATCH means method/pat
 | class-schedules | MANAGER | features/manage/ScheduleForm.tsx<br>api/classes.api.ts | /class-schedules/batch | POST | BE/src/modules/class-schedules/class-schedules.routes.ts:49 | MATCH |
 | payments | ADMIN, RECEPTIONIST | features/reception/payments/PaymentsPage.tsx | /payments/{id}/refund/confirm | POST | BE/src/modules/payments/payments.routes.ts:175 | MATCH |
 | payments | ADMIN | features/reception/payments/PaymentsPage.tsx | /payments/{id}/refund/request | POST | BE/src/modules/payments/payments.routes.ts:204 | MATCH |
+| auth | Public | api/auth.api.ts<br>shared/api.ts | /auth/google-login | POST | BE/src/modules/auth/auth.routes.ts:104 | MATCH |
+| auth | Public | api/auth.api.ts<br>shared/api.ts | /auth/google-register | POST | BE/src/modules/auth/auth.routes.ts:132 | MATCH |
 
-Backend operations absent from FE catalog: none.
+Backend operations absent from FE catalog: GET /attendance/schedules/{scheduleId}/evaluations, POST /attendance/schedules/{scheduleId}/evaluations, GET /attendance/classes/{classId}/my-goal, PATCH /attendance/classes/{classId}/my-goal.
 
 Request/response examples may be incomplete in Swagger. Handwritten workflow overrides retain stricter verified body constraints and extra parameters. Successful integration tests and their coverage are recorded separately in INTEGRATION_AUDIT_2026-10-06.md.

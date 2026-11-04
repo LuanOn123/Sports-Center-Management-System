@@ -161,8 +161,8 @@ export const enrollmentsApi = {
     return res.data;
   },
 
-  async getMyClassGoal(classId: string): Promise<MyClassGoal> {
-    const res = await apiClient.get<{ success: boolean; data: MyClassGoal }>(
+  async getMyClassGoal(classId: string): Promise<MyClassGoal | null> {
+    const res = await apiClient.get<{ success: boolean; data: MyClassGoal | null }>(
       `/attendance/classes/${classId}/my-goal`
     );
     return res.data;

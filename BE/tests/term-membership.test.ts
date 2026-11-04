@@ -139,6 +139,11 @@ function fixture() {
         user: { id: "user-1", role: "MEMBER", isActive: true },
       }),
     },
+    memberCourseGoal: {
+      findUnique: async () => null,
+      create: async ({ data }: any) => ({ id: 'goal-1', ...data }),
+      update: async ({ data }: any) => ({ id: 'goal-1', ...data }),
+    },
     classSchedule: {
       findMany: async ({ select }: any) =>
         select?.term

@@ -5,6 +5,8 @@ import { validate } from "../../middlewares/validate.js";
 import { avatarUpload } from "../../middlewares/upload.js";
 import {
   RegisterSchema,
+  GoogleLoginSchema,
+  GoogleRegisterSchema,
   LoginSchema,
   RefreshTokenSchema,
   UpdateProfileSchema,
@@ -76,6 +78,59 @@ router.post("/register", validate(RegisterSchema), authController.register);
  *       500: { $ref: "#/components/responses/ServerError" }
  */
 router.post("/login", validate(LoginSchema), authController.login);
+
+/**
+ * @swagger
+ * /auth/google-login:
+ *   post:
+ *     summary: Login with Google OAuth ID token
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [credential]
+ *             properties:
+ *               credential: { type: string, description: "Google OAuth ID Token" }
+ *     responses:
+ *       200: { $ref: "#/components/responses/LoginOk" }
+ *       400: { $ref: "#/components/responses/BadRequest" }
+ *       404: { description: "Tài khoản Google này chưa được đăng ký trong hệ thống." }
+ *       500: { $ref: "#/components/responses/ServerError" }
+ */
+router.post("/google-login", validate(GoogleLoginSchema), authController.googleLogin);
+
+/**
+ * @swagger
+ * /auth/google-register:
+ *   post:
+ *     summary: Register a new member account with Google OAuth ID token
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [credential]
+ *             properties:
+ *               credential: { type: string, description: "Google OAuth ID Token" }
+ *               phone: { type: string, pattern: "^[0-9+]{9,15}$" }
+ *               gender: { type: string, enum: [MALE, FEMALE, OTHER] }
+ *               dateOfBirth: { type: string, format: date }
+ *               fitnessGoal: { type: string, maxLength: 500 }
+ *     responses:
+ *       201: { $ref: "#/components/responses/LoginOk" }
+ *       400: { $ref: "#/components/responses/BadRequest" }
+ *       409: { $ref: "#/components/responses/Conflict" }
+ *       500: { $ref: "#/components/responses/ServerError" }
+ */
+router.post("/google-register", validate(GoogleRegisterSchema), authController.googleRegister);
+
 
 /**
  * @swagger
