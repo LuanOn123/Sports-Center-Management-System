@@ -10,7 +10,14 @@ import {
   CalendarDays,
   Table as TableIcon,
   LayoutGrid,
+  Target,
+  TrendingUp,
+  MessageSquareQuote,
+  Edit3,
+  Check,
+  X,
 } from "lucide-react";
+import { getProgressTheme } from "../../shared/Attendance";
 import { classesApi } from "../../api/classes.api";
 import { enrollmentsApi } from "../../api/enrollments.api";
 import { authApi } from "../../api/auth.api";
@@ -720,14 +727,35 @@ export function ClassDetailPage() {
     queryFn: () => enrollmentsApi.getMyEnrollments(),
   });
 
+  const classGoalQuery = useQuery({
+    queryKey: ["my-class-goal", id],
+    queryFn: () => (id ? enrollmentsApi.getMyClassGoal(id) : null),
+    enabled: Boolean(id && currentUser?.role === "MEMBER"),
+  });
+
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalText, setGoalText] = useState("");
+
+  const updateGoalMutation = useMutation({
+    mutationFn: (newGoal: string) => enrollmentsApi.updateMyClassGoal(id!, newGoal),
+    onSuccess: (updated) => {
+      setEditingGoal(false);
+      queryClient.setQueryData(["my-class-goal", id], (old: any) =>
+        old ? { ...old, goal: updated.goal } : old
+      );
+    },
+  });
+
   const enrollCourseMutation = useMutation({
     mutationFn: (variables?: {
       healthNotes?: string;
       saveToProfile?: boolean;
+      goal?: string;
     }) =>
       enrollmentsApi.enrollWholeCourse(id!, undefined, {
         healthNotes: variables?.healthNotes || null,
         saveToProfile: variables?.saveToProfile,
+        goal: variables?.goal,
       }),
     onMutate: () => queryClient.cancelQueries({ queryKey: ["course-plan", id] }),
     onSuccess: async (result) => {
@@ -750,6 +778,7 @@ export function ClassDetailPage() {
         [
           ["class", result.classId],
           ["course-plan", result.classId],
+          ["my-class-goal", result.classId],
           ["my-enrollments"],
           ["my-enrollment-quota"],
           ["member-schedule"],
@@ -1037,6 +1066,284 @@ export function ClassDetailPage() {
         />
       )}
 
+      {/* KHU VỰC TIẾN ĐỘ MỤC TIÊU CỦA HỌC VIÊN */}
+      {classGoalQuery.data && (
+        <section style={cardStyle}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 12,
+              marginBottom: 16,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  background: "rgba(2, 132, 199, 0.12)",
+                  border: "1px solid rgba(2, 132, 199, 0.3)",
+                  color: "#0284c7",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Target size={22} />
+              </div>
+              <div>
+                <h2
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 800,
+                    color: "var(--member-text, #203d31)",
+                    margin: 0,
+                  }}
+                >
+                  Mục tiêu & Tiến độ khóa học của bạn
+                </h2>
+                <p style={{ margin: "2px 0 0", color: "var(--member-muted, #58695f)", fontSize: 13 }}>
+                  Theo dõi sự tiến bộ và nhận xét từ Huấn luyện viên sau mỗi buổi học
+                </p>
+              </div>
+            </div>
+
+            {/* Badge mức tiến độ theo quy tắc màu */}
+            {(() => {
+              const theme = getProgressTheme(classGoalQuery.data.progress);
+              return (
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 800,
+                    color: theme.color,
+                    background: theme.bg,
+                    border: `1px solid ${theme.border}`,
+                    padding: "4px 12px",
+                    borderRadius: 20,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <TrendingUp size={16} />
+                  {classGoalQuery.data.progress}% · {theme.label}
+                </span>
+              );
+            })()}
+          </div>
+
+          {/* Mục tiêu hiện tại & Nút chỉnh sửa */}
+          <div
+            style={{
+              padding: "14px 16px",
+              borderRadius: 12,
+              background: "var(--member-surface-alt, rgba(255, 255, 255, 0.03))",
+              border: "1px solid var(--member-border, #e2e8f0)",
+              marginBottom: 18,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 240 }}>
+                <strong style={{ fontSize: 13, color: "var(--member-muted, #64748b)", display: "block", marginBottom: 4 }}>
+                  MỤC TIÊU ĐÃ ĐẶT:
+                </strong>
+                {editingGoal ? (
+                  <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                    <input
+                      type="text"
+                      maxLength={500}
+                      value={goalText}
+                      onChange={(e) => setGoalText(e.target.value)}
+                      style={{
+                        flex: 1,
+                        minWidth: 200,
+                        padding: "8px 12px",
+                        borderRadius: 8,
+                        border: "1px solid #0284c7",
+                        fontSize: 14,
+                      }}
+                      placeholder="Nhập mục tiêu mới..."
+                    />
+                    <button
+                      className="button small primary"
+                      disabled={updateGoalMutation.isPending || !goalText.trim()}
+                      onClick={() => updateGoalMutation.mutate(goalText.trim())}
+                    >
+                      <Check size={14} /> Lưu
+                    </button>
+                    <button
+                      className="button small"
+                      onClick={() => setEditingGoal(false)}
+                    >
+                      <X size={14} /> Hủy
+                    </button>
+                  </div>
+                ) : (
+                  <span style={{ fontSize: 15, fontWeight: 700, color: "var(--member-text, #1e293b)" }}>
+                    {classGoalQuery.data.goal}
+                  </span>
+                )}
+              </div>
+              {!editingGoal && (
+                <button
+                  className="button small"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12 }}
+                  onClick={() => {
+                    setGoalText(classGoalQuery.data?.goal || "");
+                    setEditingGoal(true);
+                  }}
+                >
+                  <Edit3 size={13} /> Sửa mục tiêu
+                </button>
+              )}
+            </div>
+
+            {/* Thanh tiến độ trực quan */}
+            <div style={{ marginTop: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
+                <span style={{ fontWeight: 600 }}>
+                  Tiến độ hoàn thành:
+                </span>
+                <span style={{ fontWeight: 800, color: getProgressTheme(classGoalQuery.data.progress).color }}>
+                  {classGoalQuery.data.progress}% / 100%
+                </span>
+              </div>
+              <div
+                style={{
+                  width: "100%",
+                  height: 12,
+                  borderRadius: 6,
+                  background: "var(--member-border, #e2e8f0)",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    width: `${Math.min(100, Math.max(0, classGoalQuery.data.progress))}%`,
+                    height: "100%",
+                    borderRadius: 6,
+                    background: getProgressTheme(classGoalQuery.data.progress).barColor,
+                    transition: "width 0.4s ease, background 0.4s ease",
+                  }}
+                />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--member-muted, #94a3b8)", marginTop: 4 }}>
+                <span style={{ color: "#ef4444" }}>0% (Cần nỗ lực &lt;20%)</span>
+                <span style={{ color: "#f59e0b" }}>50% (Đang tiến bộ &lt;70%)</span>
+                <span style={{ color: "#10b981" }}>100% (Đạt mục tiêu ≥70%)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Lịch sử đánh giá từng slot */}
+          <div>
+            <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 10px" }}>
+              📋 Nhật ký đánh giá từ Huấn luyện viên
+            </h3>
+            {classGoalQuery.data.evaluations.length === 0 ? (
+              <p style={{ fontSize: 13, color: "var(--member-muted, #64748b)", fontStyle: "italic", margin: 0 }}>
+                Chưa có buổi học nào được ghi nhận đánh giá. HLV sẽ đánh giá sự tiến bộ của bạn sau mỗi buổi học kết thúc!
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {classGoalQuery.data.evaluations.map((ev, idx) => {
+                  const evTheme = getProgressTheme(ev.newProgress);
+                  const dateStr = new Date(ev.startTime).toLocaleDateString("vi-VN", {
+                    weekday: "short",
+                    day: "2-digit",
+                    month: "2-digit",
+                  });
+                  const timeStr = `${new Date(ev.startTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} – ${new Date(ev.endTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`;
+
+                  return (
+                    <div
+                      key={ev.id || idx}
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 10,
+                        border: "1px solid var(--member-border, #e2e8f0)",
+                        background: "var(--member-surface-alt, rgba(255, 255, 255, 0.02))",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 6,
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontWeight: 700, fontSize: 14 }}>
+                            {dateStr}
+                          </span>
+                          <span style={{ fontSize: 12, color: "var(--member-muted, #64748b)" }}>
+                            • {timeStr}
+                          </span>
+                          <span style={{ fontSize: 12, color: "var(--member-muted, #64748b)" }}>
+                            • HLV: <strong>{ev.coachName}</strong>
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          {ev.diff !== 0 && (
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 800,
+                                color: ev.diff > 0 ? "#10b981" : "#ef4444",
+                                background: ev.diff > 0 ? "#d1fae5" : "#fee2e2",
+                                padding: "2px 6px",
+                                borderRadius: 4,
+                              }}
+                            >
+                              {ev.diff > 0 ? `+${ev.diff}%` : `${ev.diff}%`}
+                            </span>
+                          )}
+                          <span
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 800,
+                              color: evTheme.color,
+                              background: evTheme.bg,
+                              border: `1px solid ${evTheme.border}`,
+                              padding: "2px 8px",
+                              borderRadius: 6,
+                            }}
+                          >
+                            Tiến độ: {ev.newProgress}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {ev.description && (
+                        <div
+                          style={{
+                            marginTop: 4,
+                            padding: "8px 12px",
+                            borderRadius: 8,
+                            background: "rgba(2, 132, 199, 0.08)",
+                            borderLeft: "3px solid #0284c7",
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 8,
+                          }}
+                        >
+                          <MessageSquareQuote size={16} color="#0284c7" style={{ flexShrink: 0, marginTop: 2 }} />
+                          <div style={{ fontSize: 13, color: "var(--member-text, #1e293b)" }}>
+                            <strong>Lời dặn của HLV:</strong> {ev.description}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       <section style={cardStyle}>
         <h2
           style={{
@@ -1289,9 +1596,9 @@ export function ClassDetailPage() {
       <EnrollConfirmModal
         isOpen={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        onConfirm={({ healthNotes, saveToProfile }) => {
+        onConfirm={({ healthNotes, saveToProfile, goal }) => {
           if (fullyRegistered || enrollCourseMutation.isPending) return;
-          enrollCourseMutation.mutate({ healthNotes, saveToProfile });
+          enrollCourseMutation.mutate({ healthNotes, saveToProfile, goal });
         }}
         title="Xác nhận đăng ký & Lưu ý thể trạng"
         classSummary={{
@@ -1305,6 +1612,7 @@ export function ClassDetailPage() {
             .join("; "),
         }}
         initialHealthNotes={currentUser?.memberProfile?.healthNotes}
+        initialGoal={currentUser?.memberProfile?.fitnessGoal}
         loading={enrollCourseMutation.isPending}
         confirmText="Xác nhận đăng ký trọn khóa"
       />

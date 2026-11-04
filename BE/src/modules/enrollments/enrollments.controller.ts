@@ -35,11 +35,12 @@ async function resolveMemberProfileId(req: Request, bodyMemberId?: string): Prom
 
 export async function bookClass(req: Request, res: Response, next: NextFunction) {
   try {
-    const { scheduleId, memberId: bodyMemberId, healthNotes, saveToProfile } = req.body;
+    const { scheduleId, memberId: bodyMemberId, healthNotes, saveToProfile, goal } = req.body;
     const memberProfileId = await resolveMemberProfileId(req, bodyMemberId);
     const enrollment = await enrollmentsService.bookClass(scheduleId, memberProfileId, req.user!.role, {
       healthNotes,
       saveToProfile,
+      goal,
     });
     sendCreated(res, enrollment, "Class booked successfully");
   } catch (err) {
@@ -53,11 +54,12 @@ export async function bookClass(req: Request, res: Response, next: NextFunction)
  */
 export async function enrollWholeCourse(req: Request, res: Response, next: NextFunction) {
   try {
-    const { classId, memberId: bodyMemberId, healthNotes, saveToProfile } = req.body;
+    const { classId, memberId: bodyMemberId, healthNotes, saveToProfile, goal } = req.body;
     const memberProfileId = await resolveMemberProfileId(req, bodyMemberId);
     const result = await courseEnrollmentService.enrollWholeCourse(classId, memberProfileId, {
       healthNotes,
       saveToProfile,
+      goal,
     });
     sendCreated(res, result, "Whole course enrolled successfully");
   } catch (err) {

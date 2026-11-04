@@ -24,6 +24,7 @@ export type NotificationTypeEnum =
   // Lớp học mới
   | "NEW_CLASS"
   | "COACH_CHANGED"
+  | "GOAL_PROGRESS_UPDATED"
   // Chuyên cần (Attendance)
   | "ATTENDANCE_WARNING"
   | "ATTENDANCE_PENALTY"
@@ -58,6 +59,7 @@ export const NotificationTypeValues = [
   "TRAINING_PLAN_ASSIGNED",
   "NEW_CLASS",
   "COACH_CHANGED",
+  "GOAL_PROGRESS_UPDATED",
   "ATTENDANCE_WARNING",
   "ATTENDANCE_PENALTY",
   "ATTENDANCE_PENALTY_REVOKED",
