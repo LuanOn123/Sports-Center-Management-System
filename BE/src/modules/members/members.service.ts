@@ -1,3 +1,4 @@
+import { effectiveCoachWhere } from "../operations/effective-coaches.js";
 import { User } from "../../models/User.js";
 import { synchronizeUserProjection } from "../users/user-projection.service.js";
 import { MemberProfile } from "../../models/MemberProfile.js";
@@ -23,10 +24,7 @@ export async function assertMemberFacilityAccess(memberProfileId: string, user?:
     if (!coach) throw new AppError("Member not found", 404);
     const relation = await prisma.enrollment.findFirst({
       where: { memberId: memberProfileId, status: { in: ["BOOKED", "COMPLETED"] },
-        OR: [
-          { class: { coaches: { some: { coachId: coach.id } } } },
-          { schedule: { coachId: coach.id } },
-        ] },
+        schedule: effectiveCoachWhere(coach.id) },
       select: { id: true },
     });
     if (!relation) throw new AppError("Member not found", 404);

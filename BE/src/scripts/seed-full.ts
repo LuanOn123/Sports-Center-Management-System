@@ -418,12 +418,13 @@ async function seedClasses() {
     }
     scheduleIdsByClass[c.key] = list;
 
+    const patternTerm = await ensureSeedTerm(prisma, c.facilityId);
     const patternId = `seed-pattern-${c.key}`;
     const facilityCode = FACILITIES.find((f) => f.id === c.facilityId)!.code.toLowerCase();
     await ensureCreated("schedulePatterns", () => prisma.schedulePattern.findUnique({ where: { id: patternId } }), () =>
       prisma.schedulePattern.create({
         data: {
-          id: patternId, facilityId: c.facilityId, classId, roomId: c.roomId, weekdays: c.weekdays,
+          id: patternId, facilityId: c.facilityId, termId: patternTerm.id, classId, roomId: c.roomId, weekdays: c.weekdays,
           slotId: `seed-slot-${facilityCode}-${c.slot}`, startDate: vnDayStart(-PAST_DAYS), endDate: vnDayStart(FUTURE_DAYS),
         },
       }),

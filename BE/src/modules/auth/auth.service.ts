@@ -21,9 +21,40 @@ import { createNotification } from "../notifications/notifications.service.js";
 import { ensureActiveFreeSubscription } from "../subscriptions/free-subscription.service.js";
 import { disconnectUserSockets } from "../chat/chat.socket.js";
 import { sendOtpEmail } from "../../utils/mailer.js";
-import { randomInt, createHash } from "crypto";
+import { randomInt, createHash, randomBytes } from "crypto";
 import { prisma } from "../../config/prisma.js";
-import type { RegisterInput, UpdateProfileInput, ForgotPasswordInput, ResetPasswordInput } from "./auth.schema.js";
+import { OAuth2Client } from "google-auth-library";
+import type {
+  RegisterInput,
+  GoogleLoginInput,
+  GoogleRegisterInput,
+  UpdateProfileInput,
+  ForgotPasswordInput,
+  ResetPasswordInput,
+} from "./auth.schema.js";
+
+const googleClient = new OAuth2Client();
+
+export async function verifyGoogleToken(credential: string) {
+  try {
+    const audience = process.env.GOOGLE_CLIENT_ID || undefined;
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience,
+    });
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      throw new AppError("Thông tin xác thực Google không hợp lệ.", 400);
+    }
+    if (!payload.email_verified) {
+      throw new AppError("Email Google chưa được xác thực.", 400);
+    }
+    return payload;
+  } catch (error: any) {
+    if (error instanceof AppError) throw error;
+    throw new AppError(error?.message || "Xác thực Google không thành công.", 400);
+  }
+}
 
 export async function register(data: RegisterInput) {
   const created = await createUser({ ...data, role: "MEMBER" });
@@ -56,9 +87,6 @@ export async function login(email: string, password: string, turnstileToken: str
   });
 
   // MF-08: tự phục hồi gói FREE nếu đăng ký từng thất bại giữa chừng
-  // (user đã tạo nhưng FREE chưa cấp → trước đây hội viên kẹt ở "không có gói tập" tới khi backfill).
-  // Idempotent (advisory lock bên trong ensureActiveFreeSubscription) và FAIL-OPEN:
-  // lỗi cấp lại FREE không được làm hỏng luồng đăng nhập.
   if (user.role === "MEMBER") {
     try {
       const profile = await prisma.memberProfile.findUnique({
@@ -73,6 +101,120 @@ export async function login(email: string, password: string, turnstileToken: str
   }
 
   return { accessToken, refreshToken };
+}
+
+export async function loginWithGoogle(credential: string) {
+  const payload = await verifyGoogleToken(credential);
+  const email = payload.email!.toLowerCase().trim();
+
+  const user = await User.findOne({ email }).select("+password");
+  if (!user) {
+    throw new AppError(
+      "Tài khoản Google này chưa được đăng ký trong hệ thống. Vui lòng đăng ký tài khoản trước!",
+      404,
+      { code: "ACCOUNT_NOT_REGISTERED" }
+    );
+  }
+
+  if (!user.isActive || (user.provisioningStatus && user.provisioningStatus !== "READY")) {
+    throw new AppError("Tài khoản đã bị vô hiệu hóa hoặc chưa hoàn tất khởi tạo.", 403);
+  }
+
+  const userId = user._id.toString();
+  const projection = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isActive: true, role: true },
+  });
+  if (!projection?.isActive || projection.role !== user.role) {
+    throw new AppError("Tài khoản chưa hoàn tất đồng bộ.", 503);
+  }
+
+  const tokenPayload = { id: userId, role: user.role, tokenVersion: user.tokenVersion ?? 0 };
+  const accessToken = signAccessToken(tokenPayload);
+  const refreshToken = signRefreshToken(tokenPayload);
+
+  await RefreshToken.create({
+    token: hashToken(refreshToken),
+    userId,
+    expiresAt: getRefreshTokenExpiryDate(),
+  });
+
+  if (user.role === "MEMBER") {
+    try {
+      const profile = await prisma.memberProfile.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+      if (profile)
+        await prisma.$transaction((tx) => ensureActiveFreeSubscription(tx, profile.id));
+    } catch {
+      // Bỏ qua — lần sau sẽ thử lại
+    }
+  }
+
+  return { accessToken, refreshToken };
+}
+
+export async function registerWithGoogle(data: GoogleRegisterInput) {
+  const payload = await verifyGoogleToken(data.credential);
+  const email = payload.email!.toLowerCase().trim();
+
+  const existing = await User.findOne({ email });
+  if (existing) {
+    throw new AppError("Email này đã được sử dụng. Vui lòng chuyển sang đăng nhập.", 409);
+  }
+
+  const existingPrisma = await prisma.user.findUnique({ where: { email } });
+  if (existingPrisma) {
+    throw new AppError("Email này đã được sử dụng. Vui lòng chuyển sang đăng nhập.", 409);
+  }
+
+  const generatedPassword = randomBytes(16).toString("hex") + "Gg1@";
+  const fullName = payload.name?.trim() || email.split("@")[0];
+
+  const created = await createUser({
+    email,
+    password: generatedPassword,
+    fullName,
+    phone: data.phone,
+    gender: data.gender,
+    dateOfBirth: data.dateOfBirth,
+    fitnessGoal: data.fitnessGoal,
+    role: "MEMBER",
+  });
+
+  if (!created) {
+    throw new AppError("Chưa hoàn tất tạo tài khoản qua Google", 503);
+  }
+
+  createNotification(
+    created.id,
+    "MEMBER_REGISTERED",
+    "Chào mừng đến với Trung tâm Thể thao!",
+    "Tài khoản của bạn đã được liên kết với Google thành công."
+  ).catch(() => {});
+
+  const tokenPayload = { id: created.id, role: created.role, tokenVersion: 0 };
+  const accessToken = signAccessToken(tokenPayload);
+  const refreshToken = signRefreshToken(tokenPayload);
+
+  await RefreshToken.create({
+    token: hashToken(refreshToken),
+    userId: created.id,
+    expiresAt: getRefreshTokenExpiryDate(),
+  });
+
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      id: created.id,
+      email: created.email,
+      fullName: created.fullName,
+      role: created.role,
+      isActive: created.isActive,
+    },
+  };
 }
 
 export async function logout(token: string) {
@@ -207,8 +349,6 @@ export async function forgotPassword(data: ForgotPasswordInput) {
   const OTP_TTL_MS = 5 * 60 * 1000;
   const user = await User.findOne({ email: data.email });
   if (!user || !user.isActive) {
-    // Chống user enumeration: luôn trả 200 chung ở controller. Chỉ log để dev biết
-    // vì sao không có mail (thường do email sai / account chỉ tồn tại ở PostgreSQL).
     try {
       const pgOnly = await prisma.user.findUnique({ where: { email: data.email } });
       if (pgOnly)
@@ -236,11 +376,8 @@ export async function forgotPassword(data: ForgotPasswordInput) {
     { $set: { resetPasswordOtp: hashOtp(otp), resetPasswordOtpExpiresAt: expiresAt,
       resetPasswordOtpAttempts: 0, resetPasswordOtpSentAt: new Date() } },
   );
-  // Same response for unknown accounts and requests during the resend cooldown.
   if (!issued.modifiedCount) return;
 
-  // AWAIT: trước đây lỗi gửi mail bị nuốt (`.catch(console.error)`) nên FE luôn
-  // hiển thị "đã gửi" dù email không đi đâu cả. Giờ throw 502 để client báo lỗi thật.
   try {
     await sendOtpEmail(user.email, otp);
   } catch (mailErr) {
@@ -253,7 +390,6 @@ export async function forgotPassword(data: ForgotPasswordInput) {
 }
 
 export async function resetPassword(data: ResetPasswordInput) {
-  // Reserve an attempt before comparing, including concurrent requests.
   const user = await User.findOneAndUpdate({
     email: data.email, isActive: true,
     resetPasswordOtp: { $ne: null },

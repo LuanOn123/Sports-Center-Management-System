@@ -15,6 +15,21 @@ import { translateApiMessage } from "../src/shared/apiErrors";
 import { ATTENDANCE } from "../../BE/src/config/attendance";
 const now = Date.parse("2026-09-18T06:00:00Z");
 describe("workflow state boundaries", () => {
+  it("financial UI follows exact Admin/reception duties and forbids manual suspension or success", () => {
+    for (const role of ["ADMIN", "RECEPTIONIST"]) {
+      expect(subscriptionTransitions({ status: "ACTIVE" }, role)).toEqual([
+        "CANCELLED",
+      ]);
+      expect(subscriptionTransitions({ status: "SCHEDULED" }, role)).toEqual([
+        "CANCELLED",
+      ]);
+      expect(paymentTransitions("PENDING", role)).toEqual(["FAILED"]);
+      expect(paymentTransitions("PENDING", role, "SEPAY")).toEqual([]);
+    }
+    expect(subscriptionTransitions({ status: "ACTIVE" }, "MANAGER")).toEqual(
+      [],
+    );
+  });
   it("requires ACTIVE status and both date bounds for entitlement", () => {
     const s = {
       status: "ACTIVE",
@@ -40,9 +55,7 @@ describe("workflow state boundaries", () => {
     ).toBe("PREMIUM");
   });
   it("counter payments cannot be manually marked paid; refunds require reception or admin", () => {
-    expect(paymentTransitions("PENDING", "RECEPTIONIST")).toEqual([
-      "FAILED",
-    ]);
+    expect(paymentTransitions("PENDING", "RECEPTIONIST")).toEqual(["FAILED"]);
     expect(paymentTransitions("SUCCESS", "RECEPTIONIST")).toEqual(["REFUNDED"]);
     expect(paymentTransitions("REFUNDED", "RECEPTIONIST")).toEqual([]);
     expect(paymentTransitions("FAILED", "RECEPTIONIST")).toEqual([]);
@@ -56,24 +69,24 @@ describe("workflow state boundaries", () => {
     ]);
   });
   it("never resumes historical subscriptions, even with audited remaining days", () => {
-    expect(subscriptionTransitions({ status: "SUSPENDED" }, "RECEPTIONIST")).toEqual(
-      [],
-    );
+    expect(
+      subscriptionTransitions({ status: "SUSPENDED" }, "RECEPTIONIST"),
+    ).toEqual([]);
     expect(
       subscriptionTransitions(
         { status: "SUSPENDED", remainingDays: 4 },
         "RECEPTIONIST",
       ),
     ).toEqual([]);
-    expect(subscriptionTransitions({ status: "EXPIRED" }, "RECEPTIONIST")).toEqual(
-      [],
-    );
-    expect(subscriptionTransitions({ status: "ACTIVE" }, "RECEPTIONIST")).toEqual([
-      "CANCELLED",
-    ]);
-    expect(subscriptionTransitions({ status: "CANCELLED" }, "RECEPTIONIST")).toEqual(
-      [],
-    );
+    expect(
+      subscriptionTransitions({ status: "EXPIRED" }, "RECEPTIONIST"),
+    ).toEqual([]);
+    expect(
+      subscriptionTransitions({ status: "ACTIVE" }, "RECEPTIONIST"),
+    ).toEqual(["CANCELLED"]);
+    expect(
+      subscriptionTransitions({ status: "CANCELLED" }, "RECEPTIONIST"),
+    ).toEqual([]);
     expect(subscriptionTransitions({ status: "ACTIVE" }, "STAFF")).toEqual([]);
   });
   it("only closes scheduled sessions after their end", () => {
@@ -137,9 +150,9 @@ it("checks the sold duration snapshot even after a plan is edited", () => {
     downgradeReason(current, { tier: "MEMBERSHIP", durationDays: 90 }),
   ).toBe("");
   // Cross-tier downgrade is now ALLOWED (Smart Date Picker handles the UI)
-  expect(
-    downgradeReason(current, { tier: "FREE", durationDays: 3650 }),
-  ).toBe("");
+  expect(downgradeReason(current, { tier: "FREE", durationDays: 3650 })).toBe(
+    "",
+  );
   expect(
     downgradeReason(
       { ...current, tier: "FREE" },
@@ -154,12 +167,12 @@ it("keeps member refund boundary separate from capped manager prorating", () => 
   expect(refundEstimate(end, 1000000, 30, "MEMBER", now - 1).refundAmount).toBe(
     300000,
   );
-  expect(refundEstimate(end, 1000000, 30, "RECEPTIONIST", now).refundAmount).toBe(
-    500000,
-  );
-  expect(refundEstimate(end, 1000000, 10, "RECEPTIONIST", now).refundAmount).toBe(
-    1000000,
-  );
+  expect(
+    refundEstimate(end, 1000000, 30, "RECEPTIONIST", now).refundAmount,
+  ).toBe(500000);
+  expect(
+    refundEstimate(end, 1000000, 10, "RECEPTIONIST", now).refundAmount,
+  ).toBe(1000000);
 });
 
 it("opens attendance QR only within inclusive server time bounds for scheduled sessions", () => {

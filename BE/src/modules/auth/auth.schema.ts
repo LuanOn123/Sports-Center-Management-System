@@ -5,13 +5,28 @@ export const RegisterSchema = z.object({
   email: z.string().email("Invalid email address").transform(v => v.toLowerCase().trim()),
   password: z.string().min(6, "Password must be at least 6 characters"),
   fullName: z.string().min(2, "Full name must be at least 2 characters").max(100).transform(v => v.trim()),
-  phone: z.string()
-    .regex(/^[0-9+]{9,15}$/, "Phone must be 9-15 digits (optionally starting with +)")
-    .optional()
-    .or(z.literal("").transform(() => undefined))
-    .optional(),
+  phone: z.string({ required_error: "Vui lòng nhập số điện thoại." })
+    .trim()
+    .min(1, "Vui lòng nhập số điện thoại.")
+    .regex(/^[0-9+]{9,15}$/, "Số điện thoại phải gồm 9-15 chữ số (có thể bắt đầu bằng +)"),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
   dateOfBirth: dateOfBirth.optional(),
+  fitnessGoal: z.string().max(500, "Mục tiêu không được vượt quá 500 ký tự").optional(),
+});
+
+export const GoogleLoginSchema = z.object({
+  credential: z.string().min(1, "Google credential is required"),
+});
+
+export const GoogleRegisterSchema = z.object({
+  credential: z.string().min(1, "Google credential is required"),
+  phone: z.string({ required_error: "Vui lòng nhập số điện thoại." })
+    .trim()
+    .min(1, "Vui lòng nhập số điện thoại.")
+    .regex(/^[0-9+]{9,15}$/, "Số điện thoại phải gồm 9-15 chữ số (có thể bắt đầu bằng +)"),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
+  dateOfBirth: dateOfBirth.optional(),
+  fitnessGoal: z.string().max(500, "Mục tiêu không được vượt quá 500 ký tự").optional(),
 });
 
 export const LoginSchema = z.object({
@@ -55,6 +70,8 @@ export const ResetPasswordSchema = z.object({
 });
 
 export type RegisterInput = z.infer<typeof RegisterSchema>;
+export type GoogleLoginInput = z.infer<typeof GoogleLoginSchema>;
+export type GoogleRegisterInput = z.infer<typeof GoogleRegisterSchema>;
 export type LoginInput = z.infer<typeof LoginSchema>;
 export type RefreshTokenInput = z.infer<typeof RefreshTokenSchema>;
 export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>;
