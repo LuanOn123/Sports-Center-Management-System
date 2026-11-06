@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { ArrowUpRight, Eye, EyeOff, LoaderCircle } from "lucide-react";
+import { GoogleLogin } from "@react-oauth/google";
 import { AuthLink as Link } from "./AuthLink";
 import { ErrorState } from "../../shared/ui";
 import { AuthLayout } from "./AuthLayout";
@@ -11,10 +12,12 @@ const Turnstile = lazy(() =>
 
 export function Login({
   onLogin,
+  onGoogleLogin,
   busy,
   error,
 }: {
   onLogin: (e: string, p: string, turnstileToken: string) => Promise<void>;
+  onGoogleLogin?: (credential: string) => Promise<void>;
   busy: boolean;
   error: unknown;
 }) {
@@ -23,9 +26,11 @@ export function Login({
   const [password, setPassword] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaAttempt, setCaptchaAttempt] = useState(0);
+
   useEffect(() => {
     document.title = "Đăng nhập · Pulse Sports Center";
   }, []);
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (busy || !captchaToken) return;
@@ -40,6 +45,14 @@ export function Login({
       setCaptchaAttempt((value) => value + 1);
     }
   }
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    if (busy || !credentialResponse.credential) return;
+    if (onGoogleLogin) {
+      await onGoogleLogin(credentialResponse.credential);
+    }
+  };
+
   return (
     <AuthLayout>
       <span className="auth-eyebrow">
@@ -51,6 +64,7 @@ export function Login({
         <br />
         những mục tiêu còn đang chờ bạn.
       </p>
+
       <form onSubmit={submit} aria-busy={busy}>
         <div className="auth-floating">
           <input
@@ -96,7 +110,19 @@ export function Login({
         <div className="auth-label-row">
           <Link to="/forgot-password">Quên mật khẩu?</Link>
         </div>
-        {error != null && <ErrorState error={error} />}
+        {error != null && (
+          <div>
+            <ErrorState error={error} />
+            {String((error as any)?.message || "").toLowerCase().includes("chưa được đăng ký") && (
+              <p style={{ marginTop: 8, fontSize: 13, color: "#d4ff00" }}>
+                Chưa có tài khoản?{" "}
+                <Link to="/register" style={{ textDecoration: "underline", fontWeight: 600 }}>
+                  Nhấn vào đây để đăng ký hội viên ngay
+                </Link>
+              </p>
+            )}
+          </div>
+        )}
         <Suspense fallback={<p role="status">Đang tải xác minh bảo mật…</p>}>
           <Turnstile key={captchaAttempt} onChange={setCaptchaToken} />
         </Suspense>
@@ -116,6 +142,25 @@ export function Login({
           )}
         </button>
       </form>
+
+      {/* Đăng nhập bằng Google đặt ở DƯỚI nút Đăng nhập */}
+      {onGoogleLogin && (
+        <div style={{ marginTop: 24, marginBottom: 8 }}>
+          <div className="auth-oauth-divider">HOẶC TIẾP TỤC VỚI</div>
+          <div className="auth-google-btn-row">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => console.error("Google login failed")}
+              theme="outline"
+              size="large"
+              shape="pill"
+              text="signin_with"
+              width="360"
+            />
+          </div>
+        </div>
+      )}
+
       <p className="auth-switch">
         Chưa có tài khoản?{" "}
         <Link to="/register">

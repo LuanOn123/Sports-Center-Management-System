@@ -17,6 +17,7 @@ import {
 } from "./enrollment-quota.service.js";
 import { checkFacilityMemberLimit } from "../facilities/facility-limits.service.js";
 import { readTermMembershipGrant, termMembershipCovers } from "./term-membership-policy.js";
+import { ensureMemberCourseGoal } from "../attendance/goal-evaluation.service.js";
 
 export type BookableSchedule = {
   id: string;
@@ -282,7 +283,7 @@ export async function bookClass(
   scheduleId: string,
   memberProfileId: string,
   bookedByRole: string,
-  options: { healthNotes?: string | null; saveToProfile?: boolean } = {}
+  options: { healthNotes?: string | null; saveToProfile?: boolean; goal?: string | null } = {}
 ) {
   // 0. Verify member profile and role
   const memberProfile = await prisma.memberProfile.findUnique({
@@ -394,6 +395,10 @@ export async function bookClass(
 
   // F01: gửi notification trong outbox SAU khi transaction đã commit.
   await flushNotificationOutbox().catch(() => {});
+
+  // Đảm bảo tạo hoặc cập nhật mục tiêu khóa học cho Member
+  await ensureMemberCourseGoal(memberProfileId, schedule.class.id, options.goal).catch(() => {});
+
   return booked;
 }
 

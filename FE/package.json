@@ -19,6 +19,7 @@
     "verify": "npm run check:conflicts && npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
+    "@react-oauth/google": "^0.13.5",
     "@tanstack/react-query": "^5.90.0",
     "@zxing/browser": "^0.2.1",
     "lucide-react": "^0.468.0",

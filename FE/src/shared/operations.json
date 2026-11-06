@@ -5082,7 +5082,8 @@
       "required": [
         "email",
         "password",
-        "fullName"
+        "fullName",
+        "phone"
       ],
       "properties": {
         "email": {
@@ -5115,6 +5116,10 @@
           "type": "string",
           "format": "date",
           "description": "Must be in the past"
+        },
+        "fitnessGoal": {
+          "type": "string",
+          "description": "Mục tiêu tập luyện của hội viên"
         }
       }
     },
@@ -9109,6 +9114,75 @@
       "200",
       "403",
       "409"
+    ]
+  },
+  "POST /auth/google-login": {
+    "path": "/auth/google-login",
+    "method": "POST",
+    "summary": "Login with Google OAuth ID token",
+    "security": [],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "required": [
+        "credential"
+      ],
+      "properties": {
+        "credential": {
+          "type": "string",
+          "description": "Google OAuth ID Token"
+        }
+      }
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "404",
+      "500"
+    ]
+  },
+  "POST /auth/google-register": {
+    "path": "/auth/google-register",
+    "method": "POST",
+    "summary": "Register a new member account with Google OAuth ID token",
+    "security": [],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "required": [
+        "credential",
+        "phone"
+      ],
+      "properties": {
+        "credential": {
+          "type": "string",
+          "description": "Google OAuth ID Token"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "MALE",
+            "FEMALE",
+            "OTHER"
+          ]
+        },
+        "dateOfBirth": {
+          "type": "string",
+          "format": "date"
+        },
+        "fitnessGoal": {
+          "type": "string"
+        }
+      }
+    },
+    "statusCodes": [
+      "201",
+      "400",
+      "409",
+      "500"
     ]
   }
 }
