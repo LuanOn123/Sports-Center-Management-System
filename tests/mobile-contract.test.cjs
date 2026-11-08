@@ -1141,3 +1141,171 @@ test('members follow the web: no self-service cancel or session transfer, My Cla
   // Rời danh sách chờ vẫn còn (web: Waitlist)
   assert.match(readSource('services/workflowService.ts'), /leaveWaitlist/);
 });
+
+// ─── Trợ lý AI: chat, Markdown, bong bóng nổi ────────────────────────────────────
+
+test('AI chat: reasoning blocks never reach the user, drafts are validated, the history holds answered turns inside the window', () => {
+  const app = loadApp('http://localhost/api/v1'); const chat = app.load('lib/aiChat'); const text = app.load('constants/assistant');
+  assert.equal(chat.stripThinking('<think>\nNgười dùng hỏi gói tập.\n</think>\n\nDạ, có **2 gói**.'), 'Dạ, có **2 gói**.');
+  assert.equal(chat.stripThinking('Suy nghĩ dở\n</think>\nTrả lời'), 'Trả lời');
+  assert.equal(chat.stripThinking('Trả lời<think>bị cắt giữa chừng'), 'Trả lời');
+  assert.equal(chat.stripThinking('<think>chỉ có suy nghĩ</think>'), '');
+  assert.equal(chat.normalizeReply(undefined), ''); assert.equal(chat.normalizeReply('  Xin chào  '), 'Xin chào');
+
+  assert.deepEqual(chat.checkDraft('   '), { ok: false, reason: 'empty' });
+  assert.deepEqual(chat.checkDraft('  Chào  '), { ok: true, text: 'Chào' });
+  assert.deepEqual(chat.checkDraft('a'.repeat(text.ASSISTANT_MAX_MESSAGE_LENGTH + 1)), { ok: false, reason: 'too-long' });
+  assert.equal(chat.checkDraft('a'.repeat(text.ASSISTANT_MAX_MESSAGE_LENGTH)).ok, true);
+  assert.equal(chat.counterLabel(100), null); assert.equal(chat.counterLabel(900), '900/1000');
+
+  const turn = (i) => [{ id: `u${i}`, role: 'user', content: `hỏi ${i}`, status: 'sent' }, { id: `a${i}`, role: 'assistant', content: `đáp ${i}` }];
+  const many = Array.from({ length: 15 }, (_, i) => turn(i)).flat();
+  const history = chat.buildHistory(many);
+  assert.equal(history.length, text.ASSISTANT_HISTORY_LIMIT); assert.equal(history[0].role, 'user');
+  assert.deepEqual(history.at(-1), { role: 'assistant', content: 'đáp 14' });
+  assert.deepEqual(Object.keys(history[0]).sort(), ['content', 'role'], 'BE chỉ nhận role + content');
+  // cửa sổ cắt giữa một cặp hỏi–đáp: bỏ câu trả lời mồ côi đứng đầu để lịch sử luôn mở đầu bằng người dùng
+  const odd = chat.buildHistory(many.slice(0, 29));
+  assert.equal(odd.length, text.ASSISTANT_HISTORY_LIMIT - 1); assert.equal(odd[0].role, 'user');
+
+  const failed = [...turn(0), { id: 'u1', role: 'user', content: 'lỗi mạng', status: 'failed', error: 'x' }];
+  assert.deepEqual(chat.buildHistory(failed).map((m) => m.content), ['hỏi 0', 'đáp 0'], 'tin chưa được trả lời không gửi lại cho AI');
+  const base = turn(0); const marked = chat.withFailure(base, 'u0', 'Đã dừng trả lời.');
+  assert.equal(marked[0].status, 'failed'); assert.equal(marked[0].error, 'Đã dừng trả lời.'); assert.equal(base[0].status, 'sent', 'không sửa danh sách gốc');
+  assert.deepEqual(chat.withoutMessage(marked, 'u0').map((m) => m.id), ['a0']);
+  assert.notEqual(chat.nextMessageId('user'), chat.nextMessageId('user'));
+});
+
+test('AI chat errors are friendly: the BE configuration hint stays hidden, limits and offline are explained', () => {
+  const app = loadApp('http://localhost/api/v1'); const { ApiError } = app.load('lib/api'); const chat = app.load('lib/aiChat'); const { ASSISTANT_ERRORS } = app.load('constants/assistant');
+  const unconfigured = chat.aiErrorMessage(new ApiError('Tính năng AI hiện chưa được cấu hình (thiếu GROQ_API_KEY).', 503));
+  assert.equal(unconfigured, ASSISTANT_ERRORS.unavailable); assert.ok(!/GROQ|API_KEY/.test(unconfigured));
+  assert.equal(chat.aiErrorMessage(new ApiError('Lỗi kết nối đến AI Server. Vui lòng thử lại.', 500)), ASSISTANT_ERRORS.unavailable);
+  assert.equal(chat.aiErrorMessage(new ApiError('Too Many Requests', 429)), ASSISTANT_ERRORS.tooManyRequests);
+  assert.equal(chat.aiErrorMessage(new ApiError('Không thể kết nối máy chủ. Vui lòng kiểm tra mạng.', 0)), 'Không thể kết nối máy chủ. Vui lòng kiểm tra mạng.');
+  assert.equal(chat.aiErrorMessage(new Error('AI chưa trả về nội dung.')), 'AI chưa trả về nội dung.');
+  assert.equal(chat.aiErrorMessage('lạ'), ASSISTANT_ERRORS.generic);
+  assert.equal(chat.isAbortError({ code: 'ERR_CANCELED' }), true); assert.equal(chat.isAbortError(new Error('x')), false);
+});
+
+test('AI chat posts the question (with history when there is one) to /ai/chat and returns the cleaned reply; stopping cancels the request', async () => fixture(async ({ load, requests, handle }) => {
+  const api = load('lib/api'); await api.saveTokens('member-token', 'refresh'); await api.setFacilityId('facility-a');
+  const ai = load('services/aiService'); const chat = load('lib/aiChat');
+  handle(() => ({ data: { reply: '<think>nội bộ</think>\nDạ có 2 gói.' } }));
+  assert.equal(await ai.sendAiMessage('Có gói nào?', []), 'Dạ có 2 gói.');
+  const history = [{ role: 'user', content: 'Có gói nào?' }, { role: 'assistant', content: 'Dạ có 2 gói.' }];
+  await ai.sendAiMessage('Giá bao nhiêu?', history);
+  assert.equal(requests[0].method, 'POST'); assert.equal(requests[0].path, '/api/v1/ai/chat');
+  assert.deepEqual(requests[0].body, { message: 'Có gói nào?' });
+  assert.deepEqual(requests[1].body, { message: 'Giá bao nhiêu?', history });
+  assert.equal(requests[1].headers.authorization, 'Bearer member-token'); assert.equal(requests[1].headers['x-facility-id'], 'facility-a');
+
+  handle(() => ({ data: { reply: '<think>chỉ nghĩ</think>' } }));
+  assert.equal(await ai.sendAiMessage('?', []), '', 'không có nội dung hiển thị được thì báo rỗng để màn hình báo lỗi');
+  handle(() => ({ status: 503, message: 'Tính năng AI hiện chưa được cấu hình (thiếu GROQ_API_KEY).' }));
+  await assert.rejects(ai.sendAiMessage('?', []), (e) => e.status === 503);
+
+  handle(async () => { await new Promise((r) => setTimeout(r, 300)); return { data: { reply: 'muộn' } }; });
+  const controller = new AbortController(); const slow = ai.sendAiMessage('chậm', [], controller.signal);
+  controller.abort();
+  await assert.rejects(slow, (e) => chat.isAbortError(e));
+}));
+
+test('AI replies render as Markdown like the web: lists, bold, headings, tables, code; HTML is dropped, images and links keep only their text', () => {
+  const md = loadApp('http://localhost/api/v1').load('lib/assistantMarkdown'); const backslash = String.fromCharCode(92);
+  const reply = [
+    'Dạ chào anh/chị, hiện bên em có các gói tập:', '',
+    '- **Gói Membership** (Hạng MEMBERSHIP): 500.000 VND | 30 ngày',
+    '- **Gói Premium** (Hạng PREMIUM): 900.000 VND | 30 ngày', '',
+    '### Lưu ý',
+    '1. Lớp Premium cần gói Premium còn hiệu lực.', '',
+    '2. Thanh toán qua *QR SePay* hoặc tại quầy.',
+    '   - Quét mã trong app',
+    '   - Hoặc tiền mặt',
+    '3. Có thể đổi cơ sở',
+    '   khi cần (dòng nối).', '',
+    '> Lưu ý: giá có thể thay đổi', '',
+    '---', '',
+    '| Gói | Giá | Thời hạn |', '|---|:---:|---:|', '| Membership | 500.000 | 30 ngày |', '| Premium | 900.000 |', '',
+    '```', 'const a = 1;', '```', '',
+    'Anh/chị cần em tư vấn thêm không ạ?',
+  ].join('\n');
+  const blocks = md.parseMarkdown(reply);
+  assert.deepEqual(blocks.map((b) => b.type), ['paragraph', 'list', 'heading', 'list', 'quote', 'rule', 'table', 'code', 'paragraph']);
+  assert.deepEqual(blocks[1].items.map((i) => i.marker), ['•', '•']);
+  assert.deepEqual(blocks[1].items[0].spans[0], { text: 'Gói Membership', bold: true });
+  assert.equal(blocks[2].level, 3); assert.equal(md.inlineToPlain(blocks[2].spans), 'Lưu ý');
+  assert.deepEqual(blocks[3].items.map((i) => i.marker), ['1.', '2.', '◦', '◦', '3.']);
+  assert.deepEqual(blocks[3].items.map((i) => i.depth), [0, 0, 1, 1, 0], 'dòng trống giữa các mục không ngắt danh sách, thụt lề thành cấp con');
+  assert.equal(md.inlineToPlain(blocks[3].items[4].spans), 'Có thể đổi cơ sở khi cần (dòng nối).');
+  assert.deepEqual(blocks[6].header.map(md.inlineToPlain), ['Gói', 'Giá', 'Thời hạn']);
+  assert.equal(md.inlineToPlain(blocks[6].rows[1][2]), '', 'hàng thiếu ô được bù ô trống');
+  assert.equal(blocks[7].text, 'const a = 1;');
+
+  const spans = md.parseInline('Xin **chào** `A1` ![ảnh](http://a.b/x.png) [liên kết](http://x.y) <b>đậm</b>');
+  assert.equal(md.inlineToPlain(spans), 'Xin chào A1 ảnh liên kết đậm');
+  assert.ok(spans.some((s) => s.bold && s.text === 'chào') && spans.some((s) => s.code && s.text === 'A1'));
+  assert.ok(!JSON.stringify(spans).includes('http'), 'địa chỉ do mô hình sinh ra không hiện và không mở được');
+  assert.equal(md.inlineToPlain(md.parseInline(`giá ${backslash}*không${backslash}* đổi`)), 'giá *không* đổi');
+  assert.equal(md.inlineToPlain(md.parseInline('**chưa đóng và * lẻ')), '**chưa đóng và * lẻ');
+  assert.equal(md.inlineToPlain(md.parseInline('tên_biến_dài và 2 * 3')), 'tên_biến_dài và 2 * 3', 'gạch dưới trong từ và dấu nhân không thành in nghiêng');
+  const nested = md.parseInline('*a **b** c*');
+  assert.ok(nested.some((s) => s.bold && s.italic && s.text === 'b'));
+
+  const plain = md.markdownToPlainText(reply);
+  assert.ok(plain.includes('• Gói Membership (Hạng MEMBERSHIP): 500.000 VND | 30 ngày') && plain.includes('Gói | Giá | Thời hạn'));
+  assert.ok(!plain.includes('**') && !plain.includes('###'));
+});
+
+test('floating AI bubble: fixed spot on the right, draggable anywhere on screen, back after 10 s when closed with the x', () => {
+  const app = loadApp('http://localhost/api/v1'); const bubble = app.load('lib/assistantBubble'); const c = app.load('constants/assistant');
+  const phone = { width: 393, height: 852, insets: { top: 59, bottom: 34, left: 0, right: 0 } };
+  const home = bubble.defaultPosition(phone);
+  assert.equal(c.BUBBLE_DEFAULT_SIDE, 'right');
+  assert.equal(home.x, phone.width - c.BUBBLE_EDGE_MARGIN - c.BUBBLE_FOOTPRINT, 'sát mép phải');
+  assert.ok(Math.abs(home.y + c.BUBBLE_FOOTPRINT / 2 - phone.height * c.BUBBLE_DEFAULT_CENTER_Y_RATIO) < 1e-9, 'tâm ở tỷ lệ chiều cao đã cấu hình');
+  for (const screen of [phone, { width: 360, height: 800, insets: { top: 24, bottom: 24, left: 0, right: 0 } }, { width: 320, height: 568, insets: { top: 20, bottom: 0, left: 0, right: 0 } }]) {
+    const spot = bubble.defaultPosition(screen);
+    assert.ok(spot.y + c.BUBBLE_FOOTPRINT <= screen.height - (60 + screen.insets.bottom), 'vị trí cố định không đè lên thanh tab');
+    assert.deepEqual(bubble.clampPosition(spot, screen), spot, 'vị trí cố định luôn nằm trong màn hình');
+  }
+
+  assert.deepEqual(bubble.clampPosition({ x: -500, y: -500 }, phone), { x: c.BUBBLE_EDGE_MARGIN, y: phone.insets.top + c.BUBBLE_EDGE_MARGIN }, 'kéo ra ngoài thì dừng ở mép, không vào tai thỏ');
+  const far = bubble.clampPosition({ x: 9999, y: 9999 }, phone);
+  assert.equal(far.x, phone.width - c.BUBBLE_EDGE_MARGIN - c.BUBBLE_FOOTPRINT);
+  assert.equal(far.y, phone.height - phone.insets.bottom - c.BUBBLE_EDGE_MARGIN - c.BUBBLE_FOOTPRINT);
+  assert.deepEqual(bubble.clampPosition({ x: 120, y: 300 }, phone), { x: 120, y: 300 }, 'mọi chỗ bên trong màn hình đều được giữ nguyên (không dính cạnh)');
+  const tiny = bubble.clampPosition({ x: 30, y: 30 }, { width: 50, height: 50, insets: { top: 0, bottom: 0, left: 0, right: 0 } });
+  assert.ok(tiny.x >= 0 && tiny.y >= 0, 'khung quá nhỏ (chia đôi màn hình, bàn phím) không cho toạ độ âm');
+
+  assert.equal(bubble.isTap({ dx: 2, dy: 1, durationMs: 120 }), true);
+  assert.equal(bubble.isTap({ dx: 20, dy: 0, durationMs: 120 }), false, 'nhích xa là kéo');
+  assert.equal(bubble.isTap({ dx: 0, dy: 0, durationMs: 900 }), false, 'giữ lâu không phải chạm mở chat');
+
+  assert.equal(c.BUBBLE_RESPAWN_MS, 10_000);
+  const backAt = bubble.respawnAt(1_000); assert.equal(backAt, 11_000);
+  assert.equal(bubble.isHidden(backAt, 10_999), true); assert.equal(bubble.isHidden(backAt, 11_000), false); assert.equal(bubble.isHidden(null, 0), false);
+  assert.equal(bubble.msUntilRespawn(backAt, 4_000), 7_000); assert.equal(bubble.msUntilRespawn(backAt, 20_000), 0); assert.equal(bubble.msUntilRespawn(null, 0), 0);
+  assert.match(c.BUBBLE_HINT_TEXT, /10 giây/); assert.match(c.BUBBLE_LABELS.close, /10 giây/);
+  assert.equal(bubble.showsBubbleOn(['assistant']), false, 'đang ở màn chat AI thì không cần bong bóng'); assert.equal(bubble.showsBubbleOn(['(tabs)', 'classes']), true);
+});
+
+test('AI assistant wiring: thin route, one shared conversation above the navigator, bubble only after login, nothing hard-coded', () => {
+  const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const route = readSource('app/assistant.tsx'); assert.match(route, /AssistantChatView/); assert.ok(!/useState|useQuery|apiRequest|api\./.test(strip(route)));
+  const layout = readSource('app/_layout.tsx');
+  assert.match(layout, /<AuthProvider>\s*<AssistantProvider>/); assert.match(layout, /isAuthenticated \? <AssistantBubble \/> : null/);
+  assert.ok(layout.indexOf('<AssistantBubble />') > layout.indexOf('</Stack>'), 'bong bóng nằm trên mọi màn hình của Stack');
+  assert.ok(!/\bkey=/.test(strip(readSource('context/AssistantContext.tsx'))), 'đổi tài khoản/cơ sở xóa trạng thái bằng effect, không dựng lại cả cây màn hình bằng key');
+  const session = readSource('hooks/shared/useAssistantSession.ts');
+  assert.match(session, /abort\(\)/); assert.match(session, /scopeKey/);
+  assert.match(readSource('hooks/shared/useBubbleDrag.ts'), /PanResponder/);
+  const bubbleCode = strip(['components/assistant/AssistantBubble.tsx', 'hooks/shared/useAssistantBubble.ts', 'hooks/shared/useBubbleDrag.ts'].map(readSource).join('\n'));
+  assert.ok(!/10_?000/.test(bubbleCode), 'thời gian hiện lại lấy từ constants/assistant.ts');
+  assert.match(bubbleCode, /BUBBLE_LABELS\.close/); assert.match(bubbleCode, /dismiss/);
+  const shown = strip(['constants/assistant.ts', 'lib/aiChat.ts', ...fs.readdirSync(path.resolve(__dirname, '..', 'components/assistant')).filter((f) => f.endsWith('.tsx')).map((f) => `components/assistant/${f}`)].map(readSource).join('\n'));
+  assert.ok(!/GROQ|API_KEY/.test(shown), 'tên biến cấu hình của BE không bao giờ hiện cho người dùng');
+  assert.ok(!/subtitle=/.test(shown));
+  const routes = loadApp('http://localhost/api/v1').load('navigation/routes'); assert.equal(routes.ROUTES.aiAssistant, '/assistant');
+  assert.equal(routes.canAccessRoute('MEMBER', ['assistant']), true); assert.equal(routes.canAccessRoute('COACH', ['assistant']), true);
+});

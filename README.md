@@ -102,9 +102,11 @@ MOBILE/
 │   │                     #   schedule, notifications, coach-attendance)
 │   ├── classes/[id].tsx, schedule/[scheduleId].tsx, payment/[paymentId].tsx, chat/[userId].tsx
 │   ├── policies.tsx      # Chính sách sử dụng (nội dung ở constants/policies.ts)
+│   ├── assistant.tsx     # Màn chat Trợ lý AI (route mỏng, mở từ bong bóng nổi hoặc menu)
 │   ├── membership/plans.tsx
 │   └── attendance/my.tsx
 ├── components/
+│   ├── assistant/        # Bong bóng AI nổi (kéo thả, dấu "x") + màn chat (tin nhắn, Markdown, ô nhập)
 │   ├── shared/           # Dùng chung mọi vai trò (Icon, ScreenHeader, InfoBanner, ScheduleDetailView…)
 │   ├── member/           # Màn/khối của Hội viên (membership/, payment/, …)
 │   └── coach/            # Màn/khối của Huấn luyện viên (Lịch dạy, Điểm danh, …)
@@ -113,7 +115,7 @@ MOBILE/
 ├── navigation/           # routes.ts (ROUTES + quyền theo vai trò), tabConfig, quickAccessConfig
 ├── constants/            # theme, membership, payment, schedule, attendance — không hard code trong màn
 ├── lib/                  # api, storage, socket, format, date, businessRules (bản sao FE web), types
-├── context/              # AuthContext (phiên đăng nhập, cơ sở)
+├── context/              # AuthContext (phiên đăng nhập, cơ sở), AssistantContext (cuộc trò chuyện AI)
 ├── app.config.js         # Cấu hình Expo động: thêm config plugin Google khi có iOS client ID
 └── eas.json              # Profile build EAS (development / preview / production)
 ```
@@ -126,6 +128,20 @@ MOBILE/
    phải khai báo trong `ROUTE_ROLES` của cùng file.
 
 ---
+
+## Trợ lý AI (bong bóng nổi)
+
+Sau khi đăng nhập, một **bong bóng AI** nổi trên mọi màn hình (gắn ở `app/_layout.tsx`, chỉ khi đã đăng nhập):
+
+- **Kéo thả** tới bất kỳ đâu trên màn hình (chỉ giữ trong màn hình, cách mép 8dp); **chạm** để mở màn chat `/assistant`.
+- **Dấu "x" nhỏ** ở góc trên-phải: tắt khi bị vướng. Sau **10 giây** bong bóng tự **hiện lại ở vị trí cố định**
+  (sát mép phải, tâm ở 80% chiều cao màn hình — trên thanh tab); chỗ đã kéo tới không được nhớ.
+- Bong bóng quay vòng khi AI đang trả lời và hiện chấm khi có câu trả lời mới lúc đang ở màn khác.
+- Cuộc trò chuyện sống ở `context/AssistantContext.tsx` (chỉ trong bộ nhớ, không ghi ra máy): thoát màn chat rồi vào lại vẫn còn;
+  đăng xuất / đổi tài khoản / đổi cơ sở thì xóa. Gọi `POST /ai/chat` (`services/aiService.ts`), gửi kèm tối đa 20 tin gần nhất
+  đã được trả lời; tin lỗi có nút "Gửi lại", đang chờ có nút "Dừng"; khối `<think>` của mô hình lập luận bị lọc khỏi câu trả lời.
+- Đổi vị trí cố định, thời gian ẩn, kích thước… chỉ cần sửa `constants/assistant.ts`
+  (`BUBBLE_DEFAULT_CENTER_Y_RATIO`, `BUBBLE_DEFAULT_SIDE`, `BUBBLE_RESPAWN_MS`, …); hình học thuần ở `lib/assistantBubble.ts`.
 
 ## Kiểm tra TypeScript
 
