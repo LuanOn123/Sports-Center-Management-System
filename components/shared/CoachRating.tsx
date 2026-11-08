@@ -12,6 +12,8 @@ import {
 import { showAlert, showConfirm } from '../../lib/alert';
 import { ApiError } from '../../lib/api';
 import { Colors } from '../../constants/theme';
+import { COACH_PROFILE_TEXT } from '../../constants/coachProfile';
+import { canReviewCoach } from '../../lib/businessRules';
 import { WorkflowButton, WorkflowState, WorkflowText } from './WorkflowScreen';
 import { useMyEnrollments } from '../../hooks/member/useEnrollments';
 
@@ -69,8 +71,8 @@ export function CoachRating({ coachId, coachName, classId, title }: CoachRatingP
   const mine = useMyFeedbacks();
   const { feedbacks: myFeedbacks } = mine;
   const enrollmentList = useMyEnrollments(undefined, undefined, { enabled: isMember });
-  const canReview = enrollmentList.data?.data.some((e) => ['BOOKED', 'COMPLETED'].includes(e.status) &&
-    ((Boolean(classId) && (e.classId === classId || e.schedule?.class?.id === classId)) || e.schedule?.class?.coaches?.some((c) => c.coachId === coachId)));
+  // Chỉ được đánh giá sau khi đã học ít nhất một buổi ĐÃ DIỄN RA của lớp này (BE R-06 kiểm tra chính xác khi gửi)
+  const canReview = canReviewCoach(enrollmentList.data?.data ?? [], { coachId, classId });
   const submitMutation = useSubmitFeedback();
   const deleteMutation = useDeleteFeedback();
 
@@ -145,6 +147,9 @@ export function CoachRating({ coachId, coachName, classId, title }: CoachRatingP
       </View>
 
       <WorkflowState error={list.error || mine.error || enrollmentList.error} retry={() => { void list.refetch(); if (isMember) { void mine.refetch(); void enrollmentList.refetch(); } }} />
+      {isMember && !canReview && !myExisting && !enrollmentList.isLoading && (
+        <Text className="text-xs text-text-muted font-bevn-regular leading-[18px] mb-md">{COACH_PROFILE_TEXT.reviewNotEligible}</Text>
+      )}
       {isMember && (canReview || myExisting) && (
         <View className="bg-bg-elevated rounded-lg p-lg mb-md border border-border">
           {editing ? (

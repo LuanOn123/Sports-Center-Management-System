@@ -1,7 +1,7 @@
 import { vietnamDate } from '../../../lib/date';
 // app/(tabs)/enrollments.tsx
-// Tab "Lớp học" — Quản lý lớp đã đặt: Sắp tới | Hoàn thành | Đã hủy
-// Member: xem ca học sắp tới, đổi buổi học, hủy đặt chỗ
+// Tab "Lớp học" — Lớp đã đặt: Sắp tới | Hoàn thành | Đã hủy (web: MyClassesPage)
+// Giống web: mỗi lớp chỉ có nút "Xem lớp"; hội viên không tự hủy hay đổi buổi — cần hỗ trợ lịch thì liên hệ lễ tân.
 
 import React, { useCallback, useMemo, useState } from 'react';
 import {
@@ -9,31 +9,19 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
-  Platform,
-  Modal,
-  ScrollView,
 } from 'react-native';
 import clsx from 'clsx';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
-import { allPages } from '../../../lib/pagedApi';
 import { Icon } from '../../../components/shared/Icon';
 import { ScreenHeader } from '../../../components/shared/ScreenHeader';
 import { ClassCardSkeleton } from '../../../components/shared/Skeleton';
-import {
-  useMyEnrollments,
-  useCancelEnrollment,
-  useTransferEnrollment,
-  useMyQuota,
-} from '../../../hooks/member/useEnrollments';
-import { api } from '../../../lib/api';
+import { useMyEnrollments, useMyQuota } from '../../../hooks/member/useEnrollments';
 import { Colors } from '../../../constants/theme';
-import type { Enrollment, ClassSchedule } from '../../../lib/types';
+import type { Enrollment } from '../../../lib/types';
 import { ROUTES } from '../../../navigation/routes';
 import { Button } from '../../ui';
-import { ENROLLMENT_QUOTA_TEXT } from '../../../constants/classes';
+import { ENROLLMENT_QUOTA_TEXT, MY_CLASSES_TEXT } from '../../../constants/classes';
 import { TIER_LABEL } from '../../../constants/membership';
 import { quotaBannerKind } from '../../../lib/classPlan';
 
@@ -71,19 +59,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 // ─── Enrollment Card ─────────────────────────────────────────────────────────
 
-function EnrollmentCard({
-  item,
-  showActions,
-  onCancel,
-  onChangeSession,
-  cancelPending,
-}: {
-  item: Enrollment;
-  showActions: boolean;
-  onCancel: (id: string, className?: string) => void;
-  onChangeSession: (item: Enrollment) => void;
-  cancelPending: boolean;
-}) {
+function EnrollmentCard({ item, onViewClass }: { item: Enrollment; onViewClass: (classId: string) => void }) {
   const past = item.status === 'BOOKED' && isSchedulePast(item.schedule?.endTime);
   const statusColor = past ? Colors.text.muted : STATUS_COLOR[item.status] ?? Colors.text.muted;
   const statusLabel = past ? 'Đã diễn ra' : STATUS_LABEL[item.status] ?? item.status;
@@ -92,6 +68,7 @@ function EnrollmentCard({
   const roomName = item.schedule?.room?.name;
   const coachName = item.schedule?.class?.coaches?.[0]?.coach?.user?.fullName;
   const className = item.schedule?.class?.name ?? 'Lớp học';
+  const classId = item.classId ?? item.schedule?.classId ?? item.schedule?.class?.id;
 
   return (
     <View className="bg-bg-surface rounded-xl border border-border overflow-hidden shadow-sm">
@@ -153,36 +130,39 @@ function EnrollmentCard({
           )}
         </View>
 
-        {/* Actions — chỉ hiện cho buổi BOOKED chưa qua */}
-        {showActions && item.status === 'BOOKED' && !past && (
-          <View className="flex-row gap-sm pt-sm border-t border-divider mt-xs">
-            {/* Đổi buổi: mở modal danh sách các buổi trống trong cùng lớp */}
+        {/* Xem lớp — mở chi tiết lớp (kế hoạch khóa, mục tiêu & tiến độ); hội viên không tự hủy hay đổi buổi như web */}
+        {Boolean(classId) && (
+          <View className="flex-row pt-sm border-t border-divider mt-xs">
             <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={`${MY_CLASSES_TEXT.viewClass} ${className}`}
               className="flex-1 flex-row items-center justify-center gap-1 py-xs rounded-lg border border-border bg-bg-elevated"
-              onPress={() => onChangeSession(item)}
+              onPress={() => onViewClass(classId!)}
               activeOpacity={0.8}
             >
-              <Icon name="swap-horiz" size={15} color={Colors.text.secondary} />
+              <Icon name="class" size={15} color={Colors.text.secondary} />
               <Text className="text-xs font-semibold font-bevn-semibold text-text-secondary">
-                Đổi buổi
-              </Text>
-            </TouchableOpacity>
-
-            {/* Hủy đặt chỗ */}
-            <TouchableOpacity
-              className="flex-1 flex-row items-center justify-center gap-1 py-xs rounded-lg border border-[#FF8D9A40] bg-[#FF8D9A15]"
-              onPress={() => onCancel(item.id, item.schedule?.class?.name)}
-              disabled={cancelPending}
-              activeOpacity={0.8}
-            >
-              <Icon name="cancel" size={15} color={Colors.status.cancelled} />
-              <Text className="text-xs font-semibold font-bevn-semibold text-status-cancelled">
-                Hủy đặt chỗ
+                {MY_CLASSES_TEXT.viewClass}
               </Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
+    </View>
+  );
+}
+
+// ─── Support note ────────────────────────────────────────────────────────────
+
+/** Dưới tab "Sắp tới" (web: khối "Nếu cần hỗ trợ về lịch học, vui lòng liên hệ lễ tân cơ sở.") */
+function SupportNote() {
+  return (
+    <View
+      className="flex-row items-center gap-sm rounded-lg px-md py-sm border mt-sm"
+      style={{ backgroundColor: Colors.status.pending + '12', borderColor: Colors.status.pending + '40' }}
+    >
+      <Icon name="warning" size={14} color={Colors.status.pending} />
+      <Text className="flex-1 text-xs text-text-secondary font-bevn-regular leading-[18px]">{MY_CLASSES_TEXT.supportNote}</Text>
     </View>
   );
 }
@@ -242,43 +222,9 @@ export function MyClassesView({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabMode>('upcoming');
 
-  // Modal đổi buổi state
-  const [transferEnrollmentTarget, setTransferEnrollmentTarget] = useState<Enrollment | null>(null);
-  const [selectedTargetScheduleId, setSelectedTargetScheduleId] = useState<string | null>(null);
-
   // Refetch khi tab được focus lại
   const { data, isLoading, refetch } = useMyEnrollments(undefined, '100');
   useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
-
-  const { handleCancel, isPending: cancelPending } = useCancelEnrollment();
-  const transferMutation = useTransferEnrollment();
-
-  const targetClassId =
-    transferEnrollmentTarget?.schedule?.class?.id ??
-    (transferEnrollmentTarget?.schedule?.classId as string | undefined);
-
-  // Fetch available schedules for the class being transferred
-  const {
-    data: classSchedulesData,
-    isLoading: isSchedulesLoading,
-    refetch: refetchTransferSchedules,
-  } = useQuery({
-    queryKey: ['transfer-schedules', targetClassId],
-    queryFn: () =>
-      allPages<ClassSchedule>('/class-schedules', {
-        classId: targetClassId,
-        status: 'SCHEDULED',
-        limit: '50',
-      }),
-    enabled: Boolean(transferEnrollmentTarget && targetClassId),
-  });
-
-  const availableSchedules = useMemo(() => {
-    if (!classSchedulesData?.data || !transferEnrollmentTarget) return [];
-    return classSchedulesData.data
-      .filter((s) => s.id !== transferEnrollmentTarget.scheduleId && !isSchedulePast(s.endTime))
-      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-  }, [classSchedulesData, transferEnrollmentTarget]);
 
   const all: Enrollment[] = data?.data ?? [];
 
@@ -332,33 +278,6 @@ export function MyClassesView({ embedded = false }: { embedded?: boolean }) {
       ? completed
       : cancelled;
 
-  const handleOpenTransferModal = (enrollment: Enrollment) => {
-    setTransferEnrollmentTarget(enrollment);
-    setSelectedTargetScheduleId(null);
-  };
-
-  const handleCloseTransferModal = () => {
-    if (transferMutation.isPending) return;
-    setTransferEnrollmentTarget(null);
-    setSelectedTargetScheduleId(null);
-  };
-
-  const handleConfirmTransfer = () => {
-    if (!transferEnrollmentTarget || !selectedTargetScheduleId) return;
-    transferMutation.mutate(
-      {
-        id: transferEnrollmentTarget.id,
-        targetScheduleId: selectedTargetScheduleId,
-      },
-      {
-        onSuccess: () => {
-          handleCloseTransferModal();
-          refetch();
-        },
-      }
-    );
-  };
-
   const emptyInfo = {
     upcoming: {
       icon: 'event-note' as const,
@@ -375,7 +294,7 @@ export function MyClassesView({ embedded = false }: { embedded?: boolean }) {
     cancelled: {
       icon: 'event-busy' as const,
       title: 'Chưa có lớp đã hủy',
-      subtitle: 'Lịch sử các ca học bạn đã hủy sẽ hiển thị tại đây',
+      subtitle: 'Lịch sử các ca học đã hủy sẽ hiển thị tại đây',
       showExplore: false,
     },
   }[activeTab];
@@ -491,182 +410,12 @@ export function MyClassesView({ embedded = false }: { embedded?: boolean }) {
               )}
             </View>
           }
+          ListFooterComponent={activeTab === 'upcoming' ? <SupportNote /> : undefined}
           renderItem={({ item }) => (
-            <EnrollmentCard
-              item={item}
-              showActions={activeTab === 'upcoming'}
-              onCancel={handleCancel}
-              onChangeSession={handleOpenTransferModal}
-              cancelPending={cancelPending}
-            />
+            <EnrollmentCard item={item} onViewClass={(classId) => router.push(ROUTES.classDetail(classId))} />
           )}
         />
       )}
-
-      {/* ─── MODAL ĐỔI BUỔI TRONG CÙNG LỚP ────────────────────────────────────── */}
-      <Modal
-        visible={Boolean(transferEnrollmentTarget)}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={handleCloseTransferModal}
-      >
-        <View className="flex-1 bg-black/75 justify-center items-center px-md py-xl">
-          <View className="bg-bg-surface w-full max-w-lg rounded-2xl border border-border overflow-hidden shadow-xl max-h-[85%] flex-col">
-            {/* Modal Header */}
-            <View className="flex-row justify-between items-center px-lg py-md border-b border-border bg-bg-elevated">
-              <View className="flex-1 pr-sm">
-                <Text className="text-md font-bold font-bevn-bold text-text-primary">
-                  Đổi buổi trong cùng lớp
-                </Text>
-                <Text className="text-xs text-primary font-bevn-medium mt-0.5" numberOfLines={1}>
-                  {transferEnrollmentTarget?.schedule?.class?.name ?? 'Lớp học'}
-                </Text>
-              </View>
-              <TouchableOpacity
-                className="w-8 h-8 rounded-full bg-bg-card items-center justify-center border border-border"
-                onPress={handleCloseTransferModal}
-                disabled={transferMutation.isPending}
-              >
-                <Icon name="close" size={18} color={Colors.text.secondary} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Note */}
-            <View className="px-lg pt-md pb-xs">
-              <View className="bg-[#D4FF0010] border border-[#D4FF0030] rounded-lg p-sm flex-row items-start gap-2">
-                <Icon name="info" size={16} color={Colors.primary} style={{ marginTop: 2 }} />
-                <Text className="flex-1 text-xs text-text-secondary font-bevn-regular leading-4">
-                  Chọn một buổi học khác còn trống. Buổi học cũ chỉ được hủy khi máy chủ xác nhận chỗ mới thành công.
-                </Text>
-              </View>
-            </View>
-
-            {/* Schedules List */}
-            <ScrollView
-              className="flex-1 px-lg py-sm"
-              contentContainerStyle={{ gap: 8, paddingBottom: 16 }}
-              keyboardShouldPersistTaps="handled"
-            >
-              {isSchedulesLoading ? (
-                <View className="py-xl items-center justify-center">
-                  <ActivityIndicator color={Colors.primary} size="small" />
-                  <Text className="text-xs text-text-secondary font-bevn-regular mt-2">
-                    Đang tìm các buổi học trống...
-                  </Text>
-                </View>
-              ) : availableSchedules.length === 0 ? (
-                <View className="py-xl items-center justify-center gap-2">
-                  <Icon name="event-busy" size={40} color={Colors.text.muted} />
-                  <Text className="text-sm font-bevn-medium text-text-secondary text-center">
-                    Hiện chưa có buổi khác còn trống để chuyển.
-                  </Text>
-                  <Text className="text-xs text-text-muted font-bevn-regular text-center">
-                    Vui lòng thử lại sau hoặc giữ nguyên lịch học hiện tại.
-                  </Text>
-                </View>
-              ) : (
-                availableSchedules.map((sch) => {
-                  const count = sch._count?.enrollments ?? 0;
-                  const capacity = sch.class?.capacity ?? 20;
-                  const remaining = Math.max(0, capacity - count);
-                  const isFull = sch.status !== 'SCHEDULED' || remaining <= 0;
-                  const isSelected = selectedTargetScheduleId === sch.id;
-
-                  return (
-                    <TouchableOpacity
-                      key={sch.id}
-                      className={clsx(
-                        'p-md rounded-xl border flex-row items-center gap-md',
-                        isSelected
-                          ? 'border-primary bg-[#D4FF0012]'
-                          : isFull
-                          ? 'border-border bg-bg-card opacity-50'
-                          : 'border-border bg-bg-elevated'
-                      )}
-                      onPress={() => {
-                        if (!isFull) {
-                          setSelectedTargetScheduleId(sch.id);
-                        }
-                      }}
-                      disabled={isFull || transferMutation.isPending}
-                      activeOpacity={0.7}
-                    >
-                      {/* Radio Icon */}
-                      <Icon
-                        name={isSelected ? 'radio-button-checked' : 'radio-button-unchecked'}
-                        size={20}
-                        color={isSelected ? Colors.primary : isFull ? Colors.text.muted : Colors.text.secondary}
-                      />
-
-                      {/* Info */}
-                      <View className="flex-1">
-                        <Text className="text-xs font-bold font-bevn-bold text-text-primary">
-                          {formatDate(sch.startTime)}
-                        </Text>
-                        <Text className="text-xs text-text-secondary font-bevn-medium mt-0.5">
-                          {formatTime(sch.startTime)} – {formatTime(sch.endTime)}
-                          {sch.room?.name ? ` · ${sch.room.name}` : ''}
-                        </Text>
-                      </View>
-
-                      {/* Slot Badge */}
-                      <View
-                        className={clsx(
-                          'rounded-full px-sm py-[3px]',
-                          isFull ? 'bg-[#8498B220]' : 'bg-[#D4FF0020]'
-                        )}
-                      >
-                        <Text
-                          className={clsx(
-                            'text-xs font-semibold font-bevn-semibold',
-                            isFull ? 'text-text-muted' : 'text-primary'
-                          )}
-                        >
-                          {isFull ? 'Hết chỗ' : `Còn ${remaining} chỗ`}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-            </ScrollView>
-
-            {/* Modal Footer */}
-            <View className="flex-row gap-sm px-lg py-md border-t border-border bg-bg-elevated">
-              <TouchableOpacity
-                className="flex-1 py-sm rounded-xl border border-border bg-bg-card items-center justify-center"
-                onPress={handleCloseTransferModal}
-                disabled={transferMutation.isPending}
-                activeOpacity={0.8}
-              >
-                <Text className="text-xs font-semibold font-bevn-semibold text-text-secondary">
-                  Giữ buổi hiện tại
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className={clsx(
-                  'flex-1 py-sm rounded-xl items-center justify-center flex-row gap-1',
-                  !selectedTargetScheduleId || transferMutation.isPending
-                    ? 'bg-primary/40'
-                    : 'bg-primary'
-                )}
-                onPress={handleConfirmTransfer}
-                disabled={!selectedTargetScheduleId || transferMutation.isPending}
-                activeOpacity={0.85}
-              >
-                {transferMutation.isPending && (
-                  <ActivityIndicator size="small" color={Colors.text.inverse} />
-                )}
-                <Text className="text-xs font-bold font-bevn-bold text-text-inverse">
-                  {transferMutation.isPending ? 'Đang đổi buổi...' : 'Xác nhận đổi'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
-

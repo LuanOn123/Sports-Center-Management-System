@@ -12,11 +12,12 @@ import {
   initFacility, initTokens, saveTokens, setFacilityId,
 } from '../lib/api';
 import { connectSocket, disconnectSocket } from '../lib/socket';
+import { signOutOfGoogle } from '../lib/googleSignIn';
 import { onSessionExpired } from '../lib/sessionEvents';
 import { showAlert } from '../lib/alert';
 import { getFacilities } from '../services/facilityService';
-import { type Facility, type User } from '../lib/types';
-import { assertMobileRole, loginWithCaptcha } from '../services/authService';
+import { type Facility, type GoogleRegisterPayload, type LoginTokens, type RegisterPayload, type User } from '../lib/types';
+import { assertMobileRole, loginWithCaptcha, loginWithGoogleCredential, registerWithGoogleCredential } from '../services/authService';
 
 interface AuthContextValue {
   user: User | null;
@@ -25,21 +26,19 @@ interface AuthContextValue {
   facilities: Facility[];
   currentFacility: Facility | null;
   login: (email: string, password: string, turnstileToken: string) => Promise<void>;
+  /** Đăng nhập bằng Google ID token (web: authApi.loginWithGoogle); email chưa đăng ký → ApiError 404 ACCOUNT_NOT_REGISTERED */
+  loginWithGoogle: (credential: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
+  /** Hoàn tất đăng ký bằng Google rồi đăng nhập luôn (web: authApi.registerWithGoogle) */
+  registerWithGoogle: (data: GoogleRegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   selectFacility: (id: string) => Promise<void>;
   reloadFacilities: () => Promise<void>;
 }
 
-export interface RegisterData {
-  email: string;
-  password: string;
-  fullName: string;
-  phone?: string;
-  gender?: 'MALE' | 'FEMALE' | 'OTHER';
-  dateOfBirth?: string;
-}
+/** Body đăng ký bằng email — số điện thoại bắt buộc theo BE */
+export type RegisterData = RegisterPayload;
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -116,10 +115,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, [resetSessionState]);
 
-  const login = useCallback(async (email: string, password: string, turnstileToken: string) => {
-    // BE so khớp email chính xác (lưu chữ thường) — chuẩn hoá để gõ hoa/thừa khoảng trắng vẫn vào được.
-    const r = await loginWithCaptcha(email, password, turnstileToken);
-    await saveTokens(r.data.accessToken, r.data.refreshToken);
+  // Sau khi có token (email + mật khẩu hoặc Google): tải hồ sơ, kiểm tra vai trò, chọn cơ sở, nối socket
+  const startSession = useCallback(async (tokens: LoginTokens) => {
+    await saveTokens(tokens.accessToken, tokens.refreshToken);
     try {
       const me = await api.get<User>('/auth/me');
       assertMobileRole(me.data);
@@ -135,10 +133,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loadFacilities, applyFacility]);
 
+  const login = useCallback(async (email: string, password: string, turnstileToken: string) => {
+    // BE so khớp email chính xác (lưu chữ thường) — chuẩn hoá để gõ hoa/thừa khoảng trắng vẫn vào được.
+    const r = await loginWithCaptcha(email, password, turnstileToken);
+    await startSession(r.data);
+  }, [startSession]);
+
+  const loginWithGoogle = useCallback(async (credential: string) => {
+    const r = await loginWithGoogleCredential(credential);
+    await startSession(r.data);
+  }, [startSession]);
+
   const register = useCallback(async (data: RegisterData) => {
     await api.publicPost<User>('/auth/register', { ...data, email: data.email.trim().toLowerCase() });
     // Return to the login form after registration.
   }, []);
+
+  const registerWithGoogle = useCallback(async (data: GoogleRegisterPayload) => {
+    // Khác đăng ký bằng email: BE trả luôn token nên vào app ngay, không quay lại màn đăng nhập
+    const r = await registerWithGoogleCredential(data);
+    await startSession(r.data);
+  }, [startSession]);
 
   const logout = useCallback(async () => {
     try {
@@ -151,6 +166,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       // Disconnect socket before clearing session
       disconnectSocket();
+      // Quên tài khoản Google đã chọn để lần sau luôn hiện bảng chọn tài khoản
+      void signOutOfGoogle();
       await clearTokens();
       await resetSessionState();
     }
@@ -189,7 +206,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         facilities,
         currentFacility,
         login,
+        loginWithGoogle,
         register,
+        registerWithGoogle,
         logout,
         refreshUser,
         selectFacility,

@@ -2,6 +2,7 @@
 // Tầng gọi API thuần túy — không có state, không có hook
 
 import { api } from '../lib/api';
+import type { EnrollOptions } from '../lib/enrollOptions';
 import type { ConcurrentClassQuota, Enrollment, WholeCourseEnrollmentResult } from '../lib/types';
 import { allPages } from '../lib/pagedApi';
 
@@ -9,23 +10,13 @@ import { allPages } from '../lib/pagedApi';
 export const getMyEnrollments = (status?: string, limit?: string) =>
   allPages<Enrollment>('/enrollments/my', { status });
 
-/** DELETE /enrollments/:id */
-export const cancelEnrollment = (id: string) =>
-  api.delete(`/enrollments/${id}`);
-
-/** POST /enrollments/:id/transfer */
-export const transferEnrollment = (id: string, targetScheduleId: string) =>
-  api.post<Enrollment>(`/enrollments/${id}/transfer`, { targetScheduleId });
-
 /** GET /enrollments/my/quota — quota lớp học song song (distinct Class) của hội viên đang đăng nhập */
 export const getMyQuota = () =>
   api.get<ConcurrentClassQuota>('/enrollments/my/quota');
 
-/** POST /enrollments/bulk — đăng ký trọn khóa (all-or-nothing) */
-export const enrollWholeCourse = (classId: string) =>
-  api.post<WholeCourseEnrollmentResult>('/enrollments/bulk', { classId });
-
-
-/** POST /enrollments — hội viên đặt một buổi học (đặt lại buổi đã hủy: BE tự kích hoạt lại) */
-export const enrollSchedule = (scheduleId: string) =>
-  api.post<Enrollment>('/enrollments', { scheduleId });
+/**
+ * POST /enrollments/bulk — đăng ký trọn khóa (all-or-nothing). Kèm mục tiêu, lưu ý sức khỏe và "lưu vào hồ sơ"
+ * như web (EnrollConfirmModal); BE khởi tạo mục tiêu của hội viên cho lớp ngay sau khi đăng ký thành công.
+ */
+export const enrollWholeCourse = (classId: string, options: Partial<EnrollOptions> = {}) =>
+  api.post<WholeCourseEnrollmentResult>('/enrollments/bulk', { classId, ...options });

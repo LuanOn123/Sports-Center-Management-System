@@ -27,11 +27,18 @@ export function resolveNotificationRoute(item: AppNotification): Href | null {
       const classId = metaString(item, 'classId');
       return classId ? ROUTES.classDetail(classId) : null;
     }
+    // GOAL_PROGRESS_UPDATED: HLV vừa đánh giá tiến độ → thẻ "Mục tiêu & tiến độ" nằm ở chi tiết lớp
     case 'NEW_CLASS':
-    case 'COACH_CHANGED': {
+    case 'COACH_CHANGED':
+    case 'GOAL_PROGRESS_UPDATED': {
       const classId = metaString(item, 'classId');
       return classId ? ROUTES.classDetail(classId) : null;
     }
+    // Gói sắp hết hạn / đã hết hạn / đã hủy — mở màn gói thành viên để gia hạn hoặc mua gói mới
+    case 'SUBSCRIPTION_EXPIRING':
+    case 'SUBSCRIPTION_EXPIRED':
+    case 'SUBSCRIPTION_CANCELLED':
+      return ROUTES.membershipPlans;
     // Cảnh báo/hình phạt chuyên cần — mở màn "Chuyên cần & Điểm danh" của Member
     case 'ATTENDANCE_WARNING':
     case 'ATTENDANCE_PENALTY':

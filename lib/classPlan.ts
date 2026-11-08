@@ -2,9 +2,38 @@
 // Tóm tắt "kế hoạch khóa học" (GET /classes/:id/course-plan) để hiển thị: khung giờ trong tuần,
 // tình trạng chỗ trống. Chỉ dùng trường BE thật sự trả về.
 
-import type { CoursePlan, CoursePlanSlot } from './types';
+import type { Class, CoursePlan, CoursePlanSlot, WholeCourseEnrollmentResult } from './types';
 
 type Course = NonNullable<CoursePlan['course']>;
+
+/** Tóm tắt lớp ở đầu sheet đăng ký trọn khóa (web: classSummary của EnrollConfirmModal) */
+export interface EnrollSummary {
+  name: string;
+  sport?: string;
+  sessions?: number;
+  coach?: string;
+  room?: string;
+  time?: string;
+}
+
+export function enrollSummaryOf(cls: Pick<Class, 'name' | 'sports' | 'coaches'>, course: Course | null | undefined): EnrollSummary {
+  return {
+    name: cls.name,
+    sport: cls.sports?.map((s) => s.name).join(' · ') || undefined,
+    sessions: course?.totalSessions,
+    coach: cls.coaches?.[0]?.coach?.user?.fullName,
+    room: course?.slots[0]?.roomName,
+    time: course?.slots?.map((s) => `${s.weekdayLabel} ${s.startTime}–${s.endTime}`).join('; ') || undefined,
+  };
+}
+
+/** Câu báo kết quả đăng ký trọn khóa — cùng lời với web (ClassDetailPage, onSuccess của đăng ký) */
+export function wholeCourseEnrollmentMessage(result: Pick<WholeCourseEnrollmentResult, 'className' | 'summary'>) {
+  const { summary } = result;
+  return summary.enrolledNow > 0
+    ? `Bạn đã đăng ký ${summary.enrolledNow} buổi của khóa "${result.className}". Hiện đã có ${summary.totalRegistered}/${summary.totalSessions} buổi trong khóa của bạn.`
+    : `Bạn đã đăng ký đủ ${summary.totalSessions} buổi của khóa này trước đó.`;
+}
 
 export type AvailabilityTone = 'open' | 'limited' | 'full';
 

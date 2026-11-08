@@ -6,6 +6,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { useCoachSchedules } from './useCoachSchedules';
 import { useScheduleCalendar } from '../shared/useScheduleCalendar';
+import { calendarClasses } from '../../lib/coachSchedule';
 import type { ScheduleStatus } from '../../lib/types';
 
 export function useCoachScheduleScreen(coachId: string | undefined) {
@@ -28,6 +29,9 @@ export function useCoachScheduleScreen(coachId: string | undefined) {
     }, [coachId, range]),
   );
 
+  // Bộ lọc lớp gồm cả lớp có buổi dạy thay trong lịch (HLV dạy thay không được phân công lớp đó)
+  const filterClasses = useMemo(() => calendarClasses(classes, schedules), [classes, schedules]);
+
   const sessions = useMemo(
     () => schedules.filter((s) => (!classFilter || s.classId === classFilter) && (!statusFilter || s.status === statusFilter)),
     [schedules, classFilter, statusFilter],
@@ -36,7 +40,7 @@ export function useCoachScheduleScreen(coachId: string | undefined) {
   return {
     calendar,
     sessions,
-    classes,
+    classes: filterClasses,
     isLoading,
     isFetching,
     isError,

@@ -50,6 +50,8 @@ export const Colors = {
     ink: '#0B0F17',
     accent: '#D4FF00',
     pulse: '#38BDF8',
+    /** Màu chữ G trên nút Google — nhận diện thương hiệu Google, không thuộc bảng màu app */
+    google: '#4285F4',
     text: '#F1F4F9',
     tagline: '#9BAAC0',
   },

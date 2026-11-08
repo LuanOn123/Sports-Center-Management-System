@@ -32,6 +32,15 @@ export const SESSION_TONE_COLOR = {
 /** Còn ít chỗ hơn hoặc bằng số này thì báo "Sắp kín" */
 export const LOW_SLOT_THRESHOLD = 3;
 
+/**
+ * Lớp của tôi (web MyClassesPage): hội viên không tự hủy hay đổi buổi — mỗi lớp chỉ có "Xem lớp",
+ * cần hỗ trợ về lịch thì liên hệ lễ tân (dòng nhắc dưới tab Sắp tới)
+ */
+export const MY_CLASSES_TEXT = {
+  viewClass: 'Xem lớp',
+  supportNote: 'Nếu cần hỗ trợ về lịch học, vui lòng liên hệ lễ tân cơ sở.',
+} as const;
+
 /** Khung "Quyền đăng ký lớp học" ở Lớp của tôi (web MyClassesPage) — câu chữ khớp BE concurrentClassLimitMessage */
 export const ENROLLMENT_QUOTA_TEXT = {
   lockedTitle: 'Mở quyền đăng ký lớp học',

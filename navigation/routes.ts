@@ -9,6 +9,8 @@ export const ROUTES = {
   // Chưa đăng nhập
   login: '/auth/login',
   register: '/auth/register',
+  /** Hoàn tất đăng ký bằng Google (bổ sung số điện thoại, giới tính, ngày sinh, mục tiêu) */
+  googleRegister: '/auth/google-register',
   forgotPassword: '/auth/forgot-password',
 
   // Tabs
@@ -30,10 +32,13 @@ export const ROUTES = {
   checkin: '/member/checkin',
   waitlist: '/member/waitlist',
   support: '/member/support',
+  /** Chính sách sử dụng (web: Policies) — cả Hội viên và Huấn luyện viên */
+  policies: '/policies',
   payments: '/member/payments',
   coachChanges: '/coach/coach-changes',
   coachFeedback: '/coach/feedback',
-  coachMember: (id: string): Href => ({ pathname: '/coach/member/[id]', params: { id } }),
+  /** Hồ sơ học viên; kèm buổi dạy để lấy liên hệ, lưu ý sức khỏe và tiến độ từ danh sách học viên của buổi đó */
+  coachMember: (id: string, scheduleId?: string): Href => ({ pathname: '/coach/member/[id]', params: { id, ...(scheduleId ? { scheduleId } : {}) } }),
   aiAssistant: '/assistant',
 
   // Route động

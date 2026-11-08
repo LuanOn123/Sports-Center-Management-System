@@ -1,20 +1,20 @@
 // components/member/MemberScheduleView.tsx
 // Lịch của hội viên: khung lịch Tuần / Tháng DÙNG CHUNG với HLV (components/schedule/ScheduleCalendar), hiện các buổi
 // đã đặt / đã hoàn thành. Lớp đã hủy và danh sách theo lớp nằm ở "Lớp của tôi" nên không lặp lại ở đây.
+// Giống web: lịch chỉ để xem — hội viên không tự hủy buổi; cần hỗ trợ lịch thì liên hệ lễ tân.
 // `embedded`: nằm trong tab Lịch (ẩn header riêng).
 
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenHeader } from '../shared/ScreenHeader';
 import { ScheduleCalendar } from '../schedule/ScheduleCalendar';
 import { ScheduleEventCard } from '../schedule/ScheduleEventCard';
 import { useScheduleCalendar } from '../../hooks/shared/useScheduleCalendar';
-import { useMyEnrollments, useCancelEnrollment } from '../../hooks/member/useEnrollments';
+import { useMyEnrollments } from '../../hooks/member/useEnrollments';
 import { CALENDAR_TEXT } from '../../constants/calendar';
-import { canCancelSession, memberCalendarEvents, memberSessionBadge } from '../../lib/memberSchedule';
+import { memberCalendarEvents, memberSessionBadge } from '../../lib/memberSchedule';
 import { ApiError } from '../../lib/api';
-import { Haptic } from '../../lib/haptics';
 import { ROUTES } from '../../navigation/routes';
 
 export function MemberScheduleView({ embedded = false }: { embedded?: boolean }) {
@@ -23,7 +23,6 @@ export function MemberScheduleView({ embedded = false }: { embedded?: boolean })
   const calendar = useScheduleCalendar({ resetOnFocus: true });
   // Lấy mọi lượt đăng ký (allPages) rồi tự chia theo ngày — xem được cả tháng đã qua
   const enrollments = useMyEnrollments(undefined, '100');
-  const { handleCancel, isPending: cancelPending } = useCancelEnrollment();
   const events = useMemo(() => memberCalendarEvents(enrollments.data?.data ?? []), [enrollments.data]);
 
   return (
@@ -48,17 +47,6 @@ export function MemberScheduleView({ embedded = false }: { embedded?: boolean })
               badge={memberSessionBadge(enrollment)}
               hint="Xem chi tiết →"
               onPress={() => router.push(ROUTES.scheduleDetail(enrollment.scheduleId))}
-              trailing={canCancelSession(enrollment) ? (
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  accessibilityLabel="Hủy buổi học"
-                  className="bg-[#FF8D9A20] rounded-md px-md py-xs"
-                  disabled={cancelPending}
-                  onPress={() => { Haptic.warning(); handleCancel(enrollment.id, schedule.class?.name); }}
-                >
-                  <Text className="text-xs text-status-failed font-bevn-semibold">Hủy</Text>
-                </TouchableOpacity>
-              ) : undefined}
             />
           );
         }}

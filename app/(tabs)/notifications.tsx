@@ -40,6 +40,7 @@ const TYPE_ICON: Record<NotificationType, React.ComponentProps<typeof Icon>['nam
   COACH_CHANGE_REQUESTED: 'swap-horiz',
   COACH_CHANGE_APPROVED: 'swap-horiz',
   COACH_CHANGE_REJECTED: 'swap-horiz',
+  GOAL_PROGRESS_UPDATED: 'trending-up',
   GENERAL: 'notifications',
 };
 

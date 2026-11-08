@@ -19,4 +19,5 @@ export const COACH_PROFILE_TEXT = {
   bioTitle: 'Giới thiệu',
   noBio: 'Huấn luyện viên chưa cập nhật phần giới thiệu.',
   reviewsTitle: 'Đánh giá của học viên',
+  reviewNotEligible: 'Bạn có thể viết đánh giá sau khi đã tham gia ít nhất một buổi của lớp này do huấn luyện viên dạy.',
 } as const;

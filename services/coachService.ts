@@ -2,11 +2,9 @@
 // Tầng gọi API dành riêng cho Huấn luyện viên — lớp phụ trách, lịch dạy, học viên của buổi
 // (API điểm danh nằm ở services/attendanceService.ts)
 
-import { api } from '../lib/api';
-import type { Class, ClassSchedule, CoachDetails, Enrollment, ScheduleStatus } from '../lib/types';
+import { api, apiRequest } from '../lib/api';
+import type { Class, ClassSchedule, CoachDetails, Enrollment, LearnerProfile, ScheduleStatus } from '../lib/types';
 import { allPages } from '../lib/pagedApi';
-
-const CLASS_BATCH_SIZE = 4; // số lớp gọi song song mỗi lượt (giống FE web)
 
 export interface ScheduleRange {
   /** ISO — lấy buổi có startTime >= mốc này */
@@ -23,24 +21,24 @@ export const getCoachClasses = (coachId: string) =>
 /** GET /coaches/:userId — hồ sơ HLV (tên, ảnh, giới thiệu, chuyên môn, kinh nghiệm); hội viên xem được như web */
 export const getCoachProfile = (userId: string) => api.get<CoachDetails>(`/coaches/${encodeURIComponent(userId)}`);
 
-/** GET /class-schedules?classId=&startAfter=&startBefore= — gom đủ mọi trang của một lớp */
-async function getClassSchedules(classId: string, range: ScheduleRange): Promise<ClassSchedule[]> {
-  return (await allPages<ClassSchedule>('/class-schedules', { classId, ...range })).data.filter((s) => s.classId === classId || s.class?.id === classId);
-}
-
 /**
- * Lịch dạy của HLV trong khoảng thời gian — chỉ hỏi lịch của các lớp được phân công
- * (BE chưa lọc theo coachId; KHÔNG tải lịch toàn trung tâm — giống FE web).
+ * GET /class-schedules?coachId=&startAfter=&startBefore= — lịch dạy HIỆU LỰC của HLV trong khoảng thời gian.
+ * BE tự giới hạn theo HLV đang đăng nhập và tính người dạy thay (HLV riêng của buổi > HLV chính của lớp, HLV phụ giữ
+ * quyền) nên HLV dạy thay không có lớp dài hạn vẫn thấy buổi, còn HLV gốc không thấy buổi đã chuyển — giống FE web
+ * (features/coach/data.ts). Không tải lịch theo từng lớp và không có phương án dự phòng tải lịch cả cơ sở.
  */
-export async function getCoachSchedules(classIds: string[], range: ScheduleRange): Promise<ClassSchedule[]> {
-  const result: ClassSchedule[] = [];
-  for (let i = 0; i < classIds.length; i += CLASS_BATCH_SIZE) {
-    const batch = await Promise.all(classIds.slice(i, i + CLASS_BATCH_SIZE).map((id) => getClassSchedules(id, range)));
-    result.push(...batch.flat());
-  }
-  return result.sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime));
+export async function getCoachSchedules(coachId: string, range: ScheduleRange, signal?: AbortSignal): Promise<ClassSchedule[]> {
+  const { data } = await allPages<ClassSchedule>('/class-schedules', { coachId, ...range }, signal);
+  return data.sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime));
 }
 
 /** GET /enrollments/schedule/:scheduleId — học viên đã đăng ký một buổi */
 export const getScheduleEnrollments = (scheduleId: string) =>
   allPages<Enrollment>(`/enrollments/schedule/${scheduleId}`);
+
+/**
+ * GET /members/:id — hồ sơ học viên cho HLV. BE chỉ trả bản rút gọn (tên, ảnh, trình độ, mục tiêu) và trả 404 nếu học viên
+ * không thuộc lịch dạy của HLV; email, điện thoại, ghi chú sức khỏe lấy từ danh sách học viên của buổi (getScheduleEnrollments).
+ */
+export const getLearnerProfile = (memberId: string, signal?: AbortSignal) =>
+  apiRequest<LearnerProfile>(`/members/${encodeURIComponent(memberId)}`, 'GET', { signal });

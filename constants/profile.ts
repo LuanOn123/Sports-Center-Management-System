@@ -48,6 +48,9 @@ export const VN_PHONE_PREFIX = '0';
 export const VN_PHONE_MIN_DIGITS = 10;
 export const VN_PHONE_MAX_DIGITS = 11;
 
+/** Đăng ký (BE RegisterSchema / GoogleRegisterSchema) bắt buộc có số điện thoại — cùng câu với web */
+export const PHONE_REQUIRED_MESSAGE = 'Vui lòng nhập số điện thoại.';
+
 /** Nhãn vai trò hiển thị (hồ sơ, tab Tài khoản) */
 export const ROLE_LABEL: Record<string, string> = {
   MEMBER: 'Hội viên',

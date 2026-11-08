@@ -15,6 +15,7 @@ import { ROUTES } from '../../navigation/routes';
 import { ApiError } from '../../lib/api';
 import { showAlert } from '../../lib/alert';
 import type { ScheduleActionsContext } from '../shared/ScheduleDetailView';
+import { SessionEvaluationCard } from './SessionEvaluationCard';
 import { WaitlistAction } from './WaitlistAction';
 import { canTakeAttendance } from '../../lib/businessRules';
 
@@ -38,7 +39,8 @@ export function MemberScheduleActions({ schedule: s, isFull, isPast }: ScheduleA
       </View>
     );
   }
-  if (s.status !== 'SCHEDULED') return null;
+  // Buổi đã hoàn thành vẫn cho xem đánh giá của HLV (buổi còn SCHEDULED nhưng đã qua giờ cũng có thể đã được đánh giá)
+  if (s.status !== 'SCHEDULED') return classId ? <SessionEvaluationCard classId={classId} scheduleId={s.id} /> : null;
 
   return (
     <>
@@ -64,6 +66,8 @@ export function MemberScheduleActions({ schedule: s, isFull, isPast }: ScheduleA
           {classId && <Button title="Xem lớp & đăng ký" icon="event-available" onPress={() => router.push(ROUTES.classDetail(classId))} />}
         </View>
       )}
+
+      {classId && <SessionEvaluationCard classId={classId} scheduleId={s.id} />}
 
       <QrScannerModal
         visible={showScanner}

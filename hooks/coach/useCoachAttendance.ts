@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCoachSchedules } from './useCoachSchedules';
+import { useSaveEvaluation, useScheduleEvaluations } from './useScheduleEvaluations';
 import { getScheduleEnrollments } from '../../services/coachService';
 import { createAttendance, getScheduleAttendance } from '../../services/attendanceService';
 import { getScheduleById } from '../../services/scheduleService';
@@ -14,6 +15,7 @@ import {
 } from '../../constants/schedule';
 import { ATTENDANCE_ROSTER_STATUSES } from '../../constants/attendance';
 import { canGenerateAttendanceQr, canTakeAttendance } from '../../lib/businessRules';
+import { filterRoster } from '../../lib/coachRoster';
 import { daysFromNow, endOfDay, startOfDay } from '../../lib/date';
 import type { Attendance, AttendanceStatus, Enrollment } from '../../lib/types';
 
@@ -21,6 +23,8 @@ export function useCoachAttendance(coachId: string | undefined, initialScheduleI
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(initialScheduleId ?? null);
   const [markingMemberId, setMarkingMemberId] = useState<string | null>(null);
+  const [evaluatingMemberId, setEvaluatingMemberId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   // Mở thẳng một buổi khi được điều hướng tới kèm scheduleId (từ Lịch dạy / chi tiết buổi)
   useEffect(() => {
@@ -65,9 +69,14 @@ export function useCoachAttendance(coachId: string | undefined, initialScheduleI
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['attendance', selectedId] }),
   });
 
+  // Mục tiêu + tiến độ của từng học viên và đánh giá của HLV — độc lập với điểm danh (web: Attendance.tsx)
+  const evaluations = useScheduleEvaluations(selectedId);
+  const saveEvaluation = useSaveEvaluation(selectedId);
+
   const roster: Enrollment[] = (enrollmentsQuery.data?.data ?? []).filter((e) =>
     ATTENDANCE_ROSTER_STATUSES.includes(e.status)
   );
+  const visibleRoster = filterRoster(roster, search);
   const attendances: Attendance[] = attendanceQuery.data?.data ?? [];
   const recordFor = (memberId: string) => attendances.find((a) => a.memberId === memberId);
 
@@ -81,8 +90,15 @@ export function useCoachAttendance(coachId: string | undefined, initialScheduleI
     selectedSchedule,
     /** Đang ở chế độ xem một buổi (kể cả khi buổi còn đang tải) */
     hasSelection: Boolean(selectedId),
-    selectSchedule: (id: string | null) => setSelectedId(id),
+    selectSchedule: (id: string | null) => {
+      setSelectedId(id);
+      setSearch('');
+    },
     roster,
+    /** Học viên sau khi lọc theo ô tìm kiếm (tên hoặc email) */
+    visibleRoster,
+    search,
+    setSearch,
     rosterLoading: enrollmentsQuery.isLoading || attendanceQuery.isLoading || detailQuery.isLoading,
     recordFor,
     canWrite,
@@ -97,9 +113,30 @@ export function useCoachAttendance(coachId: string | undefined, initialScheduleI
       setMarkingMemberId(null);
     },
     isMarking: markMutation.isPending,
+    /** Tiến độ mục tiêu của một học viên ở buổi này (undefined khi chưa tải được) */
+    evaluationFor: evaluations.itemFor,
+    evaluationsError: evaluations.error,
+    /** Sheet đánh giá tiến độ: chọn học viên → chấm 0–100% + lời dặn → lưu (BE báo cho hội viên) */
+    evaluate: {
+      memberId: evaluatingMemberId,
+      item: evaluatingMemberId ? evaluations.itemFor(evaluatingMemberId) : undefined,
+      isPending: saveEvaluation.isPending,
+      error: saveEvaluation.error,
+      start: (memberId: string) => {
+        saveEvaluation.reset();
+        setEvaluatingMemberId(memberId);
+      },
+      close: () => {
+        if (!saveEvaluation.isPending) setEvaluatingMemberId(null);
+      },
+      save: (progress: number, description: string | null) => {
+        if (!evaluatingMemberId || saveEvaluation.isPending) return;
+        saveEvaluation.mutate({ memberId: evaluatingMemberId, progress, description }, { onSuccess: () => setEvaluatingMemberId(null) });
+      },
+    },
     onRefresh: async () => {
       await refetchSchedules();
-      if (selectedId) await Promise.all([enrollmentsQuery.refetch(), attendanceQuery.refetch()]);
+      if (selectedId) await Promise.all([enrollmentsQuery.refetch(), attendanceQuery.refetch(), evaluations.refetch()]);
     },
   };
 }

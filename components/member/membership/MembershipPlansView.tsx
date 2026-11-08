@@ -19,6 +19,7 @@ import { ApiError } from '../../../lib/api';
 import { showAlert } from '../../../lib/alert';
 import { Haptic } from '../../../lib/haptics';
 import { Colors } from '../../../constants/theme';
+import { SCHEDULED_SUBSCRIPTION_TEXT } from '../../../constants/membership';
 import { ROUTES } from '../../../navigation/routes';
 import { WorkflowState } from '../../shared/WorkflowScreen';
 
@@ -79,11 +80,11 @@ export function MembershipPlansView({ memberId, scope }: MembershipPlansViewProp
             activeSub={activeSub}
             tier={effectiveTier}
             daysRemaining={daysRemaining}
-            onCancel={cancel.openModal}
+            onCancel={() => cancel.openModal(activeSub)}
           />
         )}
 
-        {scheduledSub && <ScheduledMembershipCard subscription={scheduledSub} />}
+        {scheduledSub && <ScheduledMembershipCard subscription={scheduledSub} onCancel={() => cancel.openModal(scheduledSub)} />}
 
         {pendingPayment && (
           <PendingPaymentCard checkout={pendingPayment} onPress={() => openPayment(pendingPayment.paymentId)} />
@@ -91,6 +92,9 @@ export function MembershipPlansView({ memberId, scope }: MembershipPlansViewProp
 
         <View className="mb-xl">
           <Text className="text-lg font-bevn-bold text-text-primary mb-md">Các gói thành viên</Text>
+          {screen.purchaseBlocked && (
+            <Text className="text-sm text-status-scheduled font-bevn-regular leading-[20px] mb-md">{SCHEDULED_SUBSCRIPTION_TEXT.purchaseBlocked}</Text>
+          )}
           {screen.plansLoading ? (
             <ActivityIndicator color={Colors.primary} />
           ) : (
@@ -102,7 +106,7 @@ export function MembershipPlansView({ memberId, scope }: MembershipPlansViewProp
                 switchType={screen.switchTypeFor(plan)}
                 hint={screen.hintFor(plan)}
                 isCreating={screen.creatingPlanId === plan.id && !switchSheet.plan}
-                disabled={screen.isCreatingCheckout}
+                disabled={screen.isCreatingCheckout || screen.purchaseBlocked}
                 onCheckout={() => handleSelectPlan(plan)}
               />
             ))
@@ -122,7 +126,7 @@ export function MembershipPlansView({ memberId, scope }: MembershipPlansViewProp
 
       <CancelSubscriptionModal
         visible={cancel.open}
-        subscription={activeSub}
+        subscription={cancel.target}
         estimate={cancel.estimate}
         reason={cancel.reason}
         onReasonChange={cancel.setReason}

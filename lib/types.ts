@@ -24,6 +24,8 @@ export interface MemberProfile {
   trainingLevel?: TrainingLevel;
   fitnessGoal?: string;
   trainingPreference?: string;
+  /** Ghi chú sức khỏe lưu ở hồ sơ — điền sẵn khi đăng ký lớp (web: memberProfile.healthNotes) */
+  healthNotes?: string | null;
 }
 
 export interface CoachProfile {
@@ -52,6 +54,26 @@ export interface User {
 export interface LoginTokens {
   accessToken: string;
   refreshToken: string;
+}
+
+/** POST /auth/register — BE bắt buộc số điện thoại; giới tính, ngày sinh, mục tiêu là tùy chọn */
+export interface RegisterPayload {
+  email: string;
+  password: string;
+  fullName: string;
+  phone: string;
+  gender?: Gender;
+  dateOfBirth?: string;
+  fitnessGoal?: string;
+}
+
+/** POST /auth/google-register — họ tên và email lấy từ Google ID token, BE tự sinh mật khẩu ngẫu nhiên */
+export interface GoogleRegisterPayload {
+  credential: string;
+  phone: string;
+  gender?: Gender;
+  dateOfBirth?: string;
+  fitnessGoal?: string;
 }
 
 // ─── Facility (cơ sở) ────────────────────────────────────────────────────────
@@ -251,10 +273,82 @@ export interface Enrollment {
   member?: {
     id: string;
     user?: Pick<User, 'id' | 'fullName' | 'email' | 'phone'>;
+    healthNotes?: string | null;
   };
+  /** Lưu ý sức khỏe hội viên nhập lúc đăng ký lớp — HLV thấy ở danh sách học viên của buổi dạy */
+  healthNotes?: string | null;
   status: EnrollmentStatus;
   bookedAt: string;
   createdAt: string;
+}
+
+/**
+ * GET /members/:id khi người gọi là HLV — BE chỉ trả bản rút gọn: không có email, điện thoại,
+ * thời gian tập yêu thích (liên hệ và ghi chú sức khỏe lấy từ danh sách học viên của buổi dạy).
+ */
+export interface LearnerProfile {
+  id: string;
+  trainingLevel?: TrainingLevel;
+  fitnessGoal?: string;
+  user?: Pick<User, 'id' | 'fullName' | 'avatarUrl'>;
+}
+
+// ─── Mục tiêu & tiến độ khóa học (GoalTarget) ────────────────────────────────
+
+export type GoalStatus = 'IN_PROGRESS' | 'COMPLETED' | 'DROPPED';
+
+/** Một lần HLV đánh giá tiến độ sau buổi học — hiện trong nhật ký của hội viên */
+export interface GoalEvaluationEntry {
+  id: string;
+  scheduleId: string;
+  startTime: string;
+  endTime: string;
+  roomName?: string;
+  coachName: string;
+  previousProgress: number;
+  newProgress: number;
+  diff: number;
+  description?: string | null;
+  createdAt: string;
+}
+
+/** GET /attendance/classes/:classId/my-goal — null khi hội viên chưa đăng ký lớp đó */
+export interface MyClassGoal {
+  id: string;
+  classId: string;
+  goal: string;
+  progress: number;
+  status: GoalStatus;
+  evaluations: GoalEvaluationEntry[];
+}
+
+/** GET /attendance/schedules/:scheduleId/evaluations — mỗi học viên của buổi: mục tiêu, tiến độ hiện tại, đánh giá buổi này */
+export interface ScheduleEvaluationItem {
+  memberId: string;
+  goalId: string | null;
+  goal: string;
+  currentProgress: number;
+  evaluation: {
+    id: string;
+    previousProgress: number;
+    newProgress: number;
+    description?: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+}
+
+/** POST /attendance/schedules/:scheduleId/evaluations */
+export interface SaveEvaluationPayload {
+  memberId: string;
+  /** 0–100 */
+  progress: number;
+  description?: string | null;
+}
+
+export interface SaveEvaluationResult {
+  evaluation: { id: string; previousProgress: number; newProgress: number; description?: string | null };
+  goal: { id: string; progress: number; status: GoalStatus };
 }
 
 // ─── Attendance (Flow 4) ─────────────────────────────────────────────────────
@@ -411,6 +505,7 @@ export type NotificationType =
   | 'COACH_CHANGE_REQUESTED'
   | 'COACH_CHANGE_APPROVED'
   | 'COACH_CHANGE_REJECTED'
+  | 'GOAL_PROGRESS_UPDATED'
   | 'GENERAL';
 
 export interface AppNotification {
