@@ -12,7 +12,7 @@ export default function ScheduleScreen() {
   const { user } = useAuth();
   const { view } = useLocalSearchParams<{ view?: MemberScheduleSegment }>();
   if (user?.role === 'COACH') {
-    return <CoachScheduleView coachId={user.coachProfile?.id ?? user.id} />;
+    return <CoachScheduleView coachId={user.coachProfile?.id} />;
   }
   return <MemberScheduleTabView initial={view} />;
 }

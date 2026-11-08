@@ -11,8 +11,11 @@ import { findClassInLists } from '../../lib/classCache';
 import type { Class, ClassCoach, ClassSchedule } from '../../lib/types';
 import { useCoursePlan } from './useClasses';
 import { useEnrollWholeCourse } from '../member/useEnrollments';
+import { useMyClassGoal } from '../member/useMyClassGoal';
 import { useOwningFacility } from './useOwningFacility';
 import { TERM_STAGE_BLOCKER_CODES } from '../../constants/terms';
+import { enrollSummaryOf } from '../../lib/classPlan';
+import { toEnrollOptions, type EnrollFormValues } from '../../lib/enrollOptions';
 import { membershipCoverageNotice, termNotice as describeTerm } from '../../lib/termRegistration';
 
 /** Lý do chặn đăng ký liên quan gói thành viên → gợi ý xem gói */
@@ -44,6 +47,10 @@ export function useClassDetail(id: string) {
     queryFn: ({ signal }) => allPages<ClassSchedule>('/class-schedules', { classId: id, status: 'SCHEDULED', startAfter: new Date().toISOString() }, signal),
   });
   const bulk = useEnrollWholeCourse();
+  // Thẻ "Mục tiêu & tiến độ": chỉ hội viên, và chỉ có dữ liệu khi đã đăng ký lớp
+  const goal = useMyClassGoal(id, { enabled: isMember });
+  // Sheet xác nhận đăng ký (mục tiêu + lưu ý sức khỏe) — điền sẵn từ hồ sơ như web
+  const [enrollOpen, setEnrollOpen] = useState(false);
 
   const registration = plan.data?.data.registration ?? null;
   // Kỳ học của khóa: giai đoạn đăng ký (hết hạn đăng ký là hết, gói không nới được)
@@ -60,6 +67,16 @@ export function useClassDetail(id: string) {
     plan,
     coachSessions,
     bulk,
+    goal,
+    enrollSheet: {
+      visible: enrollOpen,
+      open: () => setEnrollOpen(true),
+      close: () => { if (!bulk.isPending) setEnrollOpen(false); },
+      confirm: (values: EnrollFormValues) => bulk.enroll(id, toEnrollOptions(values), () => setEnrollOpen(false)),
+      isPending: bulk.isPending,
+      initialGoal: user?.memberProfile?.fitnessGoal ?? '',
+      initialHealthNotes: user?.memberProfile?.healthNotes ?? '',
+    },
     value: cls.data?.data,
     /** Một vòng tải duy nhất: chờ cả lớp lẫn kế hoạch khóa rồi hiện đủ, không hiện từng phần kèm vòng tải thứ hai */
     isInitialLoading: !cls.isError && (cls.isPending || (isMember && plan.isPending)),
@@ -76,10 +93,10 @@ export function useClassDetail(id: string) {
     openCoach: setSelectedCoach,
     closeCoach: () => setSelectedCoach(null),
     /** Đang làm mới (kể cả ngầm) — WorkflowScreen chỉ dùng để biết khi nào lần kéo của người dùng xong */
-    refreshing: cls.isRefetching || plan.isRefetching || coachSessions.isRefetching,
+    refreshing: cls.isRefetching || plan.isRefetching || coachSessions.isRefetching || goal.isRefetching,
     refresh: () => {
       void cls.refetch();
-      if (isMember) void plan.refetch();
+      if (isMember) { void plan.refetch(); void goal.refetch(); }
       if (isCoach) void coachSessions.refetch();
     },
   };

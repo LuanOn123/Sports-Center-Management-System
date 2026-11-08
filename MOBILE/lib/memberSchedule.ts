@@ -28,8 +28,3 @@ export function memberSessionBadge(enrollment: Enrollment, now = Date.now()) {
   if (isSessionPast(enrollment.schedule?.endTime, now)) return { label: 'Đã diễn ra', color: Colors.text.muted };
   return { label: 'Đã đặt', color: Colors.status.booked };
 }
-
-/** Chỉ hủy được buổi đã đặt và chưa diễn ra */
-export function canCancelSession(enrollment: Enrollment, now = Date.now()) {
-  return enrollment.status === 'BOOKED' && !isSessionPast(enrollment.schedule?.endTime, now);
-}

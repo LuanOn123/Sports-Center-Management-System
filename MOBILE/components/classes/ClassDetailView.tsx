@@ -10,17 +10,19 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon } from '../shared/Icon';
 import { WaitlistAction } from '../member/WaitlistAction';
+import { EnrollConfirmSheet } from '../member/EnrollConfirmSheet';
 import { WorkflowScreen, WorkflowCard, WorkflowText, WorkflowButton, WorkflowState } from '../shared/WorkflowScreen';
 import { StatusBadge } from '../ui';
 import { TermNoticeCard } from './TermNoticeCard';
 import { MembershipCoverageNotice } from './MembershipCoverageNotice';
+import { ClassGoalCard } from './ClassGoalCard';
 import { CoachCard } from './CoachCard';
 import { CoachProfileSheet } from './CoachProfileSheet';
 import { WrongFacilityCard } from '../shared/WrongFacilityCard';
 import { useClassDetail } from '../../hooks/shared/useClassDetail';
 import { CLASS_TYPE_COLOR, CLASS_TYPE_LABEL, LOW_SLOT_THRESHOLD, SESSION_TONE_COLOR } from '../../constants/classes';
 import { Colors } from '../../constants/theme';
-import { canJoinSessionWaitlist, courseAvailability, courseFooterKind, formatSlot, sessionStatusLabel, type AvailabilityTone } from '../../lib/classPlan';
+import { canJoinSessionWaitlist, courseAvailability, courseFooterKind, enrollSummaryOf, formatSlot, sessionStatusLabel, type AvailabilityTone } from '../../lib/classPlan';
 import { formatDate, formatTime, formatWeekdayDate } from '../../lib/format';
 import { ROUTES } from '../../navigation/routes';
 
@@ -72,7 +74,7 @@ export function ClassDetailView({ id }: { id: string }) {
         icon="event-available"
         title={`Đăng ký trọn khóa · ${course.totalSessions} buổi`}
         busy={d.bulk.isPending}
-        onPress={() => d.bulk.handleEnrollWholeCourse(id, value.name)}
+        onPress={d.enrollSheet.open}
       />
     ) : footerKind === 'plans' ? (
       <WorkflowButton icon="card-membership" title="Xem gói thành viên để đăng ký" onPress={() => router.push(ROUTES.membershipPlans)} />
@@ -104,6 +106,9 @@ export function ClassDetailView({ id }: { id: string }) {
             {value.classType === 'PREMIUM' && <Fact icon="workspace-premium" color={Colors.tier.PREMIUM}>Cần gói Premium còn hiệu lực để đặt lớp</Fact>}
           </View>
         </WorkflowCard>
+
+        {/* Mục tiêu & tiến độ của hội viên — chỉ có khi đã đăng ký lớp (web: ngay sau thẻ thông tin lớp) */}
+        {d.isMember && d.goal.data && <ClassGoalCard goal={d.goal.data} />}
 
         {/* 2. Lịch học & địa điểm (hội viên) */}
         {d.isMember && <>
@@ -188,6 +193,17 @@ export function ClassDetailView({ id }: { id: string }) {
         ))}
       </>}
       <CoachProfileSheet assigned={d.selectedCoach} classId={id} onClose={d.closeCoach} />
+      {d.isMember && value && (
+        <EnrollConfirmSheet
+          visible={d.enrollSheet.visible}
+          summary={enrollSummaryOf(value, course)}
+          initialGoal={d.enrollSheet.initialGoal}
+          initialHealthNotes={d.enrollSheet.initialHealthNotes}
+          isPending={d.enrollSheet.isPending}
+          onConfirm={d.enrollSheet.confirm}
+          onClose={d.enrollSheet.close}
+        />
+      )}
     </WorkflowScreen>
   );
 }

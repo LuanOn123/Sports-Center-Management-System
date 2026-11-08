@@ -1,23 +1,25 @@
 // components/coach/CoachAttendanceView.tsx
-// Màn Điểm danh của HLV: chọn buổi → danh sách học viên → ghi điểm danh / tạo mã QR
+// Màn Điểm danh của HLV: chọn buổi → danh sách học viên (tìm theo tên/email) → ghi điểm danh / tạo mã QR / đánh giá tiến độ
 // (logic ở hooks/coach/useCoachAttendance — theo luồng FE web)
 
 import React from 'react';
-import { View, Text, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, RefreshControl, TextInput, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon } from '../shared/Icon';
 import { ScreenHeader } from '../shared/ScreenHeader';
 import { InfoBanner } from '../shared/InfoBanner';
 import { AttendanceQrModal } from './AttendanceQrModal';
 import { AttendanceStatusPicker } from './AttendanceStatusPicker';
+import { EvaluationSheet } from './EvaluationSheet';
+import { RosterRow, learnerNameOf } from './RosterRow';
 import { useCoachAttendance } from '../../hooks/coach/useCoachAttendance';
 import { useQrAttendance } from '../../hooks/coach/useQrAttendance';
 import { Colors, Spacing } from '../../constants/theme';
-import { ATTENDANCE_STATUS_COLOR, ATTENDANCE_STATUS_LABEL } from '../../constants/attendance';
+import { GOAL_TEXT } from '../../constants/goals';
 import { formatTime, formatWeekdayDate } from '../../lib/format';
 import { ApiError } from '../../lib/api';
 import { showAlert } from '../../lib/alert';
-import type { ClassSchedule, Enrollment } from '../../lib/types';
+import type { ClassSchedule } from '../../lib/types';
 import { WorkflowState } from '../shared/WorkflowScreen';
 import { ROUTES } from '../../navigation/routes';
 
@@ -29,7 +31,9 @@ interface CoachAttendanceViewProps {
 
 const LIST_PADDING = { padding: Spacing.xl, gap: Spacing.md, paddingBottom: Spacing.xxxl };
 
-const memberNameOf = (e: Enrollment) => e.member?.user?.fullName || `Học viên #${e.memberId.slice(-4)}`;
+/** Độ dài tối đa ô tìm học viên (web: maxLength 100) */
+const SEARCH_MAX_LENGTH = 100;
+
 const sessionTimeOf = (s: ClassSchedule) =>
   `${formatWeekdayDate(s.startTime)} · ${formatTime(s.startTime)}–${formatTime(s.endTime)}`;
 
@@ -49,6 +53,7 @@ export function CoachAttendanceView({ coachId, initialScheduleId }: CoachAttenda
   const qr = useQrAttendance(att.selectedSchedule?.id);
   const selected = att.selectedSchedule;
   const markingEnrollment = att.roster.find((e) => e.memberId === att.markingMemberId);
+  const evaluatingEnrollment = att.roster.find((e) => e.memberId === att.evaluate.memberId);
 
   // Tab giữ nguyên params → xoá scheduleId khi quay lại danh sách, để lần sau mở lại
   // đúng buổi đó từ Lịch dạy thì param đổi giá trị và hook chọn lại buổi.
@@ -96,13 +101,14 @@ export function CoachAttendanceView({ coachId, initialScheduleId }: CoachAttenda
       ) : (
         /* Danh sách học viên của buổi đã chọn */
         <FlatList
-          data={att.roster}
+          data={att.visibleRoster}
           keyExtractor={(e) => e.id}
           contentContainerStyle={LIST_PADDING}
+          keyboardShouldPersistTaps="handled"
           refreshControl={<RefreshControl refreshing={false} onRefresh={att.onRefresh} tintColor={Colors.primary} />}
           ListHeaderComponent={
-            <View>
-              <View className="flex-row items-center gap-md bg-bg-surface rounded-md p-md border border-border mb-md">
+            <View className="gap-md">
+              <View className="flex-row items-center gap-md bg-bg-surface rounded-md p-md border border-border">
                 <View className="flex-1">
                   <Text className="text-md font-bevn-bold text-text-primary">{selected.class?.name ?? 'Lớp học'}</Text>
                   <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular">{sessionTimeOf(selected)}</Text>
@@ -121,42 +127,54 @@ export function CoachAttendanceView({ coachId, initialScheduleId }: CoachAttenda
                   message="Chỉ quản lý hoặc huấn luyện viên phụ trách được điểm danh khi buổi học đã bắt đầu (từ 30 phút trước giờ học tới khi kết thúc)."
                 />
               )}
+              {Boolean(att.evaluationsError) && (
+                <InfoBanner tone="warning" title="Chưa có mục tiêu học viên" message={GOAL_TEXT.evaluateLoadFailed} />
+              )}
+              {att.roster.length > 0 && (
+                <View className="gap-sm">
+                  <View className="flex-row items-center gap-sm bg-bg-surface rounded-md px-md border border-border">
+                    <Icon name="search" size={16} color={Colors.text.muted} />
+                    <TextInput
+                      accessibilityLabel={GOAL_TEXT.searchPlaceholder}
+                      className="flex-1 py-md text-text-primary text-sm font-bevn-regular"
+                      value={att.search}
+                      onChangeText={att.setSearch}
+                      maxLength={SEARCH_MAX_LENGTH}
+                      placeholder={GOAL_TEXT.searchPlaceholder}
+                      placeholderTextColor={Colors.text.muted}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      returnKeyType="search"
+                    />
+                    {att.search.length > 0 && (
+                      <TouchableOpacity onPress={() => att.setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityLabel="Xóa tìm kiếm">
+                        <Icon name="close" size={16} color={Colors.text.muted} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <Text className="text-xs text-text-muted font-bevn-regular">{GOAL_TEXT.rosterCount(att.visibleRoster.length, att.roster.length)}</Text>
+                </View>
+              )}
             </View>
           }
-          ListEmptyComponent={<EmptyState icon="group-off" title="Chưa có học viên đăng ký" />}
+          ListEmptyComponent={
+            att.roster.length
+              ? <EmptyState icon="search" title={GOAL_TEXT.searchNoResult} />
+              : <EmptyState icon="group-off" title="Chưa có học viên đăng ký" />
+          }
           renderItem={({ item }) => {
             const record = att.recordFor(item.memberId);
-            const color = record ? ATTENDANCE_STATUS_COLOR[record.status] : Colors.text.muted;
-            const writable = !record && att.canWrite;
-            const contact = item.member?.user?.phone || item.member?.user?.email;
             return (
-              <View className="bg-bg-surface rounded-lg p-md flex-row items-center gap-md border border-border">
-                <View className="w-[38px] h-[38px] rounded-full bg-bg-elevated items-center justify-center">
-                  <Text className="text-sm font-bevn-bold text-primary">{memberNameOf(item).charAt(0).toUpperCase()}</Text>
-                </View>
-                <TouchableOpacity className="flex-1" onPress={() => router.push(ROUTES.coachMember(item.memberId))}>
-                  <Text className="text-sm font-bevn-semibold text-text-primary">{memberNameOf(item)}</Text>
-                  <Text className="text-xs text-text-muted mt-0.5 font-bevn-regular" numberOfLines={1}>
-                    {record ? ATTENDANCE_STATUS_LABEL[record.status] : 'Chưa điểm danh'}
-                    {contact ? ` • ${contact}` : ''}
-                  </Text>
-                  <Text className="text-xs text-primary font-bevn-medium mt-xs">Xem hồ sơ học viên</Text>
-                </TouchableOpacity>
-                {record ? (
-                  <View className="px-sm py-1 rounded-md border" style={{ backgroundColor: color + '20', borderColor: color }}>
-                    <Text className="text-xs font-bevn-semibold" style={{ color }}>{ATTENDANCE_STATUS_LABEL[record.status]}</Text>
-                  </View>
-                ) : writable ? (
-                  <TouchableOpacity
-                    className="flex-row items-center gap-0.5 px-sm py-1 rounded-md border border-border bg-bg-elevated"
-                    onPress={() => att.startMarking(item.memberId)}
-                    disabled={att.isMarking}
-                  >
-                    <Text className="text-xs font-bevn-semibold text-text-secondary">Điểm danh</Text>
-                    <Icon name="arrow-drop-down" size={16} color={Colors.text.secondary} />
-                  </TouchableOpacity>
-                ) : null}
-              </View>
+              <RosterRow
+                enrollment={item}
+                record={record}
+                writable={!record && att.canWrite}
+                disabled={att.isMarking}
+                evaluation={att.evaluationFor(item.memberId)}
+                onMark={() => att.startMarking(item.memberId)}
+                onEvaluate={() => att.evaluate.start(item.memberId)}
+                onOpenProfile={() => router.push(ROUTES.coachMember(item.memberId, selected.id))}
+              />
             );
           }}
         />
@@ -164,11 +182,20 @@ export function CoachAttendanceView({ coachId, initialScheduleId }: CoachAttenda
 
       <AttendanceStatusPicker
         visible={Boolean(att.markingMemberId)}
-        memberName={markingEnrollment ? memberNameOf(markingEnrollment) : undefined}
+        memberName={markingEnrollment ? learnerNameOf(markingEnrollment) : undefined}
         onSelect={(status) =>
           att.mark(status, (e) => showAlert('Không lưu được điểm danh', e instanceof ApiError ? e.message : 'Vui lòng thử lại.'))
         }
         onClose={att.cancelMarking}
+      />
+      <EvaluationSheet
+        visible={Boolean(att.evaluate.memberId)}
+        learnerName={evaluatingEnrollment ? learnerNameOf(evaluatingEnrollment) : ''}
+        item={att.evaluate.item}
+        isPending={att.evaluate.isPending}
+        error={att.evaluate.error}
+        onSave={att.evaluate.save}
+        onClose={att.evaluate.close}
       />
       <AttendanceQrModal qr={qr} />
     </View>

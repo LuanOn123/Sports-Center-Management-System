@@ -3,6 +3,7 @@
 // (1) nhập email để nhận mã OTP 6 số (hiệu lực 5 phút, BE luôn trả 200 dù email
 //     không tồn tại — chống dò email), (2) nhập OTP + mật khẩu mới để đặt lại.
 // Không có endpoint verify-otp riêng — BE xác minh OTP ngay trong bước reset.
+// Gửi lại mã chỉ sau 60 giây và mỗi mã nhập sai tối đa 5 lần (BE) — quy tắc thuần ở lib/passwordReset.
 
 import React, { useEffect, useState, useRef } from 'react';
 import {
@@ -19,17 +20,12 @@ import { Colors } from '../../constants/theme';
 import { api, ApiError } from '../../lib/api';
 import { Brand } from '../../components';
 import { showAlert } from '../../lib/alert';
+import { formatCountdown } from '../../lib/format';
 import { Haptic } from '../../lib/haptics';
+import { countsAsWrongOtp } from '../../lib/passwordReset';
+import { OTP_MAX_ATTEMPTS, PASSWORD_RESET_TEXT } from '../../constants/passwordReset';
+import { useOtpStatus } from '../../hooks/shared/useOtpStatus';
 import { ROUTES } from '../../navigation/routes';
-
-const OTP_TTL_MS = 5 * 60 * 1000;
-
-function formatCountdown(ms: number) {
-  const total = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -42,17 +38,16 @@ export default function ForgotPasswordScreen() {
   const [showPwd, setShowPwd] = useState(false);
   const [sending, setSending] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [expiresAt, setExpiresAt] = useState<number | null>(null);
-  const [now, setNow] = useState(Date.now());
+  /** Lần gửi mã gần nhất (mốc + email) và số lần nhập sai mã đó — chỉ để hướng dẫn, BE mới là nơi quyết định */
+  const [sentAt, setSentAt] = useState<number | null>(null);
+  const [sentEmail, setSentEmail] = useState('');
+  const [failedAttempts, setFailedAttempts] = useState(0);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const scrollViewRef = useRef<ScrollViewInstance>(null);
 
-  // Đếm ngược 5 phút chỉ để hiển thị — BE mới là nơi quyết định OTP còn hạn hay không.
-  useEffect(() => {
-    if (!expiresAt) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [expiresAt]);
+  // Đếm ngược gửi lại (60 giây) và hiệu lực (5 phút) của mã đã gửi cho email đang nhập
+  const emailKey = email.trim().toLowerCase();
+  const otpInfo = useOtpStatus(sentAt !== null && sentEmail === emailKey ? sentAt : null, failedAttempts);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -77,12 +72,15 @@ export default function ForgotPasswordScreen() {
       showAlert('Thiếu thông tin', 'Vui lòng nhập email.');
       return;
     }
+    if (otpInfo.resendWaitMs > 0) return; // BE chỉ phát hành mã mới sau 60 giây — nút đã khóa, chặn cả bấm dồn
     setSending(true);
     Haptic.medium();
     try {
       await api.publicPost('/auth/forgot-password', { email: email.trim() });
-      setExpiresAt(Date.now() + OTP_TTL_MS);
-      setNow(Date.now());
+      setSentAt(Date.now());
+      setSentEmail(emailKey);
+      setFailedAttempts(0);
+      setOtp('');
       setStep('reset');
       Haptic.success();
     } catch (e) {
@@ -124,8 +122,15 @@ export default function ForgotPasswordScreen() {
       });
     } catch (e) {
       Haptic.error();
-      const msg = e instanceof ApiError ? e.message : 'Đặt lại mật khẩu thất bại. Vui lòng thử lại.';
-      showAlert('Lỗi', msg);
+      if (countsAsWrongOtp(e)) {
+        // Mã sai: mỗi lần nhập là một lần thử của mã này, đủ số lần thì BE khóa mã
+        const used = failedAttempts + 1;
+        setFailedAttempts(used);
+        const left = Math.max(0, OTP_MAX_ATTEMPTS - used);
+        showAlert('Lỗi', `${e.message}\n${left > 0 ? PASSWORD_RESET_TEXT.attemptsLeft(left) : PASSWORD_RESET_TEXT.locked}`);
+      } else {
+        showAlert('Lỗi', e instanceof ApiError ? e.message : 'Đặt lại mật khẩu thất bại. Vui lòng thử lại.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -137,10 +142,7 @@ export default function ForgotPasswordScreen() {
     setOtp('');
     setNewPassword('');
     setConfirmPassword('');
-    setExpiresAt(null);
   };
-
-  const remaining = expiresAt ? expiresAt - now : 0;
 
   return (
     <KeyboardAwareView className="flex-1 bg-bg-primary">
@@ -188,14 +190,14 @@ export default function ForgotPasswordScreen() {
               </View>
 
               <TouchableOpacity
-                className={clsx('bg-primary rounded-md p-md items-center justify-center', sending && 'opacity-60')}
+                className={clsx('bg-primary rounded-md p-md items-center justify-center', (sending || otpInfo.resendWaitMs > 0) && 'opacity-60')}
                 onPress={sendOtp}
-                disabled={sending}
+                disabled={sending || otpInfo.resendWaitMs > 0}
                 activeOpacity={0.85}
               >
                 {sending
                   ? <ActivityIndicator color={Colors.text.inverse} />
-                  : <Text className="text-text-inverse text-md font-bold font-bevn-bold">Gửi mã OTP</Text>}
+                  : <Text className="text-text-inverse text-md font-bold font-bevn-bold">{otpInfo.resendWaitMs > 0 ? PASSWORD_RESET_TEXT.resendIn(formatCountdown(otpInfo.resendWaitMs)) : PASSWORD_RESET_TEXT.sendButton}</Text>}
               </TouchableOpacity>
             </>
           ) : (
@@ -217,9 +219,13 @@ export default function ForgotPasswordScreen() {
                   onChangeText={(v) => setOtp(v.replace(/[^0-9]/g, ''))}
                   onFocus={() => handleInputFocus(60)}
                 />
-                {Boolean(expiresAt) && (
-                  <Text className={clsx('text-xs mt-1 font-bevn-regular', remaining <= 0 ? 'text-status-failed' : 'text-text-muted')}>
-                    {remaining > 0 ? `Mã có hiệu lực trong ${formatCountdown(remaining)}` : 'Mã đã hết hạn, vui lòng gửi lại.'}
+                {sentAt !== null && (
+                  <Text className={clsx('text-xs mt-1 font-bevn-regular', otpInfo.locked || otpInfo.validForMs <= 0 ? 'text-status-failed' : 'text-text-muted')}>
+                    {otpInfo.locked
+                      ? PASSWORD_RESET_TEXT.locked
+                      : otpInfo.validForMs > 0
+                        ? PASSWORD_RESET_TEXT.validFor(formatCountdown(otpInfo.validForMs), otpInfo.attemptsLeft)
+                        : PASSWORD_RESET_TEXT.expired}
                   </Text>
                 )}
               </View>
@@ -252,9 +258,9 @@ export default function ForgotPasswordScreen() {
               </View>
 
               <TouchableOpacity
-                className={clsx('bg-primary rounded-md p-md items-center justify-center', submitting && 'opacity-60')}
+                className={clsx('bg-primary rounded-md p-md items-center justify-center', (submitting || otpInfo.locked) && 'opacity-60')}
                 onPress={handleReset}
-                disabled={submitting}
+                disabled={submitting || otpInfo.locked}
                 activeOpacity={0.85}
               >
                 {submitting
@@ -263,8 +269,10 @@ export default function ForgotPasswordScreen() {
               </TouchableOpacity>
 
               <View className="flex-row justify-center gap-lg mt-lg">
-                <TouchableOpacity onPress={sendOtp} disabled={sending} activeOpacity={0.7}>
-                  <Text className="text-primary text-sm font-semibold font-bevn-semibold">{sending ? 'Đang gửi...' : 'Gửi lại mã'}</Text>
+                <TouchableOpacity onPress={sendOtp} disabled={sending || otpInfo.resendWaitMs > 0} activeOpacity={0.7}>
+                  <Text className={clsx('text-sm font-semibold font-bevn-semibold', otpInfo.resendWaitMs > 0 ? 'text-text-muted' : 'text-primary')}>
+                    {sending ? PASSWORD_RESET_TEXT.sending : otpInfo.resendWaitMs > 0 ? PASSWORD_RESET_TEXT.resendIn(formatCountdown(otpInfo.resendWaitMs)) : PASSWORD_RESET_TEXT.resend}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleChangeEmail} activeOpacity={0.7}>
                   <Text className="text-text-muted text-sm font-bevn-medium">Đổi email</Text>

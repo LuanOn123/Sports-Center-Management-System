@@ -1,8 +1,8 @@
 // hooks/coach/useCoachSchedules.ts
 // Lớp phụ trách + lịch dạy của HLV trong một khoảng thời gian — dùng chung cho
-// Trang chủ, Lịch dạy và Điểm danh (trước đây mỗi màn tự tải & lọc lại)
+// Trang chủ, Lịch dạy và Điểm danh (trước đây mỗi màn tự tải & lọc lại).
+// Lịch dạy do BE tính theo người dạy hiệu lực (kể cả buổi dạy thay), KHÔNG suy ra từ danh sách lớp được phân công.
 
-import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getCoachClasses, getCoachSchedules, type ScheduleRange } from '../../services/coachService';
 import type { Class, ClassSchedule } from '../../lib/types';
@@ -17,14 +17,14 @@ export function useCoachClasses(coachId: string | undefined) {
 
 /** `range` nên được useMemo ở nơi gọi để queryKey ổn định */
 export function useCoachSchedules(coachId: string | undefined, range: ScheduleRange) {
+  // Lớp được phân công dài hạn — chỉ để đếm "Lớp phụ trách" và làm bộ lọc, lịch dạy không phụ thuộc danh sách này
   const classesQuery = useCoachClasses(coachId);
   const classes: Class[] = classesQuery.data?.data ?? [];
-  const classIds = useMemo(() => classes.map((c) => c.id).sort(), [classes]);
 
   const schedulesQuery = useQuery({
-    queryKey: ['coach', coachId, 'schedules', classIds, range.startAfter, range.startBefore, range.status],
-    queryFn: () => getCoachSchedules(classIds, range),
-    enabled: Boolean(coachId) && classesQuery.isSuccess,
+    queryKey: ['coach', coachId, 'schedules', range.startAfter, range.startBefore, range.status],
+    queryFn: ({ signal }) => getCoachSchedules(coachId!, range, signal),
+    enabled: Boolean(coachId),
   });
 
   const schedules: ClassSchedule[] = schedulesQuery.data ?? [];
@@ -32,13 +32,12 @@ export function useCoachSchedules(coachId: string | undefined, range: ScheduleRa
   return {
     classes,
     schedules,
-    isLoading: classesQuery.isLoading || (classesQuery.isSuccess && schedulesQuery.isLoading),
+    isLoading: classesQuery.isLoading || schedulesQuery.isLoading,
     isFetching: classesQuery.isFetching || schedulesQuery.isFetching,
     isError: classesQuery.isError || schedulesQuery.isError,
     error: classesQuery.error ?? schedulesQuery.error,
     refetch: async () => {
-      await classesQuery.refetch();
-      await schedulesQuery.refetch();
+      await Promise.all([classesQuery.refetch(), schedulesQuery.refetch()]);
     },
   };
 }

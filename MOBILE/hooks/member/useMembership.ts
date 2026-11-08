@@ -5,7 +5,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMembershipPlans, getSubscriptions, cancelSubscription } from '../../services/membershipService';
-import { effectiveSubscription, isEffectiveSubscription, selfCancelRefundEstimate } from '../../lib/businessRules';
+import { effectiveSubscription, isEffectiveSubscription } from '../../lib/businessRules';
 import { daysUntil } from '../../lib/date';
 import type { MembershipStatus, MembershipTier, Subscription, MembershipPlan } from '../../lib/types';
 
@@ -79,10 +79,6 @@ export function useMembershipData(memberId: string | undefined) {
 
 // ─── Cancel subscription ──────────────────────────────────────────────────────
 
-/** Ước tính hoàn tiền phía client trước khi gọi API — BE là nguồn chính thức */
-export function estimateSelfCancelRefund(sub: Subscription) {
-  return selfCancelRefundEstimate(sub.endDate, Number(sub.priceSnapshot ?? sub.plan?.price ?? 0));
-}
 
 /** Gói hiệu lực của hội viên đúng bằng plan này (khớp theo planId như FE web) — dùng để hiện "Gia hạn" */
 export function findRegisteredSubscription(subscriptions: Subscription[], planId: string) {

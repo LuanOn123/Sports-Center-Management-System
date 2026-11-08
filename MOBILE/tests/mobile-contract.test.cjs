@@ -8,7 +8,7 @@ const ts = require('typescript');
 
 // Execute the real TS services against an isolated HTTP fixture. Expo-only
 // platform/storage bindings are replaced; Axios/interceptors are real.
-function loadApp(baseURL) {
+function loadApp(baseURL, stubs = {}) {
   const modules = new Map();
   const stored = { access: '', refresh: '', facility: '' };
   const storage = {
@@ -25,6 +25,8 @@ function loadApp(baseURL) {
     const module = { exports: {} }; modules.set(filename, module);
     const source = ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
     const localRequire = (name) => {
+      // Module native/Expo thay thế theo từng bài test: giá trị là hàm tạo (hàm có thể ném lỗi để giả lập "thiếu module")
+      if (Object.hasOwn(stubs, name)) return stubs[name]();
       if (name === 'react-native') return { Platform: { OS: 'web', select: (values) => values.web || values.default } };
       return name.startsWith('.') ? load(path.relative(path.resolve(__dirname, '..'), path.resolve(path.dirname(filename), name))) : require(name);
     };
@@ -652,14 +654,13 @@ test('shared calendar: period, navigation, titles, full weekday names and day gr
   assert.deepEqual(groups.get('2026-10-27').map((i) => i.id), ['a', 'b']); assert.deepEqual(groups.get('2026-10-28').map((i) => i.id), ['c']); assert.equal(groups.size, 2);
 });
 
-test('member calendar: booked and completed sessions only, past ones labelled, cancel only for upcoming booked', () => {
+test('member calendar: booked and completed sessions only, past ones labelled', () => {
   const m = loadApp('http://localhost/api/v1').load('lib/memberSchedule'); const now = Date.parse('2026-10-27T05:00:00Z');
   const enroll = (id, status, start, end) => ({ id, scheduleId: 's' + id, status, memberId: 'm', bookedAt: '', createdAt: '', schedule: start ? { id: 's' + id, classId: 'c', roomId: 'r', startTime: start, endTime: end, status: 'SCHEDULED' } : undefined });
   const upcoming = enroll('1', 'BOOKED', '2026-10-28T01:00:00Z', '2026-10-28T02:00:00Z'); const cancelled = enroll('2', 'CANCELLED', '2026-10-29T01:00:00Z', '2026-10-29T02:00:00Z');
   const done = enroll('3', 'COMPLETED', '2026-10-20T01:00:00Z', '2026-10-20T02:00:00Z'); const noSchedule = enroll('4', 'BOOKED'); const past = enroll('5', 'BOOKED', '2026-10-26T01:00:00Z', '2026-10-26T02:00:00Z');
   assert.deepEqual(m.memberCalendarEvents([upcoming, cancelled, done, noSchedule, past]).map((e) => [e.id, e.startTime]), [['1', upcoming.schedule.startTime], ['3', done.schedule.startTime], ['5', past.schedule.startTime]]);
   assert.equal(m.memberSessionBadge(upcoming, now).label, 'Đã đặt'); assert.equal(m.memberSessionBadge(past, now).label, 'Đã diễn ra'); assert.equal(m.memberSessionBadge(done, now).label, 'Hoàn thành');
-  assert.deepEqual([m.canCancelSession(upcoming, now), m.canCancelSession(past, now), m.canCancelSession(done, now)], [true, false, false]);
 });
 
 test('Member and Coach schedules share one calendar frame (no per-role calendar markup)', () => {
@@ -694,4 +695,449 @@ test('screen headers show the title only: no subtitle line under it', () => {
   assert.deepEqual(offenders.map((p) => p.split(path.sep).join('/')), ['components/account/AccountHubView.tsx']);
   // Mã đơn từng nằm ở chữ phụ của header thanh toán → phải hiện trong thân màn chờ chuyển khoản (banner dặn giữ mã đơn)
   assert.match(read('components/member/payment/SepayCheckoutPanel.tsx'), /label="Mã đơn hàng" value=\{checkout\.orderCode\}/);
+});
+
+const readSource = (file) => fs.readFileSync(path.resolve(__dirname, '..', file), 'utf8');
+
+test('coach timetable asks the server for the effective coach once, so substitute sessions show and swapped-out ones do not', async () => fixture(async ({ load, requests, handle }) => {
+  const api = load('lib/api'); await api.saveTokens('coach-token', 'refresh'); await api.setFacilityId('facility-a');
+  const range = { startAfter: '2026-11-02T00:00:00+07:00', startBefore: '2026-11-08T23:59:59.999+07:00' };
+  handle(() => ({ data: [{ id: 'late', classId: 'c2', startTime: '2026-11-04T08:00:00.000Z' }, { id: 'early', classId: 'c1', startTime: '2026-11-03T08:00:00.000Z' }], pagination: { page: 1, totalPages: 1 } }));
+  const { getCoachSchedules } = load('services/coachService');
+  assert.deepEqual((await getCoachSchedules('coach-profile-1', range)).map((s) => s.id), ['early', 'late']); // sắp theo giờ
+  // Một lần gọi theo coachId (BE tự tính HLV dạy thay), không còn gọi từng lớp được phân công
+  assert.equal(requests.length, 1);
+  const [request] = requests;
+  assert.equal(request.path, '/api/v1/class-schedules');
+  assert.equal(request.query.get('coachId'), 'coach-profile-1');
+  assert.equal(request.query.get('classId'), null);
+  assert.equal(request.query.get('startAfter'), range.startAfter);
+  assert.equal(request.query.get('startBefore'), range.startBefore);
+  assert.equal(request.query.get('status'), null);
+  await getCoachSchedules('coach-profile-1', { ...range, status: 'SCHEDULED' });
+  assert.equal(requests[1].query.get('status'), 'SCHEDULED');
+
+  // Bộ lọc lớp gồm lớp được phân công + lớp có buổi dạy thay, không trùng
+  const { calendarClasses } = load('lib/coachSchedule');
+  const names = calendarClasses([{ id: 'c1', name: 'Yoga' }], [{ class: { id: 'c1', name: 'Yoga (buổi)' } }, { class: { id: 'c9', name: 'Bơi (dạy thay)' } }, {}]).map((c) => c.name);
+  assert.deepEqual(names, ['Yoga', 'Bơi (dạy thay)']);
+
+  assert.ok(!/classIds|CLASS_BATCH_SIZE|isSuccess/.test(readSource('hooks/coach/useCoachSchedules.ts')), 'lịch dạy không phụ thuộc danh sách lớp được phân công');
+  assert.ok(!/\?\?\s*user\??\.id/.test(readSource('app/(tabs)/schedule.tsx') + readSource('app/(tabs)/coach-attendance.tsx')), 'không dùng id tài khoản thay cho id hồ sơ HLV');
+}));
+
+test('pending (SCHEDULED) plan: cancellable with a 100% refund request, purchases blocked meanwhile, refund wording is a request', () => {
+  const app = loadApp('http://localhost/api/v1'); const rules = app.load('lib/businessRules'); const c = app.load('constants/membership');
+  const DAY = 86_400_000; const now = Date.parse('2026-11-02T00:00:00Z'); const iso = (ms) => new Date(ms).toISOString();
+  const active = { status: 'ACTIVE', tier: 'MEMBERSHIP', endDate: iso(now + 40 * DAY), priceSnapshot: '300000', plan: { price: '300000' } };
+  const scheduled = { status: 'SCHEDULED', tier: 'PREMIUM', endDate: iso(now + 200 * DAY), priceSnapshot: '1500000', plan: { price: '1500000' } };
+  assert.deepEqual([rules.cancelKindOf(active), rules.cancelKindOf(scheduled), rules.cancelKindOf(null)], ['ACTIVE', 'SCHEDULED', 'ACTIVE']);
+  // Gói đang dùng: 30% khi còn trên 15 ngày; gói chờ kích hoạt: hoàn 100% khoản gốc
+  assert.deepEqual(rules.cancelRefundEstimate(active, now), { daysLeft: 40, refundAmount: 90000, willRefund: true });
+  assert.deepEqual(rules.cancelRefundEstimate({ ...active, endDate: iso(now + 10 * DAY) }, now), { daysLeft: 10, refundAmount: 0, willRefund: false });
+  assert.deepEqual(rules.cancelRefundEstimate(scheduled, now), { daysLeft: 0, refundAmount: 1500000, willRefund: true });
+  assert.equal(rules.cancelRefundEstimate({ ...scheduled, priceSnapshot: undefined, plan: null }, now).willRefund, false);
+  assert.equal(rules.canSelfCancelSubscription(scheduled), true);
+  assert.equal(rules.canSelfCancelSubscription({ ...scheduled, tier: 'FREE' }), false);
+
+  // Câu chữ khớp web: hoàn tiền là YÊU CẦU, chỉ thu hồi lượt đặt thuộc quyền của gói bị hủy
+  const t = c.CANCEL_SUBSCRIPTION_TEXT;
+  assert.equal(t.refundRequested('90.000 ₫'), 'Đã yêu cầu hoàn 90.000 ₫. Khoản tiền chỉ được ghi nhận đã hoàn sau khi quầy xác nhận biên nhận thực tế.');
+  assert.equal(t.active.done, 'Đã hủy gói và thu hồi các lượt đặt lớp thuộc quyền của gói này.');
+  assert.equal(t.scheduled.done, 'Đã hủy gói chờ. Gói đang sử dụng được giữ nguyên.');
+  assert.match(t.active.policy(15, 30), /^Còn trên 15 ngày: hoàn 30% khoản thanh toán gốc\. Còn từ 15 ngày trở xuống: không hoàn tiền\.$/);
+  assert.match(t.scheduled.policy, /^Gói chưa kích hoạt: yêu cầu hoàn 100% khoản thanh toán gốc\./);
+  assert.equal(c.SCHEDULED_SUBSCRIPTION_TEXT.purchaseBlocked, 'Bạn đã có gói chờ kích hoạt. Hãy xử lý gói chờ trước khi mua hoặc gia hạn.');
+
+  const modal = readSource('components/member/membership/CancelSubscriptionModal.tsx');
+  assert.ok(!/liên hệ quầy để nhận tiền|các lượt đặt lớp tương lai đã được hủy|hủy toàn bộ lượt đặt lớp/.test(modal), 'không còn câu chữ cũ');
+  const view = readSource('components/member/membership/MembershipPlansView.tsx');
+  assert.match(view, /disabled=\{screen\.isCreatingCheckout \|\| screen\.purchaseBlocked\}/);
+  assert.match(view, /<ScheduledMembershipCard subscription=\{scheduledSub\} onCancel=\{\(\) => cancel\.openModal\(scheduledSub\)\}/);
+  assert.match(readSource('hooks/member/useMembershipScreen.ts'), /purchaseBlocked: Boolean\(membership\.scheduledSub\)/);
+});
+
+test('password reset OTP: resend only after 60 s, five wrong tries lock the code, only business 400s count as a wrong try', () => {
+  const app = loadApp('http://localhost/api/v1'); const p = app.load('lib/passwordReset'); const c = app.load('constants/passwordReset'); const { ApiError } = app.load('lib/api');
+  assert.deepEqual([c.OTP_TTL_MS, c.OTP_RESEND_COOLDOWN_MS, c.OTP_MAX_ATTEMPTS], [300000, 60000, 5]);
+  const sent = 1_000_000;
+  assert.deepEqual(p.otpStatus({ sentAt: null, failedAttempts: 0, now: sent }), { resendWaitMs: 0, validForMs: 0, attemptsLeft: 5, locked: false });
+  assert.deepEqual(p.otpStatus({ sentAt: sent, failedAttempts: 0, now: sent + 15_000 }), { resendWaitMs: 45_000, validForMs: 285_000, attemptsLeft: 5, locked: false });
+  assert.equal(p.otpStatus({ sentAt: sent, failedAttempts: 0, now: sent + 59_999 }).resendWaitMs, 1);
+  assert.equal(p.otpStatus({ sentAt: sent, failedAttempts: 0, now: sent + 60_000 }).resendWaitMs, 0); // đúng 60 giây là gửi lại được
+  assert.equal(p.otpStatus({ sentAt: sent, failedAttempts: 0, now: sent + 300_000 }).validForMs, 0);
+  assert.equal(p.otpStatus({ sentAt: sent, failedAttempts: 0, now: sent - 5_000 }).resendWaitMs, 60_000); // đồng hồ lệch không làm ra số âm hoặc quá 60 giây
+  const four = p.otpStatus({ sentAt: sent, failedAttempts: 4, now: sent }); const five = p.otpStatus({ sentAt: sent, failedAttempts: 5, now: sent });
+  assert.deepEqual([four.attemptsLeft, four.locked, five.attemptsLeft, five.locked], [1, false, 0, true]);
+  assert.equal(p.otpStatus({ sentAt: sent, failedAttempts: 9, now: sent }).attemptsLeft, 0);
+  // Chỉ lỗi 400 nghiệp vụ (mã sai/hết hạn) tính là một lần thử; kiểm tra từng trường, 429 và lỗi khác thì không
+  assert.equal(p.countsAsWrongOtp(new ApiError('OTP không hợp lệ hoặc đã hết hạn.', 400)), true);
+  assert.equal(p.countsAsWrongOtp(new ApiError('Validation failed', 400, [{ field: 'newPassword', message: 'quá ngắn' }])), false);
+  assert.equal(p.countsAsWrongOtp(new ApiError('Bạn đã thử quá nhiều lần. Vui lòng thử lại sau 15 phút.', 429)), false);
+  assert.equal(p.countsAsWrongOtp(new Error('x')), false);
+
+  // Màn hình dùng các quy tắc này, không còn tự đặt lại đồng hồ 5 phút mỗi lần gửi lại
+  const screen = readSource('app/auth/forgot-password.tsx');
+  assert.match(screen, /useOtpStatus\(/); assert.match(screen, /otpInfo\.resendWaitMs > 0/); assert.ok(!/setExpiresAt|OTP_TTL_MS/.test(screen));
+  assert.equal(c.PASSWORD_RESET_TEXT.validFor('04:32', 3), 'Mã có hiệu lực trong 04:32 · còn 3/5 lần nhập');
+});
+
+test('coach review form only opens after a session of this class already took place, like the web and BE R-06', () => {
+  const app = loadApp('http://localhost/api/v1'); const rules = app.load('lib/businessRules');
+  const now = Date.parse('2026-11-02T10:00:00Z'); const past = '2026-11-01T10:00:00Z'; const future = '2026-11-05T10:00:00Z';
+  const enrollment = (over) => ({ status: 'BOOKED', classId: 'c1', schedule: { startTime: past, class: { id: 'c1', coaches: [{ coachId: 'coach-1' }] } }, ...over });
+  const target = { coachId: 'coach-1', classId: 'c1' };
+  assert.equal(rules.canReviewCoach([enrollment()], target, now), true);
+  assert.equal(rules.canReviewCoach([enrollment({ status: 'COMPLETED' })], target, now), true);
+  // Mới đặt buổi tương lai, đã hủy, hoặc thiếu giờ buổi → chưa được đánh giá
+  assert.equal(rules.canReviewCoach([enrollment({ schedule: { startTime: future, class: { id: 'c1' } } })], target, now), false);
+  assert.equal(rules.canReviewCoach([enrollment({ status: 'CANCELLED' })], target, now), false);
+  assert.equal(rules.canReviewCoach([enrollment({ schedule: undefined })], target, now), false);
+  assert.equal(rules.canReviewCoach([], target, now), false);
+  // Đúng lớp này: học lớp khác của cùng HLV chưa đủ; đánh giá chung (không lớp) thì tính lớp nào có HLV đó
+  const other = enrollment({ classId: 'c2', schedule: { startTime: past, class: { id: 'c2', coaches: [{ coachId: 'coach-1' }] } } });
+  assert.equal(rules.canReviewCoach([other], target, now), false);
+  assert.equal(rules.canReviewCoach([other], { coachId: 'coach-1' }, now), true);
+  assert.equal(rules.canReviewCoach([other], { coachId: 'coach-9' }, now), false);
+  // Khớp qua schedule.class.id khi enrollment không có classId
+  assert.equal(rules.canReviewCoach([enrollment({ classId: undefined })], target, now), true);
+
+  const text = app.load('constants/coachProfile').COACH_PROFILE_TEXT;
+  assert.equal(text.reviewNotEligible, 'Bạn có thể viết đánh giá sau khi đã tham gia ít nhất một buổi của lớp này do huấn luyện viên dạy.');
+  const rating = readSource('components/shared/CoachRating.tsx');
+  assert.match(rating, /canReviewCoach\(enrollmentList\.data\?\.data \?\? \[\], \{ coachId, classId \}\)/);
+  assert.match(rating, /COACH_PROFILE_TEXT\.reviewNotEligible/);
+});
+
+// ─── Đăng ký theo BE mới (số điện thoại bắt buộc), mục tiêu & tiến độ khóa học, thông báo ───────────────────────────
+
+test('registration follows the new BE contract: phone is required, empty optional fields are omitted, the 12-80 age rule stays', () => {
+  const app = loadApp('http://localhost/api/v1');
+  const rules = app.load('lib/businessRules'); const reg = app.load('lib/memberRegistration');
+  assert.equal(rules.vnPhoneError('', true), 'Vui lòng nhập số điện thoại.');
+  assert.equal(rules.vnPhoneError(undefined, true), 'Vui lòng nhập số điện thoại.');
+  assert.equal(rules.vnPhoneError('', false), null, 'hồ sơ cá nhân vẫn cho bỏ trống số điện thoại');
+  assert.match(rules.vnPhoneError('09123', true), /bắt đầu bằng 0/);
+  assert.equal(rules.vnPhoneError('0912345678', true), null);
+
+  const base = { fullName: ' Nguyễn Văn A ', email: ' A@Mail.com ', password: '123456', confirmPassword: '123456', phone: '0912345678', gender: 'MALE', dateOfBirth: '', fitnessGoals: [], fitnessGoalNote: '' };
+  const ok = reg.registerSchema.safeParse(base);
+  assert.equal(ok.success, true);
+  assert.deepEqual(reg.toRegisterPayload(ok.data), { email: 'A@Mail.com', password: '123456', fullName: 'Nguyễn Văn A', phone: '0912345678', gender: 'MALE' });
+
+  const noPhone = reg.registerSchema.safeParse({ ...base, phone: '' });
+  assert.equal(noPhone.success, false);
+  assert.ok(noPhone.error.issues.some((i) => i.path[0] === 'phone' && i.message === 'Vui lòng nhập số điện thoại.'));
+  assert.equal(reg.registerSchema.safeParse({ ...base, confirmPassword: 'khác' }).success, false);
+
+  const full = reg.registerSchema.parse({ ...base, gender: undefined, dateOfBirth: '2000-05-20', fitnessGoals: ['Tăng cơ', 'Giảm cân'], fitnessGoalNote: 'đau gối nhẹ' });
+  assert.deepEqual(reg.toRegisterPayload(full), { email: 'A@Mail.com', password: '123456', fullName: 'Nguyễn Văn A', phone: '0912345678', dateOfBirth: '2000-05-20', fitnessGoal: 'Tăng cơ, Giảm cân, đau gối nhẹ' });
+
+  // Quy tắc tuổi 12–80 giữ ở mobile (BE chỉ chặn ngày tương lai và quá 120 năm)
+  const now = new Date('2026-11-08T00:00:00Z');
+  assert.ok(rules.memberBirthDateError('2020-01-01', now)); assert.ok(rules.memberBirthDateError('1940-01-01', now));
+  assert.equal(rules.memberBirthDateError('2000-01-01', now), null); assert.equal(rules.memberBirthDateError('', now), null);
+
+  const google = reg.googleRegisterSchema.safeParse({ phone: '0912345678', gender: 'FEMALE', dateOfBirth: '', fitnessGoals: [], fitnessGoalNote: '' });
+  assert.equal(google.success, true);
+  assert.deepEqual(reg.toGoogleRegisterPayload('id-token', google.data), { credential: 'id-token', phone: '0912345678', gender: 'FEMALE' });
+  assert.equal(reg.googleRegisterSchema.safeParse({ ...google.data, phone: '' }).success, false);
+});
+
+test('BE validation errors show the first field message and the business code of a 404 stays readable', async () => fixture(async ({ load, handle }) => {
+  const api = load('lib/api');
+  handle(() => ({ status: 400, message: 'Validation failed', errors: [{ field: 'phone', message: 'Vui lòng nhập số điện thoại.' }] }));
+  await assert.rejects(api.api.publicPost('/auth/register', {}), (e) => e.status === 400 && e.message === 'Vui lòng nhập số điện thoại.' && e.code === 'Validation failed');
+  handle(() => ({ status: 400, message: 'Validation failed' }));
+  await assert.rejects(api.api.publicPost('/auth/register', {}), (e) => /kiểm tra lại/.test(e.message));
+  handle(() => ({ status: 404, message: 'Tài khoản Google này chưa được đăng ký trong hệ thống.', errors: { code: 'ACCOUNT_NOT_REGISTERED' } }));
+  await assert.rejects(api.api.publicPost('/auth/google-login', { credential: 'x' }), (e) => e.status === 404 && api.businessCodeOf(e) === 'ACCOUNT_NOT_REGISTERED');
+  // Danh sách lỗi theo trường (mảng) không phải mã nghiệp vụ
+  handle(() => ({ status: 400, message: 'Validation failed', errors: [{ field: 'x', message: 'y' }] }));
+  await assert.rejects(api.api.get('/x'), (e) => api.businessCodeOf(e) === undefined);
+  assert.equal(api.businessCodeOf(new Error('khác')), undefined);
+}));
+
+test('goal target calls follow the BE routes and the whole-course body matches the web (goal, health notes, save to profile)', async () => fixture(async ({ load, requests, handle }) => {
+  const api = load('lib/api'); await api.saveTokens('member-token', 'refresh'); await api.setFacilityId('facility-a');
+  handle((req) => (req.path.endsWith('/my-goal') ? { data: null } : { data: {} }));
+  const goals = load('services/goalService'); const enroll = load('services/enrollmentService'); const opts = load('lib/enrollOptions');
+  assert.equal((await goals.getMyClassGoal('class/a')).data, null);
+  await goals.getScheduleEvaluations('session-a');
+  await goals.saveScheduleEvaluation('session-a', { memberId: 'member-a', progress: 45, description: null });
+  await enroll.enrollWholeCourse('class-a', opts.toEnrollOptions({ goal: '  Bơi 50m  ', healthNotes: '  đau gối ', saveToProfile: true }));
+  await enroll.enrollWholeCourse('class-b', opts.toEnrollOptions({ goal: '   ', healthNotes: '   ', saveToProfile: false }));
+  assert.deepEqual(requests.map((r) => [r.method, r.path, r.body]), [
+    ['GET', '/api/v1/attendance/classes/class%2Fa/my-goal', undefined],
+    ['GET', '/api/v1/attendance/schedules/session-a/evaluations', undefined],
+    ['POST', '/api/v1/attendance/schedules/session-a/evaluations', { memberId: 'member-a', progress: 45, description: null }],
+    ['POST', '/api/v1/enrollments/bulk', { classId: 'class-a', healthNotes: 'đau gối', saveToProfile: true, goal: 'Bơi 50m' }],
+    ['POST', '/api/v1/enrollments/bulk', { classId: 'class-b', healthNotes: null, saveToProfile: false }],
+  ]);
+  assert.ok(requests.every((r) => r.headers['x-facility-id'] === 'facility-a'));
+  // Mục tiêu cố định sau khi đăng ký (BE luôn từ chối sửa) → mobile không có hàm sửa mục tiêu
+  assert.ok(!/patch/i.test(readSource('services/goalService.ts').replace(/^\s*\/\/.*$|\/\*\*[\s\S]*?\*\//gm, '')));
+}));
+
+test('Google sign-in sends only the ID token without session headers, and the register call carries the phone like the web', async () => fixture(async ({ load, requests, handle }) => {
+  const api = load('lib/api'); await api.saveTokens('old-access', 'old-refresh'); await api.setFacilityId('old-facility');
+  handle(() => ({ data: { accessToken: 'a', refreshToken: 'r' } }));
+  const auth = load('services/authService');
+  await auth.loginWithGoogleCredential('google-id-token');
+  await auth.registerWithGoogleCredential({ credential: 'google-id-token', phone: '0912345678', gender: 'MALE' });
+  assert.deepEqual(requests.map((r) => [r.method, r.path, r.body]), [
+    ['POST', '/api/v1/auth/google-login', { credential: 'google-id-token' }],
+    ['POST', '/api/v1/auth/google-register', { credential: 'google-id-token', phone: '0912345678', gender: 'MALE' }],
+  ]);
+  assert.ok(requests.every((r) => r.headers.authorization === undefined && r.headers['x-facility-id'] === undefined));
+}));
+
+test('goal progress levels, stepping and evaluation drafts follow the web (levels at 20 and 70, step 5)', () => {
+  const app = loadApp('http://localhost/api/v1'); const g = app.load('lib/goalProgress'); const c = app.load('constants/goals');
+  assert.deepEqual([0, 19, 20, 69, 70, 100].map((p) => g.progressLevel(p).key), ['low', 'low', 'mid', 'mid', 'high', 'high']);
+  assert.deepEqual([-5, 120, Number.NaN, 42.6].map((p) => g.clampProgress(p)), [0, 100, 0, 43]);
+  assert.deepEqual([[42, 1], [42, -1], [45, 1], [45, -1], [100, 1], [0, -1], [98, 1]].map(([p, d]) => g.stepProgress(p, d)), [45, 40, 50, 40, 100, 0, 100]);
+  assert.equal(g.formatProgressDiff(15), '+15%'); assert.equal(g.formatProgressDiff(-5), '-5%'); assert.equal(g.formatProgressDiff(0), '0%');
+  assert.equal(g.progressDiff(45, 60), 15);
+  assert.equal(g.evaluationNoteOrNull('   '), null); assert.equal(g.evaluationNoteOrNull(' Giữ nhịp thở '), 'Giữ nhịp thở');
+  // Chưa đánh giá buổi này: bắt đầu từ tiến độ hiện tại; đã đánh giá: lấy kết quả buổi đó và mốc trước của nó
+  assert.deepEqual(g.evaluationDraft({ currentProgress: 30, evaluation: null }), { progress: 30, previousProgress: 30, note: '' });
+  const done = { id: 'e', previousProgress: 40, newProgress: 60, description: 'Tốt', createdAt: '', updatedAt: '' };
+  assert.deepEqual(g.evaluationDraft({ currentProgress: 60, evaluation: done }), { progress: 60, previousProgress: 40, note: 'Tốt' });
+  assert.deepEqual(g.evaluationDraft(undefined), { progress: 0, previousProgress: 0, note: '' });
+  // Giới hạn độ dài khớp BE (enrollments.schema, attendance.schema)
+  assert.deepEqual([c.GOAL_MAX_LENGTH, c.EVALUATION_NOTE_MAX_LENGTH, c.HEALTH_NOTES_MAX_LENGTH, c.PROGRESS_STEP], [500, 1000, 1000, 5]);
+});
+
+test('coach roster search and health notes follow the web, whole-course results use the web wording', () => {
+  const app = loadApp('http://localhost/api/v1'); const roster = app.load('lib/coachRoster'); const plan = app.load('lib/classPlan');
+  const rows = [
+    { id: 'e1', member: { user: { fullName: 'Nguyễn Văn An', email: 'an@mail.com' } }, healthNotes: ' Đau cổ chân ' },
+    { id: 'e2', member: { user: { fullName: 'Lê Bình', email: 'binh@mail.com' }, healthNotes: 'Hen suyễn' } },
+    { id: 'e3', member: { user: { fullName: 'Trần Cường' } } },
+  ];
+  assert.deepEqual(roster.filterRoster(rows, '  nguyễn ').map((r) => r.id), ['e1']);
+  assert.deepEqual(roster.filterRoster(rows, 'BINH@').map((r) => r.id), ['e2']);
+  assert.equal(roster.filterRoster(rows, '').length, 3); assert.equal(roster.filterRoster(rows, 'zzz').length, 0);
+  assert.deepEqual(rows.map((r) => roster.rosterHealthNotes(r)), ['Đau cổ chân', 'Hen suyễn', '']);
+
+  const result = (enrolledNow) => ({ className: 'Yoga', summary: { totalSessions: 8, enrolledNow, alreadyBooked: 8 - enrolledNow, totalRegistered: 8, firstSessionStart: '', lastSessionEnd: '' } });
+  assert.equal(plan.wholeCourseEnrollmentMessage(result(6)), 'Bạn đã đăng ký 6 buổi của khóa "Yoga". Hiện đã có 8/8 buổi trong khóa của bạn.');
+  assert.equal(plan.wholeCourseEnrollmentMessage(result(0)), 'Bạn đã đăng ký đủ 8 buổi của khóa này trước đó.');
+  const slot = (weekdayLabel) => ({ weekdayLabel, startTime: '18:00', endTime: '19:30', roomName: 'Phòng A' });
+  assert.deepEqual(
+    plan.enrollSummaryOf({ name: 'Yoga', sports: [{ name: 'Yoga' }, { name: 'Pilates' }], coaches: [{ coach: { user: { fullName: 'HLV Lan' } } }] }, { totalSessions: 8, slots: [slot('Thứ 2'), slot('Thứ 4')] }),
+    { name: 'Yoga', sport: 'Yoga · Pilates', sessions: 8, coach: 'HLV Lan', room: 'Phòng A', time: 'Thứ 2 18:00–19:30; Thứ 4 18:00–19:30' },
+  );
+});
+
+test('notifications: goal progress opens the class, subscription notices open the plans, the learner route carries the session', () => {
+  const app = loadApp('http://localhost/api/v1'); const route = app.load('navigation/notificationRoute').resolveNotificationRoute; const routes = app.load('navigation/routes').ROUTES;
+  const note = (type, metadata) => ({ id: 'n', userId: 'u', type, title: '', body: '', isRead: false, createdAt: '', metadata });
+  assert.deepEqual(route(note('GOAL_PROGRESS_UPDATED', { classId: 'class-1', scheduleId: 's1' })), routes.classDetail('class-1'));
+  assert.equal(route(note('GOAL_PROGRESS_UPDATED', {})), null);
+  for (const type of ['SUBSCRIPTION_EXPIRING', 'SUBSCRIPTION_EXPIRED', 'SUBSCRIPTION_CANCELLED']) assert.equal(route(note(type)), routes.membershipPlans);
+  assert.deepEqual(routes.coachMember('m1', 's1'), { pathname: '/coach/member/[id]', params: { id: 'm1', scheduleId: 's1' } });
+  assert.deepEqual(routes.coachMember('m1'), { pathname: '/coach/member/[id]', params: { id: 'm1' } });
+  assert.match(readSource('app/(tabs)/notifications.tsx'), /GOAL_PROGRESS_UPDATED: 'trending-up'/);
+  assert.match(readSource('lib/types.ts'), /\| 'GOAL_PROGRESS_UPDATED'/);
+});
+
+test('coach learner screen only shows what BE gives a coach: no email/phone/preference from the trimmed profile, health notes from the roster', () => {
+  const view = readSource('components/coach/LearnerProfileView.tsx'); const hook = readSource('hooks/coach/useLearnerProfile.ts'); const route = readSource('app/coach/member/[id].tsx');
+  assert.ok(!/trainingPreference/.test(view + hook + route), 'BE không trả sở thích tập cho HLV');
+  assert.ok(!/learner\??\.user\??\.(email|phone)/.test(view), 'email/điện thoại lấy từ danh sách học viên của buổi, không phải hồ sơ rút gọn');
+  assert.match(hook, /rosterHealthNotes|enrollment\?\.healthNotes/); assert.match(hook, /\['schedule-enrollments', scheduleId\]/);
+  assert.match(route, /LearnerProfileView/); assert.ok(!/useQuery|apiRequest/.test(route), 'route chỉ render một View');
+  const attendance = readSource('components/coach/CoachAttendanceView.tsx');
+  assert.match(attendance, /ROUTES\.coachMember\(item\.memberId, selected\.id\)/); assert.match(attendance, /EvaluationSheet/);
+});
+
+// ─── Google sign-in: không bao giờ làm sập app khi thiếu module native (Expo Go, bản cài cũ, web) ──────────────────────
+
+const WEB_CLIENT = '1111-web.apps.googleusercontent.com';
+const IOS_CLIENT = '2222-ios.apps.googleusercontent.com';
+
+// Nạp lib/googleSignIn với môi trường giả lập: ExecutionEnvironment của Expo, biến môi trường và module Google native
+function loadGoogle({ environment = 'standalone', webClientId = WEB_CLIENT, iosClientId = '', native } = {}) {
+  const saved = { web: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID };
+  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID = webClientId; process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID = iosClientId;
+  try {
+    const stubs = {
+      'expo-constants': () => ({ __esModule: true, default: { executionEnvironment: environment }, ExecutionEnvironment: { StoreClient: 'storeClient', Standalone: 'standalone', Bare: 'bare' } }),
+      '@react-native-google-signin/google-signin': native ?? (() => { throw new Error("TurboModuleRegistry.getEnforcing(...): 'RNGoogleSignin' could not be found"); }),
+    };
+    return loadApp('http://localhost/api/v1', stubs).load('lib/googleSignIn');
+  } finally {
+    for (const [key, name] of [['web', 'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID'], ['ios', 'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID']]) {
+      if (saved[key] === undefined) delete process.env[name]; else process.env[name] = saved[key];
+    }
+  }
+}
+
+function fakeGoogleModule(overrides = {}) {
+  const calls = { configure: [], signOut: 0 };
+  const codes = { SIGN_IN_CANCELLED: 'CANCELLED', IN_PROGRESS: 'IN_PROGRESS', PLAY_SERVICES_NOT_AVAILABLE: 'NO_PLAY' };
+  const module = () => ({
+    GoogleSignin: {
+      configure: (options) => calls.configure.push(options),
+      hasPlayServices: async () => true,
+      signIn: async () => overrides.response ?? { type: 'success', data: { idToken: 'google-id-token', user: { email: 'an@gmail.com', name: 'Nguyễn An', photo: null } } },
+      signOut: async () => { calls.signOut += 1; },
+    },
+    statusCodes: codes,
+    isErrorWithCode: (error) => typeof error === 'object' && error !== null && 'code' in error,
+  });
+  return { module, calls, codes };
+}
+
+test('Google sign-in explains why it is unavailable instead of crashing: Expo Go, missing config, missing native module, web', () => {
+  // Expo Go không có module native → lý do 'expo-go' và không bao giờ nạp thư viện
+  assert.equal(loadGoogle({ environment: 'storeClient' }).googleSignInUnavailableReason(), 'expo-go');
+  // Thiếu Web client ID → chưa cấu hình
+  assert.equal(loadGoogle({ webClientId: '' }).googleSignInUnavailableReason(), 'not-configured');
+  // Development build cũ chưa gắn thư viện Google: require ném lỗi → báo cần build lại, không sập
+  assert.equal(loadGoogle().googleSignInUnavailableReason(), 'native-module-missing');
+  assert.equal(loadGoogle({ native: fakeGoogleModule().module }).googleSignInUnavailableReason(), null);
+  // Mọi thông điệp đều có tiếng Việt và nêu hướng xử lý
+  const text = loadApp('http://localhost/api/v1').load('constants/auth').GOOGLE_TEXT;
+  assert.deepEqual(Object.keys(text.unavailable).sort(), ['expo-go', 'native-module-missing', 'not-configured', 'web']);
+  assert.ok(Object.values(text.unavailable).every((message) => /email và mật khẩu|build lại/.test(message)));
+  // Bản web dùng tệp riêng, không bao giờ import thư viện native
+  const web = readSource('lib/googleSignIn.web.ts');
+  assert.ok(!/google-signin/.test(web.replace(/^\s*\/\/.*$/gm, '')), 'bản web không nạp thư viện Google');
+  assert.match(web, /return 'web'/);
+  // Thư viện chỉ được nạp bằng require lười trong hàm, không import ở đầu tệp
+  assert.ok(!/^import .*google-signin/m.test(readSource('lib/googleSignIn.ts')));
+});
+
+test('Google sign-in returns the ID token, configures the Web client ID, and maps library errors to Vietnamese', async () => {
+  const fake = fakeGoogleModule();
+  const google = loadGoogle({ native: fake.module, iosClientId: IOS_CLIENT });
+  const result = await google.signInWithGoogle();
+  assert.deepEqual(result, { status: 'success', idToken: 'google-id-token', email: 'an@gmail.com', name: 'Nguyễn An', photo: null });
+  assert.deepEqual(fake.calls.configure, [{ webClientId: WEB_CLIENT, iosClientId: IOS_CLIENT }]);
+  await google.signInWithGoogle();
+  assert.equal(fake.calls.configure.length, 1, 'chỉ cấu hình một lần');
+  await google.signOutOfGoogle(); assert.equal(fake.calls.signOut, 1);
+
+  // Không có iOS client ID thì không gửi iosClientId (Android)
+  const android = fakeGoogleModule(); await loadGoogle({ native: android.module }).signInWithGoogle();
+  assert.deepEqual(android.calls.configure, [{ webClientId: WEB_CLIENT }]);
+
+  // Người dùng đóng bảng chọn tài khoản → cancelled; ID token null (Web client ID sai loại) → báo cấu hình
+  const cancelled = fakeGoogleModule({ response: { type: 'cancelled', data: null } });
+  assert.deepEqual(await loadGoogle({ native: cancelled.module }).signInWithGoogle(), { status: 'cancelled' });
+  const noToken = fakeGoogleModule({ response: { type: 'success', data: { idToken: null, user: { email: 'x@y.z', name: null, photo: null } } } });
+  await assert.rejects(loadGoogle({ native: noToken.module }).signInWithGoogle(), /Web client ID/);
+  // Thiếu cấu hình/Expo Go: ném lỗi tiếng Việt thay vì gọi thư viện
+  await assert.rejects(loadGoogle({ environment: 'storeClient' }).signInWithGoogle(), /Expo Go/);
+  await assert.doesNotReject(loadGoogle().signOutOfGoogle());
+
+  const errors = loadGoogle({ native: fakeGoogleModule().module });
+  assert.equal(errors.googleErrorMessage({ code: 'CANCELLED' }), null);
+  assert.equal(errors.googleErrorMessage({ code: 'IN_PROGRESS' }), null);
+  assert.match(errors.googleErrorMessage({ code: 'NO_PLAY' }), /Google Play Services/);
+  assert.match(errors.googleErrorMessage(new Error('Lỗi khác')), /Lỗi khác/);
+  assert.match(errors.googleErrorMessage('???'), /Không đăng nhập được bằng Google/);
+});
+
+test('Google registration holds the account in memory only, and the iOS URL scheme comes from the iOS client ID', () => {
+  const app = loadApp('http://localhost/api/v1'); const held = app.load('lib/googleRegistration');
+  assert.equal(held.peekGoogleAccount(), null);
+  const account = { idToken: 'tok', email: 'an@gmail.com', name: null, photo: null };
+  held.holdGoogleAccount(account); assert.deepEqual(held.peekGoogleAccount(), account);
+  held.clearGoogleAccount(); assert.equal(held.peekGoogleAccount(), null);
+  assert.ok(!/AsyncStorage|SecureStore|storage/.test(readSource('lib/googleRegistration.ts').replace(/^\s*\/\/.*$/gm, '')), 'ID token không ghi ra máy');
+  assert.ok(!/idToken|credential/i.test(readSource('navigation/routes.ts')), 'ID token không đi qua tham số URL');
+
+  const config = require('../app.config.js');
+  assert.equal(config.iosUrlSchemeOf('2222-ios.apps.googleusercontent.com'), 'com.googleusercontent.apps.2222-ios');
+  assert.equal(config.iosUrlSchemeOf(''), ''); assert.equal(config.iosUrlSchemeOf('khong-dung-dang'), '');
+  // Không có iOS client ID thì không thêm plugin (plugin dạng không tùy chọn đòi tệp Firebase và làm hỏng build)
+  const base = { name: 'Pulse', plugins: ['expo-router'] };
+  const saved = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+  try {
+    delete process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+    assert.deepEqual(config({ config: base }).plugins, ['expo-router']);
+    process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID = IOS_CLIENT;
+    assert.deepEqual(config({ config: base }).plugins, ['expo-router', ['@react-native-google-signin/google-signin', { iosUrlScheme: 'com.googleusercontent.apps.2222-ios' }]]);
+  } finally { if (saved === undefined) delete process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID; else process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID = saved; }
+  const appJson = JSON.parse(readSource('app.json')); assert.ok(!JSON.stringify(appJson.expo.plugins).includes('google-signin'), 'plugin Google chỉ thêm qua app.config.js');
+});
+
+test('login and register screens keep routes thin and put the Google button under the main button like the web', () => {
+  for (const route of ['app/auth/login.tsx', 'app/auth/register.tsx', 'app/auth/google-register.tsx']) {
+    const source = readSource(route);
+    assert.ok(source.split('\n').length < 15, `${route} chỉ render một View`); assert.ok(!/useForm|useState|useQuery|api\./.test(source), `${route} không chứa logic`);
+  }
+  const login = readSource('components/auth/LoginForm.tsx'); const register = readSource('components/auth/RegisterForm.tsx');
+  assert.ok(login.indexOf('TEXT.submit}</Text>') < login.indexOf('<GoogleSignInSection mode="login"'), 'nút Google nằm dưới nút Đăng nhập');
+  assert.ok(login.indexOf('<GoogleSignInSection mode="login"') < login.indexOf('TEXT.registerNow'), 'liên kết đăng ký nằm dưới nút Google');
+  assert.ok(register.indexOf('TEXT.submit}</Text>') < register.indexOf('<GoogleSignInSection mode="register"'), 'nút Google nằm dưới nút Đăng ký');
+  const section = readSource('hooks/shared/useGoogleAuth.ts');
+  assert.match(section, /businessCodeOf\(e\) !== ACCOUNT_NOT_REGISTERED_CODE/); assert.match(section, /ROUTES\.googleRegister/);
+  assert.match(readSource('context/AuthContext.tsx'), /signOutOfGoogle\(\)/);
+});
+
+// ─── Chính sách sử dụng, đánh giá trong chi tiết buổi, luồng đăng ký lớp theo web ────────────────────────────────
+
+test('policies screen is reachable for both roles from the account menu and keeps the web rules', () => {
+  const app = loadApp('http://localhost/api/v1'); const menus = app.load('navigation/accountMenuConfig');
+  for (const role of ['MEMBER', 'COACH']) {
+    const routes = menus.getAccountMenuForRole(role).flatMap((group) => group.items).map((item) => item.route);
+    assert.equal(routes.filter((route) => route === '/policies').length, 1, `${role}: đúng một lối vào Chính sách sử dụng`);
+  }
+  const policies = app.load('constants/policies');
+  assert.deepEqual(policies.POLICY_SECTIONS.map((section) => section.title), [
+    'Gói hội viên & đăng ký lớp', 'Lịch học & điểm danh', 'Chuyên cần', 'Thanh toán & quyền lợi', 'Tài khoản & thông tin cá nhân',
+  ]);
+  const text = JSON.stringify(policies.POLICY_SECTIONS);
+  assert.match(text, /hoàn 30% khoản gốc khi còn trên 15 ngày/); assert.match(text, /vắng tối đa 20% tổng số buổi/); assert.match(text, /ít nhất 50% tổng thời hạn/);
+  assert.ok(policies.POLICY_SECTIONS.every((section) => section.paragraphs.length > 0));
+  const route = readSource('app/policies.tsx'); assert.match(route, /PoliciesView/); assert.ok(!/useState|useQuery|api\./.test(route));
+  assert.equal(app.load('navigation/routes').canAccessRoute('COACH', ['policies']), true);
+  assert.equal(app.load('navigation/routes').canAccessRoute('MEMBER', ['policies']), true);
+});
+
+test('member session detail shows the coach evaluation of that exact session, also once the session is completed', () => {
+  const actions = readSource('components/member/MemberScheduleActions.tsx');
+  assert.equal((actions.match(/<SessionEvaluationCard/g) || []).length, 2, 'buổi đã hoàn thành và buổi còn lên lịch đều có thẻ đánh giá');
+  assert.ok(actions.indexOf("s.status === 'CANCELLED'") < actions.indexOf('<SessionEvaluationCard'), 'buổi đã hủy không hiện đánh giá');
+  const card = readSource('components/member/SessionEvaluationCard.tsx');
+  assert.match(card, /evaluation\.scheduleId === scheduleId/); assert.match(card, /useMyClassGoal\(classId\)/); assert.match(card, /if \(!entry\) return null/);
+});
+
+test('class detail follows the web enroll flow: confirm sheet with goal and health notes, goal card right after the class info', () => {
+  const view = readSource('components/classes/ClassDetailView.tsx'); const hook = readSource('hooks/member/useEnrollments.ts');
+  assert.match(view, /onPress=\{d\.enrollSheet\.open\}/); assert.ok(!/handleEnrollWholeCourse/.test(view + hook), 'không còn hộp xác nhận Có/Không cũ');
+  const card = view.indexOf('<ClassGoalCard');
+  assert.ok(card > view.indexOf('{/* 1. Thông tin lớp */}') && card < view.indexOf('{/* 2. Lịch học & địa điểm (hội viên) */}'), 'thẻ tiến độ nằm ngay sau thẻ thông tin lớp như web');
+  assert.match(hook, /'my-class-goal'/, 'đăng ký xong thì làm mới thẻ tiến độ');
+  const sheet = readSource('components/member/EnrollConfirmSheet.tsx');
+  for (const part of ['TEXT.goalLabel', 'TEXT.healthLabel', 'TEXT.saveToProfile', 'TEXT.initialProgressValue']) assert.ok(sheet.includes(part), part);
+  const text = loadApp('http://localhost/api/v1').load('constants/goals').GOAL_TEXT;
+  assert.equal(text.enrollTitle, 'Xác nhận đăng ký & Lưu ý thể trạng'); assert.equal(text.enrollConfirm, 'Xác nhận đăng ký trọn khóa');
+  assert.equal(text.goalLabel, 'Mục tiêu của bạn trong khóa học này'); assert.equal(text.initialProgressValue, '0% (Bắt đầu)');
+  assert.equal(text.healthLabel, 'Bạn có chấn thương hoặc vấn đề sức khỏe cần HLV lưu ý không?');
+  assert.equal(text.saveToProfile, 'Lưu thông tin này vào hồ sơ sức khỏe cá nhân của tôi');
+  // Mục tiêu và lưu ý sức khỏe được điền sẵn từ hồ sơ như web
+  const detail = readSource('hooks/shared/useClassDetail.ts');
+  assert.match(detail, /user\?\.memberProfile\?\.fitnessGoal/); assert.match(detail, /user\?\.memberProfile\?\.healthNotes/);
+});
+
+test('members follow the web: no self-service cancel or session transfer, My Classes only offers "Xem lớp" plus the reception note', () => {
+  const myClasses = readSource('components/member/enrollments/MyClassesView.tsx'); const schedule = readSource('components/member/MemberScheduleView.tsx');
+  const enrollHooks = readSource('hooks/member/useEnrollments.ts'); const enrollService = readSource('services/enrollmentService.ts');
+  assert.ok(!/Hủy đặt chỗ|Đổi buổi|useCancelEnrollment|useTransferEnrollment|transfer-schedules/.test(myClasses + schedule), 'không còn nút hủy / đổi buổi');
+  assert.ok(!/cancelEnrollment|transferEnrollment|enrollSchedule|useBookSchedule|showConfirm/.test(enrollHooks + enrollService), 'không còn hàm hủy / đổi / đặt lẻ buổi');
+  assert.ok(!/canCancelSession|Hủy buổi học/.test(schedule + readSource('lib/memberSchedule.ts')), 'lịch chỉ để xem');
+  const text = loadApp('http://localhost/api/v1').load('constants/classes').MY_CLASSES_TEXT;
+  assert.equal(text.viewClass, 'Xem lớp'); assert.equal(text.supportNote, 'Nếu cần hỗ trợ về lịch học, vui lòng liên hệ lễ tân cơ sở.');
+  assert.match(myClasses, /MY_CLASSES_TEXT\.viewClass/); assert.match(myClasses, /ROUTES\.classDetail\(classId\)/);
+  assert.match(myClasses, /ListFooterComponent=\{activeTab === 'upcoming' \? <SupportNote \/> : undefined\}/, 'dòng liên hệ lễ tân chỉ dưới tab Sắp tới như web');
+  // Chính sách cũng nói như web: không xin nghỉ / đổi buổi / hủy đặt chỗ trên giao diện hội viên
+  assert.match(JSON.stringify(loadApp('http://localhost/api/v1').load('constants/policies').POLICY_SECTIONS), /Giao diện hội viên không cung cấp xin nghỉ, đổi buổi hoặc hủy đặt chỗ/);
+  // Rời danh sách chờ vẫn còn (web: Waitlist)
+  assert.match(readSource('services/workflowService.ts'), /leaveWaitlist/);
 });

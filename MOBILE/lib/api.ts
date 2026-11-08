@@ -1,5 +1,6 @@
 import axios, { type AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
 import { storage } from './storage';
+import { VALIDATION_FALLBACK_MESSAGE, VALIDATION_FAILED_MESSAGE } from '../constants/api';
 import { WRONG_FACILITY_CODE } from '../constants/facility';
 import { emitSessionExpired } from './sessionEvents';
 import type { User } from './types';
@@ -40,6 +41,18 @@ export class ApiError extends Error {
 /** BE chặn vì bản ghi thuộc cơ sở khác với cơ sở đang chọn (header X-Facility-Id) */
 export function isWrongFacilityError(e: unknown): e is ApiError {
   return e instanceof ApiError && e.status === 403 && e.code === WRONG_FACILITY_CODE;
+}
+
+/**
+ * Mã nghiệp vụ BE gửi kèm trong `errors.code` (vd. ACCOUNT_NOT_REGISTERED khi đăng nhập Google bằng email chưa đăng ký).
+ * Lúc này `errors` là một object chứ không phải danh sách lỗi theo trường nên không đọc được từ `ApiError.code`.
+ */
+export function businessCodeOf(e: unknown): string | undefined {
+  if (!(e instanceof ApiError)) return undefined;
+  const detail: unknown = e.errors;
+  if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return undefined;
+  const code = (detail as { code?: unknown }).code;
+  return typeof code === 'string' ? code : undefined;
 }
 
 // ─── In-memory token cache ───────────────────────────────────────────────────
@@ -127,7 +140,16 @@ const SERVER_MESSAGE_VI: Record<string, string> = {
   FORBIDDEN_SCOPE: 'Nội dung này không thuộc cơ sở bạn đang chọn. Hãy đổi cơ sở rồi thử lại.',
 };
 
-function viMessage(message?: string) {
+/** Câu giải thích đầu tiên BE gửi kèm lỗi kiểm tra dữ liệu (errors[{ field, message }]) */
+function firstFieldMessage(errors: unknown) {
+  if (!Array.isArray(errors)) return undefined;
+  const hit = errors.find((e): e is { message: string } => typeof e?.message === 'string' && e.message.trim().length > 0);
+  return hit?.message;
+}
+
+function viMessage(message?: string, errors?: unknown) {
+  // "Validation failed" là mã thô: người dùng cần biết trường nào sai (vd. thiếu số điện thoại), không phải câu tiếng Anh này
+  if (message === VALIDATION_FAILED_MESSAGE) return firstFieldMessage(errors) ?? VALIDATION_FALLBACK_MESSAGE;
   return message ? (SERVER_MESSAGE_VI[message] ?? message) : message;
 }
 
@@ -206,7 +228,7 @@ axiosInstance.interceptors.response.use(
     // Nếu BE trả về success: false trong body (HTTP 200 nhưng lỗi nghiệp vụ)
     const payload = response.data as Envelope<unknown>;
     if (payload && payload.success === false) {
-      throw new ApiError(viMessage(payload.message) || 'Yêu cầu thất bại.', response.status, payload.errors, payload.message);
+      throw new ApiError(viMessage(payload.message, payload.errors) || 'Yêu cầu thất bại.', response.status, payload.errors, payload.message);
     }
     return response;
   },
@@ -222,7 +244,7 @@ axiosInstance.interceptors.response.use(
     }
     const { status, data } = error.response;
     throw new ApiError(
-      viMessage(data?.message) || `Yêu cầu thất bại (${status})`,
+      viMessage(data?.message, data?.errors) || `Yêu cầu thất bại (${status})`,
       status,
       data?.errors,
       data?.message,

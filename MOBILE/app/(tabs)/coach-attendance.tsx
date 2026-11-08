@@ -9,5 +9,5 @@ import { CoachAttendanceView } from '../../components/coach/CoachAttendanceView'
 export default function CoachAttendanceScreen() {
   const { scheduleId } = useLocalSearchParams<{ scheduleId?: string }>();
   const { user } = useAuth();
-  return <CoachAttendanceView coachId={user?.coachProfile?.id ?? user?.id} initialScheduleId={scheduleId} />;
+  return <CoachAttendanceView coachId={user?.coachProfile?.id} initialScheduleId={scheduleId} />;
 }

@@ -21,6 +21,15 @@ export interface AccountMenuGroup {
   items: AccountMenuItem[];
 }
 
+/** Chính sách sử dụng (web: Policies) — cùng một mục cho Hội viên và Huấn luyện viên */
+const POLICIES_ITEM: AccountMenuItem = {
+  icon: 'policy',
+  label: 'Chính sách sử dụng',
+  description: 'Quy định về gói, đặt lớp, chuyên cần, hoàn tiền',
+  route: ROUTES.policies,
+  color: Colors.feature.emerald,
+};
+
 const MEMBER_MENU: AccountMenuGroup[] = [
   {
     title: 'Gói và thanh toán',
@@ -43,6 +52,7 @@ const MEMBER_MENU: AccountMenuGroup[] = [
       { icon: 'notifications', label: 'Thông báo', route: ROUTES.notifications, color: Colors.feature.cyan },
       { icon: 'support-agent', label: 'Yêu cầu hỗ trợ', route: ROUTES.support, color: Colors.feature.pink },
       { icon: 'auto-awesome', label: 'Trợ lý AI', route: ROUTES.aiAssistant, color: Colors.feature.violet },
+      POLICIES_ITEM,
     ],
   },
   {
@@ -67,6 +77,7 @@ const COACH_MENU: AccountMenuGroup[] = [
     items: [
       { icon: 'notifications', label: 'Thông báo', route: ROUTES.notifications, color: Colors.feature.cyan },
       { icon: 'auto-awesome', label: 'Trợ lý AI', route: ROUTES.aiAssistant, color: Colors.feature.violet },
+      POLICIES_ITEM,
     ],
   },
   {

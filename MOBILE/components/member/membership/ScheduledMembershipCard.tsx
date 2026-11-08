@@ -1,15 +1,21 @@
 // components/member/membership/ScheduledMembershipCard.tsx
-// Gói tiếp theo đã thanh toán và lên lịch (status SCHEDULED) — web: thẻ "NEXT UP / SCHEDULED MEMBERSHIP"
+// Gói tiếp theo đã thanh toán và lên lịch (status SCHEDULED) — web: thẻ "NEXT UP / SCHEDULED MEMBERSHIP".
+// Hội viên hủy được gói chờ (hoàn 100%, giữ nguyên gói đang dùng); còn gói chờ thì BE chặn mua/gia hạn tiếp.
 
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Icon } from '../../shared/Icon';
 import { Colors } from '../../../constants/theme';
-import { TIER_LABEL } from '../../../constants/membership';
+import { SCHEDULED_SUBSCRIPTION_TEXT, TIER_LABEL } from '../../../constants/membership';
 import { formatDate } from '../../../lib/format';
 import type { Subscription } from '../../../lib/types';
 
-export function ScheduledMembershipCard({ subscription }: { subscription: Subscription }) {
+interface ScheduledMembershipCardProps {
+  subscription: Subscription;
+  onCancel: () => void;
+}
+
+export function ScheduledMembershipCard({ subscription, onCancel }: ScheduledMembershipCardProps) {
   const color = Colors.status.scheduled;
   const tier = subscription.tier ?? subscription.plan?.tier ?? 'MEMBERSHIP';
   return (
@@ -43,6 +49,14 @@ export function ScheduledMembershipCard({ subscription }: { subscription: Subscr
       <Text className="text-xs text-text-muted font-bevn-regular mt-md">
         Gói tập này đã được thanh toán và lên lịch sẵn. Hệ thống sẽ tự động kích hoạt vào ngày bắt đầu.
       </Text>
+      <TouchableOpacity
+        className="flex-row justify-center items-center gap-1.5 mt-lg py-sm rounded-md border"
+        style={{ borderColor: Colors.status.expired + '40' }}
+        onPress={onCancel}
+      >
+        <Icon name="cancel" size={16} color={Colors.status.expired} />
+        <Text className="text-status-expired font-bevn-semibold text-sm">{SCHEDULED_SUBSCRIPTION_TEXT.cancelButton}</Text>
+      </TouchableOpacity>
     </View>
   );
 }

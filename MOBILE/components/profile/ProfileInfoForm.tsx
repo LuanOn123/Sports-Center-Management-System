@@ -11,6 +11,7 @@ import { Controller } from 'react-hook-form';
 import { Icon } from '../shared/Icon';
 import { FilterChip } from '../shared/FilterChip';
 import { BirthDateField } from '../shared/BirthDateField';
+import { ChipGroup, FormField as Field } from '../shared/FormField';
 import { Colors } from '../../constants/theme';
 import { toggleChoice } from '../../lib/profileFields';
 import { useProfileInfoForm } from '../../hooks/shared/useProfileInfoForm';
@@ -41,23 +42,6 @@ function Section({ icon, title, children }: { icon: string; title: string; child
       {children}
     </View>
   );
-}
-
-function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string; children: React.ReactNode }) {
-  return (
-    <View className="mb-lg">
-      <Text className="text-sm text-text-secondary mb-sm font-bevn-medium">
-        {label}
-        {hint ? <Text className="text-xs text-text-muted font-bevn-regular">{`  ${hint}`}</Text> : null}
-      </Text>
-      {children}
-      {error ? <Text className="text-xs text-status-failed mt-1 font-bevn-regular">{error}</Text> : null}
-    </View>
-  );
-}
-
-function ChipGroup({ children }: { children: React.ReactNode }) {
-  return <View className="flex-row flex-wrap gap-sm">{children}</View>;
 }
 
 export function ProfileInfoForm({ onFieldFocus, getInputRef }: ProfileInfoFormProps) {

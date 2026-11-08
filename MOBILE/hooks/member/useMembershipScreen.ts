@@ -4,12 +4,12 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
-  useMembershipData, useCancelSubscription, estimateSelfCancelRefund, findRegisteredSubscription,
+  useMembershipData, useCancelSubscription, findRegisteredSubscription,
 } from './useMembership';
 import { usePendingPayment, useStartCheckout, type PaymentScope } from './usePayment';
-import { canSelfCancelSubscription } from '../../lib/businessRules';
+import { canSelfCancelSubscription, cancelRefundEstimate } from '../../lib/businessRules';
 import { detectPlanSwitchType, planSwitchHint } from '../../lib/planSwitch';
-import type { MembershipPlan, SepayCheckout } from '../../lib/types';
+import type { MembershipPlan, SepayCheckout, Subscription } from '../../lib/types';
 
 export function useMembershipScreen(memberId: string | undefined, scope: PaymentScope) {
   const membership = useMembershipData(memberId);
@@ -20,6 +20,8 @@ export function useMembershipScreen(memberId: string | undefined, scope: Payment
   const cancelMutation = useCancelSubscription();
 
   const [cancelOpen, setCancelOpen] = useState(false);
+  /** Gói đang xem trong hộp thoại hủy — gói đang dùng hoặc gói chờ kích hoạt (web: CancelSubscription) */
+  const [cancelTarget, setCancelTarget] = useState<Subscription | null>(null);
   /** Gói đang xem trong bảng xác nhận đổi gói (gia hạn / nâng cấp / hạ cấp) */
   const [switchPlan, setSwitchPlan] = useState<MembershipPlan | null>(null);
   const [cancelReason, setCancelReason] = useState('');
@@ -59,10 +61,11 @@ export function useMembershipScreen(memberId: string | undefined, scope: Payment
   const creatingPlanId = checkoutMutation.isPending ? checkoutMutation.variables?.planId : undefined;
 
   // ─── Hủy gói ────────────────────────────────────────────────────────────────
-  const openCancel = () => {
-    if (!canSelfCancelSubscription(activeSub)) return;
+  const openCancel = (sub: Subscription | null | undefined) => {
+    if (!sub || !canSelfCancelSubscription(sub)) return;
     cancelMutation.reset();
     setCancelReason('');
+    setCancelTarget(sub);
     setCancelOpen(true);
   };
 
@@ -72,8 +75,8 @@ export function useMembershipScreen(memberId: string | undefined, scope: Payment
   };
 
   const confirmCancel = () => {
-    if (!activeSub || !canSelfCancelSubscription(activeSub)) return;
-    cancelMutation.mutate({ id: activeSub.id, reason: cancelReason.trim() || undefined });
+    if (!cancelTarget || !canSelfCancelSubscription(cancelTarget)) return;
+    cancelMutation.mutate({ id: cancelTarget.id, reason: cancelReason.trim() || undefined });
   };
 
   return {
@@ -86,6 +89,8 @@ export function useMembershipScreen(memberId: string | undefined, scope: Payment
     registeredFor,
     switchTypeFor,
     hintFor,
+    /** Có gói chờ kích hoạt → BE chặn mua/gia hạn tiếp (409 SCHEDULED_SUBSCRIPTION_EXISTS): khóa nút mua như web */
+    purchaseBlocked: Boolean(membership.scheduledSub),
     switchSheet: {
       plan: switchPlan,
       open: (plan: MembershipPlan) => setSwitchPlan(plan),
@@ -93,9 +98,10 @@ export function useMembershipScreen(memberId: string | undefined, scope: Payment
     },
     cancel: {
       open: cancelOpen,
+      target: cancelTarget,
       reason: cancelReason,
       setReason: setCancelReason,
-      estimate: activeSub && canSelfCancelSubscription(activeSub) ? estimateSelfCancelRefund(activeSub) : null,
+      estimate: cancelTarget && canSelfCancelSubscription(cancelTarget) ? cancelRefundEstimate(cancelTarget) : null,
       mutation: cancelMutation,
       openModal: openCancel,
       close: closeCancel,
