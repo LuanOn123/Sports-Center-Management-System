@@ -5,9 +5,11 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '../context/AuthContext';
+import { AssistantProvider } from '../context/AssistantContext';
 import { Colors } from '../constants/theme';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AlertModal, AppLoadingScreen, NoFacilityScreen } from '../components';
+import { AssistantBubble } from '../components/assistant';
 import { ROUTES, canAccessRoute } from '../navigation/routes';
 import { useAppStateFocus } from '../hooks/shared/useAppStateFocus';
 
@@ -65,7 +67,7 @@ function RootLayoutContent() {
           <Stack.Screen name="classes/[id]" />
           <Stack.Screen name="schedule/[scheduleId]" />
           <Stack.Screen name="chat" />
-          <Stack.Screen name="assistant" />
+          <Stack.Screen name="assistant" options={{ animation: 'slide_from_bottom' }} />
         </Stack.Protected>
         <Stack.Protected guard={isAuthenticated && user?.role === 'MEMBER'}>
           <Stack.Screen name="membership/plans" />
@@ -78,6 +80,8 @@ function RootLayoutContent() {
           <Stack.Screen name="coach" />
         </Stack.Protected>
       </Stack>
+      {/* Bong bóng trợ lý AI nổi trên mọi màn hình sau khi đăng nhập (kéo được, có dấu "x" tắt 10 giây) */}
+      {isAuthenticated ? <AssistantBubble /> : null}
     </>
   );
 }
@@ -103,9 +107,11 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <StatusBar style="light" />
-            <RootLayoutContent />
-            <AlertModal />
+            <AssistantProvider>
+              <StatusBar style="light" />
+              <RootLayoutContent />
+              <AlertModal />
+            </AssistantProvider>
           </AuthProvider>
         </QueryClientProvider>
       </GestureHandlerRootView>
