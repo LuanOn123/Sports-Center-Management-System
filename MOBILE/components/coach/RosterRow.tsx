@@ -6,8 +6,9 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Icon } from '../shared/Icon';
 import { Colors } from '../../constants/theme';
-import { ATTENDANCE_STATUS_COLOR, ATTENDANCE_STATUS_LABEL } from '../../constants/attendance';
+import { ATTENDANCE_STATUS_COLOR, ATTENDANCE_STATUS_LABEL, COACH_ATTENDANCE_TEXT as ATTENDANCE_TEXT } from '../../constants/attendance';
 import { GOAL_TEXT as TEXT } from '../../constants/goals';
+import { displayAttendanceNote } from '../../lib/attendanceNote';
 import { rosterHealthNotes } from '../../lib/coachRoster';
 import { evaluationDraft, progressLevel } from '../../lib/goalProgress';
 import type { Attendance, Enrollment, ScheduleEvaluationItem } from '../../lib/types';
@@ -32,6 +33,8 @@ export function RosterRow({ enrollment, record, writable, disabled, evaluation, 
   const contact = enrollment.member?.user?.phone || enrollment.member?.user?.email;
   const healthNotes = rosterHealthNotes(enrollment);
   const statusColor = record ? ATTENDANCE_STATUS_COLOR[record.status] : Colors.text.muted;
+  // Ghi chú của bản ghi điểm danh (HLV gõ, hoặc cách hội viên tự điểm danh / hệ thống tự ghi vắng) — như dòng "trạng thái · ghi chú" của web
+  const note = displayAttendanceNote(record?.note);
   const progress = evaluation ? evaluationDraft(evaluation).progress : null;
   const level = progress === null ? null : progressLevel(progress);
 
@@ -55,6 +58,9 @@ export function RosterRow({ enrollment, record, writable, disabled, evaluation, 
             {record ? ATTENDANCE_STATUS_LABEL[record.status] : 'Chưa điểm danh'}
             {contact ? ` • ${contact}` : ''}
           </Text>
+          {Boolean(note) && (
+            <Text className="text-xs text-text-secondary font-bevn-regular mt-0.5" numberOfLines={2}>{ATTENDANCE_TEXT.noteOf(note!)}</Text>
+          )}
           <Text className="text-xs text-primary font-bevn-medium mt-xs">{TEXT.viewProfile}</Text>
         </TouchableOpacity>
         {record ? (
@@ -63,11 +69,13 @@ export function RosterRow({ enrollment, record, writable, disabled, evaluation, 
           </View>
         ) : writable ? (
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={`${ATTENDANCE_TEXT.markButton} ${name}`}
             className="flex-row items-center gap-0.5 px-sm py-1 rounded-md border border-border bg-bg-elevated"
             onPress={onMark}
             disabled={disabled}
           >
-            <Text className="text-xs font-bevn-semibold text-text-secondary">Điểm danh</Text>
+            <Text className="text-xs font-bevn-semibold text-text-secondary">{ATTENDANCE_TEXT.markButton}</Text>
             <Icon name="arrow-drop-down" size={16} color={Colors.text.secondary} />
           </TouchableOpacity>
         ) : null}

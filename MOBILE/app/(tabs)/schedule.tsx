@@ -1,6 +1,6 @@
 // app/(tabs)/schedule.tsx
 // Tab Lịch: Hội viên → Lịch tuần + Lớp của tôi (web: SchedulePage + MyClassesPage), HLV → Lịch dạy.
-// `view=classes` mở thẳng phần "Lớp của tôi" (ROUTES.myClasses).
+// `view=classes` mở thẳng phần "Lớp của tôi" (ROUTES.myClasses); `classId` (HLV) mở Lịch dạy đã lọc một lớp (ROUTES.coachScheduleFor).
 
 import React from 'react';
 import { useLocalSearchParams } from 'expo-router';
@@ -10,9 +10,9 @@ import { CoachScheduleView } from '../../components/coach/CoachScheduleView';
 
 export default function ScheduleScreen() {
   const { user } = useAuth();
-  const { view } = useLocalSearchParams<{ view?: MemberScheduleSegment }>();
+  const { view, classId } = useLocalSearchParams<{ view?: MemberScheduleSegment; classId?: string }>();
   if (user?.role === 'COACH') {
-    return <CoachScheduleView coachId={user.coachProfile?.id} />;
+    return <CoachScheduleView coachId={user.coachProfile?.id} initialClassId={classId} />;
   }
   return <MemberScheduleTabView initial={view} />;
 }

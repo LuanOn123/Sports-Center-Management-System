@@ -49,6 +49,8 @@ export const ROUTES = {
   paymentDetail: (id: string): Href => ({ pathname: '/member/payment-detail/[id]', params: { id } }),
   chatThread: (userId: string, name?: string): Href => ({ pathname: '/chat/[userId]', params: { userId, ...(name ? { name } : {}) } }),
   coachAttendanceFor: (scheduleId: string): Href => ({ pathname: '/(tabs)/coach-attendance', params: { scheduleId } }),
+  /** Tab Lịch dạy của HLV, mở sẵn bộ lọc một lớp (web: nút "Xem lịch dạy" ở thẻ lớp phụ trách) */
+  coachScheduleFor: (classId: string): Href => ({ pathname: '/(tabs)/schedule', params: { classId } }),
 } as const;
 
 /**

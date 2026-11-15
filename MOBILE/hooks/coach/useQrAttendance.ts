@@ -1,59 +1,95 @@
 // hooks/coach/useQrAttendance.ts
-// Tạo mã QR điểm danh + mã dự phòng cho 1 ca học — tự đổi mã định kỳ, dừng khi đóng modal
+// Mã QR điểm danh + mã dự phòng của một buổi (web: shared/QrAttendance.tsx): tạo khi mở, tự đổi mã định kỳ, đếm ngược hạn từng mã,
+// làm mới bằng tay, sao chép mã dự phòng; dừng hẳn khi đóng. Cách tính hạn ở lib/qrAttendance.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import * as Clipboard from 'expo-clipboard';
 import { generateAttendanceQr } from '../../services/attendanceService';
 import { ApiError } from '../../lib/api';
-
-// BE tự tài liệu: "FE tự làm mới mã mỗi 55 giây" — QR JWT sống 600s nhưng mã dự
-// phòng chỉ sống 90s, nên phải đổi mã đều đặn để mã dự phòng luôn còn hiệu lực.
-const REFRESH_MS = 55_000;
+import { qrCountdown, toQrCredential, type QrCredential } from '../../lib/qrAttendance';
+import { QR_COPIED_MS, QR_REFRESH_MS, QR_TEXT } from '../../constants/attendance';
 
 export function useQrAttendance(scheduleId: string | undefined) {
   const [visible, setVisible] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
-  const [manualCode, setManualCode] = useState<string | null>(null);
-  const [manualCodeExpiresAt, setManualCodeExpiresAt] = useState<number | null>(null);
-  const [manualCodeSecondsLeft, setManualCodeSecondsLeft] = useState(0);
+  const [credential, setCredential] = useState<QrCredential | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  /** Tăng mỗi lần "Làm mới QR": chu kỳ tự đổi mã 55 giây bắt đầu lại từ mã vừa tạo, không đổi mã thêm ngay sau đó */
+  const [cycle, setCycle] = useState(0);
+  /** Mỗi lần tạo / đóng tăng một số: phản hồi của lần cũ (đã bị thay bằng mã mới hoặc modal đã đóng) bị bỏ qua */
+  const latestRequest = useRef(0);
 
   const generate = useCallback(async () => {
     if (!scheduleId) return;
+    const request = ++latestRequest.current;
+    const startedAt = Date.now();
+    setGenerating(true);
+    setError(null);
     try {
-      setError(null);
-      const res = await generateAttendanceQr(scheduleId);
-      setToken(res.data.qrToken);
-      setManualCode(res.data.manualCode);
-      setManualCodeExpiresAt(Date.now() + res.data.manualCodeExpiresIn * 1000);
+      const result = await generateAttendanceQr(scheduleId);
+      if (request === latestRequest.current) setCredential(toQrCredential(result.data, startedAt));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Không tạo được mã QR. Vui lòng thử lại.');
+      if (request === latestRequest.current) setError(e instanceof ApiError ? e.message : QR_TEXT.failed);
+    } finally {
+      if (request === latestRequest.current) setGenerating(false);
     }
   }, [scheduleId]);
 
   const open = useCallback(() => setVisible(true), []);
   const close = useCallback(() => {
+    latestRequest.current += 1;
     setVisible(false);
-    setToken(null);
-    setManualCode(null);
-    setManualCodeExpiresAt(null);
+    setCredential(null);
+    setError(null);
+    setGenerating(false);
+    setCopied(false);
   }, []);
 
-  // Tạo mã lần đầu + tự đổi mã định kỳ khi modal đang mở
+  // Tạo mã khi mở (và mỗi lần làm mới tay) rồi đổi mã định kỳ (mã dự phòng chỉ sống 90 giây); đồng hồ 1 giây để đếm ngược hạn
   useEffect(() => {
     if (!visible) return;
-    generate();
-    const id = setInterval(generate, REFRESH_MS);
-    return () => clearInterval(id);
-  }, [visible, generate]);
+    void generate();
+    setNow(Date.now());
+    const refresh = setInterval(() => { void generate(); }, QR_REFRESH_MS);
+    const tick = setInterval(() => setNow(Date.now()), 1000);
+    return () => {
+      clearInterval(refresh);
+      clearInterval(tick);
+    };
+  }, [visible, generate, cycle]);
 
-  // Đếm ngược mã dự phòng — chỉ để UI, không tự gọi lại API
+  // "Đã sao chép" chỉ hiện một lúc
   useEffect(() => {
-    if (!visible || !manualCodeExpiresAt) return;
-    const id = setInterval(() => {
-      setManualCodeSecondsLeft(Math.max(0, Math.ceil((manualCodeExpiresAt - Date.now()) / 1000)));
-    }, 1000);
-    return () => clearInterval(id);
-  }, [visible, manualCodeExpiresAt]);
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), QR_COPIED_MS);
+    return () => clearTimeout(timer);
+  }, [copied]);
 
-  return { visible, token, manualCode, manualCodeSecondsLeft, error, open, close };
+  const copyManualCode = useCallback(async () => {
+    if (!credential?.manualCode) return;
+    try {
+      await Clipboard.setStringAsync(credential.manualCode);
+      setCopied(true);
+    } catch {
+      setCopied(false); // máy không cho ghi clipboard: mã vẫn đọc được trên màn hình
+    }
+  }, [credential]);
+
+  return {
+    visible,
+    open,
+    close,
+    token: credential?.token ?? null,
+    manualCode: credential?.manualCode ?? null,
+    ...qrCountdown(credential, now),
+    /** Đang tạo mã (lần đầu, tự đổi hoặc làm mới tay) */
+    generating,
+    error,
+    /** "Làm mới QR": tạo mã mới ngay (thu hồi mã dự phòng cũ) và tính lại chu kỳ tự đổi mã */
+    refresh: () => setCycle((n) => n + 1),
+    copied,
+    copyManualCode,
+  };
 }

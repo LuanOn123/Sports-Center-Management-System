@@ -2,7 +2,7 @@
 // Màn Lịch dạy của HLV (web: CoachWorkspace mode "schedule") — logic ở hooks/coach/useCoachScheduleScreen.
 // Khung lịch Tuần / Tháng là components/schedule/ScheduleCalendar, dùng chung với tab Lịch của Hội viên.
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenHeader } from '../shared/ScreenHeader';
@@ -16,9 +16,20 @@ import { SCHEDULE_STATUSES, SCHEDULE_STATUS_COLOR, SCHEDULE_STATUS_LABEL } from 
 import { ROUTES } from '../../navigation/routes';
 import { ApiError } from '../../lib/api';
 
-export function CoachScheduleView({ coachId }: { coachId: string | undefined }) {
+interface CoachScheduleViewProps {
+  coachId: string | undefined;
+  /** Lớp được chọn từ "Xem lịch dạy" của thẻ lớp phụ trách */
+  initialClassId?: string;
+}
+
+export function CoachScheduleView({ coachId, initialClassId }: CoachScheduleViewProps) {
   const router = useRouter();
-  const screen = useCoachScheduleScreen(coachId);
+  const screen = useCoachScheduleScreen(coachId, initialClassId);
+
+  // Tab giữ nguyên params → xoá classId sau khi đã áp bộ lọc, để lần sau chọn lại đúng lớp đó thì param đổi giá trị và bộ lọc áp lại
+  useEffect(() => {
+    if (initialClassId) router.setParams({ classId: '' });
+  }, [initialClassId, router]);
 
   const filters = (
     <View className="-mx-xl mb-md">

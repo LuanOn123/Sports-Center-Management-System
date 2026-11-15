@@ -1,6 +1,6 @@
 // components/coach/CoachHomeView.tsx
 // Trang chủ Huấn luyện viên: lời chào + chuyên môn, chỉ số nhanh, buổi dạy tiếp theo (điểm danh khi tới giờ),
-// lối tắt, tổng quan tuần dạy, lịch dạy sắp tới. Logic ở hooks/coach/useCoachHome.
+// lối tắt, tổng quan buổi dạy (tuần / tháng), lịch dạy sắp tới. Logic ở hooks/coach/useCoachHome.
 
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
@@ -13,7 +13,7 @@ import { FacilityPicker } from '../shared/FacilityPicker';
 import { NotificationBell } from '../shared/NotificationBell';
 import { ClassCardSkeleton } from '../shared/Skeleton';
 import { Button, Card, EmptyState, SectionHeader, ShortcutRow, StatTile } from '../ui';
-import { WeeklyTeachingSummary } from './WeeklyTeachingSummary';
+import { TeachingSummaryCard } from './TeachingSummaryCard';
 import { getQuickAccessForRole } from '../../navigation/quickAccessConfig';
 import { useCoachHome } from '../../hooks/coach/useCoachHome';
 import { Colors, Spacing } from '../../constants/theme';
@@ -94,7 +94,7 @@ export function CoachHomeView({ user }: { user: User | null }) {
 
       <ShortcutRow items={getQuickAccessForRole('COACH')} />
 
-      {coachId && <WeeklyTeachingSummary coachId={coachId} />}
+      {coachId && <TeachingSummaryCard coachId={coachId} />}
 
       {later.length > 0 && (
         <View className="mb-lg">

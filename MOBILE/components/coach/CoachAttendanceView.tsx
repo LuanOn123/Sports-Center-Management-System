@@ -15,6 +15,7 @@ import { RosterRow, learnerNameOf } from './RosterRow';
 import { useCoachAttendance } from '../../hooks/coach/useCoachAttendance';
 import { useQrAttendance } from '../../hooks/coach/useQrAttendance';
 import { Colors, Spacing } from '../../constants/theme';
+import { COACH_ATTENDANCE_TEXT } from '../../constants/attendance';
 import { GOAL_TEXT } from '../../constants/goals';
 import { formatTime, formatWeekdayDate } from '../../lib/format';
 import { ApiError } from '../../lib/api';
@@ -183,8 +184,8 @@ export function CoachAttendanceView({ coachId, initialScheduleId }: CoachAttenda
       <AttendanceStatusPicker
         visible={Boolean(att.markingMemberId)}
         memberName={markingEnrollment ? learnerNameOf(markingEnrollment) : undefined}
-        onSelect={(status) =>
-          att.mark(status, (e) => showAlert('Không lưu được điểm danh', e instanceof ApiError ? e.message : 'Vui lòng thử lại.'))
+        onSelect={(status, note) =>
+          att.mark(status, note, (e) => showAlert(COACH_ATTENDANCE_TEXT.saveFailed, e instanceof ApiError ? e.message : COACH_ATTENDANCE_TEXT.retry))
         }
         onClose={att.cancelMarking}
       />

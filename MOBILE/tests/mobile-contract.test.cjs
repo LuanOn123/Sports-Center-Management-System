@@ -1551,3 +1551,88 @@ test('workflow helpers: unknown statuses keep their code, system attendance repo
   assert.equal(w.isAttendanceReport('{"type":"ATTENDANCE_VIOLATION","rate":0.5}'), true);
   assert.equal(w.isAttendanceReport('Tôi cần hỗ trợ đổi lịch tập'), false);
 });
+
+// ─── Phase 3: huấn luyện viên (ghi chú điểm danh, mã QR, tổng quan buổi dạy, thẻ lớp phụ trách) ─────────────────────────
+
+test('coach attendance note is optional, trimmed and capped like the web; the service sends it only when present', async () => fixture(async ({ load, requests, handle }) => {
+  const api = load('lib/api'); await api.saveTokens('coach-token', 'refresh');
+  const note = load('lib/attendanceNote'); const c = load('constants/attendance');
+  assert.equal(c.ATTENDANCE_NOTE_MAX_LENGTH, 1000);
+  assert.equal(note.attendanceNoteForSave('   '), undefined); assert.equal(note.attendanceNoteForSave(undefined), undefined);
+  assert.equal(note.attendanceNoteForSave('  Đến muộn 5 phút  '), 'Đến muộn 5 phút');
+  assert.equal(note.attendanceNoteForSave('x'.repeat(1500)).length, 1000);
+  // Ghi chú trên bản ghi: mã hệ thống đổi thành câu đọc được, ghi chú khác giữ nguyên chữ BE trả
+  assert.equal(note.displayAttendanceNote(null), null); assert.equal(note.displayAttendanceNote('  '), null);
+  assert.equal(note.displayAttendanceNote('SYSTEM_NO_SHOW'), c.COACH_ATTENDANCE_TEXT.systemNoShow);
+  assert.equal(note.displayAttendanceNote(' Điểm danh bằng mã dự phòng (nhập tay) '), 'Điểm danh bằng mã dự phòng (nhập tay)');
+
+  handle(() => ({ status: 201, data: { id: 'a1' } }));
+  const service = load('services/attendanceService');
+  await service.createAttendance({ scheduleId: 's1', memberId: 'm1', status: 'LATE', note: note.attendanceNoteForSave(' đến muộn ') });
+  assert.equal(requests.at(-1).path, '/api/v1/attendance');
+  assert.deepEqual(requests.at(-1).body, { scheduleId: 's1', memberId: 'm1', status: 'LATE', note: 'đến muộn' });
+  await service.createAttendance({ scheduleId: 's1', memberId: 'm2', status: 'PRESENT', note: note.attendanceNoteForSave('') });
+  assert.deepEqual(requests.at(-1).body, { scheduleId: 's1', memberId: 'm2', status: 'PRESENT' }, 'ghi chú trống thì không gửi');
+  // Hộp chọn kết quả có ô ghi chú và truyền xuống hook; bản ghi đã lưu hiện ghi chú
+  assert.match(readSource('components/coach/AttendanceStatusPicker.tsx'), /onSelect\(status, note\)/);
+  assert.match(readSource('hooks/coach/useCoachAttendance.ts'), /note: attendanceNoteForSave\(note\)/);
+  assert.match(readSource('components/coach/RosterRow.tsx'), /displayAttendanceNote\(record\?\.note\)/);
+}));
+
+test('QR attendance countdown runs from the moment the request was sent and never goes below zero', () => {
+  const q = loadApp('http://localhost/api/v1').load('lib/qrAttendance');
+  const credential = q.toQrCredential({ qrToken: 'jwt', expiresIn: 600, manualCode: 'K7M2QP', manualCodeExpiresIn: 90 }, 1_000_000);
+  assert.deepEqual(credential, { token: 'jwt', manualCode: 'K7M2QP', qrExpiresAt: 1_600_000, manualCodeExpiresAt: 1_090_000 });
+  assert.deepEqual(q.qrCountdown(credential, 1_002_000), { qrSeconds: 598, manualSeconds: 88, qrExpired: false, manualExpired: false });
+  assert.equal(q.qrCountdown(credential, 1_089_001).manualSeconds, 1, 'còn 0,999 giây vẫn hiện 1');
+  const late = q.qrCountdown(credential, 1_091_000); // mã dự phòng (90 giây) hết trước mã QR (600 giây)
+  assert.deepEqual([late.manualSeconds, late.manualExpired, late.qrExpired], [0, true, false]);
+  assert.deepEqual(q.qrCountdown(credential, 9_999_999), { qrSeconds: 0, manualSeconds: 0, qrExpired: true, manualExpired: true });
+  assert.deepEqual(q.qrCountdown(null, 5), { qrSeconds: 0, manualSeconds: 0, qrExpired: false, manualExpired: false }, 'chưa có mã thì chưa phải hết hạn');
+  assert.equal(q.secondsLeft(5_000, 4_001), 1); assert.equal(q.secondsLeft(5_000, 6_000), 0);
+  // Làm mới định kỳ 55 giây như web, nhỏ hơn hạn 90 giây của mã dự phòng
+  const c = loadApp('http://localhost/api/v1').load('constants/attendance');
+  assert.equal(c.QR_REFRESH_MS, 55_000); assert.ok(c.QR_REFRESH_MS < 90_000);
+});
+
+test('teaching summary matches the web dashboard: cancelled sessions only count in the totals, charts use non-cancelled sessions', () => {
+  const a = loadApp('http://localhost/api/v1').load('lib/scheduleAnalytics');
+  const yoga = { id: 'c1', name: 'Yoga' }; const hiit = { id: 'c2', name: 'HIIT' }; const roomA = { id: 'r1', name: 'Phòng A' }; const roomB = { id: 'r2', name: 'Phòng B' };
+  const row = (id, status, startTime, cls, room) => ({ id, status, startTime, endTime: startTime, classId: cls.id, class: cls, roomId: room?.id, room });
+  const rows = [
+    row('1', 'COMPLETED', '2026-11-15T17:30:00Z', yoga, roomA), // 00:30 Thứ Hai 16/11 theo giờ Việt Nam
+    row('2', 'SCHEDULED', '2026-11-16T10:00:00Z', yoga, roomA), // Thứ Hai 17:00
+    row('3', 'SCHEDULED', '2026-11-18T10:00:00Z', hiit, roomB), // Thứ Tư
+    row('4', 'CANCELLED', '2026-11-18T12:00:00Z', hiit, roomB), // Thứ Tư nhưng đã hủy → không tính vào biểu đồ
+    row('5', 'COMPLETED', '2026-11-20T02:00:00Z', hiit, undefined), // Thứ Sáu 09:00, chưa có phòng
+  ];
+  const s = a.summarizeSchedules(rows);
+  assert.deepEqual([s.total, s.scheduled, s.completed, s.cancelled, s.active], [5, 2, 2, 1, 4]);
+  assert.deepEqual(s.classes, [{ id: 'c1', name: 'Yoga', count: 2 }, { id: 'c2', name: 'HIIT', count: 2 }], 'hòa số buổi thì giữ thứ tự xuất hiện');
+  assert.deepEqual(s.rooms.map((r) => [r.name, r.count]), [['Phòng A', 2], ['Phòng B', 1], ['Chưa phân loại', 1]]);
+  assert.deepEqual(s.weekdays.map((d) => [d.label, d.total, d.completed]), [['T2', 2, 1], ['T3', 0, 0], ['T4', 1, 0], ['T5', 0, 0], ['T6', 1, 1], ['T7', 0, 0], ['CN', 0, 0]]);
+
+  // Phần trăm giống ô chỉ số của web: không có mẫu hoặc số liệu vô lý thì không hiện %
+  assert.deepEqual([[2, 4], [1, 3], [2, 3], [0, 4]].map(([p, t]) => a.percentOf(p, t)), [50, 33, 67, 0]);
+  assert.deepEqual([[0, 0], [5, 4], [-1, 4], [Number.NaN, 4]].map(([p, t]) => a.percentOf(p, t)), [null, null, null, null]);
+  const empty = a.summarizeSchedules([]);
+  assert.deepEqual([empty.total, empty.active, empty.classes, empty.rooms], [0, 0, [], []]);
+  assert.equal(empty.weekdays.length, 7);
+  // Tổng quan có đủ bốn chỉ số, đồng hồ tiến độ, phòng tập và chế độ tháng như web
+  const card = readSource('components/coach/TeachingSummaryCard.tsx');
+  for (const key of ['total', 'scheduled', 'completed', 'cancelled']) assert.match(card, new RegExp(`TEXT\\.kpi\\.${key}`));
+  assert.match(card, /TEXT\.progressTitle/); assert.match(card, /TEXT\.roomsTitle/); assert.match(card, /CALENDAR_MODES/);
+});
+
+test('coach class cards: own card with type, capacity and status, and a link to the schedule filtered by that class', () => {
+  const routes = loadApp('http://localhost/api/v1').load('navigation/routes').ROUTES;
+  assert.deepEqual(routes.coachScheduleFor('c1'), { pathname: '/(tabs)/schedule', params: { classId: 'c1' } });
+  const card = readSource('components/coach/CoachClassCard.tsx');
+  assert.ok(!/useCoursePlan|course-plan/.test(card), 'HLV không tải kế hoạch khóa / chỗ trống dành cho hội viên');
+  assert.match(card, /TEXT\.inactive/); assert.match(card, /TEXT\.capacity\(item\.capacity\)/);
+  assert.match(readSource('components/classes/ClassesExploreView.tsx'), /isCoach \? \([\s\S]*?<CoachClassCard[\s\S]*?ROUTES\.coachScheduleFor\(item\.id\)/);
+  // Lịch dạy áp bộ lọc lớp từ tham số route rồi xoá tham số để lần sau chọn lại đúng lớp đó vẫn áp được
+  assert.match(readSource('app/(tabs)/schedule.tsx'), /initialClassId=\{classId\}/);
+  assert.match(readSource('hooks/coach/useCoachScheduleScreen.ts'), /if \(initialClassId\) setClassFilter\(initialClassId\)/);
+  assert.match(readSource('components/coach/CoachScheduleView.tsx'), /router\.setParams\(\{ classId: '' \}\)/);
+});

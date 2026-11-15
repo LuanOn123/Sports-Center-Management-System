@@ -84,3 +84,50 @@ export const MY_ATTENDANCE_TEXT = {
 /** Khung ngắm QR (4 góc trên camera toàn màn hình): cạnh tối đa (px) và tỉ lệ tối đa theo chiều cao màn hình */
 export const QR_SCAN_FRAME_MAX = 340;
 export const QR_SCAN_FRAME_HEIGHT_RATIO = 0.5;
+
+// ─── Điểm danh của huấn luyện viên (web: FE/src/shared/Attendance.tsx) ──────────────────────────────────────────────
+
+/** Ghi chú điểm danh của HLV: không bắt buộc khi ghi mới, tối đa 1000 ký tự (web: ô "Ghi chú điểm danh") */
+export const ATTENDANCE_NOTE_MAX_LENGTH = 1000;
+
+/** BE đánh dấu bản ghi vắng do hệ thống tự tạo khi hoàn tất buổi (ATTENDANCE.SYSTEM_NO_SHOW_NOTE) bằng ghi chú này */
+export const ATTENDANCE_SYSTEM_NO_SHOW_NOTE = 'SYSTEM_NO_SHOW';
+
+export const COACH_ATTENDANCE_TEXT = {
+  markButton: 'Điểm danh',
+  pickerTitle: 'Kết quả điểm danh',
+  noteLabel: 'Ghi chú điểm danh (không bắt buộc)',
+  notePlaceholder: 'Ghi chú',
+  pickerHint: 'Điểm danh đã lưu chỉ quản lý được sửa. "Vắng có phép" do quản lý ghi nhận.',
+  noteOf: (note: string) => `Ghi chú: ${note}`,
+  systemNoShow: 'Hệ thống tự ghi vắng vì chưa điểm danh',
+  saveFailed: 'Không lưu được điểm danh',
+  retry: 'Vui lòng thử lại.',
+} as const;
+
+// ─── Mã QR điểm danh do HLV tạo (web: FE/src/shared/QrAttendance.tsx) ──────────────────────────────────────────────
+
+/** Làm mới mã mỗi chừng này: mã dự phòng chỉ sống 90 giây (BE) nên phải đổi đều để luôn còn hiệu lực (web: refetchInterval 55000) */
+export const QR_REFRESH_MS = 55_000;
+
+/** Cạnh khung mã QR trên màn hình (px) */
+export const QR_CODE_SIZE = 200;
+
+/** Hiện "Đã sao chép" chừng này mili-giây sau khi chép mã dự phòng */
+export const QR_COPIED_MS = 2_000;
+
+export const QR_TEXT = {
+  title: 'Mã QR điểm danh',
+  intro: 'Hội viên quét mã này hoặc nhập mã dự phòng để điểm danh. Tạo mã mới sẽ thu hồi mã dự phòng cũ của buổi học.',
+  validFor: (time: string) => `Mã QR còn hiệu lực ${time}`,
+  expired: 'Mã đã hết hạn. Vui lòng tạo mã mới.',
+  manualTitle: 'MÃ DỰ PHÒNG (không quét được QR)',
+  manualExpiresIn: (seconds: number) => `Hết hạn sau ${seconds}s`,
+  manualExpired: 'Mã dự phòng đã hết hạn',
+  copy: 'Sao chép mã',
+  copied: 'Đã sao chép',
+  refresh: 'Làm mới QR',
+  refreshing: 'Đang tạo mã…',
+  close: 'Đóng',
+  failed: 'Không tạo được mã QR. Vui lòng thử lại.',
+} as const;
