@@ -74,14 +74,6 @@ export function courseAvailability(course: Course, lowThreshold: number): { text
   return { text: `Còn ${minRemainingSlots} chỗ trống`, tone: 'open' };
 }
 
-/** Nút cố định dưới đáy màn chi tiết lớp (hội viên): đã đủ khóa / đăng ký / xem gói / chưa thể đăng ký */
-export type CourseFooterKind = 'registered' | 'enroll' | 'plans' | 'blocked';
-export function courseFooterKind(input: { isFullyRegistered: boolean; eligible: boolean; needsMembership: boolean }): CourseFooterKind {
-  if (input.isFullyRegistered) return 'registered';
-  if (input.eligible) return 'enroll';
-  return input.needsMembership ? 'plans' : 'blocked';
-}
-
 /** Trạng thái khung quota ở Lớp của tôi — web: chưa có gói hoặc limit 0 (gói FREE) thì khóa và mời mua gói */
 export type QuotaBannerKind = 'locked' | 'full' | 'available';
 export function quotaBannerKind(quota: { hasActiveSubscription: boolean; limit: number; remaining: number }): QuotaBannerKind {

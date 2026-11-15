@@ -1,7 +1,7 @@
 // constants/classes.ts
 // Nhãn / tham số hiển thị lớp học (khớp FE web: StatusBadge REGULAR / PREMIUM)
 
-import type { ClassType } from '../lib/types';
+import type { AreaType, ClassType } from '../lib/types';
 import { Colors } from './theme';
 
 export const CLASS_TYPE_LABEL: Record<ClassType, string> = {
@@ -16,6 +16,29 @@ export const CLASS_TYPE_COLOR: Record<ClassType, string> = {
 
 /** Bộ lọc hạng lớp trên màn Khám phá (undefined = tất cả) */
 export const CLASS_TYPE_FILTERS: (ClassType | undefined)[] = [undefined, 'REGULAR', 'PREMIUM'];
+
+/** Khu vực tập của lớp — cùng chữ với bộ lọc "Tất cả khu vực" của web (BrowseClassesPage) */
+export const CLASS_AREA_LABEL: Record<AreaType, string> = {
+  INDOOR: 'Trong nhà',
+  OUTDOOR: 'Ngoài trời',
+  POOL: 'Hồ bơi',
+};
+
+/** Bộ lọc khu vực ở Khám phá (undefined = tất cả) */
+export const CLASS_AREA_FILTERS: (AreaType | undefined)[] = [undefined, 'INDOOR', 'OUTDOOR', 'POOL'];
+
+/** Bảng "Bộ lọc" của Khám phá: khu vực + kỳ học (hạng lớp và môn tập có hàng chip riêng trên màn hình) */
+export const CLASS_FILTER_TEXT = {
+  button: 'Bộ lọc',
+  sheetTitle: 'Bộ lọc lớp học',
+  area: 'Khu vực tập',
+  term: 'Kỳ học',
+  currentTerm: 'Kỳ hiện tại',
+  all: 'Tất cả',
+  done: 'Xong',
+  clear: 'Xóa bộ lọc',
+  noTerms: 'Cơ sở này chưa có kỳ học nào.',
+} as const;
 
 /** Số khung giờ trong tuần hiện trên thẻ lớp, phần còn lại gộp "+n khung giờ khác" */
 export const CLASS_CARD_SLOT_PREVIEW = 2;

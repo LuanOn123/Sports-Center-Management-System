@@ -2,8 +2,8 @@
 // Nội dung hồ sơ HLV trong chi tiết lớp — ưu tiên dữ liệu đầy đủ từ GET /coaches/:userId, thiếu thì dùng dữ liệu
 // đã có trong lớp (giống web CoachProfileDialog: profile?.bio ?? coach.bio…). Hồ sơ hiện ngay, dữ liệu đầy đủ tới sau.
 
-import { COACH_PROFILE_TEXT as T } from '../constants/coachProfile';
-import type { ClassCoach, CoachDetails } from './types';
+import { COACH_PROFILE_TEXT as T, COACH_SPECIALIZATION_TEXT as S } from '../constants/coachProfile';
+import type { ClassCoach, CoachDetails, Sport } from './types';
 
 export interface CoachProfileView {
   name: string;
@@ -51,4 +51,9 @@ export function coachProfileView(assigned: ClassCoach, details?: CoachDetails | 
 /** Nhãn vai trò trên thẻ HLV */
 export function coachCardRole(isPrimary: boolean) {
   return isPrimary ? T.cardRolePrimary : T.cardRoleSupport;
+}
+
+/** Bộ môn HLV được phép dạy: BE chỉ trả sportId nên dịch sang tên theo danh mục; bộ môn không còn trong danh mục → "chưa xác định" */
+export function specializationNames(assigned: Array<{ sportId: string }>, sports: Array<Pick<Sport, 'id' | 'name'>>): string[] {
+  return assigned.map((item) => sports.find((sport) => sport.id === item.sportId)?.name || S.unknownSport);
 }

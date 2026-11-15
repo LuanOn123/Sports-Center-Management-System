@@ -1,86 +1,25 @@
 // app/(tabs)/_layout.tsx
 // Bottom Tab Bar theo vai trò (navigation/tabConfig.ts) — 5 tab hiện, các màn con ẩn khỏi thanh
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Tabs } from 'expo-router';
-import { Platform, View, Text, Keyboard } from 'react-native';
-import { Icon } from '../../components/shared/Icon';
-import { Colors } from '../../constants/theme';
-import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '../../context/AuthContext';
-import { api } from '../../lib/api';
-import { getTabConfigForRole, type MaterialIconName } from '../../navigation';
-
-function TabIcon({ name, color }: { name: MaterialIconName; color: string | any }) {
-  return <Icon name={name} size={22} color={String(color)} />;
-}
-
-function Badge({ count }: { count: number }) {
-  if (count <= 0) return null;
-  return (
-    <View className="absolute -top-1 -right-2 bg-status-expired rounded-full min-w-[16px] h-4 justify-center items-center px-[3px] border-[1.5px] border-bg-surface">
-      <Text className="text-[9px] font-bevn-bold text-white leading-[13px]">{count > 99 ? '99+' : String(count)}</Text>
-    </View>
-  );
-}
-
-function ChatTabIcon({ color }: { color: string | any }) {
-  const { data } = useQuery({
-    queryKey: ['chat-unread-count'],
-    // BE trả { unreadCount }, không phải số trần
-    queryFn: () => api.get<{ unreadCount: number }>('/chat/messages/unread-count'),
-    refetchInterval: 30_000,
-  });
-
-  return (
-    <View className="relative">
-      <Icon name="chat" size={22} color={String(color)} />
-      <Badge count={data?.data?.unreadCount ?? 0} />
-    </View>
-  );
-}
-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+import { ChatTabIcon, TabIcon } from '../../components/shared/TabBarIcons';
+import { Colors } from '../../constants/theme';
+import { TAB_BAR } from '../../constants/tabBar';
+import { useAuth } from '../../context/AuthContext';
+import { useKeyboardVisible } from '../../hooks/shared/useKeyboardVisible';
 import { Haptic } from '../../lib/haptics';
+import { canAccessRoute, getTabConfigForRole } from '../../navigation';
 
 export default function TabLayout() {
   const { user } = useAuth();
   const tabs = getTabConfigForRole(user?.role);
-  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const isKeyboardVisible = useKeyboardVisible();
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      const handleFocusIn = (e: FocusEvent) => {
-        const target = e.target as HTMLElement | null;
-        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.getAttribute('contenteditable') === 'true')) {
-          setKeyboardVisible(true);
-        }
-      };
-      const handleFocusOut = () => {
-        setKeyboardVisible(false);
-      };
-      window.addEventListener('focusin', handleFocusIn);
-      window.addEventListener('focusout', handleFocusOut);
-      return () => {
-        window.removeEventListener('focusin', handleFocusIn);
-        window.removeEventListener('focusout', handleFocusOut);
-      };
-    }
-
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const show = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
-    const hide = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
-
   const bottomInset = insets.bottom;
-  const tabHeight = 60 + bottomInset;
+  const tabHeight = TAB_BAR.baseHeight + bottomInset;
 
   return (
     <Tabs
@@ -96,8 +35,8 @@ export default function TabLayout() {
           borderTopColor: Colors.border,
           borderTopWidth: 1,
           height: tabHeight,
-          paddingBottom: Math.max(bottomInset, 8),
-          paddingTop: 6,
+          paddingBottom: Math.max(bottomInset, TAB_BAR.minBottomPadding),
+          paddingTop: TAB_BAR.paddingTop,
         },
         tabBarItemStyle: {
           justifyContent: 'center',
@@ -106,15 +45,16 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.text.muted,
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontFamily: 'BeVietnamPro_500Medium',
-          lineHeight: 15,
-          marginTop: 2,
+          fontSize: TAB_BAR.labelSize,
+          fontFamily: TAB_BAR.labelFont,
+          lineHeight: TAB_BAR.labelLineHeight,
+          marginTop: TAB_BAR.labelGap,
         },
       }}
     >
       {tabs.map((tab) => (
-        <Tabs.Protected key={tab.name} guard={tab.name === 'enrollments' ? user?.role === 'MEMBER' : tab.name === 'coach-attendance' ? user?.role === 'COACH' : true}>
+        // Tab chỉ dành cho một vai trò (Lớp của tôi: hội viên, Điểm danh: HLV) theo cùng bảng với canAccessRoute
+        <Tabs.Protected key={tab.name} guard={canAccessRoute(user?.role, ['(tabs)', tab.name])}>
         <Tabs.Screen
           key={tab.name}
           name={tab.name}

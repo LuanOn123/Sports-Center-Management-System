@@ -1,13 +1,16 @@
 // hooks/member/useEnrollments.ts
 // Business logic cho enrollments của hội viên — React Query + mutations
 
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMyEnrollments, getMyQuota, enrollWholeCourse } from '../../services/enrollmentService';
 import { showAlert } from '../../lib/alert';
 import { ApiError } from '../../lib/api';
 import { wholeCourseEnrollmentMessage } from '../../lib/classPlan';
+import { enrollFailureBlockers } from '../../lib/enrollmentBlockers';
 import type { EnrollOptions } from '../../lib/enrollOptions';
-import type { ConcurrentClassQuota, Enrollment } from '../../lib/types';
+import type { ConcurrentClassQuota, CourseRegistrationBlocker, Enrollment } from '../../lib/types';
+import { ENROLL_TEXT } from '../../constants/enrollment';
 import { useAuth } from '../../context/AuthContext';
 
 export function useMyEnrollments(status?: string, limit?: string, options?: { enabled?: boolean }) {
@@ -53,9 +56,16 @@ export function useMyQuota() {
   });
 }
 
+/** Lần đăng ký trọn khóa gần nhất bị từ chối: lời của BE + các điều kiện chưa đạt (errors.details của 409) */
+export interface EnrollFailure {
+  message: string;
+  blockers: CourseRegistrationBlocker[];
+}
+
 /**
  * Hook đăng ký trọn khóa — POST /enrollments/bulk (all-or-nothing), kèm mục tiêu + lưu ý sức khỏe từ sheet xác nhận
- * (web: EnrollConfirmModal). Parse chi tiết lỗi từ BE 409 COURSE_ENROLLMENT_FAILED và hiện thành thông báo rõ ràng.
+ * (web: EnrollConfirmModal). Thất bại không bật hộp thoại: `failure` mang lời BE và mọi điều kiện chưa đạt để màn chi tiết
+ * lớp dựng thẻ lý do + nút gỡ vướng như web (ClassDetailPage); `failure` tự xóa khi bắt đầu lần đăng ký mới.
  */
 export function useEnrollWholeCourse() {
   const queryClient = useQueryClient();
@@ -74,22 +84,8 @@ export function useEnrollWholeCourse() {
       if (options.saveToProfile && options.healthNotes) void refreshUser().catch(() => undefined);
       showAlert('Đăng ký trọn khóa thành công', wholeCourseEnrollmentMessage(d));
     },
-    onError: (e) => {
-      // BE là nơi quyết định (vd hết hạn đăng ký kỳ học, gói hết hạn trước khóa) → tải lại kế hoạch khóa để thẻ kỳ học + nút đăng ký khớp
-      void queryClient.invalidateQueries({ queryKey: ['course-plan'] });
-      if (e instanceof ApiError) {
-        // Thử parse errors.details[] từ BE 409 COURSE_ENROLLMENT_FAILED
-        const details = (e.errors as any)?.[0]?.details;
-        if (Array.isArray(details) && details.length > 0) {
-          const firstDetail = details[0];
-          showAlert('Không thể đăng ký trọn khóa', firstDetail.message ?? e.message);
-        } else {
-          showAlert('Không thể đăng ký trọn khóa', e.message);
-        }
-      } else {
-        showAlert('Lỗi', 'Đăng ký trọn khóa thất bại. Vui lòng thử lại.');
-      }
-    },
+    // BE là nơi quyết định (vd hết hạn đăng ký kỳ học, gói hết hạn trước khóa) → tải lại kế hoạch khóa để thẻ kỳ học + nút đăng ký khớp
+    onError: () => { void queryClient.invalidateQueries({ queryKey: ['course-plan'] }); },
   });
 
   /** `onSettled` chạy sau khi xong dù thành công hay lỗi (web đóng modal trong cả hai trường hợp) */
@@ -98,5 +94,14 @@ export function useEnrollWholeCourse() {
     mutation.mutate({ classId, options }, { onSettled });
   };
 
-  return { enroll, isPending: mutation.isPending };
+  const error = mutation.error;
+  const failure = useMemo<EnrollFailure | null>(() => {
+    if (!error) return null;
+    return {
+      message: error instanceof Error ? error.message : ENROLL_TEXT.failedFallback,
+      blockers: enrollFailureBlockers(error instanceof ApiError ? error.errors : undefined),
+    };
+  }, [error]);
+
+  return { enroll, isPending: mutation.isPending, failure };
 }

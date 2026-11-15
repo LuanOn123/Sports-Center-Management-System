@@ -454,12 +454,64 @@ test('50% membership rule: a plan with at least half its duration left can enrol
   for (const code of ['TERM_REGISTRATION_NOT_OPEN', 'TERM_REGISTRATION_NOT_STARTED', 'TERM_REGISTRATION_CLOSED', 'TERM_CLOSED']) assert.ok(c.TERM_STAGE_BLOCKER_CODES.includes(code), code);
   assert.ok(!c.TERM_STAGE_BLOCKER_CODES.includes('SUBSCRIPTION_ENDS_BEFORE_COURSE_END'));
 
-  // Nút cố định dưới đáy: đủ khóa > đăng ký > xem gói (thiếu hoặc hết hạn gói) > chưa thể
-  const { courseFooterKind } = app.load('lib/classPlan'); const base = { isFullyRegistered: false, eligible: false, needsMembership: false };
-  assert.equal(courseFooterKind({ ...base, isFullyRegistered: true, eligible: true }), 'registered');
-  assert.equal(courseFooterKind({ ...base, eligible: true }), 'enroll');
-  assert.equal(courseFooterKind({ ...base, needsMembership: true }), 'plans');
-  assert.equal(courseFooterKind(base), 'blocked');
+  // Nút cố định dưới đáy: xem test "enrollment blockers" bên dưới (courseFooter thay cho courseFooterKind cũ dựa trên regex)
+  assert.equal(app.load('lib/classPlan').courseFooterKind, undefined, 'không còn đoán lý do chặn bằng regex trên mã BE');
+});
+
+test('enrollment blockers: every real BE blocker leads somewhere, like the web (no dead "Chưa thể đăng ký" button)', () => {
+  const app = loadApp('http://localhost/api/v1');
+  const { blockerGuidance, courseFooter, enrollFailureBlockers, guidanceActions, isFreeQuotaBlocker } = app.load('lib/enrollmentBlockers');
+  // Hình dạng thật BE trả (course-plan.registration.blockers và errors.details của 409 COURSE_ENROLLMENT_FAILED)
+  const freeQuota = { code: 'CONCURRENT_CLASS_LIMIT_REACHED', message: 'Tài khoản Free chưa bao gồm quyền đăng ký lớp học.', details: { tier: 'FREE', limit: 0, used: 0, remaining: 0 } };
+  const fullQuota = { code: 'CONCURRENT_CLASS_LIMIT_REACHED', message: 'Bạn đã đạt giới hạn 3 lớp học song song của gói MEMBERSHIP.', details: { tier: 'MEMBERSHIP', limit: 3, used: 3, remaining: 0 } };
+  const premium = { code: 'PREMIUM_REQUIRED', message: 'Khóa học Premium yêu cầu gói tập hạng PREMIUM.' };
+  const noPlan = { code: 'NO_ACTIVE_SUBSCRIPTION', message: 'Bạn không có gói tập đang hoạt động.' };
+  const endsEarly = { code: 'SUBSCRIPTION_ENDS_BEFORE_COURSE_END', message: 'Gói tập của bạn hết hạn trước buổi cuối của khóa.' };
+  const penalty = { code: 'ATTENDANCE_PENALTY_ACTIVE', message: 'Bạn đang bị tạm khoá đặt chỗ lớp này.' };
+  const full = { code: 'SESSION_FULL', message: 'Buổi 12:00 đã hết chỗ.', sessionId: 's1', roomName: 'Q1' };
+
+  assert.equal(isFreeQuotaBlocker(freeQuota), true);
+  assert.equal(isFreeQuotaBlocker(fullQuota), false);
+  assert.equal(isFreeQuotaBlocker({ code: 'CONCURRENT_CLASS_LIMIT_REACHED', message: 'x' }, 'FREE'), true, 'thiếu details.tier thì dùng hạng trong quota (như web)');
+
+  // Hướng dẫn giống blockerActions của web
+  assert.deepEqual(blockerGuidance([freeQuota]), { membership: 'plans', heldClasses: false, contactManager: false });
+  assert.deepEqual(blockerGuidance([premium, freeQuota]), { membership: 'plans', heldClasses: false, contactManager: false });
+  assert.deepEqual(blockerGuidance([premium, fullQuota]), { membership: 'upgrade', heldClasses: true, contactManager: false });
+  assert.deepEqual(blockerGuidance([fullQuota]), { membership: null, heldClasses: true, contactManager: false });
+  assert.equal(blockerGuidance([noPlan]).membership, 'buy');
+  assert.equal(blockerGuidance([endsEarly]).membership, 'renew');
+  assert.equal(blockerGuidance([penalty]).contactManager, true);
+  assert.deepEqual(blockerGuidance([full]), { membership: null, heldClasses: false, contactManager: false });
+  assert.deepEqual(guidanceActions(blockerGuidance([premium, fullQuota])), ['upgrade', 'held']);
+  assert.deepEqual(guidanceActions(blockerGuidance([full])), []);
+
+  // Nút dưới đáy: đủ khóa > đăng ký > kỳ học không nhận đăng ký > gói > lớp đang giữ > chưa thể
+  const none = blockerGuidance([]);
+  const base = { isFullyRegistered: false, eligible: false, totalSessions: 12, termPhase: null, guidance: none };
+  assert.deepEqual(courseFooter({ ...base, isFullyRegistered: true, eligible: true }), { kind: 'registered', title: 'Đã đăng ký đủ khóa', disabled: true });
+  assert.deepEqual(courseFooter({ ...base, eligible: true }), { kind: 'enroll', title: 'Đăng ký trọn khóa · 12 buổi', disabled: false });
+  assert.deepEqual(courseFooter({ ...base, eligible: true, termPhase: 'open' }).kind, 'enroll');
+  assert.deepEqual(courseFooter({ ...base, termPhase: 'closed', guidance: blockerGuidance([freeQuota]) }), { kind: 'term', title: 'Đã hết hạn đăng ký', disabled: true });
+  assert.equal(courseFooter({ ...base, termPhase: 'planning' }).title, 'Kỳ đang lập kế hoạch');
+  assert.equal(courseFooter({ ...base, termPhase: 'upcoming' }).title, 'Chưa mở đăng ký');
+  assert.deepEqual(courseFooter({ ...base, guidance: blockerGuidance([freeQuota]) }), { kind: 'membership', title: 'Xem các gói tập', disabled: false, action: 'plans' });
+  assert.deepEqual(courseFooter({ ...base, guidance: blockerGuidance([premium, fullQuota]) }), { kind: 'membership', title: 'Nâng cấp gói', disabled: false, action: 'upgrade' });
+  assert.deepEqual(courseFooter({ ...base, guidance: blockerGuidance([fullQuota]) }), { kind: 'held', title: 'Xem các lớp đang giữ', disabled: false, action: 'held' });
+  assert.deepEqual(courseFooter({ ...base, guidance: blockerGuidance([full]) }), { kind: 'blocked', title: 'Chưa thể đăng ký khóa này', disabled: true });
+  assert.deepEqual(courseFooter({ ...base, guidance: blockerGuidance([penalty]) }).kind, 'blocked');
+
+  // 409 COURSE_ENROLLMENT_FAILED: BE đặt blocker ở errors.details (errors là object) — code cũ đọc errors[0].details nên mất lý do
+  const errors = { code: 'COURSE_ENROLLMENT_FAILED', classId: 'c1', totalSessions: 12, failedCount: 1, details: [freeQuota] };
+  assert.deepEqual(enrollFailureBlockers(errors), [freeQuota]);
+  assert.deepEqual(enrollFailureBlockers([{ field: 'classId', message: 'x' }]), [], 'lỗi theo trường không phải blocker');
+  assert.deepEqual(enrollFailureBlockers(undefined), []);
+
+  // Không còn đoán lý do bằng regex, không hứa hẹn ở chỗ khác, và lỗi 409 không bị nuốt bởi hộp thoại
+  const read = (file) => fs.readFileSync(path.resolve(__dirname, '..', file), 'utf8');
+  assert.ok(!/MEMBERSHIP_BLOCKER|needsMembership/.test(read('hooks/shared/useClassDetail.ts')));
+  assert.ok(!/\.errors as any\)\?\.\[0\]/.test(read('hooks/member/useEnrollments.ts')), 'errors của 409 là object, không phải mảng');
+  assert.match(read('components/classes/ClassDetailView.tsx'), /<EnrollmentBlockers/);
 });
 
 test('class detail shows the BE membership coverage banner and never promises registration after the deadline', () => {
@@ -776,8 +828,8 @@ test('password reset OTP: resend only after 60 s, five wrong tries lock the code
   assert.equal(p.countsAsWrongOtp(new ApiError('Bạn đã thử quá nhiều lần. Vui lòng thử lại sau 15 phút.', 429)), false);
   assert.equal(p.countsAsWrongOtp(new Error('x')), false);
 
-  // Màn hình dùng các quy tắc này, không còn tự đặt lại đồng hồ 5 phút mỗi lần gửi lại
-  const screen = readSource('app/auth/forgot-password.tsx');
+  // Màn hình dùng các quy tắc này, không còn tự đặt lại đồng hồ 5 phút mỗi lần gửi lại (route → View → hook)
+  const screen = ['app/auth/forgot-password.tsx', 'components/auth/ForgotPasswordView.tsx', 'hooks/shared/useForgotPassword.ts'].map(readSource).join('\n');
   assert.match(screen, /useOtpStatus\(/); assert.match(screen, /otpInfo\.resendWaitMs > 0/); assert.ok(!/setExpiresAt|OTP_TTL_MS/.test(screen));
   assert.equal(c.PASSWORD_RESET_TEXT.validFor('04:32', 3), 'Mã có hiệu lực trong 04:32 · còn 3/5 lần nhập');
 });
@@ -939,7 +991,7 @@ test('notifications: goal progress opens the class, subscription notices open th
   for (const type of ['SUBSCRIPTION_EXPIRING', 'SUBSCRIPTION_EXPIRED', 'SUBSCRIPTION_CANCELLED']) assert.equal(route(note(type)), routes.membershipPlans);
   assert.deepEqual(routes.coachMember('m1', 's1'), { pathname: '/coach/member/[id]', params: { id: 'm1', scheduleId: 's1' } });
   assert.deepEqual(routes.coachMember('m1'), { pathname: '/coach/member/[id]', params: { id: 'm1' } });
-  assert.match(readSource('app/(tabs)/notifications.tsx'), /GOAL_PROGRESS_UPDATED: 'trending-up'/);
+  assert.match(readSource('constants/notifications.ts'), /GOAL_PROGRESS_UPDATED: 'trending-up'/); // biểu tượng của loại thông báo này
   assert.match(readSource('lib/types.ts'), /\| 'GOAL_PROGRESS_UPDATED'/);
 });
 
@@ -1308,4 +1360,194 @@ test('AI assistant wiring: thin route, one shared conversation above the navigat
   assert.ok(!/subtitle=/.test(shown));
   const routes = loadApp('http://localhost/api/v1').load('navigation/routes'); assert.equal(routes.ROUTES.aiAssistant, '/assistant');
   assert.equal(routes.canAccessRoute('MEMBER', ['assistant']), true); assert.equal(routes.canAccessRoute('COACH', ['assistant']), true);
+});
+
+test('Explore filters follow the web: area type and term go to GET /classes, the term banner reads /terms/current', async () => fixture(async ({ load, requests, handle }) => {
+  const api = load('lib/api'); await api.saveTokens('member-token', 'refresh'); await api.setFacilityId('fac-q1');
+  handle((req) => req.path.endsWith('/terms/current')
+    ? { data: { id: 'term-1', name: 'Kỳ Thu 2026' } }
+    : { data: [], pagination: { page: 1, limit: 100, total: 0, totalPages: 1 } });
+  const classes = load('services/classService'); const terms = load('services/termService');
+  await classes.getClasses({ search: 'yoga', areaType: 'POOL', termId: 'term-1', isActive: 'true' });
+  const list = requests.at(-1);
+  assert.equal(list.path, '/api/v1/classes');
+  assert.deepEqual([list.query.get('areaType'), list.query.get('termId'), list.query.get('search'), list.query.get('isActive')], ['POOL', 'term-1', 'yoga', 'true']);
+  await terms.getTerms(); assert.equal(requests.at(-1).path, '/api/v1/terms');
+  const current = await terms.getCurrentTerm(); assert.equal(requests.at(-1).path, '/api/v1/terms/current'); assert.equal(current.data.id, 'term-1');
+  assert.ok(requests.every((r) => r.headers['x-facility-id'] === 'fac-q1'));
+  // Bộ lọc rỗng thì không gửi tham số thừa lên BE
+  await classes.getClasses({ areaType: undefined, termId: undefined });
+  assert.equal(requests.at(-1).query.has('areaType'), false); assert.equal(requests.at(-1).query.has('termId'), false);
+}));
+
+test('terms are limited to the selected facility; the banner shows on Home and Explore, the extra filters for members only', () => {
+  const t = loadApp('http://localhost/api/v1').load('lib/termRegistration');
+  const terms = [{ id: 'a', facilityId: 'q1' }, { id: 'b', facilityId: 'q7' }, { id: 'c', facilityId: null }, { id: 'd' }];
+  assert.deepEqual(t.termsForFacility(terms, 'q1').map((x) => x.id), ['a', 'c', 'd']);
+  assert.deepEqual(t.termsForFacility(terms, undefined).map((x) => x.id), ['c', 'd']);
+  const read = (file) => fs.readFileSync(path.resolve(__dirname, '..', file), 'utf8');
+  assert.match(read('components/member/MemberHomeView.tsx'), /<TermBanner withAction \/>/);
+  const explore = read('components/classes/ClassesExploreView.tsx');
+  assert.match(explore, /!isCoach && <TermBanner \/>/);
+  assert.match(explore, /!isCoach && \(\s*<ClassFilterSheet/);
+  assert.match(read('hooks/shared/useClassesExplore.ts'), /useFacilityTerms\(\{ enabled: !isCoach \}\)/);
+  assert.match(read('hooks/shared/useClasses.ts'), /filters\?\.areaType, filters\?\.termId/);
+});
+
+// ─── Kiến trúc: route mỏng → View → hook → service ────────────────────────────────────────────────────────────────────
+
+function sourceFilesUnder(...dirs) {
+  const root = path.resolve(__dirname, '..'); const files = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(ts|tsx)$/.test(entry.name)) files.push({ rel: path.relative(root, full).replaceAll('\\', '/'), source: fs.readFileSync(full, 'utf8') });
+    }
+  };
+  for (const dir of dirs) walk(path.join(root, dir));
+  return files;
+}
+// Bỏ chú thích để lời giải thích trong file không bị tính là code
+const stripComments = (source) => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const API_CALL = /\b(apiRequest|allPages)\s*[<(]|\bapi\.(get|post|patch|put|delete|uploadAvatar)\s*[<(]/;
+const QUERY_HOOK = /\b(useQuery|useMutation|useInfiniteQuery|useQueryClient)\s*[<(]/;
+
+test('architecture: routes stay thin, components never fetch, hooks reach the API only through services', () => {
+  const offenders = { fatRoutes: [], routeFetch: [], componentFetch: [], hookApi: [] };
+  for (const { rel, source } of sourceFilesUnder('app')) {
+    const code = stripComments(source);
+    // Route chỉ đọc tham số và dựng một View; riêng _layout là nơi khai báo điều hướng nên không giới hạn số dòng
+    if (!rel.endsWith('/_layout.tsx') && source.split('\n').length > 40) offenders.fatRoutes.push(rel);
+    if (API_CALL.test(code) || QUERY_HOOK.test(code)) offenders.routeFetch.push(rel);
+  }
+  for (const { rel, source } of sourceFilesUnder('components')) {
+    const code = stripComments(source);
+    if (API_CALL.test(code) || QUERY_HOOK.test(code)) offenders.componentFetch.push(rel);
+  }
+  for (const { rel, source } of sourceFilesUnder('hooks')) {
+    if (API_CALL.test(stripComments(source))) offenders.hookApi.push(rel);
+  }
+  assert.deepEqual(offenders, { fatRoutes: [], routeFetch: [], componentFetch: [], hookApi: [] });
+});
+
+test('tab role guard comes from canAccessRoute so the tab bar and the routes can never disagree', () => {
+  const routes = loadApp('http://localhost/api/v1').load('navigation/routes');
+  assert.equal(routes.canAccessRoute('MEMBER', ['(tabs)', 'enrollments']), true);
+  assert.equal(routes.canAccessRoute('COACH', ['(tabs)', 'enrollments']), false);
+  assert.equal(routes.canAccessRoute('COACH', ['(tabs)', 'coach-attendance']), true);
+  assert.equal(routes.canAccessRoute('MEMBER', ['(tabs)', 'coach-attendance']), false);
+  assert.equal(routes.canAccessRoute(undefined, ['(tabs)', 'enrollments']), false);
+  for (const name of ['index', 'classes', 'schedule', 'chat', 'account', 'profile', 'notifications']) {
+    for (const role of ['MEMBER', 'COACH']) assert.equal(routes.canAccessRoute(role, ['(tabs)', name]), true, `${role} phải vào được tab ${name}`);
+  }
+  assert.match(readSource('app/(tabs)/_layout.tsx'), /guard=\{canAccessRoute\(user\?\.role, \['\(tabs\)', tab\.name\]\)\}/);
+});
+
+test('services behind the refactored screens call the right endpoints (class detail, class sessions, sports, coach specializations, chat badge)', async () => fixture(async ({ load, requests, handle }) => {
+  const api = load('lib/api'); await api.saveTokens('member-token', 'refresh');
+  handle((req) => req.path.endsWith('/specializations') ? { data: [{ sportId: 's1' }] }
+    : req.path.endsWith('/unread-count') ? { data: { unreadCount: 7 } }
+    : { data: [], pagination: { page: 1, limit: 100, total: 0, totalPages: 1 } });
+  const classes = load('services/classService'); const coaches = load('services/coachService'); const chat = load('services/chatService');
+  assert.equal(classes.classPath('c 1/x'), '/classes/c%201%2Fx');
+  await classes.getClassById('c 1/x'); assert.equal(requests.at(-1).path, '/api/v1/classes/c%201%2Fx');
+  await classes.getUpcomingClassSessions('c1');
+  const sessions = requests.at(-1);
+  assert.equal(sessions.path, '/api/v1/class-schedules');
+  assert.deepEqual([sessions.query.get('classId'), sessions.query.get('status')], ['c1', 'SCHEDULED']);
+  assert.ok(Date.parse(sessions.query.get('startAfter')) <= Date.now(), 'chỉ lấy buổi từ bây giờ trở đi');
+  await classes.getAllSports(); assert.equal(requests.at(-1).path, '/api/v1/sports'); assert.equal(requests.at(-1).query.has('isActive'), false);
+  await classes.getSports(); assert.equal(requests.at(-1).query.get('isActive'), 'true');
+  const assigned = await coaches.getCoachSpecializations('coach/1');
+  assert.equal(requests.at(-1).path, '/api/v1/coaches/coach%2F1/specializations'); assert.deepEqual(assigned.data, [{ sportId: 's1' }]);
+  const unread = await chat.getUnreadCount();
+  assert.equal(requests.at(-1).path, '/api/v1/chat/messages/unread-count'); assert.equal(unread.data.unreadCount, 7);
+}));
+
+test('coach specializations: sport ids become names, an id missing from the catalogue keeps a placeholder', () => {
+  const coach = loadApp('http://localhost/api/v1').load('lib/coachProfile');
+  const sports = [{ id: 's1', name: 'Yoga' }, { id: 's2', name: 'Bơi' }];
+  assert.deepEqual(coach.specializationNames([{ sportId: 's1' }, { sportId: 'gone' }, { sportId: 's2' }], sports), ['Yoga', 'Bộ môn chưa xác định', 'Bơi']);
+  assert.deepEqual(coach.specializationNames([], sports), []);
+});
+
+test('my classes tabs: upcoming soonest first, completed and cancelled latest first, a booked class that already ended is completed', () => {
+  const m = loadApp('http://localhost/api/v1').load('lib/myClasses');
+  const now = Date.parse('2026-11-15T12:00:00Z');
+  const item = (id, status, start, end) => ({ id, status, bookedAt: '2026-11-01T00:00:00Z', schedule: start ? { startTime: start, endTime: end } : undefined });
+  const all = [
+    item('later', 'BOOKED', '2026-11-20T10:00:00Z', '2026-11-20T11:00:00Z'),
+    item('soon', 'BOOKED', '2026-11-16T10:00:00Z', '2026-11-16T11:00:00Z'),
+    item('ended', 'BOOKED', '2026-11-14T10:00:00Z', '2026-11-14T11:00:00Z'),
+    item('done', 'COMPLETED', '2026-11-10T10:00:00Z', '2026-11-10T11:00:00Z'),
+    item('cancelled-old', 'CANCELLED', '2026-11-05T10:00:00Z', '2026-11-05T11:00:00Z'),
+    item('cancelled-new', 'CANCELLED', '2026-11-12T10:00:00Z', '2026-11-12T11:00:00Z'),
+    item('no-schedule', 'BOOKED'), // chưa có buổi → chưa kết thúc, xếp theo lúc đặt
+  ];
+  const groups = m.groupEnrollments(all, now);
+  assert.deepEqual(groups.upcoming.map((x) => x.id), ['no-schedule', 'soon', 'later']);
+  assert.deepEqual(groups.completed.map((x) => x.id), ['ended', 'done']);
+  assert.deepEqual(groups.cancelled.map((x) => x.id), ['cancelled-new', 'cancelled-old']);
+  assert.equal(all[0].id, 'later', 'không sắp xếp lại mảng gốc');
+  assert.equal(m.isSchedulePast(undefined, now), false);
+  assert.equal(m.isSchedulePast('2026-11-15T11:59:59Z', now), true);
+  assert.equal(m.isSchedulePast('2026-11-15T12:00:00Z', now), false);
+});
+
+test('shared date formatters use Vietnam time (weekday long style, chat separators, notification and review ages)', () => {
+  const f = loadApp('http://localhost/api/v1').load('lib/format');
+  const iso = '2026-11-14T17:30:00Z'; // 00:30 ngày 15/11/2026 (Chủ Nhật) theo giờ Việt Nam
+  assert.equal(f.formatDateTime(iso), '15/11/2026 00:30');
+  assert.equal(f.formatWeekdayDate(iso, 'long'), 'Chủ Nhật, 15/11/2026');
+  assert.equal(f.formatWeekdayDate(iso), 'CN, 15/11/2026');
+  assert.equal(f.formatDateSeparator(iso), 'Chủ Nhật, 15/11');
+  assert.equal(f.isSameVietnamDay(iso, '2026-11-15T16:00:00Z'), true); // 23:00 cùng ngày 15/11
+  assert.equal(f.isSameVietnamDay(iso, '2026-11-14T16:59:00Z'), false); // 23:59 ngày 14/11
+  const at = (ms) => Date.parse(iso) + ms; const minute = 60_000; const hour = 60 * minute; const day = 24 * hour;
+  assert.deepEqual([30_000, 5 * minute, 3 * hour, 2 * day].map((ms) => f.timeAgo(iso, at(ms))), ['Vừa xong', '5 phút trước', '3 giờ trước', '2 ngày trước']);
+  assert.deepEqual([12 * hour, 3 * day, 29 * day, 40 * day].map((ms) => f.formatReviewAge(iso, at(ms))), ['Hôm nay', '3 ngày trước', '29 ngày trước', '15/11/2026']);
+});
+
+test('chat inbox lists every allowed contact (newest conversation first) and searches by name or email', () => {
+  const chat = loadApp('http://localhost/api/v1').load('lib/chat');
+  const contacts = [{ id: 'a', fullName: 'An Nguyễn', email: 'an@mail.com' }, { id: 'b', fullName: 'Bình Lê', email: 'binh@mail.com' }, { id: 'c', fullName: 'Cường Trần' }];
+  const conversations = [
+    { user: contacts[0], latestMessage: { createdAt: '2026-11-01T10:00:00Z' }, unreadCount: 2 },
+    { user: contacts[1], latestMessage: { createdAt: '2026-11-02T10:00:00Z' }, unreadCount: 0 },
+    { user: { id: 'removed', fullName: 'Đã bị gỡ' }, latestMessage: { createdAt: '2026-11-03T10:00:00Z' }, unreadCount: 1 },
+  ];
+  const rows = chat.buildInboxRows(contacts, conversations);
+  assert.deepEqual(rows.map((r) => r.user.id), ['b', 'a', 'c'], 'mới nhắn trước, chưa nhắn lần nào xuống cuối, người không còn là liên hệ thì không hiện');
+  assert.deepEqual(rows[2], { user: contacts[2], latestMessage: null, unreadCount: 0 });
+  assert.deepEqual(chat.filterInboxRows(rows, '  BINH@ ').map((r) => r.user.id), ['b']);
+  assert.deepEqual(chat.filterInboxRows(rows, 'nguyễn').map((r) => r.user.id), ['a']);
+  assert.equal(chat.filterInboxRows(rows, '   ').length, 3);
+  assert.equal(chat.filterInboxRows(rows, 'zzz').length, 0);
+});
+
+test('password forms: reset checks OTP, then length, then confirmation; change-password schema reports the same rules per field', () => {
+  const app = loadApp('http://localhost/api/v1'); const reset = app.load('lib/passwordReset').resetFormError; const { passwordChangeSchema } = app.load('lib/passwordChange');
+  const good = { otp: '123456', newPassword: 'secret1', confirmPassword: 'secret1' };
+  assert.equal(reset(good), null);
+  assert.equal(reset({ ...good, otp: ' 123456 ' }), null, 'khoảng trắng hai đầu mã OTP được bỏ');
+  assert.equal(reset({ ...good, otp: '12345' }).message, 'Mã OTP gồm 6 chữ số.');
+  assert.equal(reset({ ...good, newPassword: '12345', confirmPassword: '12345' }).message, 'Mật khẩu mới ít nhất 6 ký tự.');
+  const mismatch = reset({ ...good, confirmPassword: 'other12' });
+  assert.deepEqual([mismatch.title, mismatch.message], ['Lỗi', 'Mật khẩu xác nhận không khớp.']);
+  assert.equal(reset({ otp: '', newPassword: '1', confirmPassword: '2' }).message, 'Mã OTP gồm 6 chữ số.', 'sai nhiều chỗ thì báo mã OTP trước');
+
+  const problems = (input) => { const r = passwordChangeSchema.safeParse(input); return r.success ? [] : r.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`); };
+  assert.deepEqual(problems({ currentPassword: 'old', newPassword: 'secret1', confirmPassword: 'secret1' }), []);
+  assert.deepEqual(problems({ currentPassword: '', newPassword: 'secret1', confirmPassword: 'secret1' }), ['currentPassword: Nhập mật khẩu hiện tại']);
+  assert.deepEqual(problems({ currentPassword: 'old', newPassword: '12345', confirmPassword: '12345' }), ['newPassword: Mật khẩu mới ít nhất 6 ký tự']);
+  assert.deepEqual(problems({ currentPassword: 'old', newPassword: 'secret1', confirmPassword: 'secret2' }), ['confirmPassword: Mật khẩu xác nhận không khớp']);
+});
+
+test('workflow helpers: unknown statuses keep their code, system attendance reports are recognised', () => {
+  const w = loadApp('http://localhost/api/v1').load('lib/workflow');
+  assert.equal(w.workflowStatus('WAITING'), 'Đang chờ');
+  assert.equal(w.workflowStatus('SOMETHING_NEW'), 'SOMETHING_NEW');
+  assert.equal(w.isAttendanceReport('{"type":"ATTENDANCE_VIOLATION","rate":0.5}'), true);
+  assert.equal(w.isAttendanceReport('Tôi cần hỗ trợ đổi lịch tập'), false);
 });

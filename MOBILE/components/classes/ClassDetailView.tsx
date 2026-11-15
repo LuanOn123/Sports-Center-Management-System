@@ -15,14 +15,17 @@ import { WorkflowScreen, WorkflowCard, WorkflowText, WorkflowButton, WorkflowSta
 import { StatusBadge } from '../ui';
 import { TermNoticeCard } from './TermNoticeCard';
 import { MembershipCoverageNotice } from './MembershipCoverageNotice';
+import { EnrollmentBlockers } from './EnrollmentBlockers';
 import { ClassGoalCard } from './ClassGoalCard';
 import { CoachCard } from './CoachCard';
 import { CoachProfileSheet } from './CoachProfileSheet';
 import { WrongFacilityCard } from '../shared/WrongFacilityCard';
 import { useClassDetail } from '../../hooks/shared/useClassDetail';
 import { CLASS_TYPE_COLOR, CLASS_TYPE_LABEL, LOW_SLOT_THRESHOLD, SESSION_TONE_COLOR } from '../../constants/classes';
+import { ENROLL_TEXT, type EnrollAction } from '../../constants/enrollment';
 import { Colors } from '../../constants/theme';
-import { canJoinSessionWaitlist, courseAvailability, courseFooterKind, enrollSummaryOf, formatSlot, sessionStatusLabel, type AvailabilityTone } from '../../lib/classPlan';
+import { canJoinSessionWaitlist, courseAvailability, enrollSummaryOf, formatSlot, sessionStatusLabel, type AvailabilityTone } from '../../lib/classPlan';
+import { blockerGuidance, guidanceActions } from '../../lib/enrollmentBlockers';
 import { formatDate, formatTime, formatWeekdayDate } from '../../lib/format';
 import { ROUTES } from '../../navigation/routes';
 
@@ -60,36 +63,47 @@ export function ClassDetailView({ id }: { id: string }) {
     else router.replace(ROUTES.classes);
   };
 
+  // Gỡ vướng: việc về gói → màn Gói thành viên; quota đầy → tab Lịch, phần "Lớp của tôi" (web: blockerActions)
+  const openAction = (action: EnrollAction) => router.push(action === 'held' ? ROUTES.myClasses : ROUTES.membershipPlans);
+
   // Nút cố định dưới đáy — chỉ khi hội viên và lớp đã có kế hoạch khóa học
-  const footerKind = courseFooterKind({
-    isFullyRegistered: Boolean(registration?.isFullyRegistered),
-    eligible: Boolean(registration?.eligible),
-    needsMembership: d.needsMembership,
-  });
-  const footer = d.isMember && value && course ? (
-    footerKind === 'registered' ? (
-      <WorkflowButton title="Đã đăng ký đủ khóa" secondary disabled onPress={() => undefined} />
-    ) : footerKind === 'enroll' ? (
-      <WorkflowButton
-        icon="event-available"
-        title={`Đăng ký trọn khóa · ${course.totalSessions} buổi`}
-        busy={d.bulk.isPending}
-        onPress={d.enrollSheet.open}
-      />
-    ) : footerKind === 'plans' ? (
-      <WorkflowButton icon="card-membership" title="Xem gói thành viên để đăng ký" onPress={() => router.push(ROUTES.membershipPlans)} />
+  const footerState = d.footer;
+  const footer = d.isMember && value && footerState ? (
+    footerState.kind === 'enroll' ? (
+      <WorkflowButton icon="event-available" title={footerState.title} busy={d.bulk.isPending} onPress={d.enrollSheet.open} />
+    ) : footerState.disabled || !footerState.action ? (
+      <WorkflowButton title={footerState.title} secondary disabled onPress={() => undefined} />
     ) : (
-      <WorkflowButton title="Chưa thể đăng ký khóa này" disabled onPress={() => undefined} />
+      <WorkflowButton
+        icon={footerState.kind === 'membership' ? 'card-membership' : 'event-note'}
+        title={footerState.title}
+        onPress={() => openAction(footerState.action!)}
+      />
     )
   ) : undefined;
+
+  // Lần đăng ký vừa bị BE từ chối: nút gỡ vướng tính trên đúng các điều kiện BE vừa nêu
+  const failure = d.enrollFailure;
+  const failureGuidance = failure ? blockerGuidance(failure.blockers, registration?.quota?.tier) : null;
 
   const availability = course ? courseAvailability(course, LOW_SLOT_THRESHOLD) : null;
   const duration = course?.slots[0]?.durationMinutes;
 
   return (
-    <WorkflowScreen title={value?.name || 'Chi tiết lớp học'} refreshing={d.refreshing} onRefresh={d.refresh} footer={footer}>
+    <WorkflowScreen title={value?.name || 'Chi tiết lớp học'} refreshing={d.refreshing} onRefresh={d.refresh} footer={footer} scrollToTopKey={failure}>
       <WorkflowState pending={d.isInitialLoading} error={d.facilityScope.wrongFacility ? undefined : d.cls.error} retry={() => { void d.cls.refetch(); }} />
       {d.facilityScope.wrongFacility && <WrongFacilityCard subject="lớp học" facility={d.facilityScope} onBack={goToOtherClasses} />}
+      {failure && failureGuidance && (
+        <EnrollmentBlockers
+          tone="error"
+          title={ENROLL_TEXT.failedTitle}
+          message={failure.message}
+          blockers={failure.blockers}
+          guidance={failureGuidance}
+          actions={guidanceActions(failureGuidance)}
+          onAction={openAction}
+        />
+      )}
       {value && !d.isInitialLoading && <>
         {/* 1. Thông tin lớp */}
         <WorkflowCard>
@@ -138,10 +152,18 @@ export function ClassDetailView({ id }: { id: string }) {
               {registration && registration.registeredSessions > 0 && (
                 <WorkflowText>Bạn đã đăng ký {registration.registeredSessions}/{course.totalSessions} buổi.</WorkflowText>
               )}
-              {d.blockers.map((blocker, index) => (
-                <Fact key={`${blocker.code}:${index}`} icon="info" color={Colors.status.pending}>{blocker.message}</Fact>
-              ))}
             </WorkflowCard>
+          )}
+          {/* Vì sao chưa đăng ký được: mọi lý do BE nêu + nút gỡ vướng (nút đã nằm ở đáy màn hình thì không lặp lại) */}
+          {registration && !registration.eligible && !registration.isFullyRegistered && d.blockers.length > 0 && (
+            <EnrollmentBlockers
+              title={ENROLL_TEXT.blockedTitle}
+              message={ENROLL_TEXT.blockedHint}
+              blockers={d.blockers}
+              guidance={d.guidance}
+              actions={guidanceActions(d.guidance).filter((action) => action !== footerState?.action)}
+              onAction={openAction}
+            />
           )}
 
           {/* 3. Các buổi của khóa — CHỈ XEM (đăng ký theo cả khóa ở nút dưới đáy, giống web).

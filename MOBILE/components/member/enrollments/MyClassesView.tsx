@@ -1,6 +1,5 @@
-import { vietnamDate } from '../../../lib/date';
-// app/(tabs)/enrollments.tsx
-// Tab "Lớp học" — Lớp đã đặt: Sắp tới | Hoàn thành | Đã hủy (web: MyClassesPage)
+// components/member/enrollments/MyClassesView.tsx
+// "Lớp của tôi" — Lớp đã đặt: Sắp tới | Hoàn thành | Đã hủy (web: MyClassesPage)
 // Giống web: mỗi lớp chỉ có nút "Xem lớp"; hội viên không tự hủy hay đổi buổi — cần hỗ trợ lịch thì liên hệ lễ tân.
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -24,27 +23,8 @@ import { Button } from '../../ui';
 import { ENROLLMENT_QUOTA_TEXT, MY_CLASSES_TEXT } from '../../../constants/classes';
 import { TIER_LABEL } from '../../../constants/membership';
 import { quotaBannerKind } from '../../../lib/classPlan';
-
-// ─── Utils ───────────────────────────────────────────────────────────────────
-
-const WEEKDAY_LABELS = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
-
-function pad2(n: number) {
-  return String(n).padStart(2, '0');
-}
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  return `${WEEKDAY_LABELS[vietnamDate(d).getUTCDay()]}, ${pad2(vietnamDate(d).getUTCDate())}/${pad2(vietnamDate(d).getUTCMonth() + 1)}/${vietnamDate(d).getUTCFullYear()}`;
-}
-function formatTime(iso: string) {
-  const d = new Date(iso);
-  return `${pad2(vietnamDate(d).getUTCHours())}:${pad2(vietnamDate(d).getUTCMinutes())}`;
-}
-function isSchedulePast(endTime?: string) {
-  return Boolean(endTime) && new Date(endTime!) < new Date();
-}
-
-type TabMode = 'upcoming' | 'completed' | 'cancelled';
+import { formatTime, formatWeekdayDate } from '../../../lib/format';
+import { groupEnrollments, isSchedulePast, type MyClassesTab } from '../../../lib/myClasses';
 
 const STATUS_COLOR: Record<string, string> = {
   BOOKED: Colors.status.booked,
@@ -78,7 +58,7 @@ function EnrollmentCard({ item, onViewClass }: { item: Enrollment; onViewClass: 
           <View className="flex-row items-center gap-1">
             <Icon name="event" size={13} color={Colors.primary} />
             <Text className="text-xs font-semibold font-bevn-semibold text-primary">
-              {formatDate(item.schedule!.startTime)}
+              {formatWeekdayDate(item.schedule!.startTime, 'long')}
             </Text>
           </View>
           <View className="flex-row items-center gap-1">
@@ -220,7 +200,7 @@ function QuotaBanner() {
 /** Lớp của tôi (web: MyClassesPage). `embedded`: nằm trong tab Lịch (ẩn header riêng). */
 export function MyClassesView({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabMode>('upcoming');
+  const [activeTab, setActiveTab] = useState<MyClassesTab>('upcoming');
 
   // Refetch khi tab được focus lại
   const { data, isLoading, refetch } = useMyEnrollments(undefined, '100');
@@ -228,55 +208,9 @@ export function MyClassesView({ embedded = false }: { embedded?: boolean }) {
 
   const all: Enrollment[] = data?.data ?? [];
 
-  // 1. Sắp tới: BOOKED và buổi học chưa kết thúc
-  const upcoming = useMemo(
-    () =>
-      all
-        .filter((e) => e.status === 'BOOKED' && !isSchedulePast(e.schedule?.endTime))
-        .sort(
-          (a, b) =>
-            new Date(a.schedule?.startTime ?? a.bookedAt).getTime() -
-            new Date(b.schedule?.startTime ?? b.bookedAt).getTime(),
-        ),
-    [all],
-  );
-
-  // 2. Hoàn thành: COMPLETED hoặc buổi BOOKED đã kết thúc
-  const completed = useMemo(
-    () =>
-      all
-        .filter(
-          (e) =>
-            e.status === 'COMPLETED' ||
-            (e.status === 'BOOKED' && isSchedulePast(e.schedule?.endTime)),
-        )
-        .sort(
-          (a, b) =>
-            new Date(b.schedule?.startTime ?? b.bookedAt).getTime() -
-            new Date(a.schedule?.startTime ?? a.bookedAt).getTime(),
-        ),
-    [all],
-  );
-
-  // 3. Đã hủy: CANCELLED
-  const cancelled = useMemo(
-    () =>
-      all
-        .filter((e) => e.status === 'CANCELLED')
-        .sort(
-          (a, b) =>
-            new Date(b.schedule?.startTime ?? b.bookedAt).getTime() -
-            new Date(a.schedule?.startTime ?? a.bookedAt).getTime(),
-        ),
-    [all],
-  );
-
-  const displayData =
-    activeTab === 'upcoming'
-      ? upcoming
-      : activeTab === 'completed'
-      ? completed
-      : cancelled;
+  // Sắp tới · Hoàn thành · Đã hủy — luật phân nhóm ở lib/myClasses
+  const { upcoming, completed, cancelled } = useMemo(() => groupEnrollments(all), [all]);
+  const displayData = { upcoming, completed, cancelled }[activeTab];
 
   const emptyInfo = {
     upcoming: {

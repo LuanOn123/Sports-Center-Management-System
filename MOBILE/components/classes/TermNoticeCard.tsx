@@ -11,9 +11,11 @@ import type { TermNotice } from '../../lib/termRegistration';
 interface TermNoticeCardProps {
   termName: string;
   notice: TermNotice;
+  /** Nút dưới lời giải thích (vd. "Khám phá lớp học" trên banner ở Trang chủ) */
+  action?: React.ReactNode;
 }
 
-export function TermNoticeCard({ termName, notice }: TermNoticeCardProps) {
+export function TermNoticeCard({ termName, notice, action }: TermNoticeCardProps) {
   const color = TERM_NOTICE_COLOR[notice.tone];
   return (
     <Card accent={color} className="gap-sm" accessibilityLabel={`${termName}: ${notice.label}`}>
@@ -29,6 +31,7 @@ export function TermNoticeCard({ termName, notice }: TermNoticeCardProps) {
         </View>
       </View>
       <Text className="text-sm text-text-secondary font-bevn-regular leading-[20px]">{notice.message}</Text>
+      {action}
     </Card>
   );
 }

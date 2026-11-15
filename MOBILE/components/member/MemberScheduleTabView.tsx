@@ -1,6 +1,7 @@
 // components/member/MemberScheduleTabView.tsx
 // Tab "Lịch" của hội viên: một header + bộ chuyển "Lịch học" / "Lớp của tôi".
-// Hai phần giữ nguyên logic của web: SchedulePage (lịch theo tuần / tháng) và MyClassesPage (lớp đã đặt, đổi buổi, hủy).
+// Hai phần giữ nguyên logic của web: SchedulePage (lịch theo tuần / tháng) và MyClassesPage (lớp đã đặt: Sắp tới | Hoàn thành |
+// Đã hủy, chỉ xem lớp — hội viên không tự hủy hay đổi buổi, cần hỗ trợ lịch thì liên hệ lễ tân).
 
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';

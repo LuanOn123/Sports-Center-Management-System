@@ -2,17 +2,20 @@
 // Màn Khám phá (hội viên) / Lớp dạy (HLV): tiêu đề → tìm kiếm → hai hàng chip lọc môn tập + hạng lớp (không nhãn)
 // → số kết quả → danh sách thẻ lớp (bấm cả thẻ để xem chi tiết và đăng ký).
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Pressable } from 'react-native';
 import type { TextInputInstance } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon } from '../shared/Icon';
 import { ScreenHeader } from '../shared/ScreenHeader';
+import { FacilityPicker } from '../shared/FacilityPicker';
 import { FilterChip } from '../shared/FilterChip';
 import { ClassCardSkeleton } from '../shared/Skeleton';
+import { TermBanner } from '../member/TermBanner';
 import { ClassCard } from './ClassCard';
+import { ClassFilterSheet } from './ClassFilterSheet';
 import { useClassesExplore } from '../../hooks/shared/useClassesExplore';
-import { CLASS_TYPE_FILTERS, CLASS_TYPE_LABEL } from '../../constants/classes';
+import { CLASS_FILTER_TEXT, CLASS_TYPE_FILTERS, CLASS_TYPE_LABEL } from '../../constants/classes';
 import { Colors, Spacing } from '../../constants/theme';
 import { Haptic } from '../../lib/haptics';
 import { ROUTES } from '../../navigation/routes';
@@ -20,18 +23,26 @@ import { ROUTES } from '../../navigation/routes';
 export function ClassesExploreView() {
   const router = useRouter();
   const searchInputRef = useRef<TextInputInstance>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
   const explore = useClassesExplore();
   const { isCoach, classes } = explore;
 
   const sportOptions = [{ id: '', name: 'Tất cả' }, ...explore.sports];
+  const filterActive = explore.advancedFilterCount > 0;
 
   return (
     <View className="flex-1 bg-bg-primary">
       {/* Hội viên: tab Khám phá; HLV: màn con "Lớp phụ trách" mở từ Tài khoản / Trang chủ */}
       <ScreenHeader variant={isCoach ? 'stack' : 'tab'} title={isCoach ? 'Lớp phụ trách' : 'Khám phá'} />
 
+      {/* Cơ sở đang xem + kỳ học hiện tại (web: "Cơ sở tìm lớp" và banner kỳ học trên trang Khám phá) */}
+      <View className="px-xl pt-md">
+        <FacilityPicker />
+        {!isCoach && <TermBanner />}
+      </View>
+
       {/* Tìm kiếm */}
-      <View className="px-xl pt-xl mb-md">
+      <View className="px-xl mb-md">
         <Pressable
           onPress={() => searchInputRef.current?.focus()}
           className="flex-row items-center bg-bg-surface rounded-lg px-md border border-border"
@@ -76,6 +87,21 @@ export function ClassesExploreView() {
         {CLASS_TYPE_FILTERS.map((type) => (
           <FilterChip key={type ?? 'all'} label={type ? CLASS_TYPE_LABEL[type] : 'Tất cả'} active={explore.classType === type} onPress={() => explore.setClassType(type)} />
         ))}
+        {/* Khu vực + kỳ học nằm trong bảng "Bộ lọc" để không chiếm thêm hàng trên màn hình nhỏ (chỉ hội viên, như web) */}
+        {!isCoach && (
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={CLASS_FILTER_TEXT.button}
+            className="flex-row items-center gap-1 px-md py-xs rounded-full border"
+            style={{ backgroundColor: filterActive ? Colors.primary + '22' : Colors.bg.surface, borderColor: filterActive ? Colors.primary : Colors.border }}
+            onPress={() => { Haptic.selection(); setFilterOpen(true); }}
+          >
+            <Icon name="tune" size={14} color={filterActive ? Colors.primary : Colors.text.secondary} />
+            <Text className="text-sm font-bevn-medium" style={{ color: filterActive ? Colors.primary : Colors.text.secondary }}>
+              {filterActive ? `${CLASS_FILTER_TEXT.button} · ${explore.advancedFilterCount}` : CLASS_FILTER_TEXT.button}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Số kết quả */}
@@ -127,6 +153,21 @@ export function ClassesExploreView() {
               }}
             />
           )}
+        />
+      )}
+
+      {!isCoach && (
+        <ClassFilterSheet
+          visible={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          areaType={explore.areaType}
+          onAreaType={explore.setAreaType}
+          terms={explore.terms}
+          termId={explore.termId}
+          onTerm={explore.setTermId}
+          currentTermId={explore.currentTermId}
+          activeCount={explore.advancedFilterCount}
+          onClear={explore.clearAdvancedFilters}
         />
       )}
     </View>

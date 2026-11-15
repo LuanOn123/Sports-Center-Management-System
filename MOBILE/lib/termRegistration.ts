@@ -47,6 +47,11 @@ export function termPhase(term: TermWindow, now = Date.now()): TermPhase {
   return 'closed';
 }
 
+/** Kỳ học dùng được ở một cơ sở: kỳ của chính cơ sở đó hoặc kỳ không gắn cơ sở nào (BE trả kỳ học của mọi cơ sở) */
+export function termsForFacility<T extends { facilityId?: string | null }>(terms: readonly T[], facilityId: string | undefined): T[] {
+  return terms.filter((term) => !term.facilityId || term.facilityId === facilityId);
+}
+
 export interface TermTag {
   name: string;
   /** Giai đoạn đăng ký: "Đang mở đăng ký", "Đã đóng đăng ký"… */

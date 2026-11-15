@@ -2,8 +2,8 @@
 // Khung màn nghiệp vụ dùng chung (check-in, hóa đơn, danh sách chờ, hỗ trợ, nghỉ phép, đánh giá, chi tiết lớp…).
 // Giữ nguyên API cũ nhưng dựng bằng bộ giao diện components/ui để mọi màn dùng chung một ngôn ngữ thiết kế.
 
-import React, { type ReactNode } from 'react';
-import { View, Text, ScrollView, RefreshControl, ActivityIndicator, TextInput, type TextInputProps } from 'react-native';
+import React, { useEffect, useRef, type ReactNode } from 'react';
+import { View, Text, ScrollView, RefreshControl, ActivityIndicator, TextInput, type ScrollViewInstance, type TextInputProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from './ScreenHeader';
 import { useUserPullRefresh } from '../../hooks/shared/useUserPullRefresh';
@@ -11,12 +11,18 @@ import { Icon } from './Icon';
 import { Button } from '../ui/Button';
 import { Colors, Spacing } from '../../constants/theme';
 
-export function WorkflowScreen({ title, children, refreshing = false, onRefresh, footer }: {
+export function WorkflowScreen({ title, children, refreshing = false, onRefresh, footer, scrollToTopKey }: {
   title: string; children: ReactNode; refreshing?: boolean; onRefresh?: () => void;
   /** Vùng cố định dưới đáy (vd: nút đăng ký) — nằm trên vùng an toàn của máy */
   footer?: ReactNode;
+  /** Đổi sang một giá trị khác rỗng (vd. lỗi vừa xảy ra) thì cuộn về đầu trang để người dùng thấy thông báo */
+  scrollToTopKey?: unknown;
 }) {
   const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  useEffect(() => {
+    if (scrollToTopKey) scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }, [scrollToTopKey]);
   // `refreshing` = màn đang làm mới dữ liệu (kể cả ngầm). Vòng xoay kéo-để-tải chỉ hiện khi người dùng kéo,
   // không hiện mỗi lần dữ liệu tự làm mới (tránh "loading hai lần": vòng tải của trang + vòng xoay ở đầu trang)
   const { pulling, onPull } = useUserPullRefresh(refreshing, onRefresh);
@@ -24,6 +30,7 @@ export function WorkflowScreen({ title, children, refreshing = false, onRefresh,
     <View className="flex-1 bg-bg-primary">
       <ScreenHeader title={title} />
       <ScrollView
+        ref={scrollRef}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           width: '100%', maxWidth: 760, alignSelf: 'center',
@@ -103,7 +110,5 @@ export function WorkflowState({ pending, error, empty, retry }: { pending?: bool
   return null;
 }
 
-export const workflowStatus = (status: string) => ({
-  WAITING: 'Đang chờ', PROMOTED: 'Đã được xếp chỗ', CANCELLED: 'Đã hủy', PENDING: 'Chờ xử lý', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối',
-  OPEN: 'Mới tiếp nhận', IN_PROGRESS: 'Đang xử lý', RESOLVED: 'Đã giải quyết', CLOSED: 'Đã đóng', SUCCESS: 'Thành công', FAILED: 'Thất bại', REFUNDED: 'Đã hoàn tiền', ISSUED: 'Đã phát hành',
-} as Record<string, string>)[status] || status;
+// Nhãn trạng thái nằm ở constants/workflow + lib/workflow; xuất lại để các màn đang import từ đây không đổi
+export { workflowStatus } from '../../lib/workflow';

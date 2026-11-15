@@ -23,6 +23,12 @@ export const TERM_STAGE_BLOCKER_CODES: readonly string[] = [
   'TERM_CLOSED',
 ];
 
+/** Kỳ học ít đổi → giữ dữ liệu 5 phút như web (MemberTermBanner: staleTime) */
+export const TERM_STALE_MS = 5 * 60 * 1000;
+
+/** Banner kỳ học ở Trang chủ / Khám phá: nút khi kỳ đang mở đăng ký (web: "Khám phá lớp học") */
+export const TERM_BANNER_TEXT = { explore: 'Khám phá lớp học' } as const;
+
 /** Giai đoạn đăng ký của kỳ học — giống nhãn web: Đang chuẩn bị / Sắp mở / Đang mở / Đã đóng / Đã kết thúc */
 export type TermPhase = 'planning' | 'upcoming' | 'open' | 'closed' | 'ended';
 
