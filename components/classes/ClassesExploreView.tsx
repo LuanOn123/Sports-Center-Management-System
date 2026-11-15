@@ -1,6 +1,6 @@
 // components/classes/ClassesExploreView.tsx
-// Màn Khám phá (hội viên) / Lớp dạy (HLV): tiêu đề → tìm kiếm → hai hàng chip lọc môn tập + hạng lớp (không nhãn)
-// → số kết quả → danh sách thẻ lớp (bấm cả thẻ để xem chi tiết và đăng ký).
+// Màn Khám phá (hội viên) / Lớp phụ trách (HLV): tiêu đề → tìm kiếm → hai hàng chip lọc môn tập + hạng lớp (không nhãn)
+// → số kết quả → danh sách thẻ lớp (hội viên: bấm cả thẻ để xem chi tiết và đăng ký; HLV: "Chi tiết lớp" / "Xem lịch dạy").
 
 import React, { useRef, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Pressable } from 'react-native';
@@ -11,6 +11,7 @@ import { ScreenHeader } from '../shared/ScreenHeader';
 import { FacilityPicker } from '../shared/FacilityPicker';
 import { FilterChip } from '../shared/FilterChip';
 import { ClassCardSkeleton } from '../shared/Skeleton';
+import { CoachClassCard } from '../coach/CoachClassCard';
 import { TermBanner } from '../member/TermBanner';
 import { ClassCard } from './ClassCard';
 import { ClassFilterSheet } from './ClassFilterSheet';
@@ -144,7 +145,14 @@ export function ClassesExploreView() {
               <Text className="text-xs text-text-muted font-bevn-regular text-center mt-sm">Đã hiển thị tất cả {classes.length} lớp</Text>
             ) : undefined
           }
-          renderItem={({ item }) => (
+          renderItem={({ item }) => isCoach ? (
+            // HLV: thẻ riêng (hạng lớp, sức chứa, trạng thái + lối tới lịch dạy của lớp), không tải chỗ trống / kỳ đăng ký của hội viên
+            <CoachClassCard
+              item={item}
+              onOpenDetail={() => { Haptic.light(); router.push(ROUTES.classDetail(item.id)); }}
+              onOpenSchedule={() => { Haptic.light(); router.push(ROUTES.coachScheduleFor(item.id)); }}
+            />
+          ) : (
             <ClassCard
               item={item}
               onPress={() => {

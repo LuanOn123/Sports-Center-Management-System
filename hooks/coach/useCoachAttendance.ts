@@ -14,6 +14,7 @@ import {
   COACH_ATTENDANCE_FUTURE_DAYS, COACH_ATTENDANCE_PAST_DAYS,
 } from '../../constants/schedule';
 import { ATTENDANCE_ROSTER_STATUSES } from '../../constants/attendance';
+import { attendanceNoteForSave } from '../../lib/attendanceNote';
 import { canGenerateAttendanceQr, canTakeAttendance } from '../../lib/businessRules';
 import { filterRoster } from '../../lib/coachRoster';
 import { daysFromNow, endOfDay, startOfDay } from '../../lib/date';
@@ -64,7 +65,7 @@ export function useCoachAttendance(coachId: string | undefined, initialScheduleI
   });
 
   const markMutation = useMutation({
-    mutationFn: (payload: { memberId: string; status: AttendanceStatus }) =>
+    mutationFn: (payload: { memberId: string; status: AttendanceStatus; note?: string }) =>
       createAttendance({ scheduleId: selectedId!, ...payload }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['attendance', selectedId] }),
   });
@@ -107,9 +108,10 @@ export function useCoachAttendance(coachId: string | undefined, initialScheduleI
     markingMemberId,
     startMarking: (memberId: string) => setMarkingMemberId(memberId),
     cancelMarking: () => setMarkingMemberId(null),
-    mark: (status: AttendanceStatus, onError: (e: unknown) => void) => {
+    /** Ghi điểm danh cho học viên đang chọn; `note` là ghi chú đang gõ (trống thì không gửi, như web) */
+    mark: (status: AttendanceStatus, note: string, onError: (e: unknown) => void) => {
       if (!markingMemberId || !canWrite || markMutation.isPending) return;
-      markMutation.mutate({ memberId: markingMemberId, status }, { onError });
+      markMutation.mutate({ memberId: markingMemberId, status, note: attendanceNoteForSave(note) }, { onError });
       setMarkingMemberId(null);
     },
     isMarking: markMutation.isPending,

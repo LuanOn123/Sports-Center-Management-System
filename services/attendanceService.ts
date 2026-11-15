@@ -34,8 +34,8 @@ export const appealAttendancePenalty = (id: string, reason: string) =>
 export const getScheduleAttendance = (scheduleId: string) =>
   allPages<Attendance>('/attendance', { scheduleId });
 
-/** POST /attendance — HLV ghi điểm danh cho học viên */
-export const createAttendance = (payload: { scheduleId: string; memberId: string; status: AttendanceStatus }) =>
+/** POST /attendance — HLV ghi điểm danh cho học viên; `note` (không bắt buộc) là ghi chú điểm danh như web */
+export const createAttendance = (payload: { scheduleId: string; memberId: string; status: AttendanceStatus; note?: string }) =>
   api.post('/attendance', payload);
 
 /** POST /attendance/generate-qr — tạo mã QR điểm danh cho 1 ca học, hết hạn sau ~60s */

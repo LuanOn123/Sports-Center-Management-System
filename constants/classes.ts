@@ -40,6 +40,16 @@ export const CLASS_FILTER_TEXT = {
   noTerms: 'Cơ sở này chưa có kỳ học nào.',
 } as const;
 
+/** Thẻ "Lớp phụ trách" của HLV (web: CoachWorkspace mode "classes") */
+export const COACH_CLASS_TEXT = {
+  capacity: (n: number) => `Tối đa ${n} học viên / buổi`,
+  active: 'Đang hoạt động',
+  inactive: 'Ngừng hoạt động',
+  defaultDescription: 'Lớp tập luyện được phân công cho bạn.',
+  detail: 'Chi tiết lớp',
+  schedule: 'Xem lịch dạy',
+} as const;
+
 /** Số khung giờ trong tuần hiện trên thẻ lớp, phần còn lại gộp "+n khung giờ khác" */
 export const CLASS_CARD_SLOT_PREVIEW = 2;
 
