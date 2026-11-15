@@ -16,6 +16,7 @@ import { MembershipHeroCard } from './home/MembershipHeroCard';
 import { NextSessionCard } from './home/NextSessionCard';
 import { PendingPaymentCard } from './membership/PendingPaymentCard';
 import { MissingMemberProfile } from './MissingMemberProfile';
+import { TermBanner } from './TermBanner';
 import { getQuickAccessForRole } from '../../navigation/quickAccessConfig';
 import { useMemberHome } from '../../hooks/member/useMemberHome';
 import { Colors, Spacing } from '../../constants/theme';
@@ -65,6 +66,9 @@ export function MemberHomeView({ user, facilityId }: MemberHomeViewProps) {
         </Text>
         <Text className="text-sm text-text-secondary font-bevn-regular mt-0.5">{formatWeekdayDate(new Date().toISOString(), 'long')}</Text>
       </View>
+
+      {/* Kỳ học hiện tại (web: banner "Đang mở đăng ký · còn N ngày" giữa lời chào và thẻ gói) */}
+      <TermBanner withAction />
 
       {!memberId ? (
         <MissingMemberProfile key="membership-missing" />

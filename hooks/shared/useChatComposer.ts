@@ -1,0 +1,70 @@
+// hooks/shared/useChatComposer.ts
+// Ô soạn tin của một cuộc trò chuyện: nội dung, tệp đính kèm (ảnh / PDF ≤ 10 MB), gửi một lần (chặn bấm dồn)
+
+import { useRef, useState } from 'react';
+import * as DocumentPicker from 'expo-document-picker';
+import { CHAT_FILE_ERROR, CHAT_FILE_MAX_BYTES, CHAT_FILE_TYPES, CHAT_TEXT } from '../../constants/chat';
+import { showAlert } from '../../lib/alert';
+import { Haptic } from '../../lib/haptics';
+import type { User } from '../../lib/types';
+
+type SendMessage = (content: string, user?: User | null, attachment?: DocumentPicker.DocumentPickerAsset) => Promise<unknown>;
+
+export function useChatComposer(send: SendMessage, user: User | null) {
+  const [text, setText] = useState('');
+  const [attachment, setAttachment] = useState<DocumentPicker.DocumentPickerAsset>();
+  const [sending, setSending] = useState(false);
+  // Bản sao đồng bộ để Enter / nút gửi bấm dồn không gửi trùng và luôn đọc đúng nội dung mới nhất
+  const textRef = useRef('');
+  const sendingRef = useRef(false);
+
+  const changeText = (value: string) => {
+    setText(value);
+    textRef.current = value;
+  };
+
+  const submit = async () => {
+    const trimmed = textRef.current.trim();
+    if ((!trimmed && !attachment) || sendingRef.current) return;
+    sendingRef.current = true;
+    setSending(true);
+    Haptic.medium();
+    try {
+      await send(trimmed, user, attachment);
+      textRef.current = '';
+      setText('');
+      setAttachment(undefined);
+    } catch (e) {
+      showAlert(CHAT_TEXT.sendFailed, e instanceof Error ? e.message : CHAT_TEXT.retryHint);
+    } finally {
+      sendingRef.current = false;
+      setSending(false);
+    }
+  };
+
+  const pickAttachment = async () => {
+    try {
+      const picked = await DocumentPicker.getDocumentAsync({ type: CHAT_FILE_TYPES, copyToCacheDirectory: true, multiple: false });
+      if (picked.canceled) return;
+      const file = picked.assets[0];
+      if (file.size != null && file.size > CHAT_FILE_MAX_BYTES) {
+        showAlert(CHAT_TEXT.fileTooLarge, CHAT_FILE_ERROR.tooLarge);
+        return;
+      }
+      setAttachment(file);
+    } catch (e) {
+      showAlert(CHAT_TEXT.pickFailed, e instanceof Error ? e.message : CHAT_TEXT.retryHint);
+    }
+  };
+
+  return {
+    text,
+    changeText,
+    attachment,
+    removeAttachment: () => setAttachment(undefined),
+    sending,
+    canSend: Boolean(text.trim() || attachment),
+    submit,
+    pickAttachment,
+  };
+}

@@ -51,6 +51,64 @@ export const VN_PHONE_MAX_DIGITS = 11;
 /** Đăng ký (BE RegisterSchema / GoogleRegisterSchema) bắt buộc có số điện thoại — cùng câu với web */
 export const PHONE_REQUIRED_MESSAGE = 'Vui lòng nhập số điện thoại.';
 
+/** Màn Thông tin cá nhân: vị trí (px) cuộn tới theo từng ô khi bàn phím mở, ô lạ dùng giá trị mặc định; chờ bàn phím mở xong rồi mới cuộn */
+export const PROFILE_FIELD_SCROLL_OFFSETS: Record<string, number> = {
+  fullName: 120,
+  phone: 360,
+  fitnessGoalNote: 560,
+  trainingNote: 820,
+  currentPassword: 80,
+  newPassword: 160,
+  confirmPassword: 240,
+};
+export const PROFILE_FIELD_SCROLL_DEFAULT = 160;
+export const PROFILE_FIELD_SCROLL_DELAY_MS = 120;
+
+/** Ảnh đại diện: chọn ảnh vuông, nén 0.8, tối đa 5 MB (BE: multer avatar) */
+export const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+export const AVATAR_PICKER = { aspect: [1, 1] as [number, number], quality: 0.8 } as const;
+
+export const AVATAR_TEXT = {
+  permissionTitle: 'Thiếu quyền truy cập',
+  permissionSettings: 'Vui lòng cấp quyền thư viện ảnh cho Pulse trong Cài đặt thiết bị.',
+  permissionNeeded: 'Cần quyền truy cập thư viện ảnh để đổi ảnh đại diện.',
+  tooLargeTitle: 'Ảnh quá lớn',
+  tooLarge: 'Ảnh đại diện tối đa 5MB. Vui lòng chọn ảnh khác.',
+  failed: 'Cập nhật ảnh đại diện thất bại',
+  errorTitle: 'Lỗi',
+} as const;
+
+/** Tab "Bảo mật" — đổi mật khẩu (web: ProfilePage / CoachProfile) */
+export const PASSWORD_CHANGE_TEXT = {
+  tabInfo: 'Thông tin cá nhân',
+  tabSecurity: 'Bảo mật',
+  currentLabel: 'Mật khẩu hiện tại',
+  newLabel: 'Mật khẩu mới',
+  newPlaceholder: 'Ít nhất 6 ký tự',
+  confirmLabel: 'Xác nhận mật khẩu mới',
+  confirmPlaceholder: 'Nhập lại mật khẩu mới...',
+  submit: 'Đổi mật khẩu',
+  currentRequired: 'Nhập mật khẩu hiện tại',
+  newTooShort: 'Mật khẩu mới ít nhất 6 ký tự',
+  confirmRequired: 'Nhập lại mật khẩu mới',
+  mismatch: 'Mật khẩu xác nhận không khớp',
+  successTitle: 'Thành công',
+  // BE thu hồi mọi phiên của tài khoản khi đổi mật khẩu → đăng nhập lại
+  success: 'Mật khẩu đã được thay đổi. Vui lòng đăng nhập lại.',
+  errorTitle: 'Lỗi',
+  failed: 'Đổi mật khẩu thất bại',
+} as const;
+
+export const PROFILE_SCREEN_TEXT = {
+  title: 'Thông tin cá nhân',
+  coachCardTitle: 'Thông tin Huấn luyện viên',
+  specialization: 'Chuyên môn:',
+  experience: 'Kinh nghiệm:',
+  bio: 'Giới thiệu:',
+  updating: 'Đang cập nhật',
+  years: (n: number) => `${n} năm`,
+} as const;
+
 /** Nhãn vai trò hiển thị (hồ sơ, tab Tài khoản) */
 export const ROLE_LABEL: Record<string, string> = {
   MEMBER: 'Hội viên',

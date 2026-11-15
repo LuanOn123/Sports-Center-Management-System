@@ -5,21 +5,19 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
-import { apiRequest, type Envelope } from '../../lib/api';
-import { allPages } from '../../lib/pagedApi';
+import type { Envelope } from '../../lib/api';
 import { findClassInLists } from '../../lib/classCache';
-import type { Class, ClassCoach, ClassSchedule } from '../../lib/types';
+import type { Class, ClassCoach } from '../../lib/types';
+import { classPath, getClassById, getUpcomingClassSessions } from '../../services/classService';
 import { useCoursePlan } from './useClasses';
 import { useEnrollWholeCourse } from '../member/useEnrollments';
 import { useMyClassGoal } from '../member/useMyClassGoal';
 import { useOwningFacility } from './useOwningFacility';
 import { TERM_STAGE_BLOCKER_CODES } from '../../constants/terms';
 import { enrollSummaryOf } from '../../lib/classPlan';
+import { blockerGuidance, courseFooter } from '../../lib/enrollmentBlockers';
 import { toEnrollOptions, type EnrollFormValues } from '../../lib/enrollOptions';
 import { membershipCoverageNotice, termNotice as describeTerm } from '../../lib/termRegistration';
-
-/** Lý do chặn đăng ký liên quan gói thành viên → gợi ý xem gói */
-const MEMBERSHIP_BLOCKER = /SUBSCRIPTION|TIER|MEMBERSHIP/;
 
 export function useClassDetail(id: string) {
   const { user, currentFacility } = useAuth();
@@ -31,7 +29,7 @@ export function useClassDetail(id: string) {
   const cls = useQuery<Envelope<Class>, Error>({
     queryKey: ['class', id, currentFacility?.id],
     enabled: Boolean(id),
-    queryFn: ({ signal }) => apiRequest<Class>(`/classes/${encodeURIComponent(id)}`, 'GET', { signal }),
+    queryFn: ({ signal }) => getClassById(id, signal),
     // Bấm từ danh sách Khám phá: hiện ngay lớp đã có trong cache, tải lại ngầm — không có vòng tải thứ hai ngay sau danh sách
     placeholderData: () => {
       const found = findClassInLists(queryClient.getQueriesData<Envelope<Class[]>>({ queryKey: ['classes'] }), id);
@@ -39,12 +37,12 @@ export function useClassDetail(id: string) {
     },
   });
   // Lớp thuộc cơ sở khác cơ sở đang chọn (vd. bấm thông báo "Lớp học mới") → BE 403 FORBIDDEN_SCOPE → dò cơ sở chủ
-  const facilityScope = useOwningFacility(id ? `/classes/${encodeURIComponent(id)}` : undefined, cls.error);
+  const facilityScope = useOwningFacility(id ? classPath(id) : undefined, cls.error);
   const plan = useCoursePlan(id, { enabled: isMember });
   const coachSessions = useQuery({
     queryKey: ['class-schedules', id, currentFacility?.id],
     enabled: Boolean(id) && isCoach,
-    queryFn: ({ signal }) => allPages<ClassSchedule>('/class-schedules', { classId: id, status: 'SCHEDULED', startAfter: new Date().toISOString() }, signal),
+    queryFn: ({ signal }) => getUpcomingClassSessions(id, signal),
   });
   const bulk = useEnrollWholeCourse();
   // Thẻ "Mục tiêu & tiến độ": chỉ hội viên, và chỉ có dữ liệu khi đã đăng ký lớp
@@ -58,6 +56,22 @@ export function useClassDetail(id: string) {
   const termNotice = useMemo(() => (isMember && term ? describeTerm(term) : null), [isMember, term]);
   // Gói hết hạn trước buổi cuối của khóa nhưng còn ≥ 50% thời hạn: BE xác nhận quyền học đến hết kỳ
   const coverage = useMemo(() => membershipCoverageNotice(registration?.membershipCoverage), [registration?.membershipCoverage]);
+  const course = plan.data?.data.course ?? null;
+  // Hướng dẫn gỡ vướng tính trên MỌI điều kiện BE nêu — kể cả mã theo giai đoạn kỳ học vốn đã được ẩn khỏi danh sách hiển thị
+  const guidance = useMemo(() => blockerGuidance(registration?.blockers ?? [], registration?.quota?.tier), [registration]);
+  // Nút cố định dưới đáy (chỉ hội viên, khi lớp đã có kế hoạch khóa) — cùng thứ tự ưu tiên với nhãn nút đăng ký của web
+  const footer = useMemo(
+    () => (isMember && course
+      ? courseFooter({
+        isFullyRegistered: Boolean(registration?.isFullyRegistered),
+        eligible: Boolean(registration?.eligible),
+        totalSessions: course.totalSessions,
+        termPhase: termNotice?.phase ?? null,
+        guidance,
+      })
+      : null),
+    [isMember, course, registration, termNotice, guidance],
+  );
 
   return {
     isMember,
@@ -80,15 +94,18 @@ export function useClassDetail(id: string) {
     value: cls.data?.data,
     /** Một vòng tải duy nhất: chờ cả lớp lẫn kế hoạch khóa rồi hiện đủ, không hiện từng phần kèm vòng tải thứ hai */
     isInitialLoading: !cls.isError && (cls.isPending || (isMember && plan.isPending)),
-    course: plan.data?.data.course ?? null,
+    course,
     sessions: plan.data?.data.sessions ?? [],
     registration,
     /** Lý do chặn của BE, bỏ các dòng theo giai đoạn kỳ học khi thẻ kỳ học đã giải thích đủ để khỏi lặp */
     blockers: (registration?.blockers ?? []).filter((b) => !(termNotice?.coversBlocker && TERM_STAGE_BLOCKER_CODES.includes(b.code))),
+    guidance,
+    footer,
+    /** Lần đăng ký trọn khóa gần nhất bị BE từ chối (null nếu chưa có / đang đăng ký lại) */
+    enrollFailure: bulk.failure,
     term,
     termNotice,
     coverage,
-    needsMembership: Boolean(registration?.blockers.some((b) => MEMBERSHIP_BLOCKER.test(b.code))),
     selectedCoach,
     openCoach: setSelectedCoach,
     closeCoach: () => setSelectedCoach(null),

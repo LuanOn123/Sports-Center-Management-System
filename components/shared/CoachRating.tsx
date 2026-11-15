@@ -1,4 +1,3 @@
-import { vietnamDate } from '../../lib/date';
 // components/shared/CoachRating.tsx
 // Đánh giá HLV — hiển thị điểm trung bình, danh sách đánh giá và form gửi/sửa của Member
 
@@ -14,6 +13,7 @@ import { ApiError } from '../../lib/api';
 import { Colors } from '../../constants/theme';
 import { COACH_PROFILE_TEXT } from '../../constants/coachProfile';
 import { canReviewCoach } from '../../lib/businessRules';
+import { formatReviewAge } from '../../lib/format';
 import { WorkflowButton, WorkflowState, WorkflowText } from './WorkflowScreen';
 import { useMyEnrollments } from '../../hooks/member/useEnrollments';
 
@@ -37,20 +37,6 @@ function StarInput({ value, onChange }: { value: number; onChange: (v: number) =
       ))}
     </View>
   );
-}
-
-// toLocaleDateString('vi-VN', ...) không đáng tin trên RN/Hermes — ICU của máy
-// có thể trả dấu "-" thay vì "/" giữa ngày/tháng. Tự ghép chuỗi cho chắc.
-function pad2(n: number) {
-  return String(n).padStart(2, '0');
-}
-function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const days = Math.floor(diff / 86_400_000);
-  if (days < 1) return 'Hôm nay';
-  if (days < 30) return `${days} ngày trước`;
-  const d = new Date(iso);
-  return `${pad2(vietnamDate(d).getUTCDate())}/${pad2(vietnamDate(d).getUTCMonth() + 1)}/${vietnamDate(d).getUTCFullYear()}`;
 }
 
 interface CoachRatingProps {
@@ -225,7 +211,7 @@ export function CoachRating({ coachId, coachName, classId, title }: CoachRatingP
               <Stars value={f.rating} size={13} />
             </View>
             {Boolean(f.comment) && <Text className="text-sm text-text-secondary mt-1 font-bevn-regular">{f.comment}</Text>}
-            <Text className="text-xs text-text-muted mt-1 font-bevn-regular">{timeAgo(f.createdAt)}</Text>
+            <Text className="text-xs text-text-muted mt-1 font-bevn-regular">{formatReviewAge(f.createdAt)}</Text>
           </View>
         ))
       )}

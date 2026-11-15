@@ -4,6 +4,7 @@
 import { api, apiRequest, ApiError } from '../lib/api';
 import { Platform } from 'react-native';
 import type { DocumentPickerAsset } from 'expo-document-picker';
+import { CHAT_FILE_ERROR, CHAT_FILE_MAX_BYTES, CHAT_FILE_TYPES } from '../constants/chat';
 import type { ChatConversation, ChatContact, ChatMessage } from '../lib/types';
 
 // Sentinel route param cho "phòng chung" (không phải id user thật — BE dùng
@@ -19,6 +20,10 @@ export const getConversations = () =>
 export const getContacts = () =>
   api.get<ChatContact[]>('/chat/contacts');
 
+/** GET /chat/messages/unread-count — BE trả { unreadCount }, không phải số trần */
+export const getUnreadCount = () =>
+  api.get<{ unreadCount: number }>('/chat/messages/unread-count');
+
 /** GET /chat/messages?targetId=... — bỏ targetId (undefined) để lấy phòng chung */
 export const getMessages = (targetId?: string) =>
   api.get<ChatMessage[]>(`/chat/messages`, { targetId });
@@ -27,11 +32,10 @@ export const getMessages = (targetId?: string) =>
 export const sendMessage = (body: { receiverId?: string; content: string }) =>
   api.post<ChatMessage>('/chat/messages', body);
 
-export const CHAT_FILE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 export async function sendMessageWithFile(receiverId: string | undefined, content: string, file: DocumentPickerAsset) {
-  if (file.size != null && file.size > 10 * 1024 * 1024) throw new ApiError('Tệp tối đa 10 MB.', 400);
+  if (file.size != null && file.size > CHAT_FILE_MAX_BYTES) throw new ApiError(CHAT_FILE_ERROR.tooLarge, 400);
   const mimeType = file.mimeType || file.file?.type || '';
-  if (!CHAT_FILE_TYPES.includes(mimeType)) throw new ApiError('Chỉ gửi được ảnh JPEG/PNG/WebP/GIF hoặc PDF.', 400);
+  if (!CHAT_FILE_TYPES.includes(mimeType)) throw new ApiError(CHAT_FILE_ERROR.badType, 400);
   const body = new FormData();
   if (receiverId) body.append('receiverId', receiverId);
   if (content.trim()) body.append('content', content.trim());

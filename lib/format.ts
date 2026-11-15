@@ -1,5 +1,5 @@
 // lib/format.ts
-import { vietnamDate } from './date';
+import { dayKey, vietnamDate } from './date';
 // Định dạng hiển thị dùng chung (ngày giờ, tiền tệ)
 
 // toLocaleDateString('vi-VN', ...) không đáng tin trên RN/Hermes — ICU của máy
@@ -35,6 +35,40 @@ export function formatDayMonth(d: Date) {
 export function formatTime(iso: string) {
   const d = vietnamDate(iso);
   return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+}
+
+/** dd/MM/yyyy HH:mm */
+export function formatDateTime(iso: string) {
+  return `${formatDate(iso)} ${formatTime(iso)}`;
+}
+
+/** Tuổi của một mốc: "Vừa xong", "5 phút trước", "3 giờ trước", "2 ngày trước" — thông báo và tin nhắn */
+export function timeAgo(iso: string, now = Date.now()) {
+  const mins = Math.floor((now - new Date(iso).getTime()) / 60_000);
+  if (mins < 1) return 'Vừa xong';
+  if (mins < 60) return `${mins} phút trước`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} giờ trước`;
+  return `${Math.floor(hours / 24)} ngày trước`;
+}
+
+/** Tuổi của một đánh giá: "Hôm nay", "N ngày trước" (dưới 30 ngày), còn lại là ngày dd/MM/yyyy */
+export function formatReviewAge(iso: string, now = Date.now()) {
+  const days = Math.floor((now - new Date(iso).getTime()) / 86_400_000);
+  if (days < 1) return 'Hôm nay';
+  if (days < 30) return `${days} ngày trước`;
+  return formatDate(iso);
+}
+
+/** Vạch ngày trong khung chat: "Thứ Hai, 05/10" */
+export function formatDateSeparator(iso: string) {
+  const d = vietnamDate(iso);
+  return `${WEEKDAY_LONG[d.getUTCDay()]}, ${pad2(d.getUTCDate())}/${pad2(d.getUTCMonth() + 1)}`;
+}
+
+/** Hai mốc thuộc cùng một ngày theo giờ Việt Nam */
+export function isSameVietnamDay(a: string, b: string) {
+  return dayKey(a) === dayKey(b);
 }
 
 /** mm:ss từ số mili-giây còn lại */

@@ -8,7 +8,8 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
-import { api, ApiError } from '../../lib/api';
+import { ApiError } from '../../lib/api';
+import { updateProfile } from '../../services/profileService';
 import { showAlert } from '../../lib/alert';
 import { Haptic } from '../../lib/haptics';
 import { joinChoiceText, splitChoiceText } from '../../lib/profileFields';
@@ -69,7 +70,7 @@ export function useProfileInfoForm() {
   const save = useMutation({
     mutationFn: (v: ProfileInfoValues) => {
       Haptic.medium();
-      return api.patch('/auth/me', {
+      return updateProfile({
         fullName: v.fullName,
         phone: v.phone,
         gender: v.gender,

@@ -32,6 +32,10 @@ export async function getCoachSchedules(coachId: string, range: ScheduleRange, s
   return data.sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime));
 }
 
+/** GET /coaches/:userId/specializations — bộ môn HLV được phép giảng dạy (BE chỉ trả sportId; tên bộ môn lấy ở getAllSports) */
+export const getCoachSpecializations = (coachId: string, signal?: AbortSignal) =>
+  apiRequest<Array<{ sportId: string }>>(`/coaches/${encodeURIComponent(coachId)}/specializations`, 'GET', { signal });
+
 /** GET /enrollments/schedule/:scheduleId — học viên đã đăng ký một buổi */
 export const getScheduleEnrollments = (scheduleId: string) =>
   allPages<Enrollment>(`/enrollments/schedule/${scheduleId}`);

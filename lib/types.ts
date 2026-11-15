@@ -14,6 +14,8 @@ export type ScheduleStatus = 'SCHEDULED' | 'CANCELLED' | 'COMPLETED';
 export type EnrollmentStatus = 'BOOKED' | 'CANCELLED' | 'COMPLETED';
 export type PaymentMethod = 'CASH' | 'BANK_TRANSFER';
 export type ClassType = 'REGULAR' | 'PREMIUM';
+/** Khu vực tập của lớp (web: lọc "Trong nhà / Ngoài trời / Hồ bơi" ở Khám phá lớp học) */
+export type AreaType = 'INDOOR' | 'OUTDOOR' | 'POOL';
 export type MembershipTier = 'FREE' | 'MEMBERSHIP' | 'PREMIUM';
 
 
@@ -576,6 +578,8 @@ export interface CoursePlanSlot {
 export interface Term {
   id: string;
   code?: string;
+  /** Cơ sở sở hữu kỳ học (GET /terms trả kỳ học của mọi cơ sở) */
+  facilityId?: string | null;
   name: string;
   status: 'PLANNING' | 'OPEN_REGISTRATION' | 'IN_PROGRESS' | 'CLOSED';
   startDate: string;
@@ -592,6 +596,22 @@ export interface MembershipCoverage {
   subscriptionEndDate: string;
 }
 
+/**
+ * Một điều kiện chặn đăng ký trọn khóa của BE — có trong course-plan (`registration.blockers`) và trong lỗi 409
+ * COURSE_ENROLLMENT_FAILED (`errors.details`). Buổi hết chỗ / trùng giờ kèm `sessionId`, `startTime`, `roomName`;
+ * quota lớp kèm `details.tier` / `limit` / `used` / `remaining`.
+ */
+export interface CourseRegistrationBlocker {
+  code: string;
+  message: string;
+  sessionId?: string;
+  startTime?: string;
+  endTime?: string;
+  roomId?: string;
+  roomName?: string;
+  details?: { tier?: MembershipTier | null; limit?: number; used?: number; remaining?: number; [key: string]: unknown };
+}
+
 export interface CoursePlan {
   course: null | {
     term?: Term | null;
@@ -600,7 +620,9 @@ export interface CoursePlan {
     availability: { minRemainingSlots: number; fullSessionCount: number; isFullyBookable: boolean };
   };
   registration: null | {
-    eligible: boolean; blockers: Array<{ code: string; message: string; sessionId?: string }>;
+    eligible: boolean; blockers: CourseRegistrationBlocker[];
+    /** Quota lớp song song của hội viên tại thời điểm xét (BE trả cùng course-plan; web dùng `quota.tier` khi blocker thiếu hạng) */
+    quota?: ConcurrentClassQuota | null;
     /** Có khi gói hết hạn trước buổi cuối của khóa nhưng còn ≥ 50% thời hạn lúc đăng ký */
     membershipCoverage?: MembershipCoverage | null;
     registeredSessions: number; remainingSessionsToRegister: number; isFullyRegistered: boolean;

@@ -11,7 +11,7 @@ export function useSports() {
 
 export function useClasses(filters?: ClassFilters, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: ['classes', filters?.search, filters?.sportId, filters?.classType, filters?.coachId],
+    queryKey: ['classes', filters?.search, filters?.sportId, filters?.classType, filters?.areaType, filters?.termId, filters?.coachId],
     queryFn: () => getClasses({ ...filters, isActive: filters?.coachId ? undefined : 'true' }),
     placeholderData: (prev) => prev,
     enabled: options?.enabled ?? true,

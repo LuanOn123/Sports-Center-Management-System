@@ -9,6 +9,13 @@ export function loginWithCaptcha(email: string, password: string, turnstileToken
   return api.publicPost<LoginTokens>('/auth/login', { email: email.trim().toLowerCase(), password, turnstileToken });
 }
 
+/** POST /auth/forgot-password — gửi mã OTP 6 số tới email; BE luôn trả 200 dù email không tồn tại (chống dò email) */
+export const requestPasswordReset = (email: string) => api.publicPost('/auth/forgot-password', { email: email.trim() });
+
+/** POST /auth/reset-password — BE xác minh OTP ngay ở bước này (không có endpoint verify-otp riêng) */
+export const resetPassword = (body: { email: string; otp: string; newPassword: string }) =>
+  api.publicPost('/auth/reset-password', { email: body.email.trim(), otp: body.otp.trim(), newPassword: body.newPassword });
+
 /**
  * POST /auth/google-login — đăng nhập bằng Google ID token (không cần CAPTCHA, giống web).
  * Email chưa có tài khoản → 404 kèm `errors.code = ACCOUNT_NOT_REGISTERED` (đọc bằng businessCodeOf).
