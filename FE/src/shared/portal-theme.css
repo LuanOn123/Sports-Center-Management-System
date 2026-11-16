@@ -399,7 +399,7 @@ body:has(.portal-theme) {
   color: var(--member-muted);
 }
 .portal-theme
-  :is(.details > div, .detail-disclosure[open] > summary, .detail-tabs) {
+  :is(.details > div, .detail-list > .detail-content, .detail-disclosure[open] > summary, .detail-tabs) {
   border-color: var(--member-border);
 }
 .portal-theme .detail-disclosure > summary {

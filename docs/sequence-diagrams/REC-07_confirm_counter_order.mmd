@@ -1,0 +1,55 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% USE CASE: Xác nhận đã thu tiền và cấp gói tại quầy
+%% SOURCE: BE/src/modules/operations/operations.routes.ts
+%% SOURCE: BE/src/modules/subscriptions/subscription-purchase.service.ts
+%% SOURCE: FE/src/features/reception/payments/PaymentsPage.tsx
+%% HTTP prefix: /api/v1. API lane includes verified middleware and errorHandler.
+%% Grouped read and validation calls short-circuit on error. No Repository layer is implied.
+%% Repeated SUCCESS linked order returns existing payment without duplicate entitlement.
+%% Cash has already been received when Receptionist confirms. This action does not perform a bank transfer.
+sequenceDiagram
+    actor A as Receptionist
+    participant UI as OperationsPage orders
+    participant API as Express middleware
+    participant H as operations.routes handler
+    participant S as subscriptionPurchaseService
+    participant DB as Prisma / PostgreSQL
+    A->>UI: Confirm actual collection and reason
+    UI->>API: POST /api/v1/counter-orders/:id/confirm
+    activate API
+    API->>API: authenticate, checkFacilityScope, authorizeExact(RECEPTIONIST), validate reason
+    alt request rejected
+        API-->>UI: 400 / 401 / 403
+    else request accepted
+        API->>H: Execute counter-order confirmation handler
+        activate H
+        H->>DB: Begin transaction, lock payment and read order with member and plan
+        DB-->>H: Counter order or null
+        alt not a counter order or plan missing
+            H->>DB: Roll back transaction
+            H-->>API: 404
+        else SUCCESS already linked to subscription
+            H-->>API: Existing payment without another entitlement
+        else PENDING order with active member
+            H->>DB: Lock member-subscription key
+            H->>S: activateSubscriptionForPayment(tx, sold optionSnapshot)
+            activate S
+            S->>S: LockMemberSubscription and inspectPlanPurchase
+            S->>DB: Read current rights and create subscription, collected SUCCESS payment, invoice and outbox if policy allows
+            DB-->>S: Activation result or policy / persistence exception
+            S-->>H: Subscription, payment and invoice or AppError
+            deactivate S
+            H->>DB: Commit only after successful activation
+            H-->>API: Collection and rights result
+        else invalid state or inactive member
+            H->>DB: Roll back transaction
+            H-->>API: 409
+        end
+        deactivate H
+        API-->>UI: 200 result or mapped error
+    end
+    deactivate API
+    UI-->>A: Show confirmed receipt or rejection
+%% Helper failures throw before commit and roll back the transaction. No bank transfer is performed here.
+%% This endpoint is used by OperationsPage kind orders, not PaymentsPage.

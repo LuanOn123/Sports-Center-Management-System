@@ -1212,8 +1212,13 @@ export function ClassDetailPage() {
                 {isTermNotStarted && (
                   <AlertBanner
                     type="info"
-                    title="Chưa tới ngày mở đăng ký"
-                    message={`Kỳ học "${courseTerm.name}" sẽ mở cổng đăng ký từ ngày ${new Date(courseTerm.registrationStartDate).toLocaleDateString("vi-VN")}.`}
+                    title="Chưa đến giờ mở đăng ký"
+                    message={`Kỳ học "${courseTerm.name}" sẽ mở cổng đăng ký lúc ${new Date(courseTerm.registrationStartDate).toLocaleString("vi-VN", {
+                      timeZone: "Asia/Ho_Chi_Minh",
+                      dateStyle: "short",
+                      timeStyle: "short",
+                      hourCycle: "h23",
+                    })}.`}
                   />
                 )}
                 {isTermClosed && (

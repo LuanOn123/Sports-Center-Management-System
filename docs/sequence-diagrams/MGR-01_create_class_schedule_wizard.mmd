@@ -1,0 +1,85 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% SOURCES: FE/src/features/manage/ActivityPlanner.tsx
+%% SOURCES: BE/src/modules/class-schedules/class-schedules.routes.ts, class-schedules.controller.ts
+%% SOURCES: BE/src/modules/class-schedules/class-schedules.schema.ts, class-schedules.service.ts
+%% SOURCES: BE/src/modules/operations/scheduling.ts, BE/src/modules/terms/terms.service.ts
+%% SCOPE: Manager selects an existing sport. New sport is rejected before transaction with 403.
+%% authorizeExact(MANAGER) rejects ADMIN and RECEPTIONIST for this operational endpoint.
+%% B is the actual internal helper, not another HTTP endpoint or a separate service.
+%% DB read messages aggregate verified Prisma queries. Validators short-circuit on the first error.
+%% Short-circuit checks skip later validation reads when an earlier validator throws.
+%% Database failures roll back the enclosing transaction and propagate through errorHandler.
+%% UI omits termId. Server auto-selects covering non-CLOSED facility or global terms.
+%% Client-invalid forms show validation errors without making this API request.
+sequenceDiagram
+    actor A as Center Manager
+    participant UI as API client
+    participant API as Express middleware / errorHandler
+    participant C as schedulesController
+    participant S as schedulesService
+    participant B as createScheduleBatchInTx
+    participant DB as Prisma / PostgreSQL
+    A->>UI: Select sport, class, room, Coaches and date slots
+    UI->>UI: Prepare request timestamps, unmounted ActivityPlanner uses +07:00
+    UI->>API: POST /api/v1/class-schedules/activity-plan
+    activate API
+    API->>API: authenticate, checkFacilityScope, authorizeExact(MANAGER), validate request
+    alt request rejected
+        API-->>UI: 400 / 401 / 403
+    else request accepted
+        API->>C: createActivityPlan(req, res, next)
+        activate C
+        C->>S: createActivityPlan(body, false)
+        activate S
+        alt sport.mode new
+            S-->>C: 403 Admin must create the sport first
+        else existing sport selected
+            S->>DB: Begin transaction, read room and active Coach profiles
+            DB-->>S: Initial resources
+            S->>S: Check room area / capacity and active Coaches
+            S->>DB: Lock room / Coaches, read sport and facility limits
+            DB-->>S: Sport compatibility and limits
+            alt initial resource, sport or limit invalid
+                S->>DB: Roll back transaction
+                S-->>C: 400 / 404 / 409
+            else initial resources valid
+                S->>DB: Create provisional class, sport link, requirement snapshot and Coach assignments
+                DB-->>S: Class
+                S->>B: createScheduleBatchInTx(tx, classId, roomId, schedules)
+                activate B
+                B->>B: Validate 1 to 500 future non-overlapping slots
+                B->>DB: Lock assignment / resources, read room capability, Coach scope / expertise / leave
+                DB-->>B: Resource context
+                B->>B: validateResources and require exactly one class sport
+                B->>DB: Read global room / class / Coach overlaps and applicable terms
+                DB-->>B: Existing schedules and covering terms
+                B->>B: Lock terms, assertCanScheduleInTerm and reject conflicts
+                alt schedule validation fails
+                    B-->>S: AppError before session insertion
+                    S->>DB: Roll back provisional class and assignments
+                    S-->>C: 400 / 404 / 409
+                else every schedule valid
+                    B->>DB: classSchedule.createMany(status SCHEDULED)
+                    DB-->>B: Insert count
+                    B-->>S: schedulesCreated
+                    S->>DB: Commit class, assignments and all sessions
+                    S-->>C: Class, sport and schedulesCreated
+                end
+                deactivate B
+            end
+        end
+        deactivate S
+        C-->>API: sendCreated or next(error)
+        deactivate C
+        API-->>UI: 201 created plan or mapped error
+    end
+    deactivate API
+    UI-->>A: Show created count or failure, refresh successful planner data
+%% NESTING_EXCEPTION: request, sport-mode, initial-resource and schedule guards require four frames.
+%% Guard groups short-circuit, errors skip later work. DB insertion failure aborts transaction, never confirms success.
+%% UI currently omits termId, server auto-selects covering non-CLOSED facility or global terms.
+%% ADMIN / RECEPTIONIST fail authorizeExact(MANAGER). Manager cannot create a new global sport here.
+%% UI_SCOPE: Backend/API implemented. Current application UI route is not verified as reachable.
+
+%% Request validation schemas (see route evidence): CreateActivityPlanSchema

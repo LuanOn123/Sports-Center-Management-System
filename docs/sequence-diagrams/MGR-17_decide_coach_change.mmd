@@ -1,0 +1,77 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% USE CASE: Quản lý duyệt hoặc từ chối đổi HLV
+%% SOURCE: BE/src/modules/operations/coach-changes.service.ts
+%% SOURCE: BE/src/modules/operations/operations.routes.ts
+%% SOURCE: BE/src/modules/class-schedules/class-schedules.service.ts
+%% SOURCE: FE/src/features/operations/CoachChangesPage.tsx
+%% HTTP prefix: /api/v1. API lane includes verified middleware and errorHandler.
+%% Grouped read and validation calls short-circuit on error. No Repository layer is implied.
+%% Shared Prisma wrapper reuses the ambient transaction for updateSchedule and all global Prisma delegates.
+%% Only the requested session gets a substitute, the class primary Coach is unchanged.
+sequenceDiagram
+    actor A as Center Manager
+    participant UI as CoachChangesPage
+    participant API as Express API middleware
+    participant S as coachChangesService
+    participant SS as schedulesService
+    participant DB as Prisma / PostgreSQL
+
+    A->>UI: Review request and select qualified replacement if approving
+    UI->>API: PATCH /api/v1/coach-change-requests/:id
+    activate API
+    API->>API: authenticate, checkFacilityScope, authorizeExact(MANAGER), validate request
+    alt request guard rejects
+        API-->>UI: 400 / 401 / 403 error
+    else request accepted
+        API->>S: decideCoachChange(user, id, input)
+        activate S
+        S->>DB: Begin request transaction, lock request / schedule and read pending state with original time snapshot
+        activate DB
+        DB-->>S: Requested records and validation context
+        deactivate DB
+        S->>S: Require PENDING, and on approval a future unchanged session and different replacement
+        alt request no longer pending, stale session or replacement invalid
+            S->>DB: Roll back transaction
+            S-->>API: 400 / 403 / 404 / 409
+        else business conditions satisfied
+            opt decision APPROVED
+                S->>SS: updateSchedule(scheduleId, replacementCoachId, reason)
+                activate SS
+                SS->>DB: Read schedule, reuse ambient transaction and reacquire its schedule lock
+                DB-->>SS: Shared lock and current schedule / resource context
+                SS->>SS: Check resources, clashes, term and held-booking safeguards
+                opt helper validation succeeded
+                    SS->>DB: CAS SCHEDULED session update with replacement Coach
+                    DB-->>SS: Updated schedule or persistence error
+                end
+                SS-->>S: Updated schedule or validation / persistence error
+                deactivate SS
+                opt schedule helper returned successfully
+                    S->>S: validateResources using outer transaction
+                end
+            end
+            opt no earlier helper or validation error
+                S->>DB: Update decision and enqueue requester / replacement notifications
+                activate DB
+                DB-->>S: Saved request / outbox rows or persistence error
+                deactivate DB
+            end
+            alt nested helper or later persistence throws
+                S->>DB: Roll back outer request transaction
+                S-->>API: Propagate error, no decision success
+            else helper checks and outer writes succeeded
+                S->>DB: Commit schedule change, decision and outbox together
+                S->>S: Best-effort flushNotificationOutbox after commit
+                S-->>API: Recorded APPROVED or REJECTED request
+            end
+        end
+        deactivate S
+        API-->>UI: 200 result or mapped error
+    end
+    deactivate API
+    UI-->>A: Show result or actionable error
+%% Shared transaction: BE/src/config/prisma.ts lines 23-38 and 75-79. No independent nested commit.
+%% NESTING_EXCEPTION: request, initial business guards, helper outcome and optional approval checks are independent.
+
+%% Request validation schemas (see route evidence): coachChangeDecision

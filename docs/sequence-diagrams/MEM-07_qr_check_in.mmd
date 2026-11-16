@@ -1,0 +1,91 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% SCOPE: Class attendance QR, not facility door entry.
+%% SOURCES: FE/src/shared/QrAttendance.tsx
+%% SOURCES: BE/src/modules/attendance/attendance.routes.ts, attendance.controller.ts, attendance.service.ts
+%% SOURCES: BE/src/modules/subscriptions/entitlement.service.ts, BE/src/config/attendance.ts
+%% Eligibility is checked at scan time: startDate <= now < endDate, using server timestamps.
+%% EXCEPTION IN CODE: a valid approved term grant can authorize attendance after plan expiration.
+%% QR is reusable by different eligible members. No single-use QR nonce or rotation revocation exists.
+%% scanQr wraps subscription locking and activateMemberDue in a transaction.
+%% PostgreSQL calls use ambient transaction routing in BE/src/config/prisma.ts.
+%% Failure guards aggregate short-circuit checks. Later reads are skipped after an earlier error.
+%% No camera permission: UI shows camera error and offers manual credential entry separately.
+sequenceDiagram
+    actor A as Member
+    participant UI as ScanAttendanceQr
+    participant API as Express middleware / errorHandler
+    participant C as attendance.controller.ts
+    participant S as attendanceService
+    participant DB as Prisma / PostgreSQL
+    participant J as jsonwebtoken utility
+    A->>UI: Scan displayed class QR
+    UI->>UI: Decode QR and lock duplicate camera submission
+    UI->>API: POST /api/v1/attendance/scan-qr (qrToken)
+    activate API
+    API->>API: authenticate, checkFacilityScope, authorize(MEMBER), validate request
+    alt request rejected
+        API-->>UI: 400 / 401 / 403
+    else request accepted
+        API->>C: scanQr(req, res, next)
+        activate C
+        C->>S: scanQr(input, user)
+        activate S
+        S->>DB: memberProfile.findUnique(userId)
+        DB-->>S: Own profile or null
+        opt profile found
+            S->>DB: Open wrapper transaction, lockMemberSubscription and activateMemberDue
+            S->>S: scanQrInternal rereads profile through ambient transaction
+            S->>J: verify(qrToken), check ATTENDANCE_QR type and scheduleId
+            activate J
+            J-->>S: Valid payload or expired / invalid token error
+            deactivate J
+        end
+        alt profile missing or credential invalid
+            S->>DB: Roll back wrapper if it was opened
+            S-->>C: 404 profile missing or 400 expired / invalid QR
+        else credential valid
+            S->>DB: enrollment.findUnique(memberId_scheduleId)
+            DB-->>S: Enrollment
+            opt enrollment BOOKED or COMPLETED
+                S->>DB: Read effective subscription, schedule and approved grant source
+                DB-->>S: Scan-time entitlement and session
+                S->>S: Require paid startDate <= now < endDate or valid term grant
+                S->>S: assertAttendanceWindow if entitled, require SCHEDULED and start minus 30 minutes through end
+            end
+            opt enrolled, entitled and window open
+                S->>DB: attendance.findUnique(scheduleId_memberId)
+                DB-->>S: Existing attendance or null
+            end
+            alt enrollment, entitlement, schedule or attendance window invalid
+                S->>DB: Roll back subscription wrapper
+                S-->>C: 403 / 404 / 409 without attendance write
+            else existing ABSENT, LATE or EXCUSED
+                S->>DB: Roll back subscription wrapper
+                S-->>C: 409 finalized attendance, correction requires Manager
+            else existing PRESENT or no attendance row
+                S->>DB: Update PRESENT note if existing, otherwise create PRESENT
+                activate DB
+                DB-->>S: Saved attendance or persistence exception
+                deactivate DB
+                S->>DB: Commit due activation and attendance together
+                S-->>C: Attendance result
+            end
+        end
+        deactivate S
+        C-->>API: response or next(error)
+        deactivate C
+        API-->>UI: 200 attendance or mapped error
+    end
+    deactivate API
+    UI->>UI: Unlock submission, invalidate my-attendance only on success
+    UI-->>A: Show attendance result or rejection
+%% JWT utility is local cryptographic code, not an external network provider.
+%% Global Prisma attendance writes are redirected into the ambient subscription transaction.
+%% Member scans serialize on the subscription lock. A competing staff attendance write may still cause P2002 / 409.
+%% FREE alone cannot attend a class. A valid approved term grant can cover an expired paid plan.
+%% Exceptions skip subsequent success arrows and roll back activation and attendance together.
+
+%% IMPLEMENTATION_GAP: manual-code failure counters written before a thrown AppError also roll back in this wrapper.
+
+%% Request validation schemas (see route evidence): ScanQrSchema

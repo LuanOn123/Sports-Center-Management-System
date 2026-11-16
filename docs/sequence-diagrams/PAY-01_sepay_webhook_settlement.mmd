@@ -1,0 +1,60 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% USE CASE: SePay callback xác nhận thu tiền và cấp quyền
+%% SOURCE: BE/src/modules/payments/sepay-payments.service.ts
+%% SOURCE: BE/src/modules/payments/payments.controller.ts
+%% SOURCE: BE/src/modules/payments/payments.routes.ts
+%% SOURCE: BE/src/modules/subscriptions/subscription-purchase.service.ts
+%% Server callback has no human UI. SePay is the external initiating UML actor.
+%% Validation groups short-circuit. LATE does not automatically make a closed payment SUCCESS.
+%% Missing source plan skips activation. Money SUCCESS and activation REQUIRES_REVIEW are independent.
+sequenceDiagram
+    actor Bank as SePay
+    participant API as Express middleware / errorHandler
+    participant C as paymentsController
+    participant S as sepayPaymentsService / subscriptionPurchaseService
+    participant DB as Prisma / PostgreSQL
+    participant N as notificationOutbox
+    Bank->>API: POST /api/v1/payments/sepay/webhook
+    activate API
+    API->>C: sepayWebhook(req, res, next)
+    activate C
+    C->>S: handleSepayWebhook(headers, rawBody, body)
+    activate S
+    S->>S: Verify configured API key or HMAC and validate callback
+    alt authentication or payload invalid
+        S-->>C: 400 / 401 or configuration error
+    else trusted callback
+        S->>DB: Begin transaction, claim unique sepayId and find order under payment lock
+        DB-->>S: Claim outcome and current payment
+        S->>S: Validate incoming direction, order, account, unambiguous content and exact amount
+        alt duplicate, ignored, mismatched, late or bank allocation conflict
+            S->>DB: Persist actual event outcome and applicable ledger / review evidence
+            S->>DB: Commit without new membership activation
+            S->>S: finish settlement with DUPLICATE / IGNORED / MISMATCH / LATE
+        else matching PENDING order and accepted bank allocation
+            S->>DB: Read source plan and member, lock membership for purchase inspection
+            DB-->>S: Source plan, member and current membership context
+            S->>S: inspectPlanPurchase with sold snapshot if source plan exists
+            alt plan missing or purchase activation rejected
+                S->>DB: Record SUCCESS money, paidAt and REQUIRES_REVIEW without issued entitlement
+            else activation conditions satisfied
+                S->>DB: Persist ACTIVE / SCHEDULED subscription, SUCCESS payment, invoice and outbox
+                DB-->>S: Linked subscription and ACTIVATED state
+            end
+            S->>DB: Commit settlement and webhook result
+            S->>S: finish settlement as PROCESSED with separate money / rights outcome
+        end
+        S->>N: flushNotificationOutbox after settlement commit
+        activate N
+        N-->>S: Best-effort delivery outcome
+        deactivate N
+        S-->>C: Recorded settlement outcome
+    end
+    deactivate S
+    C-->>API: response or next(error)
+    deactivate C
+    API-->>Bank: 200 success true after recorded result, or mapped error
+    deactivate API
+%% Post-commit mismatch / late / activation-rejected notifications use the implemented notification helper.
+%% Unexpected database errors roll back the settlement transaction and return mapped error, not success true.

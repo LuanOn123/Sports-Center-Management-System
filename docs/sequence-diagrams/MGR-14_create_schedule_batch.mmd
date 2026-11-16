@@ -1,0 +1,55 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% USE CASE: Tạo lịch cho lớp đã có
+%% SOURCE: BE/src/modules/class-schedules/class-schedules.service.ts
+%% SOURCE: BE/src/modules/class-schedules/class-schedules.routes.ts
+%% SOURCE: BE/src/modules/operations/scheduling.ts
+%% SOURCE: FE/src/features/manage/ScheduleForm.tsx
+%% HTTP prefix: /api/v1. API lane includes verified middleware and errorHandler.
+%% Grouped read and validation calls short-circuit on error. No Repository layer is implied.
+%% Single-session POST /class-schedules delegates to the same batch helper.
+sequenceDiagram
+    actor A as Center Manager
+    participant UI as ScheduleForm
+    participant API as Express middleware / errorHandler
+    participant C as schedulesController
+    participant S as schedulesService
+    participant DB as Prisma / PostgreSQL
+
+    A->>UI: Confirm future class session slots
+    UI->>API: POST /api/v1/class-schedules/batch
+    activate API
+    API->>API: authenticate, checkFacilityScope, authorizeExact(MANAGER), validate request
+    alt request guard rejects
+        API-->>UI: 400 / 401 / 403 error
+    else request accepted
+        API->>C: createScheduleBatch(req, res, next)
+        activate C
+        C->>S: createScheduleBatch(data)
+        activate S
+        S->>DB: Begin transaction, lock class assignment, room and Coaches, load schedules / term context
+        activate DB
+        DB-->>S: Requested records and validation context
+        deactivate DB
+        S->>S: Require 1 to 500 future non-overlapping sessions, one sport and one primary Coach
+        S->>S: Validate room / expertise / leave / global conflicts and covering non-CLOSED term
+        alt past or invalid time, unavailable resource, clash or invalid term
+            S->>DB: Roll back transaction
+            S-->>C: 400 / 404 / 409
+        else business conditions satisfied
+            S->>DB: classSchedule.createMany(status SCHEDULED)
+            activate DB
+            DB-->>S: Saved result
+            deactivate DB
+            S->>DB: Commit transaction
+            S-->>C: schedulesCreated
+        end
+        deactivate S
+        C-->>API: response or next(error)
+        deactivate C
+        API-->>UI: 201 result or mapped error
+    end
+    deactivate API
+    UI-->>A: Show result or actionable error
+
+%% Request validation schemas (see route evidence): CreateScheduleBatchSchema

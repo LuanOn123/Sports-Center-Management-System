@@ -1,0 +1,76 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% USE CASE: Đăng nhập với CAPTCHA và kiểm tra đồng bộ tài khoản
+%% SOURCE: BE/src/modules/auth/auth.service.ts
+%% SOURCE: BE/src/modules/auth/auth.routes.ts
+%% SOURCE: BE/src/modules/auth/turnstile.service.ts
+%% SOURCE: FE/src/features/auth/Login.tsx
+%% No challenge token, password hash or session token value is exposed.
+%% Eligibility checks short-circuit before issuing tokens. FREE recovery is best-effort for Member login.
+sequenceDiagram
+    actor A as Guest
+    participant UI as Login / Session
+    participant API as Express middleware / errorHandler
+    participant C as authController
+    participant S as authService
+    participant MG as Mongo User / RefreshToken
+    participant PG as Prisma / PostgreSQL
+    participant CF as Cloudflare Turnstile
+    A->>UI: Submit credentials and completed challenge
+    UI->>API: POST /api/v1/auth/login
+    activate API
+    API->>API: validate request
+    alt invalid body
+        API-->>UI: 400 validation error
+    else body valid
+        API->>C: login(req, res, next)
+        activate C
+        C->>S: login(email, password, turnstileToken)
+        activate S
+        S->>CF: verifyTurnstile via siteverify
+        activate CF
+        CF-->>S: Verification outcome
+        deactivate CF
+        alt challenge invalid or unavailable
+            S-->>C: 400 invalid challenge or 503 verification unavailable
+        else success and action login
+            S->>MG: User.findOne(email).select(password)
+            activate MG
+            MG-->>S: User or null
+            deactivate MG
+            S->>S: Check active / READY state, comparePassword only for valid User
+            opt active User and password match
+                S->>PG: user.findUnique(id), select isActive and role
+                PG-->>S: Identity projection
+            end
+            alt missing User, bad password, locked account or projection mismatch
+                S-->>C: 401 / 403 / 503
+            else credentials and projection valid
+                S->>S: signAccessToken and signRefreshToken
+                S->>MG: RefreshToken.create(hashToken, userId, expiresAt)
+                MG-->>S: Stored refresh record
+                S->>S: Best-effort Member FREE recovery via ensureActiveFreeSubscription
+                S-->>C: Access and refresh credential envelope
+            end
+        end
+        deactivate S
+        C-->>API: sendSuccess or next(error)
+        deactivate C
+        API-->>UI: 200 credential envelope or mapped error
+    end
+    deactivate API
+    opt login succeeded, separate profile request
+        UI->>API: GET /api/v1/auth/me after storing credentials
+        API->>C: getMe(req, res, next) after authenticate
+        C->>S: getMe(authenticated userId)
+        S->>MG: Read User and role profile
+        MG-->>S: Safe identity and profile fields
+        S-->>C: Own profile with current role and staff assignments
+        C-->>API: Profile response or next(error)
+        API-->>UI: Profile response
+    end
+    UI-->>A: Route by loaded role or show login / profile failure
+%% FREE recovery and staff-assignment projection reads also use PostgreSQL helpers.
+%% Any failed mandatory persistence or profile request propagates, it does not grant UI access.
+
+%% Request validation schemas (see route evidence): LoginSchema

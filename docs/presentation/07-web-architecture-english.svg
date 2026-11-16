@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="860" viewBox="0 0 1400 860" role="img" aria-label="Web technology stack and architecture"><defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#000000"/></marker></defs><rect width="1400" height="860" fill="#FFFFFF"/><g font-family="Arial,sans-serif">
+<text x="20" y="35" fill="#000000" font-size="26" font-weight="bold">WEB TECHNOLOGY STACK AND ARCHITECTURE</text>
+<rect x="20" y="55" width="1360" height="175" fill="#FFFFFF" stroke="#000000"/>
+<text x="40" y="86" fill="#000000" font-size="22" font-weight="bold">FRONTEND · SPA</text>
+<rect x="40" y="110" width="420" height="95" fill="#FFFFFF" stroke="#000000"/>
+<text x="58" y="145" fill="#000000" font-size="22" font-weight="bold">React + TypeScript + Vite</text>
+<text x="58" y="180" fill="#000000" font-size="18">Web application</text>
+<rect x="490" y="110" width="420" height="95" fill="#FFFFFF" stroke="#000000"/>
+<text x="508" y="145" fill="#000000" font-size="22" font-weight="bold">Socket.IO Client</text>
+<text x="508" y="180" fill="#000000" font-size="18">Realtime events</text>
+<rect x="940" y="110" width="420" height="95" fill="#FFFFFF" stroke="#000000"/>
+<text x="958" y="145" fill="#000000" font-size="22" font-weight="bold">TanStack Query</text>
+<text x="958" y="180" fill="#000000" font-size="18">HTTP data fetching</text>
+<path d="M250 230 V305" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="270" y="275" fill="#000000" font-size="16">HTTP / REST + JWT</text>
+<path d="M700 230 V305" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="720" y="275" fill="#000000" font-size="16">Socket.IO + JWT</text>
+<rect x="20" y="305" width="1360" height="245" fill="#FFFFFF" stroke="#000000"/>
+<text x="40" y="338" fill="#000000" font-size="22" font-weight="bold">BACKEND · NODE.JS + EXPRESS + TYPESCRIPT</text>
+<text x="40" y="368" fill="#000000" font-size="19">Modular monolith: one backend organized into modules</text>
+<rect x="40" y="400" width="315" height="115" fill="#FFFFFF" stroke="#000000"/>
+<text x="55" y="437" fill="#000000" font-size="23" font-weight="bold">REST API</text>
+<text x="55" y="477" fill="#000000" font-size="16">JWT / Role / Facility scope / Zod</text>
+<rect x="375" y="400" width="315" height="115" fill="#FFFFFF" stroke="#000000"/>
+<text x="390" y="437" fill="#000000" font-size="23" font-weight="bold">Socket.IO Server</text>
+<text x="390" y="477" fill="#000000" font-size="16">Authenticated event handlers</text>
+<rect x="710" y="400" width="315" height="115" fill="#FFFFFF" stroke="#000000"/>
+<text x="725" y="437" fill="#000000" font-size="23" font-weight="bold">Prisma ORM</text>
+<text x="725" y="477" fill="#000000" font-size="16">PostgreSQL</text>
+<rect x="1045" y="400" width="315" height="115" fill="#FFFFFF" stroke="#000000"/>
+<text x="1060" y="437" fill="#000000" font-size="23" font-weight="bold">Mongoose</text>
+<text x="1060" y="477" fill="#000000" font-size="16">MongoDB</text>
+<path d="M195 550 V635" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="50" y="595" fill="#000000" font-size="16">API / SDK</text>
+<path d="M350 635 V550" fill="none" stroke="#000000" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+<text x="370" y="595" fill="#000000" font-size="16">SePay webhook</text>
+<path d="M868 550 V635" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M1202 550 V635" fill="none" stroke="#000000" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="20" y="635" width="665" height="140" fill="#FFFFFF" stroke="#000000"/>
+<text x="40" y="667" fill="#000000" font-size="21" font-weight="bold">EXTERNAL SERVICES</text>
+<text x="40" y="704" fill="#000000" font-size="19">Cloudinary / local uploads · SePay / VietQR · Groq AI</text>
+<text x="40" y="742" fill="#000000" font-size="19">Email: Brevo / Resend / SMTP · Turnstile</text>
+<rect x="710" y="635" width="315" height="140" fill="#FFFFFF" stroke="#000000"/>
+<text x="730" y="667" fill="#000000" font-size="21" font-weight="bold">SQL · PostgreSQL</text>
+<text x="730" y="704" fill="#000000" font-size="18">Business data and</text>
+<text x="730" y="738" fill="#000000" font-size="18">identity projections</text>
+<rect x="1045" y="635" width="335" height="140" fill="#FFFFFF" stroke="#000000"/>
+<text x="1065" y="667" fill="#000000" font-size="21" font-weight="bold">NoSQL · MongoDB</text>
+<text x="1065" y="704" fill="#000000" font-size="18">Identity source of truth</text>
+<text x="1065" y="738" fill="#000000" font-size="18">Profiles / Refresh tokens</text>
+<text x="20" y="811" fill="#000000" font-size="18">Identity synchronization runs in backend services: MongoDB → PostgreSQL.</text>
+<text x="20" y="843" fill="#000000" font-size="17">Web source verified. Mobile source is absent from this checkout. External services depend on configuration.</text>
+</g></svg>

@@ -5,9 +5,13 @@ import { api } from "./api";
 import type { Term } from "./generated";
 import "./member-status.css";
 
-function fmtDate(date: string | Date) {
-  return new Date(date).toLocaleDateString("vi-VN", {
+function fmtDate(date: string | Date, withTime = false) {
+  return new Date(date).toLocaleString("vi-VN", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
     timeZone: "Asia/Ho_Chi_Minh",
+    ...(withTime ? { hour: "2-digit", minute: "2-digit", hourCycle: "h23" } : {}),
   });
 }
 
@@ -47,7 +51,7 @@ export function MemberTermBanner({
     term.status === "CLOSED"
       ? `Kỳ học kết thúc ngày ${fmtDate(term.endDate)}.`
       : term.status === "PLANNING" || now < start
-        ? `Dự kiến mở đăng ký từ ${fmtDate(start)} đến ${fmtDate(end)}.`
+        ? `Dự kiến mở đăng ký từ ${fmtDate(start, true)} đến ${fmtDate(end)}.`
         : open
           ? `Đăng ký đến ${fmtDate(end)}${days > 0 ? ` · còn ${days} ngày` : " · hạn đăng ký hôm nay"}. Chọn lớp phù hợp với lịch tập của bạn.`
           : `Đăng ký đã đóng ngày ${fmtDate(end)}.${term.status === "IN_PROGRESS" ? " Bạn vẫn có thể theo dõi các lớp đã đăng ký." : ""}`;

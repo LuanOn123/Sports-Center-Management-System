@@ -1,0 +1,61 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% USE CASE: Tạo lễ tân cho cơ sở
+%% SOURCE: BE/src/modules/facilities/facilities.controller.ts
+%% SOURCE: BE/src/modules/facilities/facilities.route.ts
+%% SOURCE: BE/src/modules/users/users.service.ts
+%% SOURCE: BE/src/modules/users/provisioning.service.ts
+%% SOURCE: FE/src/features/manage/ManagerUsers.tsx
+%% HTTP prefix: /api/v1. API lane includes verified middleware and errorHandler.
+%% Grouped read and validation calls short-circuit on error. No Repository layer is implied.
+%% Recoverable account provisioning is detailed in AUTH-01. It is not a distributed atomic write.
+sequenceDiagram
+    actor A as Center Manager
+    participant UI as ManagerUsers
+    participant API as Express middleware / errorHandler
+    participant C as facilities.controller.ts
+    participant S as usersService / provisioningService
+    participant MG as Mongo User / role profile
+    participant PG as Prisma / PostgreSQL
+    A->>UI: Submit new RECEPTIONIST identity
+    UI->>API: POST /api/v1/facilities/:facilityId/receptionists
+    activate API
+    API->>API: authenticate, checkFacilityScope, authorize(ADMIN, MANAGER), validate body
+    alt request rejected
+        API-->>UI: 400 / 401 / 403
+    else request accepted
+        API->>C: createFacilityReceptionist(req, res)
+        activate C
+        C->>PG: facility.findUnique(scoped facilityId)
+        PG-->>C: Facility
+        alt facility missing or inactive
+            C-->>API: AppError 404
+        else active facility
+            C->>S: createUser(data with role RECEPTIONIST, facilityId)
+            activate S
+            S->>S: provisionAccount validates identity and role requirements
+            S->>MG: Check duplicate email and recoverable provisioning lease
+            MG-->>S: Identity and lease context
+            S->>MG: If eligible persist inactive PENDING identity and role profile
+            S->>PG: Upsert projection, role profile and FacilityStaff inside transaction
+            PG-->>S: Provisioning outcome
+            alt identity, role requirements or provisioning fails
+                S->>S: Reject duplicate or perform implemented FAILED-state cleanup
+                S-->>C: 400 / 409 / 503
+            else both stores ready
+                S->>MG: Set active READY
+                S->>PG: Mark projection active
+                S->>MG: Clear provisioning lease
+                S-->>C: Safe created account DTO
+            end
+            deactivate S
+            C-->>API: sendSuccess with 201 or propagated error
+        end
+        deactivate C
+        API-->>UI: 201 account or mapped error
+    end
+    deactivate API
+    UI-->>A: Show created staff or error
+%% Provisioning stages short-circuit on rejection. No PENDING identity is created for a rejected duplicate.
+%% COACH additionally validates active sportIds and facility Coach limits. Receptionist has no invented Coach constraints.
+%% Cross-store provisioning is a recoverable saga, not a distributed atomic transaction.
