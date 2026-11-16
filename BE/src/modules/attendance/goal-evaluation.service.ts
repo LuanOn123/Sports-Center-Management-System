@@ -2,6 +2,7 @@ import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { effectiveCoachIds } from "../operations/effective-coaches.js";
 import { createNotification } from "../notifications/notifications.service.js";
+import { lockMemberClass } from "../../utils/dbLocks.js";
 
 /**
  * Đảm bảo Member có một MemberCourseGoal cho (memberId, classId).
@@ -41,14 +42,16 @@ export async function ensureMemberCourseGoal(
     member?.fitnessGoal?.trim() ||
     `Hoàn thành khóa học ${cls.name}`;
 
-  return prisma.memberCourseGoal.create({
-    data: {
+  return prisma.memberCourseGoal.upsert({
+    where: { memberId_classId: { memberId, classId } },
+    create: {
       memberId,
       classId,
       goal: fallbackGoal,
       progress: 0,
       status: "IN_PROGRESS",
     },
+    update: requestedGoal?.trim() ? { goal: requestedGoal.trim() } : {},
   });
 }
 
@@ -110,6 +113,7 @@ export async function getScheduleEvaluations(
             previousProgress: evaluation.previousProgress,
             newProgress: evaluation.newProgress,
             description: evaluation.description,
+            results: evaluation.results,
             createdAt: evaluation.createdAt,
             updatedAt: evaluation.updatedAt,
           }
@@ -124,7 +128,7 @@ export async function getScheduleEvaluations(
 export async function saveScheduleEvaluation(
   scheduleId: string,
   memberId: string,
-  data: { progress: number; description?: string | null },
+  data: { progress: number; description?: string | null; results?: string | null },
   actor: { id: string; role: string }
 ) {
   const schedule = await prisma.classSchedule.findUnique({
@@ -141,6 +145,9 @@ export async function saveScheduleEvaluation(
   });
 
   if (!schedule) throw new AppError("Schedule not found", 404);
+  if (schedule.status === "CANCELLED" || schedule.startTime > new Date()) {
+    throw new AppError("Chỉ đánh giá tiến độ khi buổi học đã bắt đầu.", 400);
+  }
 
   let coachProfileId: string | null = null;
   let coachName = "Huấn luyện viên";
@@ -172,48 +179,48 @@ export async function saveScheduleEvaluation(
     throw new AppError("Forbidden: Only Coach or Manager can evaluate progress", 403);
   }
 
-  // 1. Đảm bảo có mục tiêu khóa học
-  const courseGoal = await ensureMemberCourseGoal(memberId, schedule.classId);
-
-  // 2. Chuẩn hóa progress 0 - 100
-  const cleanProgress = Math.max(0, Math.min(100, Math.round(Number(data.progress) || 0)));
+  const cleanProgress = Math.round(data.progress);
   const cleanDescription = data.description?.trim() || null;
+  const author = coachProfileId;
+  const { evaluation, updatedGoal } = await prisma.$transaction(async (tx) => {
+    await lockMemberClass(tx, memberId, schedule.classId);
+    const enrollment = await tx.enrollment.findFirst({
+      where: { scheduleId, memberId, status: { in: ["BOOKED", "COMPLETED"] } },
+      select: { id: true },
+    });
+    if (!enrollment) throw new AppError("Hội viên chưa đăng ký buổi học này.", 404);
 
-  // 3. Kiểm tra đánh giá cũ của buổi này (nếu có)
-  const existingEval = await prisma.slotEvaluation.findUnique({
-    where: { scheduleId_memberId: { scheduleId, memberId } },
+    const courseGoal = await ensureMemberCourseGoal(memberId, schedule.classId);
+    const fields = {
+      coachId: author, goalId: courseGoal.id, newProgress: cleanProgress, description: cleanDescription,
+      ...(data.results !== undefined && { results: data.results?.trim() || null }),
+    };
+    const saved = await tx.slotEvaluation.upsert({
+      where: { scheduleId_memberId: { scheduleId, memberId } },
+      create: { scheduleId, memberId, ...fields },
+      update: fields,
+    });
+    const history = await tx.slotEvaluation.findMany({
+      where: { memberId, schedule: { classId: schedule.classId } },
+      orderBy: [{ schedule: { startTime: "asc" } }, { scheduleId: "asc" }],
+      select: { id: true, previousProgress: true, newProgress: true },
+    });
+    let progress = 0;
+    let previousProgress = 0;
+    for (const entry of history) {
+      if (entry.id === saved.id) previousProgress = progress;
+      if (entry.previousProgress !== progress) {
+        await tx.slotEvaluation.update({ where: { id: entry.id }, data: { previousProgress: progress } });
+      }
+      progress = entry.newProgress;
+    }
+    const goal = await tx.memberCourseGoal.update({
+      where: { id: courseGoal.id },
+      data: { progress, status: progress >= 100 ? "COMPLETED" : "IN_PROGRESS" },
+    });
+    return { evaluation: { ...saved, previousProgress }, updatedGoal: goal };
   });
-
-  const previousProgress = existingEval ? existingEval.previousProgress : courseGoal.progress;
-
-  // 4. Lưu / Cập nhật SlotEvaluation
-  const evaluation = await prisma.slotEvaluation.upsert({
-    where: { scheduleId_memberId: { scheduleId, memberId } },
-    create: {
-      scheduleId,
-      memberId,
-      coachId: coachProfileId,
-      goalId: courseGoal.id,
-      previousProgress,
-      newProgress: cleanProgress,
-      description: cleanDescription,
-    },
-    update: {
-      coachId: coachProfileId,
-      goalId: courseGoal.id,
-      newProgress: cleanProgress,
-      description: cleanDescription,
-    },
-  });
-
-  // 5. Cập nhật tiến độ vào MemberCourseGoal
-  const updatedGoal = await prisma.memberCourseGoal.update({
-    where: { id: courseGoal.id },
-    data: {
-      progress: cleanProgress,
-      status: cleanProgress >= 100 ? "COMPLETED" : "IN_PROGRESS",
-    },
-  });
+  const { previousProgress } = evaluation;
 
   // 6. Gửi thông báo đến Member
   const member = await prisma.memberProfile.findUnique({
@@ -325,6 +332,7 @@ export async function getMyClassGoal(classId: string, userId: string) {
       newProgress: ev.newProgress,
       diff: ev.newProgress - ev.previousProgress,
       description: ev.description,
+      results: ev.results,
       createdAt: ev.createdAt,
     })),
   };

@@ -7,6 +7,7 @@ import {
   BookOpen,
   CalendarDays,
   Bell,
+  Bot,
 } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
@@ -64,6 +65,11 @@ const Notifications = lazy(() =>
     default: m.NotificationsPage,
   })),
 );
+const AIAssistant = lazy(() =>
+  import("../../pages/member/AIAssistantPage").then((m) => ({
+    default: m.AIAssistantPage,
+  })),
+);
 const items = [
   ["dashboard", "Tổng quan hội viên", LayoutDashboard],
   ["schedule", "Lịch tập", CalendarDays],
@@ -72,6 +78,7 @@ const items = [
   ["membership", "Gói thành viên", CreditCard],
   ["waitlist", "Danh sách chờ", BookOpen],
   ["notifications", "Thông báo", Bell],
+  ["ai-assistant", "Trợ lý AI", Bot],
 ] as const;
 export function UserLayout(props: PortalProps) {
   return (
@@ -109,6 +116,7 @@ export function UserLayout(props: PortalProps) {
                 <Route path="/member/attendance" element={<Attendance />} />
                 <Route path="/member/checkin" element={<FacilityVisits />} />
                 <Route path="/member/waitlist" element={<Waitlist />} />
+                <Route path="/member/ai-assistant" element={<AIAssistant />} />
                 <Route
                   path="/member/notifications"
                   element={<Notifications />}

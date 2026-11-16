@@ -29,6 +29,8 @@ import { CoachCard, CoachProfileDialog } from "../../shared/CoachProfileDialog";
 import type { CoachInfo } from "../../types/member";
 import { WaitlistAction } from "../../shared/Waitlist";
 import { ErrorState } from "../../shared/feedback";
+import { Modal } from "../../shared/ui";
+import { TrainingPlans } from "../../shared/TrainingPlans";
 import { formatMemberDate } from "../../shared/memberFormat";
 import { sportNames } from "../../shared/sports";
 import {
@@ -694,8 +696,9 @@ export function ClassDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<{ termId: string | null } | null>(null);
   const [actionError, setActionError] = useState<unknown>(null);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<{ title: string; message: string } | null>(null);
 
   const {
     data: cls,
@@ -714,6 +717,12 @@ export function ClassDetailPage() {
     queryKey: ["course-plan", id],
     queryFn: () => (id ? classesApi.getCoursePlan(id) : null),
     enabled: Boolean(id),
+    refetchInterval: ({ state: { data } }) => {
+      const upcoming = data?.registration?.blockers.find((blocker) => blocker.code === "TERM_REGISTRATION_NOT_STARTED");
+      const opensAt = upcoming?.details?.registrationStartDate;
+      if (typeof opensAt !== "string") return false;
+      return Math.max(1000, Math.min(60_000, Date.parse(opensAt) - Date.now()));
+    },
   });
   const { data: currentUser } = useQuery({
     queryKey: ["current-user-me"],
@@ -744,11 +753,12 @@ export function ClassDetailPage() {
     onMutate: () => queryClient.cancelQueries({ queryKey: ["course-plan", id] }),
     onSuccess: async (result) => {
       const { summary } = result;
-      setActionSuccess(
-        summary.enrolledNow > 0
+      setActionSuccess({
+        title: "Đăng ký thành công",
+        message: summary.enrolledNow > 0
           ? `Bạn đã đăng ký ${summary.enrolledNow} buổi của khóa "${result.className}". Hiện đã có ${summary.totalRegistered}/${summary.totalSessions} buổi trong khóa của bạn.`
           : `Bạn đã đăng ký đủ ${summary.totalSessions} buổi của khóa này trước đó.`,
-      );
+      });
       setActionError(null);
       setConfirmOpen(false);
       await queryClient.cancelQueries({
@@ -763,6 +773,7 @@ export function ClassDetailPage() {
           ["class", result.classId],
           ["course-plan", result.classId],
           ["my-class-goal", result.classId],
+          ["training-plans", result.classId],
           ["my-enrollments"],
           ["my-enrollment-quota"],
           ["member-schedule"],
@@ -773,6 +784,21 @@ export function ClassDetailPage() {
     onError: (err: unknown) => {
       setActionError(err);
       setConfirmOpen(false);
+    },
+  });
+  const cancelCourse = useMutation({
+    mutationFn: (termId: string | null) => enrollmentsApi.cancelWholeCourse(id!, termId),
+    onSuccess: async ({ cancelledSessions }) => {
+      setCancelTarget(null);
+      setActionError(null);
+      setActionSuccess({
+        title: "Đã xử lý yêu cầu hủy",
+        message: cancelledSessions ? `Đã hủy ${cancelledSessions} buổi còn lại của khóa.` : "Bạn không còn buổi nào cần hủy trong khóa này.",
+      });
+      await Promise.all(
+        [["course-plan", id], ["class", id], ["my-enrollments"], ["my-enrollment-quota"], ["member-schedule"], ["waitlist"], ["training-plans", id], ["classes"]]
+          .map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      );
     },
   });
 
@@ -807,19 +833,17 @@ export function ClassDetailPage() {
     plan?.sessions?.find((s: any) => s.term)?.term;
 
   const now = Date.now();
-  const isTermPlanning = courseTerm?.status === "PLANNING";
-  const isTermNotStarted = Boolean(
-    courseTerm?.registrationStartDate &&
-    new Date(courseTerm.registrationStartDate).getTime() > now,
-  );
+  const upcomingBooking = plan?.sessions.find((session) => session.myEnrollmentStatus === "BOOKED" && Date.parse(session.startTime) > now);
   const isTermClosed = Boolean(
     courseTerm?.status === "CLOSED" ||
     (courseTerm?.registrationEndDate &&
       new Date(courseTerm.registrationEndDate).getTime() < now),
   );
-  const isTermBlocked = Boolean(
-    courseTerm && (isTermPlanning || isTermNotStarted || isTermClosed),
+  const isTermNotStarted = Boolean(
+    !isTermClosed && courseTerm?.registrationStartDate &&
+    new Date(courseTerm.registrationStartDate).getTime() > now,
   );
+  const isTermBlocked = isTermNotStarted || isTermClosed;
 
   const daysRemaining =
     courseTerm?.registrationEndDate && !isTermClosed
@@ -917,8 +941,8 @@ export function ClassDetailPage() {
       {actionSuccess && (
         <AlertBanner
           type="success"
-          title="Đăng ký thành công"
-          message={actionSuccess}
+          title={actionSuccess.title}
+          message={actionSuccess.message}
         />
       )}
       {actionError !== null && (
@@ -1291,6 +1315,7 @@ export function ClassDetailPage() {
                           </div>
                         </div>
                       )}
+                      {ev.results && <div style={{ whiteSpace: "pre-wrap" }}><strong>Kết quả buổi tập</strong><p>{ev.results}</p></div>}
                     </div>
                   );
                 })}
@@ -1299,6 +1324,8 @@ export function ClassDetailPage() {
           </div>
         </section>
       )}
+
+      {currentUser?.role === "MEMBER" && (classGoalQuery.data || upcomingBooking) && <TrainingPlans classId={cls.id} />}
 
       <section style={cardStyle}>
         <h2
@@ -1465,18 +1492,16 @@ export function ClassDetailPage() {
             )}
             {courseTerm && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {isTermPlanning && (
-                  <AlertBanner
-                    type="warning"
-                    title="Chưa mở cổng đăng ký"
-                    message={`Khóa học thuộc kỳ "${courseTerm.name}" đang lập kế hoạch, chưa mở đăng ký.`}
-                  />
-                )}
                 {isTermNotStarted && (
                   <AlertBanner
                     type="info"
-                    title="Chưa tới ngày mở đăng ký"
-                    message={`Kỳ học "${courseTerm.name}" sẽ mở cổng đăng ký từ ngày ${new Date(courseTerm.registrationStartDate).toLocaleDateString("vi-VN")}.`}
+                    title="Chưa đến giờ mở đăng ký"
+                    message={`Kỳ học "${courseTerm.name}" sẽ mở cổng đăng ký lúc ${new Date(courseTerm.registrationStartDate).toLocaleString("vi-VN", {
+                      timeZone: "Asia/Ho_Chi_Minh",
+                      dateStyle: "short",
+                      timeStyle: "short",
+                      hourCycle: "h23",
+                    })}.`}
                   />
                 )}
                 {isTermClosed && (
@@ -1531,24 +1556,42 @@ export function ClassDetailPage() {
                 ? "Đã đăng ký trọn khóa"
                 : enrollCourseMutation.isPending
                   ? "Đang đăng ký…"
-                  : isTermPlanning
-                    ? "Kỳ đang lập kế hoạch"
-                    : isTermNotStarted
-                      ? "Chưa mở đăng ký"
-                      : isTermClosed
-                        ? "Đã hết hạn đăng ký"
-                        : !registration ||
-                            !registration.eligible ||
-                            course.availability.minRemainingSlots === 0
-                          ? "Chưa thể đăng ký"
-                          : "Đăng ký trọn khóa"}
+                  : isTermNotStarted
+                    ? "Chưa mở đăng ký"
+                    : isTermClosed
+                      ? "Đã hết hạn đăng ký"
+                      : !registration ||
+                          !registration.eligible ||
+                          course.availability.minRemainingSlots === 0
+                        ? "Chưa thể đăng ký"
+                        : "Đăng ký trọn khóa"}
             </button>
+            {upcomingBooking && (
+              <button className="button danger" disabled={cancelCourse.isPending} style={{ alignSelf: "flex-start" }} onClick={() => {
+                cancelCourse.reset();
+                setCancelTarget({ termId: upcomingBooking.termId ?? upcomingBooking.term?.id ?? null });
+              }}>
+                Hủy đăng ký toàn khóa
+              </button>
+            )}
             {/* BẢNG LỊCH TRÌNH KHÓA HỌC DẠNG BẢNG & MA TRẬN TUẦN TRỰC QUAN */}
             <CourseScheduleTableView course={course} sessions={plan.sessions} />
           </div>
         )}
       </section>
 
+      {cancelTarget && (
+        <Modal title="Hủy đăng ký toàn khóa" onClose={() => setCancelTarget(null)} dismissible={!cancelCourse.isPending}>
+          <p>Thao tác này hủy tất cả buổi chưa diễn ra của khóa <strong>{cls.name}</strong> trong kỳ này.</p>
+          {cancelCourse.error && <ErrorState error={cancelCourse.error} />}
+          <div className="modal-footer">
+            <button className="button" disabled={cancelCourse.isPending} onClick={() => setCancelTarget(null)}>Quay lại</button>
+            <button className="button danger" disabled={cancelCourse.isPending} onClick={() => cancelCourse.mutate(cancelTarget.termId)}>
+              {cancelCourse.isPending ? "Đang hủy…" : "Xác nhận hủy toàn khóa"}
+            </button>
+          </div>
+        </Modal>
+      )}
       <EnrollConfirmModal
         isOpen={confirmOpen}
         onClose={() => setConfirmOpen(false)}

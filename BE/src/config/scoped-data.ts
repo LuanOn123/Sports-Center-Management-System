@@ -35,6 +35,7 @@ export const parents: Record<string, string[]> = {
   AttendanceManualCode: ["schedule", "class"],
   AttendancePenalty: ["class"],
   CoachFeedback: ["class"],
+  TrainingPlan: ["class"],
 };
 export function facilityFilter(
   model: string,

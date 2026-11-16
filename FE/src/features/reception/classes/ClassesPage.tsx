@@ -163,14 +163,19 @@ export function ClassesPage() {
     }
   }
 
-  async function handleConfirmCancel() {
-    if (!confirmCancelRow) return;
+  async function handleConfirmCancel(wholeCourse = false) {
+    if (!confirmCancelRow || !schedule) return;
     setIsCancelling(true);
     setCancelError(null);
     try {
-      await api("DELETE /enrollments/{id}", {
-        params: { id: String(confirmCancelRow.id) },
-      });
+      if (wholeCourse) {
+        await api("POST /enrollments/courses/{classId}/cancel", {
+          params: { classId: String(schedule.classId ?? at(schedule, "class.id")) },
+          body: { memberId: String(confirmCancelRow.memberId ?? at(confirmCancelRow, "member.id")), termId: schedule.termId ?? at(schedule, "term.id") ?? null },
+        });
+      } else {
+        await api("DELETE /enrollments/{id}", { params: { id: String(confirmCancelRow.id) } });
+      }
       setConfirmCancelRow(null);
       void enrollments.refetch();
       void client.invalidateQueries({
@@ -666,7 +671,7 @@ export function ClassesPage() {
             <strong>{display(at(schedule, "class.name"))}</strong>?
           </p>
           <p className="field-note">
-            Chỗ học sẽ được thu hồi để nhường cho hội viên khác hoặc danh sách chờ. Thao tác này không thể hoàn tác trực tiếp.
+            Bạn có thể hủy buổi đã chọn hoặc tất cả buổi còn lại trong kỳ của lớp này.
           </p>
 
           {cancelError != null && <ErrorState error={cancelError} />}
@@ -682,9 +687,12 @@ export function ClassesPage() {
             <button
               className="button danger"
               disabled={isCancelling}
-              onClick={handleConfirmCancel}
+              onClick={() => handleConfirmCancel()}
             >
               {isCancelling ? "Đang hủy…" : "Xác nhận hủy đăng ký"}
+            </button>
+            <button className="button danger" disabled={isCancelling} onClick={() => handleConfirmCancel(true)}>
+              Hủy toàn khóa
             </button>
           </div>
         </Modal>

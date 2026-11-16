@@ -6029,8 +6029,7 @@
                 "type": "string",
                 "enum": [
                   "user",
-                  "assistant",
-                  "system"
+                  "assistant"
                 ]
               },
               "content": {
@@ -7601,6 +7600,9 @@
           "type": "string"
         },
         "description": {
+          "type": "string"
+        },
+        "memberId": {
           "type": "string"
         }
       },
@@ -9183,6 +9185,529 @@
       "400",
       "409",
       "500"
+    ]
+  },
+  "POST /ai/member-chat": {
+    "path": "/ai/member-chat",
+    "method": "POST",
+    "summary": "Trợ lý AI với lịch và tiến độ của hội viên đăng nhập",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "assistant"
+                ]
+              },
+              "content": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "role",
+              "content"
+            ]
+          }
+        }
+      },
+      "required": [
+        "message"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "GET /reports/facility-activity": {
+    "path": "/reports/facility-activity",
+    "method": "GET",
+    "summary": "Số hội viên hoạt động và đăng ký theo trạng thái tại cơ sở",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "startDate",
+        "in": "query",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "endDate",
+        "in": "query",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "POST /enrollments/courses/{classId}/cancel": {
+    "path": "/enrollments/courses/{classId}/cancel",
+    "method": "POST",
+    "summary": "Hủy các buổi còn lại của khóa trong kỳ đã chọn",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "classId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "termId": {
+          "type": "string",
+          "nullable": true
+        },
+        "memberId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "termId"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "GET /classes/{id}/training-plans": {
+    "path": "/classes/{id}/training-plans",
+    "method": "GET",
+    "summary": "Giáo án của lớp và cá nhân theo quyền truy cập",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "POST /classes/{id}/training-plans": {
+    "path": "/classes/{id}/training-plans",
+    "method": "POST",
+    "summary": "HLV giao giáo án",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "homework": {
+          "type": "string",
+          "nullable": true
+        },
+        "memberId": {
+          "type": "string",
+          "nullable": true
+        }
+      },
+      "required": [
+        "title",
+        "instructions"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "PATCH /classes/{id}/training-plans/{planId}": {
+    "path": "/classes/{id}/training-plans/{planId}",
+    "method": "PATCH",
+    "summary": "HLV sửa giáo án đã giao",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "planId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "homework": {
+          "type": "string",
+          "nullable": true
+        }
+      },
+      "required": [
+        "title",
+        "instructions"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "POST /classes/{id}/training-plans/suggest": {
+    "path": "/classes/{id}/training-plans/suggest",
+    "method": "POST",
+    "summary": "HLV tạo bản nháp giáo án bằng AI",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "memberId": {
+          "type": "string",
+          "nullable": true
+        },
+        "objective": {
+          "type": "string"
+        }
+      }
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "GET /attendance/schedules/{scheduleId}/evaluations": {
+    "path": "/attendance/schedules/{scheduleId}/evaluations",
+    "method": "GET",
+    "summary": "HLV xem đánh giá của buổi học",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "scheduleId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "POST /attendance/schedules/{scheduleId}/evaluations": {
+    "path": "/attendance/schedules/{scheduleId}/evaluations",
+    "method": "POST",
+    "summary": "Lưu tiến độ và kết quả của buổi học",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "scheduleId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "progress": {
+          "type": "integer"
+        },
+        "description": {
+          "type": "string",
+          "nullable": true
+        },
+        "results": {
+          "type": "string",
+          "nullable": true
+        }
+      },
+      "required": [
+        "memberId",
+        "progress"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "GET /attendance/classes/{classId}/my-goal": {
+    "path": "/attendance/classes/{classId}/my-goal",
+    "method": "GET",
+    "summary": "Hội viên xem mục tiêu và tiến độ của khóa",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "classId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
+    ]
+  },
+  "PATCH /attendance/classes/{classId}/my-goal": {
+    "path": "/attendance/classes/{classId}/my-goal",
+    "method": "PATCH",
+    "summary": "Yêu cầu thay đổi mục tiêu khóa học",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "classId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "properties": {
+        "goal": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "goal"
+      ]
+    },
+    "statusCodes": [
+      "200",
+      "400",
+      "403",
+      "409"
     ]
   }
 }

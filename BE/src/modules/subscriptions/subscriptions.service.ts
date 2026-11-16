@@ -5,7 +5,7 @@ import { prisma } from "../../config/prisma.js";
 import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
-import { createNotification } from "../notifications/notifications.service.js";
+import { createNotification, notifyReceptionistsAboutRefund } from "../notifications/notifications.service.js";
 import { enqueueNotification, flushNotificationOutbox } from "../notifications/outbox.service.js";
 import { activateSubscriptionForPayment, applyPlanSwitchRules } from "./subscription-purchase.service.js";
 import { lockMemberSubscription } from "../../utils/dbLocks.js";
@@ -362,6 +362,23 @@ async function cancelScheduledSubscription(
   });
   await flushNotificationOutbox().catch(() => {});
 
+  if (willRefund && originalPayment) {
+    setImmediate(async () => {
+      try {
+        await notifyReceptionistsAboutRefund({
+          facilityId: originalPayment.facilityId,
+          paymentId: originalPayment.id,
+          memberUserId: sub.member.userId,
+          memberName: (sub.member as any).user?.fullName,
+          refundAmount,
+          reason: "Hội viên hủy gói tập chờ kích hoạt theo chính sách hoàn tiền 100%",
+        });
+      } catch (e) {
+        console.error("Failed to notify receptionists about scheduled refund:", e);
+      }
+    });
+  }
+
   return { subscriptionId: sub.id, status: "CANCELLED", daysLeft: 0, refundAmount, willRefund };
 }
 
@@ -582,7 +599,7 @@ export async function cancelSubscriptionBySelf(
     where: { id: subscriptionId },
     include: {
       plan: true,
-      member: { select: { id: true, userId: true } },
+      member: { select: { id: true, userId: true, user: { select: { fullName: true } } } },
       payments: {
         where: { status: "SUCCESS" },
         orderBy: { paidAt: "desc" },
@@ -661,6 +678,23 @@ export async function cancelSubscriptionBySelf(
     });
   });
   await flushNotificationOutbox().catch(() => {});
+
+  if (willRefund && originalPayment) {
+    setImmediate(async () => {
+      try {
+        await notifyReceptionistsAboutRefund({
+          facilityId: originalPayment.facilityId,
+          paymentId: originalPayment.id,
+          memberUserId: userId,
+          memberName: (sub.member as any).user?.fullName,
+          refundAmount,
+          reason: "Hội viên tự hủy gói tập theo chính sách hoàn tiền",
+        });
+      } catch (e) {
+        console.error("Failed to notify receptionists about refund:", e);
+      }
+    });
+  }
 
   return {
     subscriptionId,

@@ -11,12 +11,13 @@ const router = Router();
 
 router.use(authenticate, authorize("MANAGER"));
 router.use((req, res, next) => {
-  if (req.user?.role === "MANAGER" && req.path !== "/revenue" && req.path !== "/memberships") {
+  if (req.user?.role === "MANAGER" && !["/revenue", "/memberships", "/facility-activity"].includes(req.path)) {
     res.status(403).json({ success: false, message: "Manager chỉ được xem báo cáo cơ sở" });
     return;
   }
   next();
 });
+router.get("/facility-activity", validate(DateRangeSchema, "query"), reportsController.getFacilityActivity);
 router.get("/facilities", authorizeExact("ADMIN"), validate(DateRangeSchema, "query"), async (req, res) => {
   sendSuccess(res, await getFacilityOverview(String(req.query.startDate), String(req.query.endDate)));
 });

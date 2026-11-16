@@ -12,8 +12,10 @@ import {
 import * as classesController from "./classes.controller.js";
 import { getClassRegistrations } from "./classes.service.js";
 import { sendSuccess } from "../../utils/response.js";
+import trainingPlanRoutes from "./training-plans.routes.js";
 
 const router = Router();
+router.use("/:id/training-plans", trainingPlanRoutes);
 router.get("/:id/registrations", authenticate, authorize("MANAGER", "RECEPTIONIST"), async (req, res) => sendSuccess(res, await getClassRegistrations(String(req.params.id))));
 
 /**

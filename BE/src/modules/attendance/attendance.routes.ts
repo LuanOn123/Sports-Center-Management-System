@@ -623,6 +623,7 @@ router.post(
 
 router.get(
   "/schedules/:scheduleId/evaluations",
+  authorize("COACH", "MANAGER", "ADMIN"),
   controller.getScheduleEvaluations
 );
 

@@ -11,6 +11,8 @@ import { ClassesPage } from "./classes/ClassesPage";
 import { PaymentsPage } from "./payments/PaymentsPage";
 import { resources } from "../manage/config";
 import { ResourcePage } from "../manage/ResourcePage";
+import { FacilityVisits } from "../../shared/FacilityVisits";
+import { ReceptionAttendance } from "./ReceptionAttendance";
 
 const items = [
   ["dashboard", "Tổng quan"],
@@ -19,6 +21,8 @@ const items = [
   ["orders", "Bán gói tại quầy"],
   ["classes", "Đăng ký lớp"],
   ["schedules", "Lịch lớp học"],
+  ["checkin", "Check-in cơ sở"],
+  ["attendance", "Chuyên cần"],
   ["payments", "Thanh toán & hóa đơn"],
   ["support", "Yêu cầu hỗ trợ"],
 ] as const;
@@ -31,7 +35,7 @@ export function ReceptionLayout(props: PortalProps) {
       <Routes>
         <Route
           path="/receptionist/attendance"
-          element={<Navigate replace to="/receptionist/dashboard" />}
+          element={<ReceptionAttendance />}
         />
         <Route
           path="/receptionist/orders"
@@ -64,7 +68,7 @@ export function ReceptionLayout(props: PortalProps) {
         {/* Redirects for removed sections */}
         <Route
           path="/receptionist/checkin"
-          element={<Navigate replace to="/receptionist/dashboard" />}
+          element={<FacilityVisits staff />}
         />
         <Route
           path="/receptionist/catalogue"

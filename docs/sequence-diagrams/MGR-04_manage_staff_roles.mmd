@@ -1,0 +1,56 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% USE CASE: Admin đổi vai trò hoặc trạng thái tài khoản
+%% SOURCE: BE/src/modules/users/users.service.ts
+%% SOURCE: BE/src/modules/users/users.routes.ts
+%% SOURCE: BE/src/modules/users/user-projection.service.ts
+%% SOURCE: FE/src/features/manage/ResourcePage.tsx
+%% HTTP prefix: /api/v1. API lane includes verified middleware and errorHandler.
+%% Grouped read and validation calls short-circuit on error. No Repository layer is implied.
+%% Cross-store identity synchronization is not a distributed transaction. SQL rollback cannot undo every earlier Mongo mutation.
+%% Manager operational staff assignment is separate from Admin global role management.
+sequenceDiagram
+    actor A as Admin
+    participant UI as ResourcePage / AdminFacilities
+    participant API as Express middleware / errorHandler
+    participant C as usersController
+    participant S as usersService
+    participant DB as Mongo models / Prisma
+
+    A->>UI: Change user role or active state
+    UI->>API: PATCH /api/v1/users/:id
+    activate API
+    API->>API: authenticate, authorize(ADMIN), validate request
+    alt request guard rejects
+        API-->>UI: 400 / 401 / 403 error
+    else request accepted
+        API->>C: updateUser(req, res, next)
+        activate C
+        C->>S: updateUser(id, data, requesterId)
+        activate S
+        S->>DB: Lock identity in wrapper, read Mongo and global PostgreSQL projection
+        activate DB
+        DB-->>S: Requested records and validation context
+        deactivate DB
+        S->>S: Protect own role and account, last Admin / Manager, active member rights and future Coach assignments
+        alt protected identity or incompatible existing business relations
+            S->>DB: Roll back PostgreSQL transaction, Mongo writes cannot roll back with it
+            S-->>C: 400 / 404 / 409
+        else business conditions satisfied
+            S->>DB: Update identity and role profiles, synchronize projection and revoke obsolete sessions as implemented
+            activate DB
+            DB-->>S: Saved result
+            deactivate DB
+            S->>DB: Commit PostgreSQL transaction
+            S-->>C: Updated account
+        end
+        deactivate S
+        C-->>API: response or next(error)
+        deactivate C
+        API-->>UI: 200 result or mapped error
+    end
+    deactivate API
+    UI-->>A: Show result or actionable error
+%% PostgreSQL delegates reuse the ambient transaction. MongoDB and socket side effects are separate.
+
+%% Request validation schemas (see route evidence): UpdateUserSchema

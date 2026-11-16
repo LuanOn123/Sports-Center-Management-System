@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CreateTermSchema, UpdateTermSchema } from "../src/modules/terms/terms.schema.js";
+import { withTermStatus } from "../src/modules/terms/term-status.js";
 
 test("Terms Schema Validation", async (t) => {
   await t.test("accepts valid Term creation payload", () => {
@@ -9,14 +10,17 @@ test("Terms Schema Validation", async (t) => {
       name: "Kỳ 1 Năm 2026 (Xuân - Hè)",
       startDate: "2026-01-01T00:00:00.000Z",
       endDate: "2026-04-30T23:59:59.000Z",
-      registrationStartDate: "2025-12-01T00:00:00.000Z",
-      registrationEndDate: "2025-12-25T23:59:59.000Z",
+      registrationStartDate: "2025-11-30T23:30:00.000Z",
+      registrationEndDate: "2025-12-01T16:59:59.000Z",
       status: "OPEN_REGISTRATION",
       description: "Kỳ 1 gồm các khóa bơi và yoga",
+      facilityId: "seed-fac-q1",
     };
     const parsed = CreateTermSchema.parse(valid);
     assert.equal(parsed.code, "TERM_2026_K1");
     assert.equal(parsed.status, "OPEN_REGISTRATION");
+    assert.equal(parsed.facilityId, "seed-fac-q1");
+    assert.equal(parsed.registrationStartDate, valid.registrationStartDate);
   });
 
   await t.test("rejects when endDate is before or equal to startDate", () => {
@@ -59,9 +63,28 @@ test("Terms Schema Validation", async (t) => {
     const validUpdate = {
       status: "IN_PROGRESS",
       description: "Cập nhật mô tả kỳ",
+      facilityId: "seed-fac-q7",
     };
     const parsed = UpdateTermSchema.parse(validUpdate);
     assert.equal(parsed.status, "IN_PROGRESS");
     assert.equal(parsed.description, "Cập nhật mô tả kỳ");
+    assert.equal(parsed.facilityId, "seed-fac-q7");
+    assert.equal(UpdateTermSchema.safeParse({ facilityId: "  " }).success, false);
   });
+});
+
+test("term status follows registration and class dates, with an explicit close taking priority", () => {
+  const term = {
+    status: "PLANNING" as const,
+    registrationStartDate: new Date("2027-01-15T02:45:00Z"),
+    registrationEndDate: new Date("2027-01-15T16:59:59Z"),
+    startDate: new Date("2027-01-15T17:00:00Z"),
+    endDate: new Date("2027-03-01T16:59:59Z"),
+  };
+  assert.equal(withTermStatus(term, new Date("2027-01-15T02:44:59.999Z")).status, "PLANNING");
+  assert.equal(withTermStatus(term, term.registrationStartDate).status, "OPEN_REGISTRATION");
+  assert.equal(withTermStatus(term, term.registrationEndDate).status, "OPEN_REGISTRATION");
+  assert.equal(withTermStatus(term, term.startDate).status, "IN_PROGRESS");
+  assert.equal(withTermStatus(term, new Date("2027-03-01T17:00:00Z")).status, "CLOSED");
+  assert.equal(withTermStatus({ ...term, status: "CLOSED" }, term.registrationStartDate).status, "CLOSED");
 });

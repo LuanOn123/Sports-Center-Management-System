@@ -1,27 +1,30 @@
-# Sơ đồ use case hệ thống quản lý trung tâm thể thao
+# SCMS use-case overview
 
-Mã Mermaid để nhập vào draw.io: [sports-center-use-cases.mmd](sports-center-use-cases.mmd).
+Reviewed 1 November 2026 against the current checkout, replacing the obsolete branch comparison. [Mermaid source](sports-center-use-cases.mmd) · [SVG](../diagram-audit/exports/sports-center-use-cases.svg) · [Detailed sequences](../sequence-diagrams/INDEX.md).
 
-## Phạm vi và actor
+Stored roles are **ADMIN, MANAGER, COACH, RECEPTIONIST, MEMBER**. Guest is unauthenticated and is not a stored role. STAFF is obsolete. The overview groups related implemented API capabilities; it is not an exhaustive permission matrix or proof that every frontend control is mounted.
 
-Sơ đồ phản ánh các chức năng có trong mã nguồn backend, frontend và các luồng mới ở `origin/develop`. `Guest` là khách chưa đăng nhập; bốn vai trò trong `BE/prisma/schema.prisma` là `MEMBER`, `COACH`, `STAFF`, `MANAGER`. Trong giao diện, `STAFF` tương ứng khu vực lễ tân. Các use case dùng chung (hồ sơ, mật khẩu, thông báo, chat, đăng xuất) được nối trực tiếp với cả bốn vai trò đã đăng nhập.
+Mermaid has no native UML use-case type. This source retains the existing flowchart approximation: labelled actors, oval capability groups, system boundary and directed dashed include relationships. Native presentation SVGs provide stick-figure actors. Do not call the Mermaid actor rectangles formal UML actor glyphs. The existing [presentation role views](../presentation/diagrams.md) provide smaller report figures.
 
-Các hình oval nền vàng viền đứt là luồng có ở frontend và/hoặc `origin/develop`, nhưng chưa được mount đầy đủ trong backend của nhánh `main` tại thời điểm rà soát: tự hủy gói/hoàn tiền, điểm danh QR và đánh giá huấn luyện viên. Chúng không nên được coi là đã sẵn sàng trên API của `main`.
+| Actor | Implemented responsibility | Important restriction |
+|---|---|---|
+| Guest | Register/login/reset password and public catalogue | Registration sends no verification OTP; reset-password OTP is separate. |
+| Member | Own subscriptions/payments/invoices, whole-course registration and cancellation, waitlists, QR attendance, support and class leave, assigned training plans, progress and personal AI assistant | Course booking and cancellation work on per-session Enrollment rows in the selected term. The Member sees class plans and their own individual plans. |
+| Coach | Assigned schedule/roster, attendance/QR, class and individual training plans, AI drafts, per-session results and progress, replacement requests and ratings | Class assignment is required for training plans. Effective session assignment is checked for evaluations. |
+| Receptionist | Members, counter sales/collection, subscriptions/refunds, facility check-in, booking support, attendance warnings/reports and tickets on behalf of members | Works within the assigned facility. Schedule and Coach assignment writes remain Manager duties. |
+| Center Manager | Scoped staff/resources/classes, class Coach assignments, sessions, attendance decisions, issue/leave review, audit log and facility reports | Facility reports cover revenue, membership usage and member/booking activity for the selected date range. |
+| Admin | Global users/facilities/assignments, plan/sport catalogues, global reports/payment reconciliation and permitted shared administration | Inherited authorize permissions do not bypass authorizeExact. Coach-change decisions and schedule writes remain Manager operations. |
 
-## Cách đọc
+Own profile/password/logout, notifications and authorized chat apply to all five authenticated roles. Backend guards and services enforce access; navigation is not the security boundary. Evidence: `BE/src/app.ts`, `BE/src/middlewares/authorize.ts`, `BE/src/config/prisma.ts` and the module route/controller/service files linked in the traceability matrix.
 
-- Đường liền giữa actor và oval là association.
-- `«include»` là bước bắt buộc trong use case nguồn, mũi tên hướng về use case được dùng lại.
-- `«extend»` là luồng tùy điều kiện, mũi tên hướng về use case gốc.
-- Khung ngoài biểu thị ranh giới hệ thống; các khung bên trong chỉ nhóm use case theo nghiệp vụ, không phải actor hay hệ thống con độc lập.
+Changes from the obsolete diagram:
 
-Mermaid không có loại sơ đồ use case UML riêng. Tệp dùng `flowchart` với ranh giới hệ thống, oval use case và quan hệ UML để draw.io nhập được; biểu tượng người trong actor là ký pháp thay thế cho stick figure chuẩn.
+- Added Admin and replaced STAFF with Receptionist.
+- Named the Member registration operation as whole-course enrollment, retaining per-session booking/waitlist management in its group.
+- Removed obsolete yellow/dashed “develop only” distinctions for implemented QR, cancellation and feedback.
+- The later implementation adds class and individual training plans and records results per session alongside progress. The sequence diagram corpus still reflects the earlier audit snapshot.
+- Removed subscription resume; terminal subscriptions are not resumed. Purchase/renewal creates a new period.
+- Separated shared resource administration from Manager-only schedule and class-Coach mutations.
+- Corrected Manager/global report scope and Coach replacement/leave terminology.
 
-## Nguồn đối chiếu
-
-- Vai trò và mô hình dữ liệu: `BE/prisma/schema.prisma`.
-- API được mount trên `main`: `BE/src/app.ts` và các `BE/src/modules/*/*.routes.ts`.
-- Luồng giao diện theo vai trò: `FE/src/features/{user,coach,reception,manage}/*Layout.tsx`, cùng các trang trong từng khu vực.
-- Luồng mới: các route tương ứng ở `origin/develop` và các component frontend về QR, feedback, hủy gói.
-
-Không đưa màn hình placeholder như phân quyền trực quan, nhật ký audit hoặc hỗ trợ/check-in lễ tân vào sơ đồ khi chưa có luồng nghiệp vụ hoàn chỉnh.
+The master overview uses grouped capabilities; [the audit](../diagram-audit/REPORT.md) records bulk/single-booking guard differences, term-policy conflicts and unverified UI paths. Missing original capabilities are documented rather than replaced with fictional services or endpoints.

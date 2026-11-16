@@ -1,0 +1,54 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% USE CASE: Nhân viên hủy gói và ghi yêu cầu hoàn theo chính sách
+%% SOURCE: BE/src/modules/subscriptions/subscriptions.service.ts
+%% SOURCE: BE/src/modules/subscriptions/subscriptions.routes.ts
+%% SOURCE: BE/src/modules/payments/refunds.service.ts
+%% SOURCE: BE/src/modules/subscriptions/entitlement.service.ts
+%% SOURCE: FE/src/shared/CancelSubscription.tsx
+%% HTTP prefix: /api/v1. API lane includes verified middleware and errorHandler.
+%% Grouped read and validation calls short-circuit on error. No Repository layer is implied.
+%% Payment remains SUCCESS until actual refund confirmation, see REC-05.
+sequenceDiagram
+    actor A as Receptionist
+    participant UI as CancelSubscription
+    participant API as Express middleware / errorHandler
+    participant C as subsController
+    participant S as subscriptionsService
+    participant DB as Prisma / PostgreSQL
+
+    A->>UI: Confirm cancellation of paid ACTIVE or SCHEDULED membership
+    UI->>API: PATCH /api/v1/subscriptions/:id/status (CANCELLED)
+    activate API
+    API->>API: authenticate, checkFacilityScope, authorize(RECEPTIONIST), validate request
+    alt request guard rejects
+        API-->>UI: 400 / 401 / 403 error
+    else request accepted
+        API->>C: updateSubscriptionStatus(req, res, next)
+        activate C
+        C->>S: updateSubscriptionStatus(id, CANCELLED)
+        activate S
+        S->>DB: Read subscription, original collected payment and cancellation context
+        activate DB
+        DB-->>S: Requested records and validation context
+        deactivate DB
+        S->>S: SCHEDULED refund is 100 percent, ACTIVE staff refund is prorated from original sold duration and capped at collected amount
+        S->>S: Reject FREE and invalid state transitions, manual SUSPENDED is forbidden
+        alt subscription missing or cancellation state invalid
+            S-->>C: 400 / 404 / 409
+        else business conditions satisfied
+            S->>DB: Locked transaction CAS CANCELLED, revoke source bookings and record refund request if amount positive
+            activate DB
+            DB-->>S: Saved result
+            deactivate DB
+            S-->>C: Cancelled subscription and requested refund amount
+        end
+        deactivate S
+        C-->>API: response or next(error)
+        deactivate C
+        API-->>UI: 200 result or mapped error
+    end
+    deactivate API
+    UI-->>A: Show result or actionable error
+
+%% Request validation schemas (see route evidence): UpdateStatusSchema

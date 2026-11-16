@@ -1,0 +1,388 @@
+{
+  "date": "2026-11-01",
+  "method": "Static source inspection. No runtime reproductions or application fixes.",
+  "findings": [
+    {
+      "id": "G01",
+      "classification": "IMPLEMENTATION_GAP",
+      "priority": "high",
+      "diagrams": [
+        "COA-02_take_attendance"
+      ],
+      "finding": "Staff createAttendance does not re-evaluate paid subscription or term grant, unlike Member scanning.",
+      "evidence": [
+        {
+          "file": "BE/src/modules/attendance/attendance.service.ts",
+          "symbol": "createAttendance",
+          "startLine": 43,
+          "endLine": 60
+        },
+        {
+          "file": "BE/src/modules/attendance/attendance.service.ts",
+          "symbol": "scanQrInternal",
+          "startLine": 301,
+          "endLine": 375
+        }
+      ],
+      "expected": "Consistent attendance-time entitlement validation requested by the task.",
+      "runtimeVerified": false
+    },
+    {
+      "id": "G02",
+      "classification": "IMPLEMENTATION_GAP",
+      "priority": "high",
+      "diagrams": [
+        "MEM-07_qr_check_in"
+      ],
+      "finding": "Rejected manual-code scans write failure counters and then throw in the ambient transaction; rejection rolls back those counters.",
+      "evidence": [
+        {
+          "file": "BE/src/modules/attendance/attendance.service.ts",
+          "symbol": "scanQr",
+          "startLine": 559,
+          "endLine": 568
+        },
+        {
+          "file": "BE/src/modules/attendance/attendance.service.ts",
+          "symbol": "resolveManualCode",
+          "startLine": 237,
+          "endLine": 259
+        },
+        {
+          "file": "BE/src/modules/attendance/attendance.service.ts",
+          "symbol": "registerManualCodeMisuse",
+          "startLine": 157,
+          "endLine": 169
+        },
+        {
+          "file": "BE/src/config/prisma.ts",
+          "startLine": 23,
+          "endLine": 38
+        },
+        {
+          "file": "BE/src/config/prisma.ts",
+          "startLine": 75,
+          "endLine": 79
+        }
+      ],
+      "expected": "Durable failed-attempt accounting / misuse revocation; verify against a real isolated database.",
+      "runtimeVerified": false
+    },
+    {
+      "id": "G03",
+      "classification": "IMPLEMENTATION_GAP",
+      "priority": "medium",
+      "diagrams": [
+        "REC-03_rotate_qr_session",
+        "MEM-07_qr_check_in"
+      ],
+      "finding": "Refresh does not revoke older QR JWTs; current TTLs are 55s UI refresh, 600s QR lifetime and 90s manual lifetime.",
+      "evidence": [
+        {
+          "file": "BE/src/modules/attendance/attendance.service.ts",
+          "symbol": "generateQrToken",
+          "startLine": 261,
+          "endLine": 291
+        },
+        {
+          "file": "BE/src/modules/attendance/attendance.service.ts",
+          "symbol": "createManualCode",
+          "startLine": 135,
+          "endLine": 154
+        },
+        {
+          "file": "BE/src/config/attendance.ts",
+          "startLine": 1,
+          "endLine": 121
+        },
+        {
+          "file": "FE/src/shared/QrAttendance.tsx",
+          "startLine": 1,
+          "endLine": 270
+        }
+      ],
+      "expected": "Rotating-session-secret behavior stated in sequence guidance is not implemented.",
+      "runtimeVerified": false
+    },
+    {
+      "id": "G04",
+      "classification": "IMPLEMENTATION_GAP",
+      "priority": "medium",
+      "diagrams": [
+        "OPS-06_trigger_class_reminders"
+      ],
+      "finding": "HTTP reminder trigger has no facility scope and queries all upcoming sessions. Read-before-create deduplication can race.",
+      "evidence": [
+        {
+          "file": "BE/src/modules/notifications/notifications.service.ts",
+          "symbol": "sendUpcomingClassReminders",
+          "startLine": 206,
+          "endLine": 253
+        },
+        {
+          "file": "BE/src/modules/notifications/notifications.routes.ts",
+          "startLine": 1,
+          "endLine": 147
+        },
+        {
+          "file": "BE/src/app.ts",
+          "startLine": 93,
+          "endLine": 138
+        }
+      ],
+      "expected": "Facility-scoped operational access and correct concurrency claims; intended global trigger policy needs confirmation.",
+      "runtimeVerified": false
+    },
+    {
+      "id": "G05",
+      "classification": "IMPLEMENTATION_GAP",
+      "priority": "medium",
+      "diagrams": [
+        "SYS-03_notification_outbox"
+      ],
+      "finding": "SENDING claim has no lease/recovery path; notification write and SENT marking are separate, so crash recovery and exactly-once delivery are not established.",
+      "evidence": [
+        {
+          "file": "BE/src/modules/notifications/outbox.service.ts",
+          "symbol": "flushNotificationOutbox",
+          "startLine": 79,
+          "endLine": 147
+        }
+      ],
+      "expected": "Durable retry semantics must distinguish successful claims, crashes and redelivery.",
+      "runtimeVerified": false
+    },
+    {
+      "id": "G06",
+      "classification": "IMPLEMENTATION_GAP",
+      "priority": "high",
+      "diagrams": [
+        "MEM-02_purchase_membership"
+      ],
+      "finding": "Pending-order check and create are not serialized by a member-plan key; unique transactionCode does not prevent two pending orders for the same pair.",
+      "evidence": [
+        {
+          "file": "BE/src/modules/payments/sepay-payments.service.ts",
+          "symbol": "createSepayCheckout",
+          "startLine": 197,
+          "endLine": 315
+        }
+      ],
+      "expected": "Do not claim concurrent pending-checkout idempotency; settlement has its own separate locks.",
+      "runtimeVerified": false
+    },
+    {
+      "id": "G07",
+      "classification": "IMPLEMENTATION_GAP",
+      "priority": "high",
+      "diagrams": [
+        "MEM-05_book_class"
+      ],
+      "finding": "Bulk conflict candidates exclude neighbors just outside first-start/last-end bounds before applying cross-facility travel buffer.",
+      "evidence": [
+        {
+          "file": "BE/src/modules/enrollments/course-enrollment.service.ts",
+          "symbol": "evaluateCourseEligibility",
+          "startLine": 102,
+          "endLine": 420
+        },
+        {
+          "file": "BE/src/modules/enrollments/enrollments.service.ts",
+          "symbol": "getScheduleTravelConflictReason",
+          "startLine": 43,
+          "endLine": 70
+        }
+      ],
+      "expected": "BR-Q03 travel buffer must include neighbors outside the class-session range.",
+      "runtimeVerified": false
+    },
+    {
+      "id": "G08",
+      "classification": "IMPLEMENTATION_GAP",
+      "priority": "high",
+      "diagrams": [
+        "MEM-05_book_class",
+        "MGR-21_review_attendance_report"
+      ],
+      "finding": "Bulk eligibility omits single-booking approved-removal and facility member-limit checks. Bulk reactivation can bypass a resolved removal report if other checks pass.",
+      "evidence": [
+        {
+          "file": "BE/src/modules/enrollments/course-enrollment.service.ts",
+          "symbol": "evaluateCourseEligibility",
+          "startLine": 102,
+          "endLine": 420
+        },
+        {
+          "file": "BE/src/modules/enrollments/course-enrollment.service.ts",
+          "symbol": "enrollWholeCourse",
+          "startLine": 445,
+          "endLine": 662
+        },
+        {
+          "file": "BE/src/modules/enrollments/enrollments.service.ts",
+          "symbol": "assertCanBook",
+          "startLine": 81,
+          "endLine": 279
+        },
+        {
+          "file": "BE/src/modules/attendance/reception-attendance.service.ts",
+          "symbol": "reviewAttendanceViolationReport",
+          "startLine": 437,
+          "endLine": 515
+        },
+        {
+          "file": "BE/src/modules/facilities/facility-limits.service.ts",
+          "symbol": "checkFacilityMemberLimit",
+          "startLine": 82,
+          "endLine": 154
+        }
+      ],
+      "expected": "Equivalent material eligibility across Member booking paths; removal should not be misrepresented as a currently enforced bulk blocker.",
+      "runtimeVerified": false
+    },
+    {
+      "id": "S01",
+      "classification": "SPEC_AMBIGUITY",
+      "priority": "high",
+      "diagrams": [
+        "MEM-05_book_class",
+        "MEM-07_qr_check_in",
+        "REC-02_manage_booking_check_in"
+      ],
+      "finding": "Strict cutoff guidance conflicts with HALF_REMAINING_TERM_V1, explicitly permitted by the backend policy document.",
+      "evidence": [
+        {
+          "file": "BE/src/modules/enrollments/term-membership-policy.ts",
+          "symbol": "createTermMembershipGrant",
+          "startLine": 40,
+          "endLine": 60
+        },
+        {
+          "file": "BE/src/modules/enrollments/term-membership-policy.ts",
+          "symbol": "termMembershipCovers",
+          "startLine": 102,
+          "endLine": 122
+        },
+        {
+          "file": "BE/docs/term-membership-policy.md",
+          "startLine": 1,
+          "endLine": 34
+        }
+      ],
+      "expected": "Resolve policy sources without silently removing or approving the implemented exception.",
+      "runtimeVerified": false
+    },
+    {
+      "id": "S02",
+      "classification": "SPEC_AMBIGUITY",
+      "priority": "medium",
+      "diagrams": [
+        "database-erd",
+        "sports-center-use-cases"
+      ],
+      "finding": "Master SCMS_Business_Rules_AI_Spec.md and Mobile source are absent; opening-hours/maintenance calendar requirements and complete rule IDs cannot be certified.",
+      "evidence": [
+        {
+          "file": "BE/prisma/schema.prisma",
+          "startLine": 1,
+          "endLine": 1101
+        }
+      ],
+      "expected": "Document unsupported requirements and unavailable evidence rather than inventing behavior.",
+      "runtimeVerified": false
+    },
+    {
+      "id": "U01",
+      "classification": "UNVERIFIED",
+      "priority": "high",
+      "diagrams": [
+        "REC-01_create_member",
+        "MGR-04_manage_staff_roles"
+      ],
+      "finding": "MongoDB identity writes are not rolled back by a PostgreSQL transaction. Legacy createMember commits Mongo before SQL provisioning.",
+      "evidence": [
+        {
+          "file": "BE/src/modules/members/members.service.ts",
+          "symbol": "createMember",
+          "startLine": 186,
+          "endLine": 266
+        },
+        {
+          "file": "BE/src/modules/users/users.service.ts",
+          "symbol": "updateUser",
+          "startLine": 219,
+          "endLine": 225
+        }
+      ],
+      "expected": "Cross-store partial-failure recovery requires runtime verification; no distributed atomicity claim.",
+      "runtimeVerified": false
+    },
+    {
+      "id": "D01",
+      "classification": "DIAGRAM_ERROR",
+      "status": "FIXED",
+      "diagrams": [
+        "MEM-07_qr_check_in",
+        "MGR-04_manage_staff_roles",
+        "MGR-08_update_term",
+        "MGR-17_decide_coach_change",
+        "OPS-04_create_schedule_pattern"
+      ],
+      "finding": "Previous diagrams/audit incorrectly treated global Prisma and nested transactions as independent from the ambient SQL transaction.",
+      "evidence": [
+        {
+          "file": "BE/src/config/prisma.ts",
+          "startLine": 23,
+          "endLine": 38
+        },
+        {
+          "file": "BE/src/config/prisma.ts",
+          "startLine": 75,
+          "endLine": 79
+        },
+        {
+          "file": "BE/src/config/prisma.ts",
+          "startLine": 258,
+          "endLine": 292
+        }
+      ],
+      "action": "Corrected diagram arrows, commit/rollback labels, metadata and reports."
+    },
+    {
+      "id": "D02",
+      "classification": "DIAGRAM_ERROR",
+      "status": "FIXED",
+      "diagrams": [
+        "REC-09_renew_membership"
+      ],
+      "finding": "Renewal diagram invented an outbox write not performed by renewSubscription.",
+      "evidence": [
+        {
+          "file": "BE/src/modules/subscriptions/subscriptions.service.ts",
+          "symbol": "renewSubscription",
+          "startLine": 113,
+          "endLine": 231
+        }
+      ],
+      "action": "Removed invented outbox interaction and retained actual financial state writes."
+    },
+    {
+      "id": "D03",
+      "classification": "DIAGRAM_ERROR",
+      "status": "FIXED",
+      "diagrams": [
+        "ADM-06_manage_sports"
+      ],
+      "finding": "SportRequirement participant label did not correspond to the SubjectRequirement model used by nested sport requirements.",
+      "evidence": [
+        {
+          "file": "BE/src/modules/sports/sports.service.ts",
+          "symbol": "createSport",
+          "startLine": 31,
+          "endLine": 40
+        }
+      ],
+      "action": "Corrected model label."
+    }
+  ]
+}

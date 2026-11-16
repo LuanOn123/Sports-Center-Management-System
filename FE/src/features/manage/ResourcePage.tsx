@@ -701,6 +701,7 @@ export function ResourcePage({
       {modal && (
         <Modal
           dismissible={!busy}
+          scrollBody={r.slug === "users" && modal.kind === "detail"}
           title={
             modal.kind === "assignScheduleCoach"
               ? "Gán HLV cho buổi học"

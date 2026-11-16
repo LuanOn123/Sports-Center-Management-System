@@ -1,0 +1,43 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% USE CASE: Giao thức Socket.IO sendMessage đã triển khai
+%% SOURCE: BE/src/modules/chat/chat.socket.ts
+%% SOURCE: BE/src/modules/chat/chat.service.ts
+%% SOURCE: FE/src/shared/Communication.tsx
+%% API-only send protocol. Current Communication UI sends messages over HTTP and uses sockets to receive events.
+%% Handshake verifies current JWT, identity version, role and readiness before this handler.
+sequenceDiagram
+    actor A as Member
+    participant UI as Socket API client
+    participant IO as Socket.IO chat.socket
+    participant S as chatService
+    participant DB as Prisma / PostgreSQL
+    participant Peer as Receiver socket room
+
+    A->>UI: Send message to permitted contact
+    UI->>IO: sendMessage(receiverId, content) with acknowledgement
+    activate IO
+    IO->>S: createMessage(authenticated senderId, receiverId, content)
+    activate S
+    S->>DB: Read sender and receiver roles and active states
+    DB-->>S: Current contact eligibility
+    S->>S: assertCanContact and validate nonempty content length at most 5000
+    alt inactive contact, forbidden role pair, self-contact or invalid content
+        S-->>IO: AppError
+        IO-->>UI: ack with ok false and error
+    else message allowed
+        S->>DB: chatMessage.create(isRead false)
+        activate DB
+        DB-->>S: Saved message
+        deactivate DB
+        S->>S: Best-effort notifyReceiver for direct message
+        S-->>IO: Persisted message
+        IO->>Peer: newMessage(message)
+        IO->>UI: messageSent(message)
+        IO-->>UI: ack with ok true
+    end
+    deactivate S
+    deactivate IO
+    UI-->>A: Display persisted message or send failure
+%% Authentication failure is connect_error during handshake, before any sendMessage handler runs.
+%% For room-wide messages receiverId is absent and server broadcasts to other sockets.

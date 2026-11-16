@@ -13,6 +13,7 @@ export function Modal({
   onClose,
   dismissible = true,
   maxWidth,
+  scrollBody = false,
   eyebrow = "PULSE / QUẢN LÝ TRUNG TÂM",
 }: {
   title: string;
@@ -20,6 +21,7 @@ export function Modal({
   onClose: () => void;
   dismissible?: boolean;
   maxWidth?: number;
+  scrollBody?: boolean;
   eyebrow?: string;
 }) {
   const member = useContext(MemberPortalContext);
@@ -51,6 +53,7 @@ export function Modal({
   }, []);
   return (
     <dialog
+      className={scrollBody ? "modal-with-scroll-body" : undefined}
       style={maxWidth ? { maxWidth } : undefined}
       ref={ref}
       aria-labelledby={titleId}
@@ -86,7 +89,11 @@ export function Modal({
           <X />
         </button>
       </div>
-      {children}
+      {scrollBody ? (
+        <div className="modal-scroll-body">{children}</div>
+      ) : (
+        children
+      )}
     </dialog>
   );
 }
@@ -102,6 +109,7 @@ const moneyFields = [
   "subtotal",
   "discount",
   "refundAmount",
+  "refundRequestedAmount",
 ];
 export function Details({
   value,

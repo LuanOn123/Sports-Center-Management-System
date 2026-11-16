@@ -1,5 +1,7 @@
 # Nội dung chuẩn bị thuyết trình — Sports Center Management System
 
+> DIAGRAM AUDIT 2026-11-01: Các sơ đồ/SVG/PNG đã được chuẩn hóa đen trắng và đối chiếu lại trong [báo cáo](../diagram-audit/REPORT.md). Phần mô tả Mobile bên dưới là bối cảnh lịch sử, chưa xác minh được vì checkout hiện tại không có source Mobile. Quyền, transaction và giới hạn hiện hành xem báo cáo mới.
+
 Phân tích mã nguồn trong workspace ngày 26/10/2026. Tên hiển thị trên web: **Pulse Sports Center**. Nội dung dưới đây mô tả code hiện có; không khẳng định các dịch vụ ngoài đang được cấu hình và chạy trên production.
 
 ## 1. Introduction — có thể đưa thẳng lên slide

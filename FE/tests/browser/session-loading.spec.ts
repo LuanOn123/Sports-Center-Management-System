@@ -71,6 +71,44 @@ test("table skeleton stays visible until data arrives and respects reduced motio
   ).toBeVisible();
 });
 
+test("staff details scroll below the header and label facility assignments", async ({ page }) => {
+  await setup(page, "ADMIN");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 375, height: 480 });
+  const staff = {
+    id: "test-receptionist",
+    fullName: "Nguyễn Tân",
+    email: "letan@example.invalid",
+    role: "RECEPTIONIST",
+    isActive: true,
+    assignmentStatus: "ASSIGNED",
+    facilityAssignments: [
+      { role: "RECEPTIONIST", facility: { name: "Cơ sở quận 9" } },
+    ],
+  };
+  await page.route("**/api/v1/users?*", (route) =>
+    route.fulfill({ json: { success: true, data: [staff] } }),
+  );
+  await page.route("**/api/v1/users/test-receptionist", (route) =>
+    route.fulfill({ json: { success: true, data: staff } }),
+  );
+  await page.goto("/admin/users");
+  await page.getByRole("button", { name: "Xem chi tiết", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Chi tiết người dùng" });
+  const heading = dialog.getByRole("heading", { name: "Chi tiết người dùng" });
+  await dialog.locator("summary").filter({ hasText: /^Phân công cơ sở/ }).click();
+  await dialog.locator("summary").filter({ hasText: /^Cơ sở$/ }).click();
+  const body = dialog.locator(".modal-scroll-body");
+  await body.evaluate((el) => { el.scrollTop = 0; });
+  await expect(heading).toBeInViewport();
+  const headerBeforeScroll = await heading.boundingBox();
+  const facility = dialog.getByText("Cơ sở quận 9", { exact: true });
+  await facility.scrollIntoViewIfNeeded();
+  await expect(facility).toBeInViewport();
+  expect(await body.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  expect(await heading.boundingBox()).toEqual(headerBeforeScroll);
+});
+
 for (const width of [375, 1440]) {
   test(`nested details remain readable at ${width}px`, async ({ page }) => {
     await setup(page, "ADMIN", true);

@@ -1,8 +1,10 @@
 import { revokeSubscriptionBookings } from "../subscriptions/entitlement.service.js";
 import { lockMemberSubscription } from "../../utils/dbLocks.js";
 import { prisma } from "../../config/prisma.js";
+import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
+import { createNotification } from "../notifications/notifications.service.js";
 
 /** Receipts must originate from an order with authoritative pricing. */
 export async function createPayment(_data: any, _createdById: string) {
@@ -11,7 +13,7 @@ export async function createPayment(_data: any, _createdById: string) {
   });
 }
 
-export async function listPayments(query: any) {
+export async function listPayments(query: any, currentUser?: any) {
   const page = Math.max(1, parseInt(query.page ?? "1") || 1);
   const limit = Math.min(100, Math.max(1, parseInt(query.limit ?? "10") || 10));
   const skip = (page - 1) * limit;
@@ -24,13 +26,17 @@ export async function listPayments(query: any) {
     if (query.startDate) where.createdAt.gte = new Date(query.startDate);
     if (query.endDate) where.createdAt.lte = new Date(query.endDate);
   }
+  if (query.refundPending === "true") {
+    where.refundRequestedAt = { not: null };
+    where.status = "SUCCESS";
+  }
 
   const [total, payments] = await Promise.all([
     prisma.payment.count({ where }),
     prisma.payment.findMany({
       where, skip, take: limit,
       include: {
-        member: { include: { user: { select: { fullName: true, email: true } } } },
+        member: { include: { user: { select: { id: true, fullName: true, email: true, phone: true } } } },
         subscription: { include: { plan: { select: { name: true, tier: true } } } },
         invoice: true,
       },
@@ -44,7 +50,7 @@ export async function getPaymentById(id: string, currentUser: any) {
   const payment = await prisma.payment.findUnique({
     where: { id },
     include: {
-      member: { include: { user: { select: { fullName: true, email: true, phone: true } } } },
+      member: { include: { user: { select: { id: true, fullName: true, email: true, phone: true } } } },
       subscription: { include: { plan: true } },
       invoice: true,
       createdBy: { select: { fullName: true, email: true } },
@@ -53,20 +59,25 @@ export async function getPaymentById(id: string, currentUser: any) {
   if (!payment) throw new AppError("Payment not found", 404);
 
   // IDOR: MEMBER can only view their own payment
-  if (currentUser.role === "MEMBER") {
+  if (currentUser?.role === "MEMBER") {
     const memberProfile = await prisma.memberProfile.findUnique({ where: { userId: currentUser.id } });
     if (!memberProfile || payment.memberId !== memberProfile.id) {
       throw new AppError("Forbidden: You can only view your own payments", 403);
     }
   }
-  if (currentUser.role === "COACH") {
+  if (currentUser?.role === "COACH") {
     throw new AppError("Forbidden: Coaches cannot view payment details", 403);
   }
 
   return payment;
 }
 
-export async function updatePaymentStatus(id: string, status: string, confirmation?: { reason: string; reference: string }) {
+export async function updatePaymentStatus(
+  id: string,
+  status: string,
+  confirmation?: { reason: string; reference: string },
+  actorId?: string
+) {
   const payment = await prisma.payment.findUnique({ where: { id }, include: { invoice: true } });
   if (!payment) throw new AppError("Payment not found", 404);
 
@@ -102,7 +113,12 @@ export async function updatePaymentStatus(id: string, status: string, confirmati
 
   if (payment.planId && payment.status === "PENDING" && status === "SUCCESS") throw new AppError("Confirm this order through /counter-orders/:id/confirm", 409);
   const updateData: any = { status };
-  if (status === "REFUNDED") { updateData.refundedAmount = payment.refundRequestedAmount ?? payment.amount; updateData.refundReference = confirmation!.reference; updateData.refundReason = confirmation!.reason; updateData.refundedAt = new Date(); }
+  if (status === "REFUNDED") {
+    updateData.refundedAmount = payment.refundRequestedAmount ?? payment.amount;
+    updateData.refundReference = confirmation!.reference;
+    updateData.refundReason = confirmation!.reason;
+    updateData.refundedAt = new Date();
+  }
   if (status === "SUCCESS") updateData.paidAt = new Date();
 
   await prisma.$transaction(async (tx) => {
@@ -140,7 +156,59 @@ export async function updatePaymentStatus(id: string, status: string, confirmati
         data: { status: "CANCELLED" },
       });
     }
+
+    // AuditLog for REFUNDED
+    if (status === "REFUNDED" && actorId) {
+      await tx.auditLog.create({
+        data: {
+          facilityId: payment.facilityId,
+          actorId,
+          entity: "Payment",
+          entityId: id,
+          action: "confirmRefund",
+          reason: confirmation!.reason,
+          before: { status: payment.status, refundedAmount: Number(payment.refundedAmount) },
+          after: {
+            status: "REFUNDED",
+            refundedAmount: Number(updateData.refundedAmount),
+            refundReference: confirmation!.reference,
+            refundReason: confirmation!.reason,
+          },
+        },
+      });
+    }
   });
+
+  // Notify member if refund completed
+  if (status === "REFUNDED") {
+    setImmediate(async () => {
+      try {
+        await requestContext.run(
+          { ...requestContext.getStore(), transaction: undefined },
+          async () => {
+            const mem = await prisma.memberProfile.findUnique({
+              where: { id: payment.memberId },
+              select: { userId: true },
+            });
+            if (mem?.userId) {
+              await createNotification(
+                mem.userId,
+                "PAYMENT_REFUNDED",
+                "Hoàn tiền thành công",
+                `Trung tâm đã hoàn tất chi trả ${Number(updateData.refundedAmount).toLocaleString("vi-VN")}đ cho bạn (Mã giao dịch #${payment.id.slice(0, 8)}). Mã biên nhận: ${confirmation?.reference}.`,
+                {
+                  reason: confirmation?.reason,
+                  metadata: { paymentId: payment.id, reference: confirmation?.reference },
+                }
+              );
+            }
+          }
+        );
+      } catch (e) {
+        console.error("Failed to notify member of refund:", e);
+      }
+    });
+  }
 
   return getPaymentById(id, { role: "MANAGER" });
 }

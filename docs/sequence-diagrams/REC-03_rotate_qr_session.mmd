@@ -1,0 +1,69 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% SCOPE: Implemented QR refresh uses Coach, not Receptionist, despite the checklist prefix REC-03.
+%% SOURCES: FE/src/shared/Attendance.tsx, FE/src/shared/QrAttendance.tsx
+%% SOURCES: BE/src/modules/attendance/attendance.routes.ts, attendance.controller.ts, attendance.service.ts
+%% SOURCES: BE/src/config/attendance.ts, BE/src/middlewares/authorize.ts
+%% Actual refresh 55000 ms, JWT TTL 600 seconds, manual code TTL 90 seconds.
+%% No per-session rotating secret is stored. Issuing a JWT does not revoke previous JWTs.
+%% Manual code revocation and creation are separate global Prisma operations, not one atomic rotation.
+%% COACH requires effective assignment. MANAGER and implicit ADMIN can also generate.
+%% RECEPTIONIST is denied by authorize(COACH, MANAGER), and has no generation UI.
+sequenceDiagram
+    actor H as Coach
+    participant UI as AttendanceQr
+    participant API as Express middleware / errorHandler
+    participant C as attendance.controller.ts
+    participant S as attendanceService
+    participant DB as Prisma / PostgreSQL
+    participant J as jsonwebtoken
+
+    H->>UI: Open assigned session and enable attendance QR
+    loop initial request, enabled in-window refresh every 55 seconds, or manual refresh
+        UI->>API: POST /api/v1/attendance/generate-qr (scheduleId)
+        activate API
+        API->>API: authenticate, checkFacilityScope, authorize(COACH, MANAGER), validate request
+        alt invalid login, forbidden role, scope or body
+            API-->>UI: 400 / 401 / 403 error
+        else request accepted
+            API->>C: generateQr(req, res, next)
+            activate C
+            C->>S: generateQrToken(scheduleId, user)
+            activate S
+            S->>DB: verifyCoachAccess and classSchedule.findUnique(scheduleId)
+            activate DB
+            DB-->>S: Effective coach assignment and schedule, or access error
+            deactivate DB
+            S->>S: assertAttendanceWindow(schedule, serverNow)
+            alt unassigned coach, missing schedule, closed status or outside window
+                S-->>C: AppError 403 / 404 / 409
+            else authorized and SCHEDULED within attendance window
+                S->>J: sign(ATTENDANCE_QR payload, expiresIn 600 seconds)
+                activate J
+                J-->>S: Signed QR token
+                deactivate J
+                S->>DB: attendanceManualCode.updateMany(revoke current unexpired codes)
+                activate DB
+                DB-->>S: Previous manual codes revoked
+                deactivate DB
+                S->>S: Generate random 6-character manual code
+                S->>DB: attendanceManualCode.create(expiresAt now plus 90 seconds)
+                activate DB
+                DB-->>S: Manual code record or persistence failure
+                deactivate DB
+                S-->>C: QR and manual code with TTLs, or persistence error
+            end
+            deactivate S
+            C-->>API: Success JSON or next(error)
+            deactivate C
+            API-->>UI: 200 credentials or mapped error
+        end
+        deactivate API
+        UI-->>H: Display refreshed QR and countdowns, or error with retry
+    end
+    H->>UI: Hide QR or leave session view
+    UI->>UI: Disable periodic refresh or unmount component
+%% Unique manual-code collisions retry up to 5 attempts. Other persistence errors propagate.
+%% Hiding the view does not revoke an issued JWT. Existing JWTs remain valid until expiry.
+
+%% Request validation schemas (see route evidence): GenerateQrSchema

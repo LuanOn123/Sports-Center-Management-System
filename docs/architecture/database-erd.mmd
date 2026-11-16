@@ -1,131 +1,562 @@
-%% Database ERD - Sports Center Management System
-%% Nguon: BE/prisma/schema.prisma (PostgreSQL + Prisma ORM)
-%% 28 model + 1 bang noi nhieu-nhieu ngam (_ClassToSport) = 29 bang, 18 enum
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% PostgreSQL logical schema, not MongoDB identity storage.
+%% SOURCE: BE/prisma/schema.prisma; 40 models, 21 enums.
+%% All scalar fields retained. Nullable columns are labelled nullable.
+%% PK/FK/UK mark actual single-column constraints, not components of composite unique keys.
+%% Composite constraints and scalar identifiers without declared FKs are documented in DATABASE_ERD.md.
 erDiagram
     User {
-        string id PK
-        string email UK
-        string password
-        string fullName
-        string phone UK
-        Gender gender
-        datetime dateOfBirth
-        string avatarUrl
+        String id PK
+        String email UK
+        String password
+        String fullName
+        String phone UK "nullable"
+        Gender gender "nullable"
+        DateTime dateOfBirth "nullable"
+        String avatarUrl "nullable"
         UserRole role
-        boolean isActive
-        string resetPasswordOtp
-        datetime resetPasswordOtpExpiresAt
-        datetime createdAt
-        datetime updatedAt
+        Boolean isActive
+        String resetPasswordOtp "nullable"
+        DateTime resetPasswordOtpExpiresAt "nullable"
+        DateTime createdAt
+        DateTime updatedAt
     }
     RefreshToken {
-        string id PK
-        string token UK
-        string userId FK
-        datetime expiresAt
-        datetime revokedAt
-        datetime createdAt
+        String id PK
+        String token UK
+        String userId FK
+        DateTime expiresAt
+        DateTime revokedAt "nullable"
+        DateTime createdAt
+    }
+    Facility {
+        String id PK
+        String code UK
+        String name
+        String address
+        String contactInfo "nullable"
+        String timezone
+        Boolean isActive
+        Int maxClasses "nullable"
+        Int maxRooms "nullable"
+        Int maxCoaches "nullable"
+        Int maxMembers "nullable"
+        Int maxSports "nullable"
+        DateTime createdAt
+        DateTime updatedAt
+    }
+    FacilityStaff {
+        String id PK
+        String userId FK
+        String facilityId FK
+        UserRole role
+        Boolean isActive
+        DateTime createdAt
+        DateTime updatedAt
     }
     MemberProfile {
-        string id PK
-        string userId FK,UK
-        string fitnessGoal
-        TrainingLevel trainingLevel
-        string trainingPreference
-        datetime createdAt
-        datetime updatedAt
+        String id PK
+        String userId FK,UK
+        String fitnessGoal "nullable"
+        TrainingLevel trainingLevel "nullable"
+        String trainingPreference "nullable"
+        String healthNotes "nullable"
+        DateTime createdAt
+        DateTime updatedAt
     }
     CoachProfile {
-        string id PK
-        string userId FK,UK
-        string specialization
-        int experienceYears
-        string bio
-        datetime createdAt
-        datetime updatedAt
+        String id PK
+        String userId FK,UK
+        String specialization "nullable"
+        Int experienceYears "nullable"
+        String bio "nullable"
+        DateTime createdAt
+        DateTime updatedAt
     }
     ManagerProfile {
-        string id PK
-        string userId FK,UK
-        datetime createdAt
-        datetime updatedAt
+        String id PK
+        String userId FK,UK
+        DateTime createdAt
+        DateTime updatedAt
     }
-MembershipPlan {
-        string id PK
-        string name
-        string description
-        decimal price
-        int durationDays
+    MembershipPlan {
+        String id PK
+        String name
+        String description "nullable"
+        Decimal price
+        Int durationDays
         MemberTier tier
-        int maxConcurrentClasses
-        boolean isActive
-        datetime createdAt
-        datetime updatedAt
+        Int maxConcurrentClasses
+        Boolean isActive
+        DateTime createdAt
+        DateTime updatedAt
     }
     MembershipSubscription {
-        string id PK
-        string memberId FK
-        string planId FK
+        String facilityId FK "nullable"
+        String id PK
+        String memberId FK
+        String planId FK
         MemberTier tier
-        datetime startDate
-        datetime endDate
+        DateTime startDate
+        DateTime endDate
         MembershipStatus status
-        datetime suspendedAt
-        int remainingDays
-        datetime cancelledAt
-        int maxConcurrentClassesSnapshot
-        datetime createdAt
-        datetime updatedAt
+        DateTime suspendedAt "nullable"
+        Decimal priceSnapshot "nullable"
+        Int remainingDays "nullable"
+        DateTime cancelledAt "nullable"
+        Int maxConcurrentClassesSnapshot "nullable"
+        DateTime createdAt
+        DateTime updatedAt
     }
     Sport {
-        string id PK
-        string name UK
-        string description
-        AreaType areaTypes
-        boolean isActive
-        datetime createdAt
-        datetime updatedAt
+        String id PK
+        String name UK
+        String description "nullable"
+        AreaType_array areaTypes
+        Boolean isActive
+        DateTime createdAt
+        DateTime updatedAt
     }
     Room {
-        string id PK
-        string name UK
-        int capacity
-        string location
+        String facilityId FK
+        String id PK
+        String name
+        Int capacity
+        String location "nullable"
         AreaType areaType
-        boolean isActive
-        datetime createdAt
-        datetime updatedAt
+        Boolean isActive
+        DateTime createdAt
+        DateTime updatedAt
     }
-    Class {
-        string id PK
-        string name
-        string description
-        int capacity
+    "Class" {
+        String defaultRoomId FK "nullable"
+        String facilityId FK
+        String id PK
+        String name
+        String description "nullable"
+        Int capacity
+        Int minCapacity
         ClassType classType
         AreaType areaType
-        boolean isActive
-        datetime createdAt
-        datetime updatedAt
-    }
-    _ClassToSport {
-        string A FK
-        string B FK
+        Boolean isActive
+        DateTime createdAt
+        DateTime updatedAt
+        Json requirementsSnapshot
+        String attendancePolicy
+        Int plannedSessionCount "nullable"
     }
     ClassMember {
-        string id PK
-        string classId FK
-        string coachId FK
-        boolean isPrimary
-        datetime createdAt
+        String id PK
+        String classId FK
+        String coachId FK
+        Boolean isPrimary
+        DateTime createdAt
     }
     ClassSchedule {
-        string id PK
-        string classId FK
-        string roomId FK
-        datetime startTime
-        datetime endTime
+        String coachId "nullable"
+        String id PK
+        String classId FK
+        String roomId FK
+        DateTime startTime
+        DateTime endTime
         ScheduleStatus status
-        datetime createdAt
-        datetime updatedAt
+        String termId FK "nullable"
+        DateTime createdAt
+        DateTime updatedAt
     }
-%% @@END@@
+    Term {
+        String id PK
+        String code UK
+        String name
+        DateTime startDate
+        DateTime endDate
+        DateTime registrationStartDate
+        DateTime registrationEndDate
+        TermStatus status
+        String description "nullable"
+        String facilityId FK "nullable"
+        DateTime createdAt
+        DateTime updatedAt
+    }
+    Enrollment {
+        String id PK
+        String memberId FK
+        String classId FK
+        String scheduleId FK
+        String subscriptionId FK "nullable"
+        EnrollmentStatus status
+        String healthNotes "nullable"
+        Json termMembershipGrant "nullable"
+        DateTime bookedAt
+        DateTime cancelledAt "nullable"
+        DateTime createdAt
+        DateTime updatedAt
+    }
+    WaitlistEntry {
+        String id PK
+        String scheduleId FK
+        String memberId FK
+        Int position
+        WaitlistStatus status
+        DateTime joinedAt
+        DateTime promotedAt "nullable"
+        DateTime cancelledAt "nullable"
+        DateTime createdAt
+        DateTime updatedAt
+    }
+    Payment {
+        Decimal refundRequestedAmount "nullable"
+        DateTime refundRequestedAt "nullable"
+        String refundReason "nullable"
+        String refundReference "nullable"
+        Decimal refundedAmount
+        DateTime refundedAt "nullable"
+        String facilityId FK
+        String id PK
+        String memberId FK
+        String subscriptionId FK "nullable"
+        String planId FK "nullable"
+        Decimal amount
+        PaymentMethod method
+        PaymentStatus status
+        String transactionCode UK "nullable"
+        String gateway "nullable"
+        String gatewayTransId "nullable"
+        Json gatewayPayload "nullable"
+        String note "nullable"
+        DateTime paidAt "nullable"
+        String planNameSnapshot "nullable"
+        MemberTier planTierSnapshot "nullable"
+        Int durationDaysSnapshot "nullable"
+        Int maxConcurrentClassesSnapshot "nullable"
+        PaymentActivationStatus activationStatus "nullable"
+        String reviewReason "nullable"
+        DateTime reviewedAt "nullable"
+        String reviewedById "nullable"
+        String createdById FK "nullable"
+        DateTime createdAt
+        DateTime updatedAt
+    }
+    SepayBankTransaction {
+        String id PK
+        String externalId UK
+        Int sepayId UK "nullable"
+        String apiTransactionId UK "nullable"
+        String referenceCode "nullable"
+        String gateway "nullable"
+        String accountNumber "nullable"
+        String transferType
+        Decimal amount
+        String content "nullable"
+        String code "nullable"
+        Json payload "nullable"
+        String paymentId FK,UK "nullable"
+        DateTime allocatedAt "nullable"
+        DateTime createdAt
+    }
+    NotificationOutbox {
+        String id PK
+        String userId
+        String type
+        String title
+        String body
+        String reason "nullable"
+        Json metadata "nullable"
+        OutboxStatus status
+        Int attempts
+        String lastError "nullable"
+        DateTime availableAt
+        DateTime sentAt "nullable"
+        DateTime createdAt
+    }
+    SepayWebhookEvent {
+        String id PK
+        Int sepayId UK
+        String paymentId FK "nullable"
+        SepayWebhookStatus status
+        String reason "nullable"
+        Json payload
+        DateTime createdAt
+    }
+    Invoice {
+        String id PK
+        String invoiceNumber UK
+        String memberId FK
+        String paymentId FK,UK
+        Decimal subtotal
+        Decimal discount
+        Decimal total
+        InvoiceStatus status
+        DateTime issuedAt
+        String memberName "nullable"
+        String planName "nullable"
+        String planTier "nullable"
+        DateTime createdAt
+        DateTime updatedAt
+    }
+    ChatMessage {
+        String id PK
+        String senderId FK
+        String receiverId FK "nullable"
+        String content "nullable"
+        String fileUrl "nullable"
+        Boolean isRead
+        DateTime createdAt
+        DateTime updatedAt
+    }
+    ChatAttachment {
+        String id PK
+        String ownerId FK
+        String receiverId FK "nullable"
+        String messageId FK,UK "nullable"
+        String storedName
+        String mimeType
+        Int size
+        DateTime createdAt
+    }
+    Attendance {
+        String id PK
+        String scheduleId FK
+        String memberId FK
+        AttendanceStatus status
+        String note "nullable"
+        DateTime createdAt
+        DateTime updatedAt
+    }
+    AttendanceManualCode {
+        String id PK
+        String code UK
+        String scheduleId FK
+        DateTime expiresAt
+        String createdBy FK
+        Int attempts
+        DateTime revokedAt "nullable"
+        DateTime createdAt
+    }
+    AttendanceManualCodeAttempt {
+        String id PK
+        String memberId FK
+        String codeId FK "nullable"
+        Boolean success
+        DateTime createdAt
+    }
+    AttendancePenalty {
+        String id PK
+        String memberId FK
+        String classId FK
+        String reason
+        Float attendanceRate
+        Int sampleSize
+        Int releasedCount
+        Json releasedEnrollmentIds "nullable"
+        DateTime blockedUntil "nullable"
+        AttendancePenaltyStatus status
+        String decidedBy FK "nullable"
+        DateTime decidedAt "nullable"
+        String appealReason "nullable"
+        DateTime appealedAt "nullable"
+        String revokedBy "nullable"
+        DateTime revokedAt "nullable"
+        String revokedReason "nullable"
+        DateTime createdAt
+        DateTime updatedAt
+    }
+    CoachFeedback {
+        String id PK
+        String coachId FK
+        String memberId FK
+        String classId FK "nullable"
+        Int rating
+        String comment "nullable"
+        Boolean isAnonymous
+        DateTime createdAt
+        DateTime updatedAt
+    }
+    Notification {
+        String id PK
+        String userId FK
+        NotificationType type
+        String title
+        String body
+        String reason "nullable"
+        Boolean isRead
+        DateTime readAt "nullable"
+        Json metadata "nullable"
+        DateTime createdAt
+    }
+    RoomCapability {
+        String id PK
+        String roomId FK
+        String key
+        Int quantity
+    }
+    SubjectRequirement {
+        String id PK
+        String sportId FK
+        String key
+        Int minimum
+    }
+    CoachSpecialization {
+        String id PK
+        String coachId FK
+        String sportId FK
+    }
+    Slot {
+        String id PK
+        String facilityId FK
+        String name
+        Int startMinute
+        Int endMinute
+    }
+    SchedulePattern {
+        String id PK
+        String facilityId FK
+        String classId FK
+        String slotId FK
+        String roomId
+        Int_array weekdays
+        DateTime startDate
+        DateTime endDate
+        String termId FK "nullable"
+        DateTime createdAt
+    }
+    CoachChangeRequest {
+        String id PK
+        String facilityId FK
+        String scheduleId FK
+        String requesterCoachId FK
+        String replacementCoachId FK "nullable"
+        DateTime requestedStartTime
+        DateTime requestedEndTime
+        String reason
+        String status
+        String decisionReason "nullable"
+        String decidedBy "nullable"
+        DateTime decidedAt "nullable"
+        DateTime createdAt
+        DateTime updatedAt
+    }
+    LeaveRequest {
+        String id PK
+        String facilityId FK
+        String coachId "nullable"
+        String requesterId "nullable"
+        UserRole requesterRole "nullable"
+        DateTime startTime
+        DateTime endTime
+        String reason
+        String status
+        String decisionReason "nullable"
+        String decidedBy "nullable"
+        DateTime decidedAt "nullable"
+        DateTime createdAt
+    }
+    Issue {
+        String id PK
+        String facilityId FK
+        String memberId "nullable"
+        String requesterId "nullable"
+        UserRole requesterRole "nullable"
+        String title
+        String description
+        String status
+        String response "nullable"
+        String resolvedBy "nullable"
+        DateTime createdAt
+        DateTime updatedAt
+    }
+    AuditLog {
+        String id PK
+        String facilityId FK
+        String actorId
+        String action
+        String entity
+        String entityId "nullable"
+        Json before "nullable"
+        Json after "nullable"
+        String reason "nullable"
+        DateTime createdAt
+    }
+    FacilityVisit {
+        String id PK
+        String memberId FK
+        String facilityId FK
+        DateTime checkInAt
+        FacilityVisitMethod method
+        DateTime createdAt
+    }
+    _ClassToSport {
+        String A FK "composite unique A+B"
+        String B FK "composite unique A+B"
+    }
+    User ||..o{ RefreshToken : "user"
+    User ||..o{ FacilityStaff : "user"
+    Facility ||..o{ FacilityStaff : "facility"
+    User ||..o| MemberProfile : "user"
+    User ||..o| CoachProfile : "user"
+    User ||..o| ManagerProfile : "user"
+    Facility |o..o{ MembershipSubscription : "facility"
+    MemberProfile ||..o{ MembershipSubscription : "member"
+    MembershipPlan ||..o{ MembershipSubscription : "plan"
+    Facility ||..o{ Room : "facility"
+    Room |o..o{ "Class" : "defaultRoom"
+    Facility ||..o{ "Class" : "facility"
+    "Class" ||..o{ ClassMember : "class"
+    CoachProfile ||..o{ ClassMember : "coach"
+    "Class" ||..o{ ClassSchedule : "class"
+    Room ||..o{ ClassSchedule : "room"
+    Term |o..o{ ClassSchedule : "term"
+    Facility |o..o{ Term : "facility"
+    MemberProfile ||..o{ Enrollment : "member"
+    "Class" ||..o{ Enrollment : "class"
+    ClassSchedule ||..o{ Enrollment : "schedule"
+    MembershipSubscription |o..o{ Enrollment : "subscription"
+    ClassSchedule ||..o{ WaitlistEntry : "schedule"
+    MemberProfile ||..o{ WaitlistEntry : "member"
+    Facility ||..o{ Payment : "facility"
+    MemberProfile ||..o{ Payment : "member"
+    MembershipSubscription |o..o{ Payment : "subscription"
+    MembershipPlan |o..o{ Payment : "plan"
+    User |o..o{ Payment : "createdBy"
+    Payment |o..o| SepayBankTransaction : "payment"
+    Payment |o..o{ SepayWebhookEvent : "payment"
+    MemberProfile ||..o{ Invoice : "member"
+    Payment ||..o| Invoice : "payment"
+    User ||..o{ ChatMessage : "sender"
+    User |o..o{ ChatMessage : "receiver"
+    User ||..o{ ChatAttachment : "owner"
+    User |o..o{ ChatAttachment : "receiver"
+    ChatMessage |o..o| ChatAttachment : "message"
+    ClassSchedule ||..o{ Attendance : "schedule"
+    MemberProfile ||..o{ Attendance : "member"
+    ClassSchedule ||..o{ AttendanceManualCode : "schedule"
+    User ||..o{ AttendanceManualCode : "creator"
+    MemberProfile ||..o{ AttendanceManualCodeAttempt : "member"
+    AttendanceManualCode |o..o{ AttendanceManualCodeAttempt : "code"
+    MemberProfile ||..o{ AttendancePenalty : "member"
+    "Class" ||..o{ AttendancePenalty : "class"
+    User |o..o{ AttendancePenalty : "decider"
+    CoachProfile ||..o{ CoachFeedback : "coach"
+    MemberProfile ||..o{ CoachFeedback : "member"
+    "Class" |o..o{ CoachFeedback : "class"
+    User ||..o{ Notification : "user"
+    Room ||..o{ RoomCapability : "room"
+    Sport ||..o{ SubjectRequirement : "sport"
+    CoachProfile ||..o{ CoachSpecialization : "coach"
+    Sport ||..o{ CoachSpecialization : "sport"
+    Facility ||..o{ Slot : "facility"
+    Facility ||..o{ SchedulePattern : "facility"
+    "Class" ||..o{ SchedulePattern : "class"
+    Slot ||..o{ SchedulePattern : "slot"
+    Term |o..o{ SchedulePattern : "term"
+    Facility ||..o{ CoachChangeRequest : "facility"
+    ClassSchedule ||..o{ CoachChangeRequest : "schedule"
+    CoachProfile ||..o{ CoachChangeRequest : "requester"
+    CoachProfile |o..o{ CoachChangeRequest : "replacement"
+    Facility ||..o{ LeaveRequest : "facility"
+    Facility ||..o{ Issue : "facility"
+    Facility ||..o{ AuditLog : "facility"
+    MemberProfile ||..o{ FacilityVisit : "member"
+    Facility ||..o{ FacilityVisit : "facility"
+    "Class" ||--o{ _ClassToSport : A
+    Sport ||--o{ _ClassToSport : B

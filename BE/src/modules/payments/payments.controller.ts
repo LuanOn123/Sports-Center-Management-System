@@ -11,7 +11,7 @@ export async function createPayment(req: Request, res: Response, next: NextFunct
 }
 export async function listPayments(req: Request, res: Response, next: NextFunction) {
   try {
-    const { payments, pagination } = await paymentsService.listPayments(req.query);
+    const { payments, pagination } = await paymentsService.listPayments(req.query, req.user);
     sendSuccess(res, payments, "Payments retrieved successfully", 200, pagination);
   } catch (err) { next(err); }
 }
@@ -23,7 +23,12 @@ export async function getPaymentById(req: Request, res: Response, next: NextFunc
 }
 export async function updatePaymentStatus(req: Request, res: Response, next: NextFunction) {
   try {
-    const payment = await paymentsService.updatePaymentStatus(req.params.id as string, req.body.status, req.body.reason && req.body.reference ? { reason: req.body.reason, reference: req.body.reference } : undefined);
+    const payment = await paymentsService.updatePaymentStatus(
+      req.params.id as string,
+      req.body.status,
+      req.body.reason && req.body.reference ? { reason: req.body.reason, reference: req.body.reference } : undefined,
+      req.user?.id
+    );
     sendSuccess(res, payment, "Payment status updated");
   } catch (err) { next(err); }
 }

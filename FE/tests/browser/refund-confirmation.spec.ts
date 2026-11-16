@@ -26,12 +26,13 @@ test("Admin approves an unactivated refund before the cashier records an actual 
     return route.fallback();
   });
   await page.goto("/admin/payments");
+  await page.getByRole("button", { name: "Tra cứu thanh toán & hóa đơn theo hội viên", exact: true }).click();
   await page.getByRole("button", { name: "Chọn", exact: true }).click();
   await expect(page.getByRole("button", { name: /^Xác nhận hoàn/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Duyệt hoàn tiền chưa cấp gói", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("button", { name: "Duyệt yêu cầu hoàn tiền", exact: true })).toBeDisabled();
-  await dialog.getByLabel("Lý do hoàn ngoại lệ").fill("Không thể cấp gói cho giao dịch này");
+  await dialog.getByLabel("Lý do duyệt hoàn").fill("Không thể cấp gói cho giao dịch này");
   await dialog.getByRole("button", { name: "Duyệt yêu cầu hoàn tiền", exact: true }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByRole("button", { name: "Thử kích hoạt lại", exact: true })).toHaveCount(0);
@@ -65,6 +66,7 @@ test("Admin can retry paid SePay activation and payments page has no arbitrary r
     return route.fallback();
   });
   await page.goto("/admin/payments");
+  await page.getByRole("button", { name: "Tra cứu thanh toán & hóa đơn theo hội viên", exact: true }).click();
   await page.getByRole("button", { name: "Chọn", exact: true }).click();
   await expect(page.getByRole("button", { name: "Ghi nhận thanh toán", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Thử kích hoạt lại", exact: true }).click();
@@ -123,6 +125,7 @@ test("Admin records an actual refund with receipt, and cannot submit without evi
     return route.fulfill({ json: { success: true, data } });
   });
   await page.goto("/admin/payments");
+  await page.getByRole("button", { name: "Tra cứu thanh toán & hóa đơn theo hội viên", exact: true }).click();
   await page.getByRole("button", { name: "Chọn", exact: true }).click();
   await page.getByRole("button", { name: /^Xác nhận hoàn/ }).click();
   const dialog = page.getByRole("dialog");

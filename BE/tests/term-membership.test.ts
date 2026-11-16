@@ -12,9 +12,11 @@ process.env.DIRECT_DATABASE_URL = process.env.DATABASE_URL;
 process.env.MONGO_URI = "mongodb://127.0.0.1:1/test";
 process.env.JWT_ACCESS_SECRET = "term-policy-test-access-secret";
 process.env.JWT_REFRESH_SECRET = "term-policy-test-refresh-secret";
+process.env.CANCELLATION_CUTOFF_MINUTES = "60";
 const {
   evaluateCourseEligibility,
   enrollWholeCourse,
+  cancelWholeCourse,
 } = require("../src/modules/enrollments/course-enrollment.service.js");
 const {
   getMembershipCoverageIntervals,
@@ -39,7 +41,7 @@ const sub = {
 const term = {
   id: "term-1",
   name: "Học kỳ 1",
-  status: "OPEN_REGISTRATION",
+  status: "PLANNING",
   startDate: NOW,
   endDate: new Date(NOW.getTime() + 150 * DAY),
   registrationStartDate: new Date(NOW.getTime() - DAY),
@@ -141,7 +143,7 @@ function fixture() {
     },
     memberCourseGoal: {
       findUnique: async () => null,
-      create: async ({ data }: any) => ({ id: 'goal-1', ...data }),
+      upsert: async ({ create }: any) => ({ id: 'goal-1', ...create }),
       update: async ({ data }: any) => ({ id: 'goal-1', ...data }),
     },
     classSchedule: {
@@ -161,16 +163,85 @@ function fixture() {
             : sessions,
     },
   };
-  const evaluate = () =>
+  const evaluate = (now = NOW) =>
     evaluateCourseEligibility(
       db,
       "member-1",
       { ...cls, classType: state.premium ? "PREMIUM" : "REGULAR" },
       sessions,
-      { now: NOW },
+      { now },
     );
   return { state, db, evaluate };
 }
+
+test("whole-course cancellation clears future bookings and waitlist entries in the selected term", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: NOW });
+  const writes: { where: { memberId: string }; data: { status: string } }[] = [];
+  const { id, room, ...session } = sessions[0];
+  const db = {
+    $executeRaw: async () => [],
+    membershipSubscription: { findFirst: async () => null },
+    class: { findUnique: async () => cls },
+    classSchedule: { findMany: async ({ where, include }: any) => {
+      assert.equal(where.classId, cls.id);
+      assert.equal(where.termId, term.id);
+      return include ? [{ ...session, id, room, class: cls, enrollments: [{ id: "enrollment-1" }] }] : [{ id }];
+    } },
+    waitlistEntry: {
+      findMany: async () => [],
+      updateMany: async (input: any) => {
+        assert.deepEqual(input.where.scheduleId.in, [id]);
+        writes.push(input);
+        return { count: 1 };
+      },
+    },
+    enrollment: { updateMany: async (input: any) => {
+      assert.deepEqual(input.where.id.in, ["enrollment-1"]);
+      writes.push(input);
+      return { count: 1 };
+    } },
+  };
+  replace(t, prismaConfig.prisma, "$transaction", async (callback) => callback(db));
+  const result = await cancelWholeCourse(cls.id, "member-1", term.id, "MEMBER");
+  assert.equal(result.cancelledSessions, 1);
+  assert.equal(result.cancelledWaitlist, 1);
+  assert.deepEqual(writes.map((write) => [write.where.memberId, write.data.status]), [
+    ["member-1", "CANCELLED"],
+    ["member-1", "CANCELLED"],
+  ]);
+});
+
+test("a late session prevents a member from partially cancelling the course", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: NOW });
+  const db = {
+    $executeRaw: async () => [],
+    membershipSubscription: { findFirst: async () => null },
+    class: { findUnique: async () => cls },
+    classSchedule: { findMany: async ({ include }: any) => include
+      ? [{ id: "soon", startTime: new Date(NOW.getTime() + 1000), enrollments: [{ id: "booked" }] }]
+      : [{ id: "soon" }],
+    },
+    enrollment: { updateMany: () => assert.fail("Book cancellation must fail before writing") },
+    waitlistEntry: { updateMany: () => assert.fail("Waitlist cancellation must fail before writing") },
+  };
+  replace(t, prismaConfig.prisma, "$transaction", async (callback) => callback(db));
+  await assert.rejects(() => cancelWholeCourse(cls.id, "member-1", term.id, "MEMBER"), { statusCode: 409 });
+});
+
+test("scheduled registration accepts a planning term at the opening instant", async () => {
+  const { evaluate } = fixture();
+  const opensAt = term.registrationStartDate;
+  const closesAt = term.registrationEndDate;
+  const before = await evaluate(new Date(opensAt.getTime() - 1));
+  const atOpening = await evaluate(opensAt);
+  const atClosing = await evaluate(closesAt);
+  const after = await evaluate(new Date(closesAt.getTime() + 1));
+
+  assert.ok(before.blockers.some((blocker: any) => blocker.code === "TERM_REGISTRATION_NOT_STARTED"));
+  assert.ok(!atOpening.blockers.some((blocker: any) => blocker.code.startsWith("TERM_")));
+  assert.ok(!atClosing.blockers.some((blocker: any) => blocker.code.startsWith("TERM_")));
+  assert.ok(after.blockers.some((blocker: any) => blocker.code === "TERM_REGISTRATION_CLOSED"));
+});
 
 test("exactly half of a purchased 180-day subscription permits the full term", async () => {
   const f = fixture(),

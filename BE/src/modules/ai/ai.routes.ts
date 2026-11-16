@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { validate } from "../../middlewares/validate.js";
+import { authenticate } from "../../middlewares/authenticate.js";
+import { authorizeExact } from "../../middlewares/authorize.js";
 import { AiChatSchema } from "./ai.schema.js";
 import * as aiController from "./ai.controller.js";
 
@@ -29,7 +31,7 @@ const router = Router();
  *                 items:
  *                   type: object
  *                   properties:
- *                     role: { type: string, enum: [user, assistant, system] }
+ *                     role: { type: string, enum: [user, assistant] }
  *                     content: { type: string }
  *             example:
  *               message: "Trung tâm có gói tập nào và tuần này có lớp Yoga không?"
@@ -52,5 +54,6 @@ const router = Router();
  *         description: AI chưa được cấu hình
  */
 router.post("/chat", validate(AiChatSchema), aiController.chat);
+router.post("/member-chat", authenticate, authorizeExact("MEMBER"), validate(AiChatSchema), aiController.memberChat);
 
 export default router;

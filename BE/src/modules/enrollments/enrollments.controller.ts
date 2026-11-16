@@ -92,6 +92,18 @@ export async function cancelEnrollment(req: Request, res: Response, next: NextFu
   } catch (err) { next(err); }
 }
 
+export async function cancelWholeCourse(req: Request, res: Response, next: NextFunction) {
+  try {
+    const memberId = await resolveMemberProfileId(req, req.body.memberId);
+    const result = await courseEnrollmentService.cancelWholeCourse(
+      String(req.params.classId), memberId, req.body.termId, req.user!.role,
+    );
+    sendSuccess(res, result, "Đã hủy đăng ký khóa học");
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function transferEnrollment(req: Request, res: Response, next: NextFunction) {
   try {
     const enrollment = await enrollmentsService.transferEnrollment(
