@@ -2147,3 +2147,86 @@ test('Coach schedule has one "Bộ lọc" row, a filter sheet and removable chip
   const bar = stripComments(readSource('components/shared/FilterBar.tsx'));
   assert.match(bar, /<Icon name="tune"/); assert.match(bar, /FILTER_TEXT\.active\(count\)/); assert.match(bar, /\{active \? \(/); assert.match(bar, /className="flex-row items-center gap-sm h-12 px-md bg-bg-surface rounded-lg border"/);
 });
+
+// ─── Thanh toán: mở app ngân hàng bằng VietQR deeplink (đủ tham số url + bn; gộp "Lưu mã QR" vào nút mở app) ───────────────
+
+test('VietQR deeplink carries every required parameter (ba, am, tn, url) plus bn; a missing url or bank code means "not autofill"', () => {
+  const v = loadApp('http://localhost/api/v1').load('lib/vietqr');
+  const acb = { appId: 'acb', appName: 'ACB ONE', appLogo: '', bankName: 'ACB', monthlyInstall: 1, deeplink: 'https://dl.vietqr.io/pay?app=acb', autofill: 1 };
+  const vcb = { appId: 'vcb', appName: 'VCB Digibank', appLogo: '', bankName: 'VCB', monthlyInstall: 9, deeplink: 'https://dl.vietqr.io/pay?app=vcb' };
+  const info = { accountNumber: '0123456789', bankCode: 'mb', accountHolder: ' SCMS VERIFY ', amount: 100000.4, content: 'SCMS PAY 1', returnUrl: 'https://example.org/back?x=1' };
+  // Đủ tham số theo tài liệu VietQR: ba, am, tn, bn, url — "@" giữ nguyên, url được mã hoá, số tiền làm tròn. Thiếu url thì dl.vietqr.io chỉ mở app trống
+  // (thử bằng dữ liệu giả 2026-11-16: Android trả intent:// không kèm dữ liệu, iOS chỉ mở mbbank://) nên url không bao giờ được bỏ khi có cấu hình.
+  assert.equal(v.buildBankAppDeeplink(acb, info), 'https://dl.vietqr.io/pay?app=acb&ba=0123456789@mb&am=100000&tn=SCMS%20PAY%201&bn=SCMS%20VERIFY&url=https%3A%2F%2Fexample.org%2Fback%3Fx%3D1');
+  // Không có url / bn / mã ngân hàng thì không gắn tham số rỗng; deeplink chưa có "?" vẫn dựng đúng
+  assert.equal(v.buildBankAppDeeplink(acb, { amount: 5, content: 'X', bankCode: null }), 'https://dl.vietqr.io/pay?app=acb&am=5&tn=X');
+  assert.equal(v.buildBankAppDeeplink({ ...acb, deeplink: 'https://dl.vietqr.io/pay' }, { amount: 5, content: 'X', bankCode: null }), 'https://dl.vietqr.io/pay?am=5&tn=X');
+  // Tự điền chỉ khi có cờ autofill của VietQR VÀ đủ ba, am, tn, url; thiếu một thứ thì app chỉ được mở trống nên đi đường quét ảnh QR
+  assert.equal(v.isAutofillReady(acb, info), true);
+  assert.equal(v.isAutofillReady(vcb, info), false);
+  for (const missing of [{ returnUrl: null }, { returnUrl: undefined }, { bankCode: null }, { accountNumber: '' }, { content: '' }, { amount: 0 }]) assert.equal(v.isAutofillReady(acb, { ...info, ...missing }), false, JSON.stringify(missing));
+});
+
+test('the return url sent to VietQR must be https: a configured value wins, otherwise the API origin', () => {
+  const { resolvePaymentReturnUrl: resolve } = loadApp('http://localhost/api/v1').load('lib/vietqr');
+  const api = 'https://sports-center-management-system.onrender.com/api/v1'; const origin = 'https://sports-center-management-system.onrender.com';
+  assert.equal(resolve(undefined, api), origin); assert.equal(resolve('', api), origin); assert.equal(resolve('   ', api), origin);
+  assert.equal(resolve(' https://scms.example.vn/member/membership?from=app ', api), 'https://scms.example.vn/member/membership?from=app');
+  // Scheme riêng của app, http, tên miền trần hay chuỗi bậy đều bị VietQR từ chối như thiếu url → rơi về địa chỉ gốc của API
+  for (const bad of ['pulsecenter://payment', 'http://scms.example.vn', 'scms.example.vn', 'https://', 'not a url']) assert.equal(resolve(bad, api), origin, bad);
+  assert.equal(resolve(undefined, 'https://api.example.vn:8443/api/v1'), 'https://api.example.vn:8443');
+  // Không có địa chỉ https nào (vd. đang chạy với BE trong mạng LAN) → null: app ngân hàng sẽ không tự điền
+  assert.equal(resolve(undefined, undefined), null); assert.equal(resolve(undefined, 'http://192.168.1.5:8080/api/v1'), null); assert.equal(resolve('pulsecenter://x', 'http://localhost:8080/api/v1'), null);
+});
+
+test('bank apps: BE bank ids map to VietQR codes and autofill apps are listed first', () => {
+  const v = loadApp('http://localhost/api/v1').load('lib/vietqr');
+  const banks = [{ code: 'STB', bin: '970403', shortName: 'Sacombank', name: 'Sacombank' }, { code: 'MB', bin: '970422', shortName: 'MBBank', name: 'MB' }, { code: 'VCB', bin: '970436', shortName: 'Vietcombank', name: 'VCB' }];
+  assert.equal(v.resolveVietQrBankCode('SACOMBANK', banks), 'stb'); assert.equal(v.resolveVietQrBankCode('970422', banks), 'mb'); assert.equal(v.resolveVietQrBankCode('Vietcombank', banks), 'vcb');
+  assert.equal(v.resolveVietQrBankCode('UNKNOWN', banks), null); assert.equal(v.resolveVietQrBankCode(undefined, banks), null);
+  const apps = [{ appId: 'a', monthlyInstall: 100 }, { appId: 'b', monthlyInstall: 10, autofill: 1 }, { appId: 'c', monthlyInstall: 50, autofill: 1 }, { appId: 'd', monthlyInstall: 500 }];
+  assert.deepEqual(v.sortBankApps(apps).map((a) => a.appId), ['c', 'b', 'd', 'a']); assert.deepEqual(apps.map((a) => a.appId), ['a', 'b', 'c', 'd'], 'không đổi mảng gốc');
+});
+
+test('opening a bank app: autofill apps open straight away; the others copy the transfer content, save the QR once and tell the user what to do', async () => {
+  globalThis.__DEV__ = false; // constants/payment đọc cờ __DEV__ của React Native
+  try {
+    const l = loadApp('http://localhost/api/v1').load('lib/bankAppLaunch'); const calls = [];
+    const deps = (over = {}) => ({ autofill: false, qrSaved: false, copyContent: async () => { calls.push('copy'); }, saveQr: async () => { calls.push('save'); return 'saved'; }, ...over });
+    // App tự điền: không chuẩn bị gì, mở deeplink là có sẵn số tiền + nội dung
+    assert.equal(await l.prepareBankAppLaunch(deps({ autofill: true })), null); assert.deepEqual(calls.splice(0), []);
+    // App khác: sao chép nội dung TRƯỚC, rồi lưu ảnh QR — một lần chạm thay cho "Lưu mã QR" rồi "Mở app"
+    assert.equal(await l.prepareBankAppLaunch(deps()), 'saved'); assert.deepEqual(calls.splice(0), ['copy', 'save']);
+    // Đã lưu ảnh của đơn này: vẫn sao chép nhưng không lưu lại (thư viện ảnh không bị trùng khi chọn app khác)
+    assert.equal(await l.prepareBankAppLaunch(deps({ qrSaved: true })), 'saved'); assert.deepEqual(calls.splice(0), ['copy']);
+    // Lưu thất bại (thiếu quyền, cần build lại, lỗi khác): trả lại lý do, nội dung chuyển khoản đã được sao chép
+    for (const reason of ['denied', 'unavailable', 'failed']) {
+      assert.equal(await l.prepareBankAppLaunch(deps({ saveQr: async () => { calls.push('save'); return reason; } })), reason); assert.deepEqual(calls.splice(0), ['copy', 'save']);
+    }
+    // Hộp thoại trước khi rời app: hướng dẫn quét ảnh vừa lưu, hoặc lý do chưa lưu được (vẫn cho mở app để nhập tay)
+    const saved = l.bankAppLaunchNotice('VCB Digibank', 'saved');
+    assert.deepEqual([saved.title, saved.confirmText], ['Đã lưu mã QR', 'Mở VCB Digibank']); assert.match(saved.message, /VCB Digibank chọn Quét QR → Chọn ảnh vừa lưu/); assert.match(saved.message, /đã được sao chép/);
+    const denied = l.bankAppLaunchNotice('VCB Digibank', 'denied');
+    assert.deepEqual([denied.title, denied.confirmText], ['Chưa lưu được mã QR', 'Vẫn mở app']); assert.match(denied.message, /quyền lưu ảnh/);
+    for (const reason of ['unavailable', 'denied', 'failed', 'opened']) assert.match(l.bankAppLaunchNotice('X', reason).message, /đã được sao chép — bạn có thể nhập tay/, reason);
+    // Nút "Lưu mã QR" riêng: mỗi kết quả một lời nhắn; web (đã mở ảnh ở tab mới) không báo gì
+    assert.deepEqual(['saved', 'denied', 'unavailable', 'failed'].map((r) => l.saveQrNotice(r).title), ['Đã lưu mã QR', 'Chưa có quyền lưu ảnh', 'Cần cập nhật ứng dụng', 'Không lưu được mã QR']); assert.equal(l.saveQrNotice('opened'), null);
+  } finally { delete globalThis.__DEV__; }
+});
+
+test('payment screen wiring: the flow hook owns the bank-app steps, the picker has no separate save button, the return url comes from config', () => {
+  const view = stripComments(readSource('components/member/payment/SepayPaymentView.tsx')); const hook = stripComments(readSource('hooks/member/usePayment.ts'));
+  const picker = stripComments(readSource('components/member/payment/BankAppPickerModal.tsx')); const apps = stripComments(readSource('hooks/member/useBankApps.ts'));
+  // View mỏng: không tự gọi useBankApps, chỉ gọi flow.prepareBankApp rồi hiện hộp thoại; bảng chọn chỉ đóng SAU khi người dùng đồng ý mở app
+  // (hộp thoại không phải hiện đúng lúc bảng đang đóng — iOS bỏ qua Modal mở chồng lên Modal đang đóng)
+  assert.doesNotMatch(view, /useBankApps\(/); assert.match(view, /flow\.prepareBankApp\(app\)/); assert.match(view, /bankAppLaunchNotice\(appName, launch\.qr\)/); assert.match(view, /showConfirm\(notice\.title, notice\.message/);
+  assert.match(view, /const open = async \(\) => \{\s*setPickerOpen\(false\);/); assert.match(view, /isAutofill=\{bankApps\.canAutofill\}/); assert.match(view, /isPreparing=\{flow\.isSavingQr\}/);
+  // Bảng chọn: chọn app là tự lưu QR nên không còn nút "Lưu mã QR" riêng; nhãn Tự điền / Quét QR theo isAutofill; khóa danh sách khi đang chuẩn bị
+  assert.doesNotMatch(picker, /onSaveQr|Lưu mã QR/); assert.match(picker, /isAutofill\(item\)/); assert.match(picker, /disabled=\{isPreparing\}/);
+  // Hook thanh toán: nhớ đã lưu ảnh của đơn để không lưu trùng; sao chép nội dung chuyển khoản trước khi mở app
+  assert.match(hook, /useBankApps\(checkout\)/); assert.match(hook, /if \(result === 'saved'\) setQrSaved\(true\)/);
+  assert.match(hook, /prepareBankAppLaunch\(\{ autofill, qrSaved, copyContent: \(\) => copyToClipboard\(checkout\.transferContent\), saveQr \}\)/); assert.match(hook, /return \{[\s\S]*bankApps,\s*prepareBankApp,/);
+  // Deeplink: đủ thông tin chuyển khoản + url "quay lại" lấy từ cấu hình EXPO_PUBLIC_PAYMENT_RETURN_URL (hoặc địa chỉ gốc của API)
+  assert.match(apps, /resolvePaymentReturnUrl\(PAYMENT_RETURN_URL_ENV, BASE_URL\)/); assert.match(apps, /accountHolder: checkout\.bank\?\.accountHolder/); assert.match(apps, /returnUrl: RETURN_URL/);
+  assert.match(readSource('constants/payment.ts'), /PAYMENT_RETURN_URL_ENV = process\.env\.EXPO_PUBLIC_PAYMENT_RETURN_URL/); assert.match(readSource('.env.example'), /^EXPO_PUBLIC_PAYMENT_RETURN_URL=\s*$/m);
+});

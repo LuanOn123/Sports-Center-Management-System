@@ -8,12 +8,15 @@ import { useFocusEffect } from 'expo-router';
 import {
   createSepayCheckout, getSepayCheckout, mockConfirmSepay, pendingCheckoutFromError,
 } from '../../services/paymentService';
+import { useBankApps } from './useBankApps';
 import { useCountdown } from '../shared/useCountdown';
 import { QR_IMAGE_FILE_PREFIX, SEPAY_POLL_INTERVAL_MS } from '../../constants/payment';
 import { ApiError } from '../../lib/api';
 import { storage } from '../../lib/storage';
 import { copyToClipboard, saveRemoteImageToLibrary, type SaveImageResult } from '../../lib/device';
+import { prepareBankAppLaunch } from '../../lib/bankAppLaunch';
 import { isConfirmed, requiresReview } from '../../lib/payment';
+import type { BankApp } from '../../services/vietqrService';
 import type { SepayCheckout } from '../../lib/types';
 
 /** Đơn thanh toán thuộc hội viên + cơ sở nào (BE scope đơn theo cơ sở) */
@@ -111,6 +114,16 @@ export function useMockConfirmSepay(paymentId: string | undefined) {
 
 export type SepayPhase = 'loading' | 'error' | 'review' | 'success' | 'failed' | 'expired' | 'pending';
 
+/** Kết quả chuẩn bị mở một app ngân hàng — view báo hướng dẫn (nếu cần) rồi gọi open() */
+export interface BankAppLaunch {
+  /** App mở ra là có sẵn số tiền + nội dung: người dùng chỉ cần đăng nhập và xác nhận */
+  autofill: boolean;
+  /** Kết quả lưu ảnh QR cho app không tự điền (null khi app tự điền hoặc chưa có đơn) */
+  qr: SaveImageResult | null;
+  /** Mở app ngân hàng; false nếu máy không mở được link */
+  open: () => Promise<boolean>;
+}
+
 /**
  * Toàn bộ trạng thái + hành động của màn thanh toán (tương ứng SepayCheckoutModal của web).
  * View chỉ việc render theo `phase`.
@@ -122,7 +135,10 @@ export function useSepayPaymentFlow(paymentId: string | undefined, scope: Paymen
   const mockConfirm = useMockConfirmSepay(paymentId);
   const checkout = query.data;
   const countdown = useCountdown(checkout?.expiresAt);
+  const bankApps = useBankApps(checkout);
   const [savingQr, setSavingQr] = useState(false);
+  /** Ảnh QR của đơn này đã nằm trong thư viện ảnh — các lần mở app ngân hàng sau không lưu lại (tránh ảnh trùng) */
+  const [qrSaved, setQrSaved] = useState(false);
 
   let phase: SepayPhase;
   if (!checkout) phase = query.isError ? 'error' : 'loading';
@@ -158,10 +174,25 @@ export function useSepayPaymentFlow(paymentId: string | undefined, scope: Paymen
     if (!checkout) return 'failed';
     setSavingQr(true);
     try {
-      return await saveRemoteImageToLibrary(checkout.qrUrl, `${QR_IMAGE_FILE_PREFIX}-${checkout.orderCode}`);
+      const result = await saveRemoteImageToLibrary(checkout.qrUrl, `${QR_IMAGE_FILE_PREFIX}-${checkout.orderCode}`);
+      if (result === 'saved') setQrSaved(true);
+      return result;
     } finally {
       setSavingQr(false);
     }
+  };
+
+  /**
+   * Chuẩn bị mở một app ngân hàng. App tự điền (VietQR gắn cờ autofill và đủ tham số): chỉ cần mở deeplink.
+   * App khác: sao chép nội dung chuyển khoản + lưu ảnh QR (một lần cho mỗi đơn) để người dùng vào app chọn Quét QR → Chọn ảnh;
+   * view báo hướng dẫn (lib/bankAppLaunch › bankAppLaunchNotice) rồi mới gọi open().
+   */
+  const prepareBankApp = async (app: BankApp): Promise<BankAppLaunch> => {
+    const autofill = bankApps.canAutofill(app);
+    const qr = checkout
+      ? await prepareBankAppLaunch({ autofill, qrSaved, copyContent: () => copyToClipboard(checkout.transferContent), saveQr })
+      : null;
+    return { autofill, qr, open: () => bankApps.openApp(app) };
   };
 
   return {
@@ -178,6 +209,8 @@ export function useSepayPaymentFlow(paymentId: string | undefined, scope: Paymen
     copy,
     saveQr,
     isSavingQr: savingQr,
+    bankApps,
+    prepareBankApp,
     mockConfirm,
   };
 }
