@@ -1,4 +1,5 @@
 import { mergeRequirements, missingCapabilities } from "../operations/rules.js";
+import { withTermStatus } from "../terms/term-status.js";
 import { prisma } from "../../config/prisma.js";
 import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
@@ -678,7 +679,7 @@ export async function getClassCoursePlan(
       status: s.status,
       room: { id: s.room.id, name: s.room.name, areaType: s.room.areaType },
       termId: s.termId,
-      term: s.term,
+      term: s.term && withTermStatus(s.term, now),
       bookedCount,
       remainingSlots,
       isFull,

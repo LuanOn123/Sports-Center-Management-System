@@ -2,6 +2,7 @@ import Groq from "groq-sdk";
 import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import type { AiChatInput } from "./ai.schema.js";
+import { termStatusWhere, withTermStatus } from "../terms/term-status.js";
 
 // Khởi tạo Groq (đảm bảo đã thêm GROQ_API_KEY vào .env)
 const getGroqAI = () => {
@@ -70,9 +71,7 @@ export async function getSportsCenterPromptContext(): Promise<string> {
 
     // 5. Các kỳ học sắp hoặc đang diễn ra (Terms)
     prisma.term.findMany({
-      where: {
-        status: { in: ["OPEN_REGISTRATION", "IN_PROGRESS", "PLANNING"] },
-      },
+      where: { NOT: termStatusWhere("CLOSED", nowDate) },
       select: {
         name: true,
         code: true,
@@ -168,7 +167,8 @@ Nhiệm vụ của bạn là giải đáp các thắc mắc về trung tâm th�
   if (terms.length === 0) {
     systemPrompt += "(Hiện chưa có kỳ học nào)\n";
   } else {
-    terms.forEach((t) => {
+    terms.forEach((term) => {
+      const t = withTermStatus(term, nowDate);
       const start = t.startDate.toLocaleDateString("vi-VN");
       const end = t.endDate.toLocaleDateString("vi-VN");
       const regStart = t.registrationStartDate.toLocaleDateString("vi-VN");

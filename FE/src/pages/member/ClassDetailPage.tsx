@@ -714,6 +714,12 @@ export function ClassDetailPage() {
     queryKey: ["course-plan", id],
     queryFn: () => (id ? classesApi.getCoursePlan(id) : null),
     enabled: Boolean(id),
+    refetchInterval: ({ state: { data } }) => {
+      const upcoming = data?.registration?.blockers.find((blocker) => blocker.code === "TERM_REGISTRATION_NOT_STARTED");
+      const opensAt = upcoming?.details?.registrationStartDate;
+      if (typeof opensAt !== "string") return false;
+      return Math.max(1000, Math.min(60_000, Date.parse(opensAt) - Date.now()));
+    },
   });
   const { data: currentUser } = useQuery({
     queryKey: ["current-user-me"],
@@ -807,19 +813,16 @@ export function ClassDetailPage() {
     plan?.sessions?.find((s: any) => s.term)?.term;
 
   const now = Date.now();
-  const isTermPlanning = courseTerm?.status === "PLANNING";
-  const isTermNotStarted = Boolean(
-    courseTerm?.registrationStartDate &&
-    new Date(courseTerm.registrationStartDate).getTime() > now,
-  );
   const isTermClosed = Boolean(
     courseTerm?.status === "CLOSED" ||
     (courseTerm?.registrationEndDate &&
       new Date(courseTerm.registrationEndDate).getTime() < now),
   );
-  const isTermBlocked = Boolean(
-    courseTerm && (isTermPlanning || isTermNotStarted || isTermClosed),
+  const isTermNotStarted = Boolean(
+    !isTermClosed && courseTerm?.registrationStartDate &&
+    new Date(courseTerm.registrationStartDate).getTime() > now,
   );
+  const isTermBlocked = isTermNotStarted || isTermClosed;
 
   const daysRemaining =
     courseTerm?.registrationEndDate && !isTermClosed
@@ -1465,13 +1468,6 @@ export function ClassDetailPage() {
             )}
             {courseTerm && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {isTermPlanning && (
-                  <AlertBanner
-                    type="warning"
-                    title="Chưa mở cổng đăng ký"
-                    message={`Khóa học thuộc kỳ "${courseTerm.name}" đang lập kế hoạch, chưa mở đăng ký.`}
-                  />
-                )}
                 {isTermNotStarted && (
                   <AlertBanner
                     type="info"
@@ -1536,17 +1532,15 @@ export function ClassDetailPage() {
                 ? "Đã đăng ký trọn khóa"
                 : enrollCourseMutation.isPending
                   ? "Đang đăng ký…"
-                  : isTermPlanning
-                    ? "Kỳ đang lập kế hoạch"
-                    : isTermNotStarted
-                      ? "Chưa mở đăng ký"
-                      : isTermClosed
-                        ? "Đã hết hạn đăng ký"
-                        : !registration ||
-                            !registration.eligible ||
-                            course.availability.minRemainingSlots === 0
-                          ? "Chưa thể đăng ký"
-                          : "Đăng ký trọn khóa"}
+                  : isTermNotStarted
+                    ? "Chưa mở đăng ký"
+                    : isTermClosed
+                      ? "Đã hết hạn đăng ký"
+                      : !registration ||
+                          !registration.eligible ||
+                          course.availability.minRemainingSlots === 0
+                        ? "Chưa thể đăng ký"
+                        : "Đăng ký trọn khóa"}
             </button>
             {/* BẢNG LỊCH TRÌNH KHÓA HỌC DẠNG BẢNG & MA TRẬN TUẦN TRỰC QUAN */}
             <CourseScheduleTableView course={course} sessions={plan.sessions} />

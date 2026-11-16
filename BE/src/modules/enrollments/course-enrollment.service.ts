@@ -8,6 +8,7 @@ import { createNotification } from "../notifications/notifications.service.js";
 import { createTermMembershipGrant, readTermMembershipGrant, termMembershipCovers } from "./term-membership-policy.js";
 import { findActivePenalty } from "../attendance/attendance-penalties.service.js";
 import { ensureMemberCourseGoal } from "../attendance/goal-evaluation.service.js";
+import { termRegistrationBlocker } from "../terms/term-status.js";
 import {
   CONCURRENT_CLASS_LIMIT_CODE,
   concurrentClassLimitMessage,
@@ -192,32 +193,8 @@ export async function evaluateCourseEligibility(
   for (const st of schedulesWithTerms) {
     if (!st.term || termsSeen.has(st.term.id)) continue;
     termsSeen.add(st.term.id);
-    const term = st.term;
-    if (term.status === "PLANNING") {
-      blockers.push({
-        code: "TERM_REGISTRATION_NOT_OPEN",
-        message: `Kỳ học "${term.name}" đang trong giai đoạn lập kế hoạch, chưa mở đăng ký.`,
-        details: { termId: term.id },
-      });
-    } else if (term.status === "CLOSED") {
-      blockers.push({
-        code: "TERM_CLOSED",
-        message: `Kỳ học "${term.name}" đã kết thúc, không thể đăng ký thêm.`,
-        details: { termId: term.id },
-      });
-    } else if (now < term.registrationStartDate) {
-      blockers.push({
-        code: "TERM_REGISTRATION_NOT_STARTED",
-        message: `Kỳ học "${term.name}" chưa đến thời gian đăng ký. Thời gian mở đăng ký: ${vnDateTime(term.registrationStartDate)}.`,
-        details: { termId: term.id, registrationStartDate: term.registrationStartDate },
-      });
-    } else if (now > term.registrationEndDate) {
-      blockers.push({
-        code: "TERM_REGISTRATION_CLOSED",
-        message: `Kỳ học "${term.name}" đã hết hạn đăng ký vào ngày ${vnDateTime(term.registrationEndDate)}.`,
-        details: { termId: term.id, registrationEndDate: term.registrationEndDate },
-      });
-    }
+    const blocker = termRegistrationBlocker(st.term, now);
+    if (blocker) blockers.push(blocker);
   }
 
   // ── Cấp KHÓA: gói tập / tier / hình phạt / quota ──────────────────────────

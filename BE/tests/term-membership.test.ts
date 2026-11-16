@@ -39,7 +39,7 @@ const sub = {
 const term = {
   id: "term-1",
   name: "Học kỳ 1",
-  status: "OPEN_REGISTRATION",
+  status: "PLANNING",
   startDate: NOW,
   endDate: new Date(NOW.getTime() + 150 * DAY),
   registrationStartDate: new Date(NOW.getTime() - DAY),
@@ -161,16 +161,31 @@ function fixture() {
             : sessions,
     },
   };
-  const evaluate = () =>
+  const evaluate = (now = NOW) =>
     evaluateCourseEligibility(
       db,
       "member-1",
       { ...cls, classType: state.premium ? "PREMIUM" : "REGULAR" },
       sessions,
-      { now: NOW },
+      { now },
     );
   return { state, db, evaluate };
 }
+
+test("scheduled registration accepts a planning term at the opening instant", async () => {
+  const { evaluate } = fixture();
+  const opensAt = term.registrationStartDate;
+  const closesAt = term.registrationEndDate;
+  const before = await evaluate(new Date(opensAt.getTime() - 1));
+  const atOpening = await evaluate(opensAt);
+  const atClosing = await evaluate(closesAt);
+  const after = await evaluate(new Date(closesAt.getTime() + 1));
+
+  assert.ok(before.blockers.some((blocker: any) => blocker.code === "TERM_REGISTRATION_NOT_STARTED"));
+  assert.ok(!atOpening.blockers.some((blocker: any) => blocker.code.startsWith("TERM_")));
+  assert.ok(!atClosing.blockers.some((blocker: any) => blocker.code.startsWith("TERM_")));
+  assert.ok(after.blockers.some((blocker: any) => blocker.code === "TERM_REGISTRATION_CLOSED"));
+});
 
 test("exactly half of a purchased 180-day subscription permits the full term", async () => {
   const f = fixture(),

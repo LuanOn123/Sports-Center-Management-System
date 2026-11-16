@@ -59,5 +59,5 @@ export const PaymentQuerySchema = z.object({
   method: z.enum(["CASH", "BANK_TRANSFER", "SEPAY"]).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  refundPending: z.enum(["true", "false"]).optional(),
 });
-

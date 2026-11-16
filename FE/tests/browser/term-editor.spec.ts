@@ -54,7 +54,7 @@ test.describe("manager term editor", () => {
     await page.route(/\/api\/v1\/terms(?:\?.*)?$/, (route) => {
       if (route.request().method() === "POST") {
         saved = route.request().postDataJSON();
-        term = { ...saved, id: "new", facilityId: "facility-a" };
+        term = { ...saved, id: "new", facilityId: "facility-a", status: "PLANNING" };
         return route.fulfill({ status: 201, json: { success: true, data: term } });
       }
       return route.fulfill({ json: { success: true, data: term ? [term] : [] } });
@@ -68,6 +68,7 @@ test.describe("manager term editor", () => {
     await page.goto("/manager/terms");
     await page.getByRole("button", { name: "Thêm kỳ học", exact: true }).click();
     const dialog = page.getByRole("dialog");
+    await expect(dialog.getByLabel("Trạng thái", { exact: true })).toHaveCount(0);
     await dialog.getByLabel(/^Mã kỳ học/).fill("KY_CO_SO");
     await dialog.getByLabel(/^Tên kỳ học/).fill("Kỳ cơ sở");
     await dialog.getByLabel(/^Ngày bắt đầu kỳ/).fill("2027-02-01");
@@ -82,8 +83,11 @@ test.describe("manager term editor", () => {
       registrationEndDate: "2027-01-15T16:59:59.000Z",
     });
     expect(saved).not.toHaveProperty("facilityId");
+    expect(saved).not.toHaveProperty("status");
+    await expect(page.getByRole("article").getByText("Chưa bắt đầu", { exact: true })).toBeVisible();
     await expect(page.getByText(/06:30.*15\/01\/2027/)).toBeVisible();
     await page.getByRole("button", { name: "Chỉnh sửa", exact: true }).click();
+    await expect(dialog.getByLabel("Trạng thái", { exact: true })).toHaveCount(0);
     await expect(dialog.getByLabel(/^Ngày bắt đầu kỳ/)).toHaveValue("2027-02-01");
     await expect(dialog.getByLabel(/^Mở đăng ký từ/)).toHaveValue("2027-01-15T06:30");
     await dialog.getByLabel(/^Mở đăng ký từ/).fill("2027-01-15T09:45");
@@ -95,5 +99,6 @@ test.describe("manager term editor", () => {
       registrationEndDate: saved?.registrationEndDate,
     });
     expect(updated).not.toHaveProperty("facilityId");
+    expect(updated).not.toHaveProperty("status");
   });
 });
