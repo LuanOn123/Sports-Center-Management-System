@@ -24,6 +24,11 @@ export async function getEnrollmentReport(req: Request, res: Response, next: Nex
     sendSuccess(res, report, "Enrollment report retrieved successfully");
   } catch (err) { next(err); }
 }
+export async function getFacilityActivity(req: Request, res: Response, next: NextFunction) {
+  try {
+    sendSuccess(res, await reportsService.getFacilityActivity(String(req.query.startDate), String(req.query.endDate)));
+  } catch (err) { next(err); }
+}
 export async function getMembershipReport(req: Request, res: Response, next: NextFunction) {
   try {
     const { startDate, endDate, facilityId } = req.query as any;

@@ -78,6 +78,7 @@ export const SaveEvaluationSchema = z.object({
   memberId: z.string().min(1, "memberId là bắt buộc"),
   progress: z.number().min(0, "Tiến độ tối thiểu 0%").max(100, "Tiến độ tối đa 100%"),
   description: z.string().max(1000, "Ghi chú không quá 1000 ký tự").optional().nullable(),
+  results: z.string().max(3000).optional().nullable(),
 });
 
 export const UpdateClassGoalSchema = z.object({

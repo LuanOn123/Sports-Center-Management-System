@@ -22,6 +22,7 @@ export interface SlotEvaluationItem {
     previousProgress: number;
     newProgress: number;
     description?: string | null;
+    results?: string | null;
     createdAt: string;
     updatedAt: string;
   } | null;
@@ -44,6 +45,7 @@ export interface MyClassGoal {
     newProgress: number;
     diff: number;
     description?: string | null;
+    results?: string | null;
     createdAt: string;
   }>;
 }
@@ -130,6 +132,12 @@ export const enrollmentsApi = {
     return apiClient.delete<Enrollment>(`/enrollments/${id}`);
   },
 
+  async cancelWholeCourse(classId: string, termId: string | null) {
+    return apiClient.post<{ cancelledSessions: number; cancelledWaitlist: number }>(
+      `/enrollments/courses/${encodeURIComponent(classId)}/cancel`, { termId },
+    );
+  },
+
   async transferEnrollment(
     id: string,
     targetScheduleId: string,
@@ -144,35 +152,31 @@ export const enrollmentsApi = {
   },
 
   async getScheduleEvaluations(scheduleId: string): Promise<SlotEvaluationItem[]> {
-    const res = await apiClient.get<{ success: boolean; data: SlotEvaluationItem[] }>(
+    return apiClient.get<SlotEvaluationItem[]>(
       `/attendance/schedules/${scheduleId}/evaluations`
     );
-    return res.data;
   },
 
   async saveScheduleEvaluation(
     scheduleId: string,
-    data: { memberId: string; progress: number; description?: string | null }
-  ): Promise<{ evaluation: any; goal: any }> {
-    const res = await apiClient.post<{ success: boolean; data: { evaluation: any; goal: any } }>(
+    data: { memberId: string; progress: number; description?: string | null; results?: string | null }
+  ) {
+    return apiClient.post(
       `/attendance/schedules/${scheduleId}/evaluations`,
       data
     );
-    return res.data;
   },
 
   async getMyClassGoal(classId: string): Promise<MyClassGoal | null> {
-    const res = await apiClient.get<{ success: boolean; data: MyClassGoal | null }>(
+    return apiClient.get<MyClassGoal | null>(
       `/attendance/classes/${classId}/my-goal`
     );
-    return res.data;
   },
 
   async updateMyClassGoal(classId: string, goal: string): Promise<{ id: string; goal: string }> {
-    const res = await apiClient.patch<{ success: boolean; data: { id: string; goal: string } }>(
+    return apiClient.patch<{ id: string; goal: string }>(
       `/attendance/classes/${classId}/my-goal`,
       { goal }
     );
-    return res.data;
   },
 };

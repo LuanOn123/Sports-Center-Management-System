@@ -29,6 +29,8 @@ import { CoachCard, CoachProfileDialog } from "../../shared/CoachProfileDialog";
 import type { CoachInfo } from "../../types/member";
 import { WaitlistAction } from "../../shared/Waitlist";
 import { ErrorState } from "../../shared/feedback";
+import { Modal } from "../../shared/ui";
+import { TrainingPlans } from "../../shared/TrainingPlans";
 import { formatMemberDate } from "../../shared/memberFormat";
 import { sportNames } from "../../shared/sports";
 import {
@@ -694,8 +696,9 @@ export function ClassDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<{ termId: string | null } | null>(null);
   const [actionError, setActionError] = useState<unknown>(null);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<{ title: string; message: string } | null>(null);
 
   const {
     data: cls,
@@ -750,11 +753,12 @@ export function ClassDetailPage() {
     onMutate: () => queryClient.cancelQueries({ queryKey: ["course-plan", id] }),
     onSuccess: async (result) => {
       const { summary } = result;
-      setActionSuccess(
-        summary.enrolledNow > 0
+      setActionSuccess({
+        title: "Đăng ký thành công",
+        message: summary.enrolledNow > 0
           ? `Bạn đã đăng ký ${summary.enrolledNow} buổi của khóa "${result.className}". Hiện đã có ${summary.totalRegistered}/${summary.totalSessions} buổi trong khóa của bạn.`
           : `Bạn đã đăng ký đủ ${summary.totalSessions} buổi của khóa này trước đó.`,
-      );
+      });
       setActionError(null);
       setConfirmOpen(false);
       await queryClient.cancelQueries({
@@ -769,6 +773,7 @@ export function ClassDetailPage() {
           ["class", result.classId],
           ["course-plan", result.classId],
           ["my-class-goal", result.classId],
+          ["training-plans", result.classId],
           ["my-enrollments"],
           ["my-enrollment-quota"],
           ["member-schedule"],
@@ -779,6 +784,21 @@ export function ClassDetailPage() {
     onError: (err: unknown) => {
       setActionError(err);
       setConfirmOpen(false);
+    },
+  });
+  const cancelCourse = useMutation({
+    mutationFn: (termId: string | null) => enrollmentsApi.cancelWholeCourse(id!, termId),
+    onSuccess: async ({ cancelledSessions }) => {
+      setCancelTarget(null);
+      setActionError(null);
+      setActionSuccess({
+        title: "Đã xử lý yêu cầu hủy",
+        message: cancelledSessions ? `Đã hủy ${cancelledSessions} buổi còn lại của khóa.` : "Bạn không còn buổi nào cần hủy trong khóa này.",
+      });
+      await Promise.all(
+        [["course-plan", id], ["class", id], ["my-enrollments"], ["my-enrollment-quota"], ["member-schedule"], ["waitlist"], ["training-plans", id], ["classes"]]
+          .map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      );
     },
   });
 
@@ -813,6 +833,7 @@ export function ClassDetailPage() {
     plan?.sessions?.find((s: any) => s.term)?.term;
 
   const now = Date.now();
+  const upcomingBooking = plan?.sessions.find((session) => session.myEnrollmentStatus === "BOOKED" && Date.parse(session.startTime) > now);
   const isTermClosed = Boolean(
     courseTerm?.status === "CLOSED" ||
     (courseTerm?.registrationEndDate &&
@@ -920,8 +941,8 @@ export function ClassDetailPage() {
       {actionSuccess && (
         <AlertBanner
           type="success"
-          title="Đăng ký thành công"
-          message={actionSuccess}
+          title={actionSuccess.title}
+          message={actionSuccess.message}
         />
       )}
       {actionError !== null && (
@@ -1294,6 +1315,7 @@ export function ClassDetailPage() {
                           </div>
                         </div>
                       )}
+                      {ev.results && <div style={{ whiteSpace: "pre-wrap" }}><strong>Kết quả buổi tập</strong><p>{ev.results}</p></div>}
                     </div>
                   );
                 })}
@@ -1302,6 +1324,8 @@ export function ClassDetailPage() {
           </div>
         </section>
       )}
+
+      {currentUser?.role === "MEMBER" && (classGoalQuery.data || upcomingBooking) && <TrainingPlans classId={cls.id} />}
 
       <section style={cardStyle}>
         <h2
@@ -1542,12 +1566,32 @@ export function ClassDetailPage() {
                         ? "Chưa thể đăng ký"
                         : "Đăng ký trọn khóa"}
             </button>
+            {upcomingBooking && (
+              <button className="button danger" disabled={cancelCourse.isPending} style={{ alignSelf: "flex-start" }} onClick={() => {
+                cancelCourse.reset();
+                setCancelTarget({ termId: upcomingBooking.termId ?? upcomingBooking.term?.id ?? null });
+              }}>
+                Hủy đăng ký toàn khóa
+              </button>
+            )}
             {/* BẢNG LỊCH TRÌNH KHÓA HỌC DẠNG BẢNG & MA TRẬN TUẦN TRỰC QUAN */}
             <CourseScheduleTableView course={course} sessions={plan.sessions} />
           </div>
         )}
       </section>
 
+      {cancelTarget && (
+        <Modal title="Hủy đăng ký toàn khóa" onClose={() => setCancelTarget(null)} dismissible={!cancelCourse.isPending}>
+          <p>Thao tác này hủy tất cả buổi chưa diễn ra của khóa <strong>{cls.name}</strong> trong kỳ này.</p>
+          {cancelCourse.error && <ErrorState error={cancelCourse.error} />}
+          <div className="modal-footer">
+            <button className="button" disabled={cancelCourse.isPending} onClick={() => setCancelTarget(null)}>Quay lại</button>
+            <button className="button danger" disabled={cancelCourse.isPending} onClick={() => cancelCourse.mutate(cancelTarget.termId)}>
+              {cancelCourse.isPending ? "Đang hủy…" : "Xác nhận hủy toàn khóa"}
+            </button>
+          </div>
+        </Modal>
+      )}
       <EnrollConfirmModal
         isOpen={confirmOpen}
         onClose={() => setConfirmOpen(false)}

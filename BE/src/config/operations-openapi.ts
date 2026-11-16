@@ -9,6 +9,7 @@ const object = (properties: any, required = Object.keys(properties)) => ({
 });
 const enumOf = (...values: string[]) => ({ type: "string", enum: values });
 const time = { type: "string", format: "date-time" };
+const trainingPlan = { title: text, instructions: text, homework: { ...text, nullable: true } };
 const facility = object(
   {
     code: text,
@@ -28,6 +29,20 @@ const quantities = object({
   },
 });
 const entries: [string, string, string, any?][] = [
+  ["post", "/enrollments/courses/{classId}/cancel", "Hủy các buổi còn lại của khóa trong kỳ đã chọn", object({ termId: { ...text, nullable: true }, memberId: text }, ["termId"])],
+  ["get", "/reports/facility-activity", "Số hội viên hoạt động và đăng ký theo trạng thái tại cơ sở"],
+  ["get", "/classes/{id}/training-plans", "Giáo án của lớp và cá nhân theo quyền truy cập"],
+  ["post", "/classes/{id}/training-plans", "HLV giao giáo án", object({ ...trainingPlan, memberId: { ...text, nullable: true } }, ["title", "instructions"])],
+  ["patch", "/classes/{id}/training-plans/{planId}", "HLV sửa giáo án đã giao", object(trainingPlan, ["title", "instructions"])],
+  ["post", "/classes/{id}/training-plans/suggest", "HLV tạo bản nháp giáo án bằng AI", object({ memberId: { ...text, nullable: true }, objective: text }, [])],
+  ["get", "/attendance/schedules/{scheduleId}/evaluations", "HLV xem đánh giá của buổi học"],
+  ["post", "/attendance/schedules/{scheduleId}/evaluations", "Lưu tiến độ và kết quả của buổi học", object({ memberId: text, progress: integer, description: { ...text, nullable: true }, results: { ...text, nullable: true } }, ["memberId", "progress"])],
+  ["get", "/attendance/classes/{classId}/my-goal", "Hội viên xem mục tiêu và tiến độ của khóa"],
+  ["patch", "/attendance/classes/{classId}/my-goal", "Yêu cầu thay đổi mục tiêu khóa học", object({ goal: text })],
+  ["post", "/ai/member-chat", "Trợ lý AI với lịch và tiến độ của hội viên đăng nhập", object({
+    message: text,
+    history: list(object({ role: enumOf("user", "assistant"), content: text })),
+  }, ["message"])],
   ["get", "/coach-change-requests", "Danh sách yêu cầu đổi HLV theo buổi"],
   ["get", "/coach-change-requests/sessions", "Buổi học coach có thể đề nghị đổi HLV"],
   ["post", "/coach-change-requests", "Coach gửi yêu cầu đổi HLV", object({ scheduleId: text, reason: { ...text, minLength: 3, maxLength: 1000 } })],
@@ -188,7 +203,7 @@ const entries: [string, string, string, any?][] = [
     "post",
     "/issues",
     "Gửi yêu cầu",
-    object({ title: text, description: text }),
+    object({ title: text, description: text, memberId: text }, ["title", "description"]),
   ],
   [
     "put",
@@ -285,7 +300,7 @@ export function addOperations(spec: any) {
                 schema: { type: "string", enum: ["true", "false"] },
               },
             ]
-          : [
+          : path === "/ai/member-chat" ? [] : [
               {
                 name: "X-Facility-Id",
                 in: "header",
@@ -302,7 +317,7 @@ export function addOperations(spec: any) {
               { name: "filterFacilityId", in: "query", schema: text },
             ]
           : []),
-        ...(path === "/reports/facilities"
+        ...(["/reports/facilities", "/reports/facility-activity"].includes(path)
           ? ["startDate", "endDate"].map((name) => ({
               name,
               in: "query",

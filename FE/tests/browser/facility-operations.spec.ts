@@ -35,7 +35,7 @@ test("member can create a scoped support request", async ({ page }) => {
   await page.getByRole("button", { name: "Thêm mới", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(
-    page.getByRole("dialog").getByRole("button", { name: /Lưu|Tạo/ }),
+    page.getByRole("dialog").getByRole("button", { name: "Gửi yêu cầu" }),
   ).toBeVisible();
 });
 test("manager cannot edit plan prices", async ({ page }) => {

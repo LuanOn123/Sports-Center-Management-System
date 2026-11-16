@@ -9,7 +9,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { io, type Socket } from "socket.io-client";
 import {
@@ -76,6 +76,26 @@ export function getNotificationCta(
         to: "/receptionist/leave",
       };
     }
+  }
+  if (type === "PAYMENT_REFUNDED" || meta.action === "REFUND_REQUEST") {
+    if (["RECEPTIONIST", "MANAGER", "ADMIN"].includes(role || "")) {
+      return {
+        label: "Xử lý hoàn tiền",
+        to: "/receptionist/payments?tab=refunds",
+      };
+    }
+  }
+  if (meta.action === "REFUND_ASSIGNED" && role === "MEMBER") {
+    const receptionistId = String(meta.receptionistUserId || "");
+    const receptionistName = String(meta.receptionistName || "lễ tân");
+    const paymentCode = String(meta.paymentId || "").slice(0, 8);
+    const msg = encodeURIComponent(
+      `Chào ${receptionistName}, tôi muốn trao đổi về yêu cầu hoàn tiền mã giao dịch #${paymentCode}. Nhờ bạn hỗ trợ.`,
+    );
+    return {
+      label: "Nhắn tin với lễ tân",
+      to: `/member/chat?userId=${receptionistId}&message=${msg}`,
+    };
   }
   if (
     type.includes("SCHEDULE") ||
@@ -676,11 +696,22 @@ function handleDisconnect(reason: string) {
 export function Chat({
   userId,
   compact = false,
+  initialTarget,
+  initialMessage,
 }: {
   userId: string;
   compact?: boolean;
+  initialTarget?: string;
+  initialMessage?: string;
 }) {
-  const [target, setTarget] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const queryUserId = searchParams.get("userId") || initialTarget || null;
+  const queryMessage = searchParams.get("message") || initialMessage || "";
+  const [target, setTarget] = useState<string | null>(queryUserId);
+
+  useEffect(() => {
+    if (queryUserId) setTarget(queryUserId);
+  }, [queryUserId]);
   const [search, setSearch] = useState("");
   const [connected, setConnected] = useState(false);
   const [online, setOnline] = useState<Set<string>>(new Set());
@@ -778,9 +809,16 @@ export function Chat({
         return timeB - timeA || a.fullName.localeCompare(b.fullName, "vi");
       });
   }, [contacts.data, conversations.data, search]);
+  const contactQuery = useQuery({
+    queryKey: ["chat", "target-user", target],
+    enabled: Boolean(target) && target !== "" && !contacts.data?.data.some((c) => c.id === target) && !conversationById.has(target || ""),
+    queryFn: ({ signal }) => api<RecordData>(`GET /users/${target}`, { signal }),
+  });
+
   const selectedContact =
     contacts.data?.data.find((item) => item.id === target) ||
-    conversationById.get(target || "")?.user;
+    conversationById.get(target || "")?.user ||
+    (contactQuery.data?.data as Contact | undefined);
   const selectConversation = (id: string) => setTarget(id);
   return (
     <div className={"workflow-page chat-page " + (compact ? "compact" : "")}>
@@ -929,6 +967,7 @@ export function Chat({
             socket={socketRef.current}
             connected={connected}
             onBack={compact ? () => setTarget(null) : undefined}
+            initialMessage={queryMessage}
           />
         ) : (
           !compact && (
@@ -955,6 +994,7 @@ function Conversation({
   socket,
   connected,
   onBack,
+  initialMessage,
 }: {
   onBack?: () => void;
   target: string;
@@ -964,9 +1004,10 @@ function Conversation({
   isTyping: boolean;
   socket: Socket | null;
   connected: boolean;
+  initialMessage?: string;
 }) {
   const cache = useQueryClient();
-  const [content, setContent] = useState(""),
+  const [content, setContent] = useState(initialMessage || ""),
     [file, setFile] = useState<File | null>(null),
     [validation, setValidation] = useState("");
   const log = useRef<HTMLDivElement>(null);

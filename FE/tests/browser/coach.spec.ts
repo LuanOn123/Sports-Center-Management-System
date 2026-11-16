@@ -162,6 +162,67 @@ async function setupCoach(
   return calls;
 }
 
+test("coach publishes class and personal plans and reviews the AI draft first", async ({ page }) => {
+  await setupCoach(page);
+  const plans: Record<string, unknown>[] = [];
+  let draftInput: unknown;
+  await page.route("**/api/v1/classes/class-1/training-plans", (route) => {
+    if (route.request().method() === "POST") {
+      const plan = { ...route.request().postDataJSON(), id: String(plans.length + 1), editable: true };
+      plans.push(plan);
+      return route.fulfill({ status: 201, json: { success: true, data: plan } });
+    }
+    return route.fulfill({ json: { success: true, data: { plans, members: [{ id: "member-1", name: "Trần Minh Anh" }] } } });
+  });
+  await page.route("**/api/v1/classes/class-1/training-plans/suggest", (route) => {
+    draftInput = route.request().postDataJSON();
+    return route.fulfill({ json: { success: true, data: { draft: "Khởi động 5 phút." } } });
+  });
+  await page.goto("/coach/classes");
+  await page.getByRole("button", { name: "Chi tiết lớp" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Tạo giáo án" }).click();
+  await dialog.getByLabel("Tiêu đề").fill("Khởi động cả lớp");
+  await dialog.getByLabel("Nội dung giáo án").fill("Tập thở và thả lỏng.");
+  await dialog.getByRole("button", { name: "Giao giáo án" }).click();
+  await expect(dialog.getByRole("heading", { name: "Khởi động cả lớp" })).toBeVisible();
+  expect(plans[0].memberId).toBeNull();
+  await dialog.getByRole("button", { name: "Tạo giáo án" }).click();
+  await dialog.getByLabel("Giao cho").selectOption("member-1");
+  await dialog.getByLabel("Tiêu đề").fill("Giáo án riêng");
+  await dialog.getByRole("button", { name: "Tạo bản nháp bằng AI" }).click();
+  await expect(dialog.getByLabel("Nội dung giáo án")).toHaveValue("Khởi động 5 phút.");
+  expect(draftInput).toMatchObject({ memberId: "member-1" });
+  expect(plans).toHaveLength(1);
+  await dialog.getByLabel("Nội dung giáo án").fill("Khởi động và giãn cơ 10 phút.");
+  await dialog.getByRole("button", { name: "Giao giáo án" }).click();
+  await expect(dialog.getByRole("heading", { name: "Giáo án riêng" })).toBeVisible();
+  expect(plans[1]).toMatchObject({ memberId: "member-1", instructions: "Khởi động và giãn cơ 10 phút." });
+});
+
+test("coach records session results alongside progress", async ({ page }) => {
+  await setupCoach(page);
+  let saved: unknown;
+  await page.route(/\/api\/v1\/attendance\?/, (route) =>
+    route.fulfill({ json: { success: true, data: [] } }),
+  );
+  await page.route("**/api/v1/attendance/schedules/session-1/evaluations", (route) => {
+    if (route.request().method() === "POST") {
+      saved = route.request().postDataJSON();
+      return route.fulfill({ json: { success: true, data: { evaluation: saved } } });
+    }
+    return route.fulfill({ json: { success: true, data: [{ memberId: "member-1", goal: "Cải thiện sức bền", currentProgress: 40 }] } });
+  });
+  await page.goto("/coach/schedule");
+  await page.getByRole("button", { name: /Yoga nền tảng.*Xem học viên/ }).click();
+  const dialog = page.getByRole("dialog");
+  const evaluation = dialog.locator("details.feedback-card").filter({ hasText: "Trần Minh Anh" });
+  await evaluation.locator("summary").click();
+  await evaluation.getByLabel("Kết quả từng bài tập trong buổi").fill("Squat 3 hiệp × 10 lần");
+  await evaluation.getByRole("button", { name: /^Lưu đánh giá/ }).click();
+  await expect.poll(() => saved).toMatchObject({ memberId: "member-1", progress: 40, results: "Squat 3 hiệp × 10 lần" });
+});
+
 test("coach dashboard scopes classes by profile ID and schedule by assigned class", async ({
   page,
 }) => {

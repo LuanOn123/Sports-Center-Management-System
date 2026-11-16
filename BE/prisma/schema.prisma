@@ -247,6 +247,7 @@ model MemberProfile {
   manualCodeAttempts AttendanceManualCodeAttempt[]
   courseGoals        MemberCourseGoal[]
   slotEvaluations    SlotEvaluation[]
+  trainingPlans      TrainingPlan[]
 }
 
 model CoachProfile {
@@ -265,6 +266,7 @@ model CoachProfile {
   classes       ClassMember[]
   feedbacks     CoachFeedback[]
   slotEvaluations SlotEvaluation[]
+  trainingPlans   TrainingPlan[]
 }
 
 model ManagerProfile {
@@ -416,6 +418,7 @@ model Class {
   feedbacks   CoachFeedback[]
   penalties   AttendancePenalty[]
   courseGoals MemberCourseGoal[]
+  trainingPlans TrainingPlan[]
 }
 
 // Coach assignment to class (many-to-many)
@@ -1049,6 +1052,7 @@ model Issue {
   memberId String?
   requesterId String?
   requesterRole UserRole?
+  submittedOnBehalf Boolean @default(false)
   title String
   description String
   status String @default("OPEN")
@@ -1141,6 +1145,7 @@ model SlotEvaluation {
   previousProgress Int               @default(0)
   newProgress      Int               @default(0)
   description      String?
+  results          String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -1149,4 +1154,21 @@ model SlotEvaluation {
   @@index([memberId])
   @@index([goalId])
   @@index([coachId])
+}
+
+model TrainingPlan {
+  id           String        @id @default(uuid())
+  classId      String
+  class        Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  memberId     String?
+  member       MemberProfile? @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  coachId      String
+  coach        CoachProfile  @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  title        String
+  instructions String
+  homework     String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([classId, memberId])
 }

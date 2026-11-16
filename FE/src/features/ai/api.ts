@@ -5,9 +5,10 @@ export async function sendAIMessage(
   message: string,
   history: AIMessage[],
   signal: AbortSignal,
+  personal = false,
 ) {
-  const response = await api<{ reply: string }>("POST /ai/chat", {
-    body: { message, history },
+  const response = await api<{ reply: string }>(personal ? "POST /ai/member-chat" : "POST /ai/chat", {
+    body: { message, history: history.slice(-12).map(({ role, content }) => ({ role, content: content.slice(0, 8000) })) },
     signal,
   });
   if (typeof response.data?.reply !== "string" || !response.data.reply.trim())

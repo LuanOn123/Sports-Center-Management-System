@@ -1,6 +1,7 @@
 import { Router } from "express";
+import { z } from "zod";
 import { authenticate } from "../../middlewares/authenticate.js";
-import { authorize } from "../../middlewares/authorize.js";
+import { authorize, authorizeExact } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
 import { CreateEnrollmentSchema, TransferEnrollmentSchema, EnrollmentQuerySchema, EnrollWholeCourseSchema, RequestEnrollmentLeaveSchema, UpdateEnrollmentHealthNotesSchema } from "./enrollments.schema.js";
 import * as enrollmentsController from "./enrollments.controller.js";
@@ -285,6 +286,14 @@ router.get(
  *       500: { $ref: "#/components/responses/ServerError" }
  */
 router.delete("/:id", authenticate, enrollmentsController.cancelEnrollment);
+
+router.post(
+  "/courses/:classId/cancel",
+  authenticate,
+  authorizeExact("MEMBER", "RECEPTIONIST"),
+  validate(z.object({ termId: z.string().min(1).nullable(), memberId: z.string().min(1).optional() })),
+  enrollmentsController.cancelWholeCourse,
+);
 
 /**
  * @swagger

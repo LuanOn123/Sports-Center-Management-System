@@ -9,6 +9,7 @@ for (const scenario of ["allows registration with the approved exception", "keep
     const scheduled = scenario === "opens at the scheduled time";
     const opensAt = "2027-01-15T02:45:00Z";
     let eligible = scenario === "allows registration with the approved exception";
+    let booked = false;
     if (scheduled) await page.clock.install({ time: new Date("2027-01-15T02:44:50Z") });
     const writes: unknown[] = [];
     await page.route("**/api/v1/classes/c1/course-plan", async (route) =>
@@ -49,6 +50,7 @@ for (const scenario of ["allows registration with the approved exception", "keep
             sessions: [
               {
                 id: "session-1",
+                termId: "term-1",
                 startTime: "2099-10-01T11:00:00Z",
                 endTime: "2099-10-01T12:00:00Z",
                 status: "SCHEDULED",
@@ -58,7 +60,7 @@ for (const scenario of ["allows registration with the approved exception", "keep
                 isFull: false,
                 isBookable: true,
                 canBook: true,
-                myEnrollmentStatus: null,
+                myEnrollmentStatus: booked ? "BOOKED" : null,
               },
             ],
             registration: {
@@ -94,9 +96,9 @@ for (const scenario of ["allows registration with the approved exception", "keep
                 classes: [],
               },
               penalty: null,
-              registeredSessions: 0,
-              remainingSessionsToRegister: 1,
-              isFullyRegistered: false,
+              registeredSessions: booked ? 1 : 0,
+              remainingSessionsToRegister: booked ? 0 : 1,
+              isFullyRegistered: booked,
             },
           },
         },
@@ -104,6 +106,7 @@ for (const scenario of ["allows registration with the approved exception", "keep
     );
     await page.route("**/api/v1/enrollments/bulk", async (route) => {
       writes.push(route.request().postDataJSON());
+      booked = true;
       return route.fulfill({
         json: {
           success: true,
@@ -124,6 +127,15 @@ for (const scenario of ["allows registration with the approved exception", "keep
         },
       });
     });
+    let cancellation: unknown;
+    await page.route("**/api/v1/enrollments/courses/c1/cancel", async (route) => {
+      cancellation = route.request().postDataJSON();
+      booked = false;
+      return route.fulfill({ json: { success: true, data: { cancelledSessions: 1, cancelledWaitlist: 0 } } });
+    });
+    await page.route("**/api/v1/classes/class-yoga-001/training-plans", (route) =>
+      route.fulfill({ json: { success: true, data: { plans: booked ? [{ id: "plan-1", memberId: null, title: "Yoga căn bản", instructions: "Khởi động 5 phút" }] : [] } } }),
+    );
     await page.goto("/member/classes/c1");
     await expect(
       page.getByText("Đủ điều kiện thời hạn cho trọn kỳ", { exact: true }),
@@ -157,6 +169,11 @@ for (const scenario of ["allows registration with the approved exception", "keep
       await expect.poll(() => writes.length).toBe(1);
       expect(writes[0]).toMatchObject({ classId: "c1" });
       expect(writes[0]).not.toHaveProperty("membershipCoverage");
+      await expect(page.getByRole("heading", { name: "Yoga căn bản" })).toBeVisible();
+      await page.getByRole("button", { name: "Hủy đăng ký toàn khóa", exact: true }).click();
+      await page.getByRole("dialog").getByRole("button", { name: "Xác nhận hủy toàn khóa" }).click();
+      await expect(page.getByText("Đã hủy 1 buổi còn lại của khóa.")).toBeVisible();
+      expect(cancellation).toEqual({ termId: "term-1" });
     }
   });
 }

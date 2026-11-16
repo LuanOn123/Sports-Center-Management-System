@@ -692,16 +692,28 @@ route(
       z.object({
         title: z.string().min(3).max(120),
         description: z.string().min(5).max(3000),
+        memberId: z.string().min(1).optional(),
       }),
     ),
   ],
-  (req) => {
+  async (req) => {
     if (readAttendanceReport(req.body.description)) throw new AppError("Báo cáo chuyên cần phải được tạo qua luồng chuyên cần", 400);
+    let memberId = req.user.role === "MEMBER" ? actor() : null;
+    if (req.body.memberId) {
+      if (req.user.role !== "RECEPTIONIST") throw new AppError("Chỉ lễ tân được ghi nhận yêu cầu thay hội viên.", 403);
+      const member = await prisma.memberProfile.findFirst({
+        where: { id: req.body.memberId, user: { role: "MEMBER", isActive: true } },
+        select: { userId: true },
+      });
+      if (!member) throw new AppError("Không tìm thấy hội viên đang hoạt động.", 404);
+      memberId = member.userId;
+    }
     return prisma.issue.create({
       data: {
         title: req.body.title,
         description: req.body.description,
-        memberId: req.user.role === "MEMBER" ? actor() : null,
+        memberId,
+        submittedOnBehalf: req.user.role === "RECEPTIONIST" && Boolean(memberId),
         requesterId: actor(),
         requesterRole: req.user.role,
         facilityId: facility(),
@@ -759,7 +771,7 @@ route(
   ],
   async (req) => {
     const issue = await prisma.issue.findFirst({
-      where: { id: id(req), memberId: actor(), status: "OPEN" },
+      where: { id: id(req), memberId: actor(), status: "OPEN", OR: [{ requesterId: actor() }, { requesterId: null }] },
     });
     if (!issue) throw new AppError("Open issue not found", 404);
     if (readAttendanceReport(issue.description) || readAttendanceReport(req.body.description)) throw new AppError("Không được sửa báo cáo chuyên cần qua yêu cầu hỗ trợ", 403);
@@ -768,7 +780,7 @@ route(
 );
 route("delete", "/issues/:id", [authorize("MEMBER")], async (req) => {
   const issue = await prisma.issue.findFirst({
-    where: { id: id(req), memberId: actor(), status: "OPEN" },
+    where: { id: id(req), memberId: actor(), status: "OPEN", OR: [{ requesterId: actor() }, { requesterId: null }] },
   });
   if (!issue) throw new AppError("Open issue not found", 404);
   if (readAttendanceReport(issue.description)) throw new AppError("Không được xóa báo cáo chuyên cần", 403);

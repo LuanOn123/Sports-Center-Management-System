@@ -74,6 +74,8 @@ export function Attendance({
     queryFn: () => enrollmentsApi.getScheduleEvaluations(id),
     enabled: ["ADMIN", "MANAGER", "COACH"].includes(role),
   });
+  const canEvaluate = evQuery.isSuccess && schedule.status !== "CANCELLED" &&
+    Date.parse(String(schedule.startTime)) <= Date.now();
   const canWrite =
     ["ADMIN", "MANAGER", "COACH"].includes(role) &&
     schedule.status !== "CANCELLED" &&
@@ -98,6 +100,7 @@ export function Attendance({
             : "Chỉ quản lý hoặc huấn luyện viên phụ trách được điểm danh khi buổi học đã bắt đầu."}
         </p>
       )}
+      {evQuery.error && <ErrorState error={evQuery.error} retry={() => evQuery.refetch()} />}
       {q.isPending ? (
         <Loading />
       ) : q.error ? (
@@ -121,7 +124,7 @@ export function Attendance({
                 scheduleId={id}
                 record={record}
                 evalData={evalData}
-                role={role}
+                canEvaluate={canEvaluate}
                 writable={record ? ["ADMIN", "MANAGER"].includes(role) : canWrite}
                 canExcuse={["ADMIN", "MANAGER"].includes(role)}
                 onSave={() => {
@@ -145,7 +148,7 @@ function AttendanceRow({
   scheduleId,
   record,
   evalData,
-  role,
+  canEvaluate,
   writable,
   canExcuse,
   onSave,
@@ -155,12 +158,11 @@ function AttendanceRow({
   scheduleId: string;
   record?: AttendanceRecord;
   evalData?: SlotEvaluationItem;
-  role: string;
+  canEvaluate: boolean;
   writable: boolean;
   canExcuse: boolean;
   onSave: () => void;
 }) {
-  const canEvaluate = ["ADMIN", "MANAGER", "COACH"].includes(role);
   const previousProgress = evalData?.evaluation
     ? evalData.evaluation.previousProgress
     : (evalData?.currentProgress ?? 0);
@@ -174,6 +176,7 @@ function AttendanceRow({
   const [description, setDescription] = useState<string>(
     evalData?.evaluation?.description || ""
   );
+  const [results, setResults] = useState(evalData?.evaluation?.results ?? "");
 
   useEffect(() => {
     if (evalData) {
@@ -182,6 +185,7 @@ function AttendanceRow({
         : evalData.currentProgress;
       setProgress(p);
       setDescription(evalData.evaluation?.description || "");
+      setResults(evalData.evaluation?.results ?? "");
     }
   }, [evalData]);
 
@@ -205,6 +209,7 @@ function AttendanceRow({
           memberId,
           progress,
           description: description.trim() || null,
+          results: results.trim() || null,
         });
       }
     },
@@ -406,6 +411,11 @@ function AttendanceRow({
                   </div>
                 </div>
 
+                <label>
+                  Kết quả từng bài tập trong buổi
+                  <textarea rows={3} maxLength={3000} value={results} onChange={(event) => setResults(event.target.value)}
+                    placeholder="Ví dụ: Squat 3 hiệp × 10 lần, chạy 15 phút" />
+                </label>
                 <div>
                   <label
                     htmlFor={`eval-desc-${memberId}`}
@@ -444,7 +454,7 @@ function AttendanceRow({
             )}
 
             <button className="button small primary" disabled={save.isPending}>
-              {save.isPending ? "Đang lưu…" : "Lưu đánh giá & điểm danh"}
+              {save.isPending ? "Đang lưu…" : canEvaluate && writable ? "Lưu đánh giá và điểm danh" : canEvaluate ? "Lưu đánh giá" : "Lưu điểm danh"}
             </button>
           </fieldset>
         </form>

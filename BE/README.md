@@ -188,8 +188,11 @@ Once the server is running, you can view the interactive Swagger API documentati
 - `npm run db:reset` - Reset the database and re-apply all migrations.
 
 ## 🤝 Project Flows (Implemented)
-- **Flow 1: User & Membership Management:** Fully functional with tier-based validations.
-- **Flow 2: Class Booking & Schedule:** Built with robust logic for conflict handling and capacity limits.
-- **Flow 3: Payment & Reports:** End-to-end payment lifecycle and dashboard analytics.
+- **Flow 1 · Tài khoản và gói tập.** Admin quản lý tài khoản, vai trò, danh mục gói và cơ sở. Manager phân công nhân sự trong cơ sở. Lễ tân tạo hội viên, kiểm tra quyền sử dụng, hỗ trợ mua/gia hạn và tiếp nhận yêu cầu.
+- **Flow 2 · Đăng ký và xếp lịch.** Manager vận hành kỳ học, lớp và lịch. Member đăng ký trọn khóa, có thể hủy các buổi còn lại trong kỳ nếu đủ hạn tự hủy. Lễ tân có thể hỗ trợ hủy tại cơ sở. Danh sách chờ được xử lý khi có chỗ trống.
+- **Flow 3 · Thanh toán và báo cáo.** SePay, thu tại quầy, hóa đơn và hoàn tiền. Manager xem doanh thu, số hội viên hoạt động và trạng thái đăng ký theo khoảng ngày tại cơ sở mình.
+- **Flow 4 · Giáo án và chuyên cần.** HLV giao giáo án cho lớp hoặc từng học viên, giao bài tập về nhà và ghi kết quả/tiến độ từng buổi. Member xem phần được giao. Lễ tân check-in tại cơ sở, theo dõi chuyên cần và gửi cảnh báo hoặc báo cáo vi phạm.
+- **Flow 5 · Gợi ý bài tập bằng AI.** HLV được phân công có thể tạo và chỉnh bản nháp trước khi giao giáo án.
+- **Flow 6 · Trợ lý AI.** Khách hỏi về trung tâm. Hội viên đăng nhập có thể hỏi thêm về lịch, tiến độ và giáo án của mình.
 
-*(Note: AI Workouts, AI Assistant, and advanced Attendance features are planned for future phases).*
+Chạy `npm run db:deploy` trước khi khởi động backend với luồng giáo án và ghi nhận hỗ trợ tại quầy. Cấu hình `GROQ_API_KEY` để sử dụng hai luồng AI.

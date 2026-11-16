@@ -165,11 +165,11 @@ export const getScheduleEvaluations = async (req: Request, res: Response, next: 
 
 export const saveScheduleEvaluation = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { memberId, progress, description } = req.body;
+    const { memberId, progress, description, results } = req.body;
     const data = await goalService.saveScheduleEvaluation(
       req.params.scheduleId as string,
       memberId,
-      { progress, description },
+      { progress, description, results },
       req.user!
     );
     sendSuccess(res, data, "Đánh giá tiến độ buổi học thành công");

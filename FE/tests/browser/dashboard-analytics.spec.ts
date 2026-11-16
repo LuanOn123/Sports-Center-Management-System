@@ -295,7 +295,7 @@ for (const [role, path] of [
     if (role === "RECEPTIONIST") {
       expect(calls.some((c) => c.path.startsWith("/reports/"))).toBe(false);
       await expect(page.locator('a[href="/receptionist/checkin"]')).toHaveCount(
-        0,
+        1,
       );
     }
     if (role === "COACH")

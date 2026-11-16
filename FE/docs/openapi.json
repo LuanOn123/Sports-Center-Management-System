@@ -10144,8 +10144,7 @@
                           "type": "string",
                           "enum": [
                             "user",
-                            "assistant",
-                            "system"
+                            "assistant"
                           ]
                         },
                         "content": {
@@ -12052,6 +12051,9 @@
                   },
                   "description": {
                     "type": "string"
+                  },
+                  "memberId": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -13201,6 +13203,700 @@
           },
           "409": {
             "description": "Payment has no eligible unactivated funds"
+          }
+        }
+      }
+    },
+    "/ai/member-chat": {
+      "post": {
+        "summary": "Trợ lý AI với lịch và tiến độ của hội viên đăng nhập",
+        "description": "MANAGER: cơ sở được xác định từ phân công đang hoạt động trong DB; facilityId/header khác cơ sở đó bị từ chối 403. Phân công Coach đã có cơ sở hoặc thêm Manager thứ hai vào cơ sở trả 409.",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string"
+                  },
+                  "history": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "user",
+                            "assistant"
+                          ]
+                        },
+                        "content": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "role",
+                        "content"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/reports/facility-activity": {
+      "get": {
+        "summary": "Số hội viên hoạt động và đăng ký theo trạng thái tại cơ sở",
+        "description": "MANAGER: cơ sở được xác định từ phân công đang hoạt động trong DB; facilityId/header khác cơ sở đó bị từ chối 403. Phân công Coach đã có cơ sở hoặc thêm Manager thứ hai vào cơ sở trả 409.",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": false,
+            "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/enrollments/courses/{classId}/cancel": {
+      "post": {
+        "summary": "Hủy các buổi còn lại của khóa trong kỳ đã chọn",
+        "description": "MANAGER: cơ sở được xác định từ phân công đang hoạt động trong DB; facilityId/header khác cơ sở đó bị từ chối 403. Phân công Coach đã có cơ sở hoặc thêm Manager thứ hai vào cơ sở trả 409.",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": false,
+            "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "termId": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "memberId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "termId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/classes/{id}/training-plans": {
+      "get": {
+        "summary": "Giáo án của lớp và cá nhân theo quyền truy cập",
+        "description": "MANAGER: cơ sở được xác định từ phân công đang hoạt động trong DB; facilityId/header khác cơ sở đó bị từ chối 403. Phân công Coach đã có cơ sở hoặc thêm Manager thứ hai vào cơ sở trả 409.",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": false,
+            "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      },
+      "post": {
+        "summary": "HLV giao giáo án",
+        "description": "MANAGER: cơ sở được xác định từ phân công đang hoạt động trong DB; facilityId/header khác cơ sở đó bị từ chối 403. Phân công Coach đã có cơ sở hoặc thêm Manager thứ hai vào cơ sở trả 409.",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": false,
+            "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "instructions": {
+                    "type": "string"
+                  },
+                  "homework": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "memberId": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "title",
+                  "instructions"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/classes/{id}/training-plans/{planId}": {
+      "patch": {
+        "summary": "HLV sửa giáo án đã giao",
+        "description": "MANAGER: cơ sở được xác định từ phân công đang hoạt động trong DB; facilityId/header khác cơ sở đó bị từ chối 403. Phân công Coach đã có cơ sở hoặc thêm Manager thứ hai vào cơ sở trả 409.",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "planId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": false,
+            "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "instructions": {
+                    "type": "string"
+                  },
+                  "homework": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "title",
+                  "instructions"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/classes/{id}/training-plans/suggest": {
+      "post": {
+        "summary": "HLV tạo bản nháp giáo án bằng AI",
+        "description": "MANAGER: cơ sở được xác định từ phân công đang hoạt động trong DB; facilityId/header khác cơ sở đó bị từ chối 403. Phân công Coach đã có cơ sở hoặc thêm Manager thứ hai vào cơ sở trả 409.",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": false,
+            "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "memberId": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "objective": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/attendance/schedules/{scheduleId}/evaluations": {
+      "get": {
+        "summary": "HLV xem đánh giá của buổi học",
+        "description": "MANAGER: cơ sở được xác định từ phân công đang hoạt động trong DB; facilityId/header khác cơ sở đó bị từ chối 403. Phân công Coach đã có cơ sở hoặc thêm Manager thứ hai vào cơ sở trả 409.",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": false,
+            "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      },
+      "post": {
+        "summary": "Lưu tiến độ và kết quả của buổi học",
+        "description": "MANAGER: cơ sở được xác định từ phân công đang hoạt động trong DB; facilityId/header khác cơ sở đó bị từ chối 403. Phân công Coach đã có cơ sở hoặc thêm Manager thứ hai vào cơ sở trả 409.",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": false,
+            "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "memberId": {
+                    "type": "string"
+                  },
+                  "progress": {
+                    "type": "integer"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "results": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "memberId",
+                  "progress"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      }
+    },
+    "/attendance/classes/{classId}/my-goal": {
+      "get": {
+        "summary": "Hội viên xem mục tiêu và tiến độ của khóa",
+        "description": "MANAGER: cơ sở được xác định từ phân công đang hoạt động trong DB; facilityId/header khác cơ sở đó bị từ chối 403. Phân công Coach đã có cơ sở hoặc thêm Manager thứ hai vào cơ sở trả 409.",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": false,
+            "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Yêu cầu thay đổi mục tiêu khóa học",
+        "description": "MANAGER: cơ sở được xác định từ phân công đang hoạt động trong DB; facilityId/header khác cơ sở đó bị từ chối 403. Phân công Coach đã có cơ sở hoặc thêm Manager thứ hai vào cơ sở trả 409.",
+        "tags": [
+          "Facility Operations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Facility-Id",
+            "in": "header",
+            "required": false,
+            "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "goal": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "goal"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid or missing facility context"
+          },
+          "403": {
+            "description": "Forbidden role or facility scope"
+          },
+          "409": {
+            "description": "Business rule conflict"
           }
         }
       }

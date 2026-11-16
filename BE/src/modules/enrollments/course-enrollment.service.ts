@@ -8,6 +8,8 @@ import { createNotification } from "../notifications/notifications.service.js";
 import { createTermMembershipGrant, readTermMembershipGrant, termMembershipCovers } from "./term-membership-policy.js";
 import { findActivePenalty } from "../attendance/attendance-penalties.service.js";
 import { ensureMemberCourseGoal } from "../attendance/goal-evaluation.service.js";
+import { ATTENDANCE } from "../../config/attendance.js";
+import { promoteNextEligible, flushWaitlistNotifications } from "../waitlist/waitlist.promotion.js";
 import { termRegistrationBlocker } from "../terms/term-status.js";
 import {
   CONCURRENT_CLASS_LIMIT_CODE,
@@ -17,6 +19,61 @@ import {
 } from "./enrollment-quota.service.js";
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
+
+export async function cancelWholeCourse(classId: string, memberId: string, termId: string | null, role: string) {
+  const result = await prisma.$transaction(async (tx) => {
+    await lockMemberQuota(tx, memberId);
+    await lockMemberClass(tx, memberId, classId);
+    const cls = await tx.class.findUnique({ where: { id: classId }, select: { name: true } });
+    if (!cls) throw new AppError("Không tìm thấy lớp học.", 404);
+
+    const candidates = await tx.classSchedule.findMany({
+      where: {
+        classId, termId, status: "SCHEDULED", startTime: { gt: new Date() },
+        OR: [
+          { enrollments: { some: { memberId, status: "BOOKED" } } },
+          { waitlistEntries: { some: { memberId, status: "WAITING" } } },
+        ],
+      },
+      select: { id: true },
+    });
+    const ids = candidates.map(({ id }) => id);
+    await lockSchedules(tx, ids);
+    const now = new Date();
+    const remaining = await tx.classSchedule.findMany({
+      where: { id: { in: ids }, classId, termId, status: "SCHEDULED" },
+      include: { class: true, enrollments: { where: { memberId, status: "BOOKED" }, select: { id: true } } },
+    });
+    const lockedBooking = remaining.some((session) => session.enrollments.length && (
+      session.startTime <= now ||
+      (role === "MEMBER" && session.startTime.getTime() - now.getTime() < ATTENDANCE.CANCELLATION_CUTOFF_MINUTES * 60_000)
+    ));
+    if (lockedBooking) throw new AppError(
+      `Có buổi học đã bắt đầu hoặc quá hạn tự hủy (${ATTENDANCE.CANCELLATION_CUTOFF_MINUTES} phút trước giờ học). Vui lòng liên hệ lễ tân.`,
+      409, { code: "LATE_CANCELLATION_DISALLOWED" },
+    );
+
+    const upcoming = remaining.filter((session) => session.startTime > now);
+    const waitlist = await tx.waitlistEntry.updateMany({
+      where: { memberId, scheduleId: { in: upcoming.map(({ id }) => id) }, status: "WAITING" },
+      data: { status: "CANCELLED", cancelledAt: now },
+    });
+    const bookings = await tx.enrollment.updateMany({
+      where: { memberId, id: { in: upcoming.flatMap((session) => session.enrollments.map(({ id }) => id)) }, status: "BOOKED" },
+      data: { status: "CANCELLED", cancelledAt: now },
+    });
+    let promoted = false;
+    for (const session of upcoming) {
+      if (session.enrollments.length && await promoteNextEligible(tx, session.id, session)) promoted = true;
+    }
+    return {
+      promoted,
+      summary: { classId, className: cls.name, cancelledSessions: bookings.count, cancelledWaitlist: waitlist.count },
+    };
+  }, { timeout: 30_000 });
+  if (result.promoted) await flushWaitlistNotifications().catch(() => {});
+  return result.summary;
+}
 
 /** Error code trả về khi đăng ký trọn khóa thất bại (HTTP 409) kèm `errors.details[]`. */
 export const COURSE_ENROLLMENT_FAILED_CODE = "COURSE_ENROLLMENT_FAILED";
