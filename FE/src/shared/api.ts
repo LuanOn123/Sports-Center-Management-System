@@ -447,6 +447,26 @@ export const authService = {
     saveTokens(r.data);
     return authService.me();
   },
+  async googleLogin(credential: string) {
+    const r = await api<LoginOk["data"]>("POST /auth/google-login", {
+      body: { credential },
+    });
+    saveTokens(r.data);
+    return authService.me();
+  },
+  async googleRegister(body: {
+    credential: string;
+    phone?: string;
+    gender?: "MALE" | "FEMALE" | "OTHER";
+    dateOfBirth?: string;
+    fitnessGoal?: string;
+  }) {
+    const r = await api<LoginOk["data"]>("POST /auth/google-register", {
+      body,
+    });
+    saveTokens(r.data);
+    return authService.me();
+  },
   me: () => api<ProfileOk["data"]>("GET /auth/me"),
   async logout() {
     try {

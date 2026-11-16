@@ -147,3 +147,26 @@ test("Admin records an actual refund with receipt, and cannot submit without evi
     page.getByRole("button", { name: /^Xác nhận hoàn/ }),
   ).toHaveCount(0);
 });
+
+test("Admin retains the local subscriptions navigation with the main cancellation flow", async ({ page }) => {
+  await setup(page, "ADMIN");
+  await page.route("**/api/v1/**", async route => {
+    const path = new URL(route.request().url()).pathname.replace("/api/v1", "");
+    if (path === "/members") return route.fulfill({ json: { success: true, data: [
+      { id: "member-1", user: { fullName: "Nguyễn Lan", email: "lan@example.invalid" } },
+    ] } });
+    if (path === "/subscriptions/member/member-1") return route.fulfill({ json: { success: true, data: [
+      { id: "sub-1", status: "ACTIVE", tier: "MEMBERSHIP", startDate: "2026-01-01T00:00:00Z", endDate: "2099-12-31T00:00:00Z",
+        plan: { name: "Gói demo", price: 300000, durationDays: 30 } },
+    ] } });
+    if (path === "/membership-plans") return route.fulfill({ json: { success: true, data: [] } });
+    return route.fallback();
+  });
+  await page.goto("/admin/subscriptions");
+  await expect(page.getByRole("link", { name: "Gói hội viên đã mua", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Gói thành viên", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Chọn", exact: true }).click();
+  await page.getByRole("button", { name: "Hủy gói", exact: true }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Xác nhận hủy gói tập", exact: true })).toBeVisible();
+});

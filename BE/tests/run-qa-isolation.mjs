@@ -15,11 +15,12 @@ async function run(args, env) {
   });
 }
 try {
-  docker("run", "--rm", "-d", "--name", pg, "--label", `scms.qa=${suffix}`,
+  docker("run", "-d", "--name", pg, "--label", `scms.qa=${suffix}`,
     "-e", `POSTGRES_PASSWORD=${password}`, "-p", "127.0.0.1::5432", "postgres:16");
   owned.push(pg);
-  docker("run", "--rm", "-d", "--name", mongo, "--label", `scms.qa=${suffix}`,
-    "-p", "127.0.0.1::27017", "mongo:8", "--replSet", "qa0", "--bind_ip_all");
+  const mongoImage = process.env.SCMS_QA_MONGO_IMAGE || "mongo:7.0";
+  docker("run", "-d", "--name", mongo, "--label", `scms.qa=${suffix}`,
+    "-p", "127.0.0.1::27017", mongoImage, "--replSet", "qa0", "--bind_ip_all");
   owned.push(mongo);
   for (let attempt = 0; ; attempt++) {
     try { docker("exec", pg, "pg_isready", "-U", "postgres"); break; }
@@ -30,7 +31,7 @@ try {
       docker("exec", mongo, "mongosh", "--quiet", "--eval",
         'rs.initiate({_id:"qa0",members:[{_id:0,host:"localhost:27017"}]})');
       break;
-    } catch { if (attempt > 60) throw new Error("Mongo startup timeout"); await pause(1000); }
+    } catch { if (attempt > 60) { try { console.error("Mongo logs:\n", docker("logs", mongo)); } catch {} throw new Error("Mongo startup timeout"); } await pause(1000); }
   }
   for (let attempt = 0; ; attempt++) {
     if (docker("exec", mongo, "mongosh", "--quiet", "--eval", "db.hello().isWritablePrimary") === "true") break;
@@ -78,7 +79,9 @@ try {
   console.error(error.message); process.exitCode = 1;
 } finally {
   for (const name of owned.reverse()) {
-    if (docker("inspect", "--format", '{{index .Config.Labels "scms.qa"}}', name) === suffix)
-      docker("rm", "-f", name);
+    try {
+      if (docker("inspect", "--format", '{{index .Config.Labels "scms.qa"}}', name) === suffix)
+        docker("rm", "-f", name);
+    } catch {}
   }
 }

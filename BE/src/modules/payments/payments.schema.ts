@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const CreatePaymentSchema = z.object({
   memberId: z.string().min(1),
-  subscriptionId: z.string().optional(),
+  subscriptionId: z.string().min(1).optional(),
   amount: z.number().positive(),
   method: z.enum(["CASH", "BANK_TRANSFER"]),
   status: z.enum(["PENDING", "SUCCESS", "FAILED"]).default("SUCCESS"),

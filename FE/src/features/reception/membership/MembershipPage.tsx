@@ -39,13 +39,13 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
   );
   const plans = useReceptionList("GET /membership-plans", { isActive: "true" });
   const hasPlans = (plans.data?.data || []).some(
-    (p) => p.id && p.isActive !== false,
+    (p) => p.id && p.isActive !== false && p.tier !== "FREE" && Number(p.price) > 0,
   );
   const hasScheduled = subscriptions.data?.data.some(
     (s) => s.status === "SCHEDULED",
   );
   const choices = (plans.data?.data || [])
-    .filter((p) => p.id && p.isActive !== false)
+    .filter((p) => p.id && p.isActive !== false && p.tier !== "FREE" && Number(p.price) > 0)
     .map((p) => ({
       value: String(p.id),
       label: `${display(p.name)} · ${money(p.price)} · ${display(p.durationDays)} ngày`,

@@ -453,3 +453,87 @@
 }
 .pulse-auth .error-state { margin-top:18px; padding:14px; background:#301b26; border:1px solid #65303f; border-radius:7px; color:#ff8d9a; }
 .pulse-auth .error-state :is(p,strong,svg) { color:#ff8d9a; }
+
+/* Google OAuth & Registration Enhancements */
+.auth-oauth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: #627289;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+}
+.auth-oauth-divider::before,
+.auth-oauth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #263143;
+}
+.auth-google-btn-row {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0 16px;
+}
+.auth-google-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: #182232;
+  border: 1px solid #2d3b50;
+  border-radius: 9px;
+  margin-bottom: 20px;
+}
+.auth-google-preview img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid #d4ff00;
+  object-fit: cover;
+}
+.auth-google-preview-info h4 {
+  margin: 0;
+  font-size: 14px;
+  color: #f1f4f9;
+  font-weight: 600;
+}
+.auth-google-preview-info p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #9baac0;
+}
+.auth-cancel-btn {
+  background: transparent;
+  border: 1px solid #344155;
+  color: #9baac0;
+  border-radius: 7px;
+  padding: 9px 15px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.auth-cancel-btn:hover {
+  color: #f1f4f9;
+  border-color: #65758d;
+}
+select.auth-select {
+  display: block;
+  width: 100%;
+  min-height: 50px;
+  padding: 13px 15px;
+  border: 1px solid #344155;
+  border-radius: 7px;
+  background: #131a26;
+  color: #f1f4f9;
+  font-size: 14px;
+  box-shadow: none;
+}
+select.auth-select:focus {
+  border-color: #d4ff00;
+}

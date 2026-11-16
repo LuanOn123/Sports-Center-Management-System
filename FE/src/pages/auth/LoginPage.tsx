@@ -3,11 +3,12 @@ import type { FormEvent } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Activity, Eye, EyeOff, Lock, Mail, ArrowRight } from "lucide-react";
+import { GoogleLogin } from "@react-oauth/google";
 import { AlertBanner } from "../../components/common";
 import { Turnstile } from "../../features/auth/Turnstile";
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -48,6 +49,31 @@ export function LoginPage() {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    if (loading || !credentialResponse.credential) return;
+    setError(null);
+    setLoading(true);
+
+    try {
+      const user = await loginWithGoogle(credentialResponse.credential);
+      if (from) {
+        navigate(from, { replace: true });
+      } else if (user.role === "MANAGER") {
+        navigate("/manager", { replace: true });
+      } else {
+        navigate("/member/dashboard", { replace: true });
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Đăng nhập Google thất bại. Vui lòng thử lại.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div
       style={{
@@ -70,7 +96,7 @@ export function LoginPage() {
           border: "1px solid #e2eae5",
         }}
       >
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
           <div
             style={{
               width: 52,
@@ -81,41 +107,41 @@ export function LoginPage() {
               alignItems: "center",
               justifyContent: "center",
               color: "#d3f879",
-              marginBottom: 14,
+              marginBottom: 12,
             }}
           >
             <Activity size={28} strokeWidth={2.6} />
           </div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: "#203d31", letterSpacing: -0.8, margin: "0 0 6px" }}>
-            PULSE SPORTS
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: "#203d31", letterSpacing: -0.6, margin: "0 0 6px" }}>
+            Chào mừng trở lại
           </h1>
-          <p style={{ margin: 0, color: "#7b8982", fontSize: 14 }}>
-            Đăng nhập vào cổng thông tin hội viên & quản trị
+          <p style={{ margin: 0, color: "#7b8982", fontSize: 13 }}>
+            Đăng nhập để quản lý lịch học, tập luyện và thẻ hội viên
           </p>
         </div>
 
         {error && (
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 18 }}>
             <AlertBanner type="error" message={error} />
+            {error.toLowerCase().includes("chưa được đăng ký") && (
+              <p style={{ margin: "8px 0 0", fontSize: 13, textAlign: "center" }}>
+                Chưa có tài khoản?{" "}
+                <Link to="/register" style={{ color: "#203d31", fontWeight: 700, textDecoration: "underline" }}>
+                  Đăng ký hội viên ngay
+                </Link>
+              </p>
+            )}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: 13,
-                fontWeight: 600,
-                color: "#344054",
-                marginBottom: 6,
-              }}
-            >
-              Email tài khoản
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#344054", marginBottom: 4 }}>
+              Email
             </label>
             <div style={{ position: "relative" }}>
               <Mail
-                size={18}
+                size={17}
                 color="#98a2b3"
                 style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}
               />
@@ -124,27 +150,27 @@ export function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="member@sports.com"
+                placeholder="your.email@example.com"
                 style={{ paddingLeft: 38 }}
               />
             </div>
           </div>
 
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: 13,
-                fontWeight: 600,
-                color: "#344054",
-                marginBottom: 6,
-              }}
-            >
-              Mật khẩu
-            </label>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "#344054", margin: 0 }}>
+                Mật khẩu
+              </label>
+              <Link
+                to="/forgot-password"
+                style={{ fontSize: 12, color: "#203d31", fontWeight: 600, textDecoration: "none" }}
+              >
+                Quên mật khẩu?
+              </Link>
+            </div>
             <div style={{ position: "relative" }}>
               <Lock
-                size={18}
+                size={17}
                 color="#98a2b3"
                 style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}
               />
@@ -203,6 +229,35 @@ export function LoginPage() {
             {!loading && <ArrowRight size={16} />}
           </button>
         </form>
+
+        {/* Nút đăng nhập Google đặt ở DƯỚI button Đăng nhập */}
+        <div style={{ marginTop: 20 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              margin: "14px 0",
+              color: "#8c9b92",
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            <hr style={{ flex: 1, border: "none", borderTop: "1px solid #e2eae5" }} />
+            <span style={{ padding: "0 10px" }}>HOẶC TIẾP TỤC VỚI</span>
+            <hr style={{ flex: 1, border: "none", borderTop: "1px solid #e2eae5" }} />
+          </div>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError("Đăng nhập bằng Google không thành công.")}
+              theme="outline"
+              size="large"
+              shape="pill"
+              text="signin_with"
+              width="370"
+            />
+          </div>
+        </div>
 
         <div
           style={{

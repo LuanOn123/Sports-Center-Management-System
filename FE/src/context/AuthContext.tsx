@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { authApi, type LoginPayload } from "../api/auth.api";
+import { authApi, type LoginPayload, type GoogleRegisterPayload } from "../api/auth.api";
 import { getAccessToken, clearTokens } from "../api/client";
 import type { User } from "../types/member";
 import { useQueryClient } from "@tanstack/react-query";
@@ -29,6 +29,12 @@ export function MemberSessionProvider({
         login: async () => {
           throw new Error("Vui lòng đăng nhập tại trang đăng nhập chung.");
         },
+        loginWithGoogle: async () => {
+          throw new Error("Vui lòng đăng nhập tại trang đăng nhập chung.");
+        },
+        registerWithGoogle: async () => {
+          throw new Error("Vui lòng đăng ký tại trang đăng ký chung.");
+        },
       }}
     >
       {children}
@@ -40,6 +46,8 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (credentials: LoginPayload) => Promise<User>;
+  loginWithGoogle: (credential: string) => Promise<User>;
+  registerWithGoogle: (data: GoogleRegisterPayload) => Promise<User>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
   refreshUser: () => Promise<void>;
@@ -92,6 +100,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async (credential: string) => {
+    setLoading(true);
+    try {
+      const result = await authApi.loginWithGoogle(credential);
+      setUser(result.user);
+      return result.user;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const registerWithGoogle = async (data: GoogleRegisterPayload) => {
+    setLoading(true);
+    try {
+      const result = await authApi.registerWithGoogle(data);
+      setUser(result.user);
+      return result.user;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       await authApi.logout();
@@ -117,7 +147,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, logout, updateUser, refreshUser }}
+      value={{
+        user,
+        loading,
+        login,
+        loginWithGoogle,
+        registerWithGoogle,
+        logout,
+        updateUser,
+        refreshUser,
+      }}
     >
       {children}
     </AuthContext.Provider>

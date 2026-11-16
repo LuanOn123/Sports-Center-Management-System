@@ -1,3 +1,4 @@
+import { MembershipPage } from "../reception/membership/MembershipPage";
 import { PaymentsPage } from "../reception/payments/PaymentsPage";
 import { MembershipInsightsPage } from "./MembershipInsightsPage";
 import { Navigate, Route, Routes } from "react-router-dom";
@@ -16,6 +17,7 @@ const items = [
   ["dashboard", "Tổng quan"],
   ["membership-insights", "Nhu cầu gói & lớp"],
   ["payments", "Thanh toán & hoàn tiền"],
+  ["subscriptions", "Gói hội viên đã mua"],
   ["facilities", "Cơ sở"],
   ["terms", "Kỳ học"],
   ["users", "Người dùng"],
@@ -39,6 +41,10 @@ export function AdminLayout(props: PortalProps) {
       items={items}
     >
       <Routes>
+        <Route
+          path="/admin/subscriptions"
+          element={<MembershipPage role="ADMIN" />}
+        />
         <Route path="/admin/payments" element={<PaymentsPage role="ADMIN" />} />
         <Route
           path="/admin/membership-insights"

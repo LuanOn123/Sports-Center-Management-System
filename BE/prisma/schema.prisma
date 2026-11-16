@@ -245,6 +245,8 @@ model MemberProfile {
   feedbacks          CoachFeedback[]
   penalties          AttendancePenalty[]
   manualCodeAttempts AttendanceManualCodeAttempt[]
+  courseGoals        MemberCourseGoal[]
+  slotEvaluations    SlotEvaluation[]
 }
 
 model CoachProfile {
@@ -262,6 +264,7 @@ model CoachProfile {
   specializations CoachSpecialization[]
   classes       ClassMember[]
   feedbacks     CoachFeedback[]
+  slotEvaluations SlotEvaluation[]
 }
 
 model ManagerProfile {
@@ -412,6 +415,7 @@ model Class {
   enrollments Enrollment[]
   feedbacks   CoachFeedback[]
   penalties   AttendancePenalty[]
+  courseGoals MemberCourseGoal[]
 }
 
 // Coach assignment to class (many-to-many)
@@ -451,6 +455,7 @@ model ClassSchedule {
   waitlistEntries WaitlistEntry[]
   attendances Attendance[]
   manualCodes AttendanceManualCode[]
+  evaluations SlotEvaluation[]
 
   @@index([classId])
   @@index([roomId])
@@ -908,6 +913,7 @@ enum NotificationType {
   // ── Lớp học ──
   NEW_CLASS // Lớp học mới được mở
   COACH_CHANGED // Đổi HLV cho lớp
+  GOAL_PROGRESS_UPDATED // HLV cập nhật tiến độ mục tiêu
   // ── Chuyên cần (Attendance) ──
   ATTENDANCE_WARNING // Cảnh báo chuyên cần dưới 80%
   ATTENDANCE_PENALTY // Hình phạt chuyên cần: thu hồi slot + chặn đặt lại
@@ -1097,4 +1103,50 @@ model FacilityVisit {
   @@index([memberId])
   @@index([facilityId])
   @@index([memberId, checkInAt])
+}
+
+// ─────────────────────────────────────────
+// GOAL TARGET & PROGRESS EVALUATION
+// ─────────────────────────────────────────
+
+model MemberCourseGoal {
+  id        String   @id @default(uuid())
+  memberId  String
+  member    MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  goal      String
+  progress  Int      @default(0)
+  status    String   @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, DROPPED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  evaluations SlotEvaluation[]
+
+  @@unique([memberId, classId])
+  @@index([memberId])
+  @@index([classId])
+}
+
+model SlotEvaluation {
+  id               String            @id @default(uuid())
+  scheduleId       String
+  schedule         ClassSchedule     @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  memberId         String
+  member           MemberProfile     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  coachId          String
+  coach            CoachProfile      @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  goalId           String?
+  courseGoal       MemberCourseGoal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  previousProgress Int               @default(0)
+  newProgress      Int               @default(0)
+  description      String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@unique([scheduleId, memberId])
+  @@index([scheduleId])
+  @@index([memberId])
+  @@index([goalId])
+  @@index([coachId])
 }

@@ -25,7 +25,11 @@ for (const [source, prefix] of mounts) {
   const roleNames = n => {
     const roles = [];
     walk(n, child => {
-      if (ts.isCallExpression(child) && child.expression.getText(ast) === "authorize") roles.push(...child.arguments.filter(ts.isStringLiteral).map(s => s.text));
+      if (ts.isCallExpression(child) && ["authorize", "authorizeExact"].includes(child.expression.getText(ast))) {
+        const declared = child.arguments.filter(ts.isStringLiteral).map(s => s.text);
+        roles.push(...declared);
+        if (child.expression.getText(ast) === "authorize" && declared.some(role => ["MANAGER", "RECEPTIONIST"].includes(role))) roles.push("ADMIN");
+      }
       if (ts.isIdentifier(child) && variables[child.text]) roles.push(...variables[child.text]);
     });
     return [...new Set(roles)];
@@ -45,7 +49,6 @@ for (const [source, prefix] of mounts) {
     if (!method || !route || !ts.isStringLiteral(route)) return;
     const endpoint = (prefix + (route.text === "/" ? "" : route.text)).replace(/:(\w+)/g, "{$1}") || "/";
     const roles = [...new Set([...inherited, ...middleware.filter(Boolean).flatMap(roleNames)])];
-    if (roles.includes("MANAGER") || roles.includes("RECEPTIONIST")) roles.push("ADMIN");
     backend.set(`${method.toUpperCase()} ${endpoint}`, { source, line: ast.getLineAndCharacterOfPosition(n.getStart()).line + 1, roles: [...new Set(roles)], handler: n.arguments.at(-1)?.getText(ast).split("\n")[0] });
   });
 }
@@ -65,7 +68,7 @@ const rows = Object.entries(fe).map(([key, op]) => {
   const route = backend.get(key);
   return { key, feature: op.path.split("/")[1], method: op.method, path: op.path, roles: route?.roles.length ? route.roles.join(", ") : op.security.length ? "Authenticated (service checks ownership)" : "Public", consumers: consumerFor(op), backend: route ? `${route.source}:${route.line}` : "MISSING", handler: route?.handler, status: route ? "MATCH" : "MISSING_API", request: op.body, query: op.parameters.filter(p => p.in === "query"), responseStatuses: op.statusCodes };
 });
-let markdown = "# FE / BE API contract map — 2026-10-06\n\nGenerated from live checkout route AST and FE operations. MATCH means method/path registration matches; it does not claim every role flow or response is dynamically tested. Roles include ADMIN inheritance from authorize.ts. Service ownership and facility checks still apply. Consumers include shared dynamic resource calls and should be followed into their service modules. Full DTO/query/status metadata is in API_CONTRACT_MAP.json; backend business services are adjacent to the listed router. `/subjects` is a current BE alias of `/sports`; health/docs are infrastructure routes.\n\n| Feature | Role / access | FE consumer | FE API | Method | Current BE route | Status |\n|---|---|---|---|---|---|---|\n";
+let markdown = "# FE / BE API contract map — 2026-10-06\n\nGenerated from live checkout route AST and FE operations. MATCH means method/path registration matches; it does not claim every role flow or response is dynamically tested. Roles distinguish authorize inheritance from authorizeExact; explicit role lists remain exact. Service ownership and facility checks still apply. Consumers include shared dynamic resource calls and should be followed into their service modules. Full DTO/query/status metadata is in API_CONTRACT_MAP.json; backend business services are adjacent to the listed router. `/subjects` is a current BE alias of `/sports`; health/docs are infrastructure routes.\n\n| Feature | Role / access | FE consumer | FE API | Method | Current BE route | Status |\n|---|---|---|---|---|---|---|\n";
 for (const r of rows) markdown += `| ${r.feature} | ${r.roles} | ${r.consumers.map(p => p.replace("FE/src/", "")).join("<br>") || "UNUSED_API (no direct consumer found)"} | ${r.path} | ${r.method} | ${r.backend} | ${r.status} |\n`;
 const unused = [...backend.keys()].filter(k => !fe[k] && k !== "GET /health");
 markdown += `\nBackend operations absent from FE catalog: ${unused.join(", ") || "none"}.\n\nRequest/response examples may be incomplete in Swagger. Handwritten workflow overrides retain stricter verified body constraints and extra parameters. Successful integration tests and their coverage are recorded separately in INTEGRATION_AUDIT_2026-10-06.md.\n`;

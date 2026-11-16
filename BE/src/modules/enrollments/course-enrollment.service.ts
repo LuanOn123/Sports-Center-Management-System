@@ -7,6 +7,7 @@ import { lockMemberClass, lockMemberQuota, lockSchedules, lockMemberSubscription
 import { createNotification } from "../notifications/notifications.service.js";
 import { createTermMembershipGrant, readTermMembershipGrant, termMembershipCovers } from "./term-membership-policy.js";
 import { findActivePenalty } from "../attendance/attendance-penalties.service.js";
+import { ensureMemberCourseGoal } from "../attendance/goal-evaluation.service.js";
 import {
   CONCURRENT_CLASS_LIMIT_CODE,
   concurrentClassLimitMessage,
@@ -445,7 +446,7 @@ export interface WholeCourseSessionResult {
 export async function enrollWholeCourse(
   classId: string,
   memberProfileId: string,
-  options: { healthNotes?: string | null; saveToProfile?: boolean } = {}
+  options: { healthNotes?: string | null; saveToProfile?: boolean; goal?: string | null } = {}
 ) {
   // 0. Member phải tồn tại, đang hoạt động và đúng role MEMBER (giống bookClass).
   const memberProfile = await prisma.memberProfile.findUnique({
@@ -617,6 +618,9 @@ export async function enrollWholeCourse(
     },
     { timeout: 30_000 }
   );
+
+  // Khởi tạo hoặc cập nhật mục tiêu khóa học cho Member
+  await ensureMemberCourseGoal(memberProfileId, classId, options.goal);
 
   const firstSession = sessions[0];
   const lastSession = sessions[sessions.length - 1];

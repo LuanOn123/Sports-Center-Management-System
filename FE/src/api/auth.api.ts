@@ -12,9 +12,18 @@ export interface RegisterPayload {
   email: string;
   password: string;
   fullName: string;
-  phone?: string;
+  phone: string;
   gender?: "MALE" | "FEMALE" | "OTHER";
   dateOfBirth?: string;
+  fitnessGoal?: string;
+}
+
+export interface GoogleRegisterPayload {
+  credential: string;
+  phone: string;
+  gender?: "MALE" | "FEMALE" | "OTHER";
+  dateOfBirth?: string;
+  fitnessGoal?: string;
 }
 
 export interface UpdateProfilePayload {
@@ -43,6 +52,29 @@ export const authApi = {
     setTokens(data.accessToken, data.refreshToken);
     const user = await authApi.getMe();
     return { user, accessToken: data.accessToken };
+  },
+
+  async loginWithGoogle(credential: string): Promise<{ user: User; accessToken: string }> {
+    const data = await apiClient.post<{
+      accessToken: string;
+      refreshToken: string;
+    }>("/auth/google-login", { credential });
+
+    setTokens(data.accessToken, data.refreshToken);
+    const user = await authApi.getMe();
+    return { user, accessToken: data.accessToken };
+  },
+
+  async registerWithGoogle(data: GoogleRegisterPayload): Promise<{ user: User; accessToken: string }> {
+    const res = await apiClient.post<{
+      accessToken: string;
+      refreshToken: string;
+      user: User;
+    }>("/auth/google-register", data);
+
+    setTokens(res.accessToken, res.refreshToken);
+    const user = await authApi.getMe();
+    return { user, accessToken: res.accessToken };
   },
 
   async register(data: RegisterPayload): Promise<User> {

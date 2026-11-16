@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import * as service from "./attendance.service.js";
 import * as penalties from "./attendance-penalties.service.js";
+import * as goalService from "./goal-evaluation.service.js";
 import { sendSuccess } from "../../utils/response.js";
 
 export const createAttendance = async (req: Request, res: Response, next: NextFunction) => {
@@ -150,5 +151,41 @@ export const reviewViolationReport = async (req: Request, res: Response, next: N
   try {
     const result = await service.reviewAttendanceViolationReport(req.user!, req.params.id as string, req.body);
     sendSuccess(res, result, "Xử lý báo cáo vi phạm chuyên cần thành công", 200);
+  } catch (error) { next(error); }
+};
+
+// ─── GOAL TARGET & PROGRESS EVALUATIONS ────────────────────────────────────
+
+export const getScheduleEvaluations = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = await goalService.getScheduleEvaluations(req.params.scheduleId as string, req.user!);
+    sendSuccess(res, data, "Schedule evaluations retrieved");
+  } catch (error) { next(error); }
+};
+
+export const saveScheduleEvaluation = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { memberId, progress, description } = req.body;
+    const data = await goalService.saveScheduleEvaluation(
+      req.params.scheduleId as string,
+      memberId,
+      { progress, description },
+      req.user!
+    );
+    sendSuccess(res, data, "Đánh giá tiến độ buổi học thành công");
+  } catch (error) { next(error); }
+};
+
+export const getMyClassGoal = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = await goalService.getMyClassGoal(req.params.classId as string, req.user!.id);
+    sendSuccess(res, data, "My class goal retrieved");
+  } catch (error) { next(error); }
+};
+
+export const updateMyClassGoal = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = await goalService.updateMyClassGoal(req.params.classId as string, req.user!.id, req.body.goal);
+    sendSuccess(res, data, "Cập nhật mục tiêu thành công");
   } catch (error) { next(error); }
 };

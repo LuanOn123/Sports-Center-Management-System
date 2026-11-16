@@ -12,6 +12,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Landing } from "../public/Landing";
 import { Register } from "./Register";
 import { ForgotPassword } from "./ForgotPassword";
+
 export function Session() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ export function Session() {
     retry: false,
     refetchOnWindowFocus: true,
   });
+
   useEffect(() => {
     const expired = (event: Event) => {
       clearSession();
@@ -49,6 +51,7 @@ export function Session() {
       window.removeEventListener("schedule-state-changed", refreshSchedules);
     };
   }, [cache, navigate]);
+
   async function login(
     email: string,
     password: string,
@@ -75,6 +78,40 @@ export function Session() {
       setLoginBusy(false);
     }
   }
+
+  async function loginGoogle(credential: string) {
+    setLoginBusy(true);
+    setError(undefined);
+    try {
+      const profile = await authService.googleLogin(credential);
+      await cache.cancelQueries();
+      cache.clear();
+      cache.setQueryData(["me"], profile);
+      const home = roleHome(profile.data.role);
+      navigate(home ? `${home}/dashboard` : "/login", { replace: true });
+      setSession(true);
+    } catch (e) {
+      clearSession();
+      setError(e);
+    } finally {
+      setLoginBusy(false);
+    }
+  }
+
+  async function handleGoogleRegisterSuccess() {
+    await cache.cancelQueries();
+    cache.clear();
+    try {
+      const profile = await authService.me();
+      cache.setQueryData(["me"], profile);
+      const home = roleHome(profile.data.role);
+      navigate(home ? `${home}/dashboard` : "/login", { replace: true });
+      setSession(true);
+    } catch {
+      navigate("/login", { replace: true });
+    }
+  }
+
   async function logout() {
     try {
       await authService.logout();
@@ -91,8 +128,10 @@ export function Session() {
       navigate("/login", { replace: true });
     }
   }
+
   if (pathname === "/" && !session) return <Landing signedIn={false} />;
-  if (!session && pathname === "/register") return <Register />;
+  if (!session && pathname === "/register")
+    return <Register onGoogleRegisterSuccess={handleGoogleRegisterSuccess} />;
   if (!session && pathname === "/forgot-password")
     return (
       <ForgotPassword
@@ -106,7 +145,15 @@ export function Session() {
         }}
       />
     );
-  if (!session) return <Login onLogin={login} busy={loginBusy} error={error} />;
+  if (!session)
+    return (
+      <Login
+        onLogin={login}
+        onGoogleLogin={loginGoogle}
+        busy={loginBusy}
+        error={error}
+      />
+    );
   if (q.isPending)
     return (
       <div className="fullscreen">
