@@ -3,6 +3,7 @@
 // Tên mục khớp menu FE web: features/user/UserLayout.tsx (hội viên), features/coach/CoachLayout.tsx (HLV).
 
 import type { Href } from 'expo-router';
+import { HELP_TEXT } from '../constants/help';
 import { Colors } from '../constants/theme';
 import type { Role } from '../lib/types';
 import type { MaterialIconName } from './tabConfig';
@@ -20,6 +21,15 @@ export interface AccountMenuGroup {
   title: string;
   items: AccountMenuItem[];
 }
+
+/** Hướng dẫn sử dụng (web: HelpPanel) — cùng một mục cho Hội viên và Huấn luyện viên */
+const HELP_ITEM: AccountMenuItem = {
+  icon: 'help-outline',
+  label: 'Hướng dẫn sử dụng',
+  description: HELP_TEXT.menuDescription,
+  route: ROUTES.help,
+  color: Colors.feature.cyan,
+};
 
 /** Chính sách sử dụng (web: Policies) — cùng một mục cho Hội viên và Huấn luyện viên */
 const POLICIES_ITEM: AccountMenuItem = {
@@ -52,6 +62,7 @@ const MEMBER_MENU: AccountMenuGroup[] = [
       { icon: 'notifications', label: 'Thông báo', route: ROUTES.notifications, color: Colors.feature.cyan },
       { icon: 'support-agent', label: 'Yêu cầu hỗ trợ', route: ROUTES.support, color: Colors.feature.pink },
       { icon: 'auto-awesome', label: 'Trợ lý AI', route: ROUTES.aiAssistant, color: Colors.feature.violet },
+      HELP_ITEM,
       POLICIES_ITEM,
     ],
   },
@@ -77,6 +88,7 @@ const COACH_MENU: AccountMenuGroup[] = [
     items: [
       { icon: 'notifications', label: 'Thông báo', route: ROUTES.notifications, color: Colors.feature.cyan },
       { icon: 'auto-awesome', label: 'Trợ lý AI', route: ROUTES.aiAssistant, color: Colors.feature.violet },
+      HELP_ITEM,
       POLICIES_ITEM,
     ],
   },

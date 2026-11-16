@@ -4,8 +4,13 @@
 //
 // Thư viện được nạp LƯỜI bên trong hàm, KHÔNG import ở đầu file: nó đòi module native RNGoogleSignin ngay khi import,
 // nên import sẵn sẽ làm sập cả app khi chạy Expo Go hoặc bản cài chưa gắn Google (cùng cách lib/device.ts).
+// Nạp lười vẫn chưa đủ: require() thư viện khi thiếu module native KHÔNG ném lỗi cho try/catch mà bị Metro (guardedLoadModule)
+// báo thẳng là lỗi nghiêm trọng — màn đỏ "Uncaught Error: 'RNGoogleSignin' could not be found" khi đăng xuất trong Expo Go,
+// bản release thì sập app. Vì vậy phải hỏi registry native trước (TurboModuleRegistry.get trả null chứ không ném lỗi)
+// và chỉ require khi module đã được gắn vào bản cài.
 // Bản web dùng lib/googleSignIn.web.ts.
 
+import { TurboModuleRegistry } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { GOOGLE_TEXT } from '../constants/auth';
 import { googleIosClientId, googleWebClientId } from './googleSignInConfig';
@@ -18,13 +23,15 @@ type GoogleSigninModule = typeof import('@react-native-google-signin/google-sign
 let loaded: GoogleSigninModule | null | undefined;
 let configured = false;
 
+/** Tên module native mà thư viện đăng ký (spec/NativeGoogleSignin.ts: TurboModuleRegistry.getEnforcing('RNGoogleSignin')) */
+const GOOGLE_NATIVE_MODULE_NAME = 'RNGoogleSignin';
+
+/** null khi bản đang chạy chưa gắn module native Google (Expo Go, development build cũ) — khi đó KHÔNG được nạp thư viện */
 function nativeModule(): GoogleSigninModule | null {
   if (loaded === undefined) {
-    try {
-      loaded = require('@react-native-google-signin/google-signin') as GoogleSigninModule;
-    } catch {
-      loaded = null;
-    }
+    loaded = TurboModuleRegistry.get(GOOGLE_NATIVE_MODULE_NAME)
+      ? (require('@react-native-google-signin/google-signin') as GoogleSigninModule)
+      : null;
   }
   return loaded ?? null;
 }
@@ -39,7 +46,7 @@ export function googleSignInUnavailableReason(): GoogleUnavailableReason | null 
 /** Mở bảng chọn tài khoản Google và trả ID token; người dùng đóng bảng chọn → { status: 'cancelled' } */
 export async function signInWithGoogle(): Promise<GoogleSignInOutcome> {
   const reason = googleSignInUnavailableReason();
-  const native = nativeModule();
+  const native = reason ? null : nativeModule();
   if (reason || !native) throw new Error(GOOGLE_TEXT.unavailable[reason ?? 'native-module-missing']);
 
   const { GoogleSignin } = native;
@@ -59,10 +66,9 @@ export async function signInWithGoogle(): Promise<GoogleSignInOutcome> {
 
 /** Quên tài khoản Google đã chọn để lần sau luôn hiện bảng chọn tài khoản (gọi khi đăng xuất / hủy đăng ký) */
 export async function signOutOfGoogle(): Promise<void> {
-  const native = nativeModule();
-  if (!native) return;
   try {
-    await native.GoogleSignin.signOut();
+    // Không có module native (Expo Go…) → không làm gì; đăng xuất của app không bao giờ phụ thuộc vào Google
+    await nativeModule()?.GoogleSignin.signOut();
   } catch {
     // Chưa từng đăng nhập Google hoặc đã đăng xuất — không ảnh hưởng phiên của app
   }
