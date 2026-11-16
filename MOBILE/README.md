@@ -62,16 +62,59 @@ Mobile gọi `POST /auth/google-login` và `POST /auth/google-register` với **
 
 1. Trên Google Cloud, dùng chung dự án với web: lấy **Web client ID** (đúng giá trị `VITE_GOOGLE_CLIENT_ID` của web và `GOOGLE_CLIENT_ID` của BE — BE chỉ nhận ID token có audience này), tạo thêm OAuth client **Android** (package `com.pulsecenter.mobile` + SHA-1 của khóa ký) và **iOS** (bundle `com.pulsecenter.mobile`).
 2. Điền vào `.env`: `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` và (chỉ cho iOS) `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`. `app.config.js` tự suy ra URL scheme của iOS từ iOS client ID và thêm config plugin Google.
-3. Cài `expo-dev-client` rồi build bản riêng bằng EAS (cấu hình ở `eas.json`):
+3. Khai báo các biến môi trường cho bản build trên EAS (mục 3.2 — EAS không đọc file `.env`), rồi build bản riêng (cấu hình ở `eas.json`). Chỉ để thử đăng nhập Google thì bản `preview` (APK chạy độc lập, không cần Metro) là đủ:
+
+```bash
+npx eas-cli build --profile preview --platform android
+```
+
+   Muốn vừa dùng bản riêng vừa sửa code nóng thì dùng profile `development`, cần cài `expo-dev-client` trước:
 
 ```bash
 npx expo install expo-dev-client
 npx eas-cli build --profile development --platform android
 ```
 
-4. Chạy Metro cho development build bằng `npx expo start --dev-client`. Khi đã cài `expo-dev-client`, lệnh `npx expo start` mặc định mở development build — muốn quay lại Expo Go thì dùng `npx expo start --go`.
+4. (Chỉ với bản `development`) Chạy Metro bằng `npx expo start --dev-client`. Khi đã cài `expo-dev-client`, lệnh `npx expo start` mặc định mở development build — muốn quay lại Expo Go thì dùng `npx expo start --go`.
+
+SHA-1 cho OAuth client Android: chạy `eas credentials`, chọn Android, profile cần dùng, mục Keystore — EAS hiện SHA-1 của khóa ký (tạo keystore ngay tại đó nếu chưa có). Bản iOS cần thêm tài khoản Apple Developer.
 
 Chọn Google khi chưa có tài khoản → app mời hoàn tất đăng ký (số điện thoại bắt buộc) rồi vào app luôn, giống web.
+
+---
+
+### 3.2. Biến môi trường cho bản build EAS
+
+Máy chủ build của EAS **không đọc file `.env`** (file nằm trong `.gitignore` nên không được tải lên). Bản build thiếu `EXPO_PUBLIC_API_BASE_URL` sẽ báo lỗi ngay khi mở app, thiếu khóa Turnstile thì không đăng nhập bằng email được, thiếu ID Google thì nút Google báo "chưa có cấu hình". Vì vậy mỗi biến phải được khai báo trên EAS; `eas.json` đã gắn ba profile `development`, `preview`, `production` với môi trường EAS cùng tên.
+
+| Biến | Bắt buộc | Ghi chú |
+|---|---|---|
+| `EXPO_PUBLIC_API_BASE_URL` | Có | URL backend, không có `/` ở cuối |
+| `EXPO_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY` | Có | Site Key công khai, cùng widget với web |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Có nếu dùng Google | Web client ID chung với web và BE |
+| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | Có cho bản iOS | Cần lúc BUILD: `app.config.js` suy ra URL scheme iOS từ biến này |
+| `EXPO_PUBLIC_TURNSTILE_ORIGIN` | Không | Mặc định `https://localhost` |
+| `EXPO_PUBLIC_PAYMENT_RETURN_URL` | Không | Xem `.env.example` |
+| `EXPO_PUBLIC_SEPAY_MOCK_MODE` | Không | Chỉ `true` cho profile `development`; bản thật để `false` hoặc không khai báo |
+
+`EXPO_TOKEN` chỉ dùng cho CLI trên máy — **không** đưa lên EAS.
+
+Cài EAS CLI một lần, đăng nhập (hoặc đặt `EXPO_TOKEN` trong shell) và gắn thư mục `MOBILE` với một dự án EAS (lần đầu; lệnh ghi `projectId` vào `app.json`):
+
+```bash
+npm install -g eas-cli
+eas login
+eas init
+```
+
+Khai báo từng biến cho cả ba môi trường (các giá trị này công khai nên dùng `plaintext`; lặp lại cho các biến khác trong bảng):
+
+```bash
+eas env:set --name EXPO_PUBLIC_API_BASE_URL --value "https://sports-center-management-system.onrender.com/api/v1" --environment development --environment preview --environment production --visibility plaintext --non-interactive
+eas env:set --name EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID --value "<web client id>.apps.googleusercontent.com" --environment development --environment preview --environment production --visibility plaintext --non-interactive
+```
+
+Hoặc đẩy một lần từ file chỉ chứa các biến `EXPO_PUBLIC_*` (đừng đẩy `.env` nguyên bản vì có `EXPO_TOKEN`): `eas env:push preview --path .env.eas`. Kiểm tra bằng `eas env:list preview`.
 
 ---
 

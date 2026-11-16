@@ -2230,3 +2230,28 @@ test('payment screen wiring: the flow hook owns the bank-app steps, the picker h
   assert.match(apps, /resolvePaymentReturnUrl\(PAYMENT_RETURN_URL_ENV, BASE_URL\)/); assert.match(apps, /accountHolder: checkout\.bank\?\.accountHolder/); assert.match(apps, /returnUrl: RETURN_URL/);
   assert.match(readSource('constants/payment.ts'), /PAYMENT_RETURN_URL_ENV = process\.env\.EXPO_PUBLIC_PAYMENT_RETURN_URL/); assert.match(readSource('.env.example'), /^EXPO_PUBLIC_PAYMENT_RETURN_URL=\s*$/m);
 });
+
+// ─── Bản build EAS: biến môi trường ──────────────────────────────────────────────────────────────────────────────────
+
+test('EAS builds load their own EAS environment, and the README lists every EXPO_PUBLIC variable the app reads, because EAS never sees .env', () => {
+  const eas = JSON.parse(readSource('eas.json'));
+  // Mỗi profile build nạp biến của môi trường EAS cùng tên (development / preview / production)
+  for (const profile of ['development', 'preview', 'production']) assert.equal(eas.build[profile].environment, profile, `profile ${profile}`);
+
+  // Mọi biến EXPO_PUBLIC_* mà code đọc (kể cả app.config.js lúc build) phải có trong README mục 3.2; nếu không, bản build thiếu biến
+  // (vd. thiếu EXPO_PUBLIC_API_BASE_URL thì app báo lỗi ngay khi mở) mà không ai biết cần khai báo trên EAS
+  const used = new Set();
+  const collect = (source) => { for (const match of stripComments(source).matchAll(/process\.env\.(EXPO_PUBLIC_[A-Z0-9_]+)/g)) used.add(match[1]); };
+  for (const { source } of sourceFilesUnder('lib', 'constants', 'hooks', 'services', 'components', 'context', 'app', 'navigation')) collect(source);
+  collect(readSource('app.config.js'));
+  const readme = readSource('README.md');
+  const easSection = readme.slice(readme.indexOf('### 3.2.'), readme.indexOf('### 4.'));
+  assert.ok(used.size >= 6, 'quét được các biến đang dùng');
+  const undocumented = [...used].filter((name) => !easSection.includes(`\`${name}\``));
+  assert.deepEqual(undocumented, [], 'biến chưa được liệt kê ở README mục 3.2: ' + undocumented.join(', '));
+  // Lệnh của EAS CLI hiện tại là env:set (env:create không còn); EXPO_TOKEN không bao giờ đưa lên EAS
+  assert.match(easSection, /eas env:set /); assert.doesNotMatch(readme, /eas env:create/);
+  assert.match(easSection, /`EXPO_TOKEN` chỉ dùng cho CLI trên máy/);
+  // .env.example nhắc rằng bản build trên EAS không đọc file này
+  assert.match(readSource('.env.example'), /Bản build trên EAS không đọc \.env/);
+});
