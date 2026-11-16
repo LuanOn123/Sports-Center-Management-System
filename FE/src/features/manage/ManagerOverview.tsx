@@ -40,7 +40,17 @@ function ManagerRevenue() {
       }),
     enabled: valid,
   });
+  const activity = useQuery({
+    queryKey: ["facility-activity", getFacilityId(), from, to],
+    queryFn: ({ signal }) => api<{
+      activeMembers: number;
+      newMembers: number;
+      bookingsByStatus: Partial<Record<"BOOKED" | "COMPLETED" | "CANCELLED", number>>;
+    }>("GET /reports/facility-activity", { query: { startDate: from, endDate: to }, signal }),
+    enabled: valid,
+  });
   const data = revenue.data?.data;
+  const facilityActivity = activity.data?.data;
   return (
     <>
       <div className="page-heading">
@@ -51,7 +61,7 @@ function ManagerRevenue() {
           <h1>{reports ? "Báo cáo doanh thu" : "Tổng quan cơ sở"}</h1>
           <p>
             {reports
-              ? "Dòng tiền của cơ sở bạn quản lý. Báo cáo chỉ đọc."
+              ? "Doanh thu, hoạt động của hội viên và đăng ký lớp trong khoảng ngày đã chọn."
               : "Nhân sự, phòng tập và lịch lớp học trong cùng một không gian."}
           </p>
         </div>
@@ -142,6 +152,25 @@ function ManagerRevenue() {
           )
         )}
       </section>
+      {valid && (
+        <section className="panel">
+          <h2>Hội viên và đăng ký lớp</h2>
+          {activity.isPending ? <Loading /> : activity.error ? <ErrorState error={activity.error} retry={() => activity.refetch()} /> : facilityActivity && (
+            <>
+              <div className="stats-grid">
+                {[
+                  ["Hội viên có hoạt động", facilityActivity.activeMembers],
+                  ["Hội viên mới có hoạt động", facilityActivity.newMembers],
+                  ["Lượt đang giữ chỗ", facilityActivity.bookingsByStatus.BOOKED ?? 0],
+                  ["Lượt đã hoàn thành", facilityActivity.bookingsByStatus.COMPLETED ?? 0],
+                  ["Lượt đã hủy", facilityActivity.bookingsByStatus.CANCELLED ?? 0],
+                ].map(([title, value]) => <div className="stat-card" key={title}><p>{title}</p><strong className="stat-value">{value}</strong></div>)}
+              </div>
+              <p className="field-note">Hội viên được đếm một lần nếu có check-in hoặc đăng ký hợp lệ tại cơ sở trong kỳ. Lượt đăng ký tính theo ngày đặt từng buổi và trạng thái hiện tại.</p>
+            </>
+          )}
+        </section>
+      )}
     </>
   );
 }

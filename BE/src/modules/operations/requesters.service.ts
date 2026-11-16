@@ -1,4 +1,4 @@
-import type { UserRole } from "@prisma/client";
+import type { Prisma, UserRole } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
@@ -30,7 +30,7 @@ export async function withRequesters<T extends RequesterRecord>(rows: T[]) {
     (row.coachId ? coachUsers.get(row.coachId) : undefined);
   const ids = [
     ...new Set(
-      rows.flatMap((row) => (requesterId(row) ? [requesterId(row)!] : [])),
+      rows.flatMap((row) => [requesterId(row), row.memberId].filter((id): id is string => Boolean(id))),
     ),
   ];
   const users = ids.length
@@ -48,6 +48,7 @@ export async function withRequesters<T extends RequesterRecord>(rows: T[]) {
       requester: user
         ? { ...user, role: row.requesterRole || user.role }
         : null,
+      affectedMember: row.memberId ? byId.get(row.memberId) : undefined,
     };
   });
 }
@@ -163,10 +164,10 @@ export async function createStaffLeave(
   return leave;
 }
 
-export function issueOwner(user: { id: string; role: string }) {
+export function issueOwner(user: { id: string; role: string }): Prisma.IssueWhereInput {
   if (user.role === "MEMBER")
     return {
-      OR: [{ requesterId: user.id }, { requesterId: null, memberId: user.id }],
+      OR: [{ requesterId: user.id }, { memberId: user.id, submittedOnBehalf: true }, { requesterId: null, memberId: user.id }],
     };
   if (user.role === "COACH") return { requesterId: user.id };
   return {};

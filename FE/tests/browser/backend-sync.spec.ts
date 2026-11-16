@@ -10,7 +10,7 @@ test("Mongo member IDs support login/profile and removed modules make no request
   await page.addInitScript(() => sessionStorage.removeItem("pulse.access"));
   const removed: string[] = [];
   page.on("request", (request) => {
-    if (/\/training-plans|\/ai\/generate-training-plan/.test(request.url()))
+    if (/\/api\/v1\/(?:training-plans(?:\/|$)|ai\/generate-training-plan)/.test(request.url()))
       removed.push(request.url());
   });
   await page.route("**/api/v1/auth/login", (route) => {
@@ -52,7 +52,9 @@ test("Mongo member IDs support login/profile and removed modules make no request
   await expect(
     page.getByRole("button", { name: /Tạo Lịch Tập Thông Minh/ }),
   ).toHaveCount(0);
-  await page.getByRole("link", { name: "Tài khoản", exact: true }).click();
+  await page.getByRole("button", { name: "Menu hồ sơ của Mongo Member" }).click();
+  await page.getByRole("link", { name: "Hồ sơ cá nhân", exact: true }).click();
+  await page.getByRole("button", { name: "Chỉnh sửa hồ sơ", exact: true }).click();
   await expect(page.getByLabel("Họ và tên", { exact: false })).toHaveValue(
     "Mongo Member",
   );

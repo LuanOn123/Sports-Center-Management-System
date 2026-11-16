@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Calendar } from "lucide-react";
 import { api, type RecordData } from "../../shared/api";
 import { StatusBadge } from "../../shared/StatusBadge";
@@ -13,6 +13,7 @@ import {
 import { allPages as fetchPages } from "../../shared/pagedApi";
 import { Empty, ErrorState, Loading, Modal, SchemaForm } from "../../shared/ui";
 import { at, display } from "../../shared/config";
+import { MemberPicker } from "../reception/components";
 import "./operations.css";
 import {
   attendanceReportData,
@@ -114,7 +115,7 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
           ? "POST /slots"
           : kind === "leave" && role === "RECEPTIONIST"
             ? "POST /leave-requests"
-            : kind === "issues" && member
+            : kind === "issues" && (member || role === "RECEPTIONIST")
               ? "POST /issues"
               : kind === "orders"
                 ? "POST /counter-orders"
@@ -251,6 +252,9 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
                   !attendanceReportData(row.description) && (
                     <p>{String(row.description)}</p>
                   )}
+                {kind === "issues" && row.requesterRole === "RECEPTIONIST" && Boolean(at(row, "affectedMember.fullName")) && (
+                  <p>Hội viên được hỗ trợ · {String(at(row, "affectedMember.fullName"))}</p>
+                )}
                 {kind === "issues" && attendanceReportData(row.description) && (
                   <AttendanceReportReview
                     issue={row}
@@ -342,7 +346,7 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
                         Phản hồi
                       </button>
                     )}
-                  {kind === "issues" && member && row.status === "OPEN" && (
+                  {kind === "issues" && member && row.status === "OPEN" && (!row.requesterRole || row.requesterRole === "MEMBER") && (
                     <>
                       <button
                         className="button"
@@ -412,6 +416,8 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
               onSuccess={done}
               onCancel={() => setModal(undefined)}
             />
+          ) : modal.operation === "POST /issues" ? (
+            <IssueCreateForm receptionist={role === "RECEPTIONIST"} onSuccess={done} onCancel={() => setModal(undefined)} />
           ) : (
             <OperationForm
               {...modal}
@@ -431,6 +437,34 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
         </Modal>
       )}
     </section>
+  );
+}
+function IssueCreateForm({ receptionist, onSuccess, onCancel }: { receptionist: boolean; onSuccess: () => void; onCancel: () => void }) {
+  const [member, setMember] = useState<RecordData | null>(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const create = useMutation({
+    mutationFn: () => api("POST /issues", {
+      body: { title: title.trim(), description: description.trim(), ...(member && { memberId: String(member.id) }) },
+    }),
+    onSuccess,
+  });
+  const valid = title.trim().length >= 3 && description.trim().length >= 5 && (!receptionist || !!member?.id);
+  return (
+    <>
+      {receptionist && <MemberPicker value={member} onChange={setMember} />}
+      <form onSubmit={(event) => { event.preventDefault(); if (valid && !create.isPending) create.mutate(); }}>
+        <fieldset className="form-grid" disabled={create.isPending}>
+          <label>Tiêu đề<input required minLength={3} maxLength={120} value={title} onChange={(event) => setTitle(event.target.value)} /></label>
+          <label className="wide">Mô tả<textarea required minLength={5} maxLength={3000} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
+        </fieldset>
+        {create.error && <ErrorState error={create.error} />}
+        <div className="modal-footer">
+          <button className="button" type="button" disabled={create.isPending} onClick={onCancel}>Hủy</button>
+          <button className="button primary" type="submit" disabled={!valid || create.isPending}>{create.isPending ? "Đang gửi…" : "Gửi yêu cầu"}</button>
+        </div>
+      </form>
+    </>
   );
 }
 function clock(minute: number) {

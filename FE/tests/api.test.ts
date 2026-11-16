@@ -28,7 +28,7 @@ describe("API client contract and authentication", () => {
     const { api, contract } = await import("../src/shared/api");
     expect(
       Object.keys(contract).filter((key) =>
-        /\/training-plans|\/ai\/generate-training-plan/.test(key),
+        / (?:\/training-plans(?:\/|$)|\/ai\/generate-training-plan)/.test(key),
       ),
     ).toEqual([]);
     await expect(api("GET /training-plans")).rejects.toThrow(

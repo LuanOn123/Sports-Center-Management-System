@@ -17035,8 +17035,7 @@ Request body:
             "type": "string",
             "enum": [
               "user",
-              "assistant",
-              "system"
+              "assistant"
             ]
           },
           "content": {
@@ -18900,6 +18899,9 @@ Request body:
     },
     "description": {
       "type": "string"
+    },
+    "memberId": {
+      "type": "string"
     }
   },
   "required": [
@@ -20088,3 +20090,672 @@ Additional operations and missing bodies/parameters are preserved in workflow-co
 ## Hoàn tiền ngoại lệ
 
 `POST /payments/{id}/refund/request`: ADMIN duyệt hoàn toàn bộ khoản SePay đã thu, chưa cấp gói và đang REQUIRES_REVIEW; body `{ reason }`. Việc trả tiền thực tế vẫn phải xác nhận qua `/refund/confirm`.
+
+## POST /ai/member-chat
+Trợ lý AI với lịch và tiến độ của hội viên đăng nhập
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "message": {
+      "type": "string"
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ]
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ]
+      }
+    }
+  },
+  "required": [
+    "message"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /reports/facility-activity
+Số hội viên hoạt động và đăng ký theo trạng thái tại cơ sở
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "startDate",
+    "in": "query",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "endDate",
+    "in": "query",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## POST /enrollments/courses/{classId}/cancel
+Hủy các buổi còn lại của khóa trong kỳ đã chọn
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "classId",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "termId": {
+      "type": "string",
+      "nullable": true
+    },
+    "memberId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "termId"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /classes/{id}/training-plans
+Giáo án của lớp và cá nhân theo quyền truy cập
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## POST /classes/{id}/training-plans
+HLV giao giáo án
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "instructions": {
+      "type": "string"
+    },
+    "homework": {
+      "type": "string",
+      "nullable": true
+    },
+    "memberId": {
+      "type": "string",
+      "nullable": true
+    }
+  },
+  "required": [
+    "title",
+    "instructions"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## PATCH /classes/{id}/training-plans/{planId}
+HLV sửa giáo án đã giao
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "planId",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "instructions": {
+      "type": "string"
+    },
+    "homework": {
+      "type": "string",
+      "nullable": true
+    }
+  },
+  "required": [
+    "title",
+    "instructions"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## POST /classes/{id}/training-plans/suggest
+HLV tạo bản nháp giáo án bằng AI
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "memberId": {
+      "type": "string",
+      "nullable": true
+    },
+    "objective": {
+      "type": "string"
+    }
+  }
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /attendance/schedules/{scheduleId}/evaluations
+HLV xem đánh giá của buổi học
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "scheduleId",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## POST /attendance/schedules/{scheduleId}/evaluations
+Lưu tiến độ và kết quả của buổi học
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "scheduleId",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "memberId": {
+      "type": "string"
+    },
+    "progress": {
+      "type": "integer"
+    },
+    "description": {
+      "type": "string",
+      "nullable": true
+    },
+    "results": {
+      "type": "string",
+      "nullable": true
+    }
+  },
+  "required": [
+    "memberId",
+    "progress"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## GET /attendance/classes/{classId}/my-goal
+Hội viên xem mục tiêu và tiến độ của khóa
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "classId",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+null
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## PATCH /attendance/classes/{classId}/my-goal
+Yêu cầu thay đổi mục tiêu khóa học
+
+Authentication: [{"BearerAuth":[]}]
+
+Parameters:
+```json
+[
+  {
+    "name": "classId",
+    "in": "path",
+    "required": true,
+    "schema": {
+      "type": "string"
+    }
+  },
+  {
+    "name": "X-Facility-Id",
+    "in": "header",
+    "required": false,
+    "description": "Không bắt buộc với MANAGER. Các role khác phải truyền cơ sở bằng header hoặc facilityId trên path/query/body như quy định của endpoint.",
+    "schema": {
+      "type": "string"
+    }
+  }
+]
+```
+Request body:
+```json
+{
+  "type": "object",
+  "properties": {
+    "goal": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "goal"
+  ]
+}
+```
+Responses/status codes:
+```json
+{
+  "200": {
+    "description": "Success"
+  },
+  "400": {
+    "description": "Invalid or missing facility context"
+  },
+  "403": {
+    "description": "Forbidden role or facility scope"
+  },
+  "409": {
+    "description": "Business rule conflict"
+  }
+}
+```
+
+## Verified workflow contracts
+Additional operations and missing bodies/parameters are preserved in workflow-contract-overrides.json, reviewed against the backend checkout. See WORKFLOW_ALIGNMENT.md and BACKEND_SYNC_2026-10-04.md.

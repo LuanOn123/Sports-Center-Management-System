@@ -8,9 +8,11 @@ import { sendAIMessage, type AIMessage } from "./api";
 export function AIChatConversation({
   initialHistory = [],
   onHistoryChange,
+  personal = false,
 }: {
   initialHistory?: AIMessage[];
   onHistoryChange?: (history: AIMessage[]) => void;
+  personal?: boolean;
 }) {
   const [history, setHistory] = useState<AIMessage[]>(initialHistory);
   const [input, setInput] = useState("");
@@ -31,7 +33,7 @@ export function AIChatConversation({
     setInput("");
     setError("");
     try {
-      const reply = await sendAIMessage(message, history, request.signal);
+      const reply = await sendAIMessage(message, history, request.signal, personal);
       if (!request.signal.aborted) {
         const next: AIMessage[] = [
           ...history,
@@ -61,7 +63,7 @@ export function AIChatConversation({
       >
         <div className="ai-message">
           <AIMarkdown>
-            Chào bạn, mình là Trợ lý Sports Center. Mình có thể giúp gì cho bạn?
+            {personal ? "Bạn có thể hỏi về lịch tập sắp tới, tiến độ khóa học hoặc các dịch vụ của trung tâm." : "Chào bạn, mình là Trợ lý Sports Center. Mình có thể giúp gì cho bạn?"}
           </AIMarkdown>
         </div>
         {history.map((message, index) => (
@@ -100,6 +102,7 @@ export function AIChatConversation({
           Câu hỏi cho AI
           <input
             autoFocus
+            maxLength={2000}
             value={input}
             disabled={Boolean(pending)}
             onChange={(event) => setInput(event.target.value)}
@@ -120,8 +123,10 @@ export function AIChatConversation({
 
 export function AIChatBubble({
   launcher,
+  personal = false,
 }: {
   launcher?: (launch: () => void) => ReactNode;
+  personal?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [history, setHistory] = useState<AIMessage[]>([]);
@@ -147,6 +152,7 @@ export function AIChatBubble({
           onClose={() => setOpen(false)}
         >
           <AIChatConversation
+            personal={personal}
             initialHistory={history}
             onHistoryChange={setHistory}
           />

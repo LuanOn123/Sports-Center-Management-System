@@ -3,7 +3,8 @@ export function AIAssistantPage() {
   return (
     <section className="panel">
       <h1>Trợ Lý Sports Center</h1>
-      <AIChatConversation />
+      <h1>Trợ lý AI</h1>
+      <AIChatConversation personal />
     </section>
   );
 }

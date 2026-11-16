@@ -22,6 +22,7 @@ import { ManagerOverview } from "./ManagerOverview";
 import { AdminTerms } from "./AdminTerms";
 import "./manager.css";
 import { CoachChangesPage } from "../operations/CoachChangesPage";
+import { AuditLogPage } from "./AuditLogPage";
 
 const groups: NavigationGroup[] = [
   { title: "TỔNG QUAN", items: [["dashboard", "Tổng quan", LayoutDashboard]] },
@@ -41,6 +42,7 @@ const groups: NavigationGroup[] = [
     items: [
       ["coach-changes", "Đổi HLV theo buổi", CalendarDays],
       ["issues", "Yêu cầu hỗ trợ", ClipboardList],
+      ["audit-logs", "Nhật ký cơ sở", ClipboardList],
     ],
   },
   {
@@ -57,7 +59,6 @@ const redirects: Record<string, string> = {
   sports: "classes",
   bookings: "classes",
   checkin: "dashboard",
-  "audit-logs": "dashboard",
   requirements: "rooms",
   slots: "schedules",
   patterns: "schedules",
@@ -96,6 +97,7 @@ export function ManagerLayout({
           element={<MembershipInsightsPage />}
         />
         <Route path="/manager/reports" element={<ManagerOverview reports />} />
+        <Route path="/manager/audit-logs" element={<AuditLogPage role="MANAGER" />} />
         <Route path="/manager/users" element={<ManagerUsers />} />
         <Route
           path="/manager/coaches"

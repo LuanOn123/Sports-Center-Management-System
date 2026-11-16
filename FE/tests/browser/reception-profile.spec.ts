@@ -2,28 +2,31 @@ import { expect, test } from "@playwright/test";
 import { setup } from "./fixtures";
 
 for (const role of ["RECEPTIONIST", "STAFF"]) {
-  test(`${role} has no attendance feature and old URL redirects`, async ({
+  test(`${role} monitors attendance from its dedicated page`, async ({
     page,
   }) => {
     await setup(page, role);
     const attendanceCalls: string[] = [];
+    await page.route(/\/api\/v1\/attendance\/monitoring(?:\?|$)/, (route) =>
+      route.fulfill({ json: { success: true, data: [] } }),
+    );
     page.on("request", (request) => {
       if (request.url().includes("/api/v1/attendance"))
         attendanceCalls.push(request.url());
     });
     await page.goto("/receptionist/attendance");
-    await expect(page).toHaveURL(/\/receptionist\/dashboard$/);
+    await expect(page).toHaveURL(/\/receptionist\/attendance$/);
     await expect(
-      page.getByRole("heading", { name: "Tổng quan lễ tân", exact: true }),
+      page.getByRole("heading", { name: "Chuyên cần hội viên", exact: true }),
     ).toBeVisible();
     await expect(
       page
         .locator(".sidebar nav")
         .getByRole("link", { name: "Chuyên cần", exact: true }),
-    ).toHaveCount(0);
+    ).toHaveCount(1);
     await expect(
-      page.getByRole("heading", { name: "Theo dõi chuyên cần" }),
-    ).toHaveCount(0);
+      page.getByText("Chưa có hội viên phù hợp."),
+    ).toBeVisible();
     await page.goto("/receptionist/members");
     await page
       .getByRole("button", { name: "Chọn", exact: true })
@@ -43,7 +46,8 @@ for (const role of ["RECEPTIONIST", "STAFF"]) {
     await expect(
       page.getByRole("columnheader", { name: "Chuyên cần" }),
     ).toHaveCount(0);
-    expect(attendanceCalls).toEqual([]);
+    expect(attendanceCalls.length).toBeGreaterThan(0);
+    expect(attendanceCalls.every((url) => url.includes("/attendance/monitoring"))).toBe(true);
   });
 }
 

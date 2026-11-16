@@ -4,6 +4,7 @@ import { CalendarDays, UserRound, Activity } from "lucide-react";
 import { api, type RecordData } from "../../shared/api";
 import { at, display, label } from "../../shared/config";
 import { Details, Empty, ErrorState, Loading } from "../../shared/ui";
+import { getFacilityId } from "../../shared/facility";
 import "./admin.css";
 const entities: Record<string, string> = {
   ClassSchedule: "Lịch học",
@@ -39,7 +40,7 @@ export function AuditLogPage({ role = "ADMIN" }: { role?: string }) {
     enabled: role === "ADMIN",
   });
   const q = useQuery({
-    queryKey: ["audit-feed", entity, filterFacilityId, skip],
+    queryKey: ["audit-feed", role, getFacilityId(), entity, filterFacilityId, skip],
     queryFn: ({ signal }) =>
       api<RecordData[]>("GET /audit-logs", {
         query: { entity, filterFacilityId, skip: String(skip) },

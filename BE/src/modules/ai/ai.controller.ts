@@ -11,3 +11,12 @@ export async function chat(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+export async function memberChat(req: Request, res: Response, next: NextFunction) {
+  try {
+    const reply = await aiService.chatWithAssistant(req.body, req.user!.id);
+    sendSuccess(res, { reply });
+  } catch (err) {
+    next(err);
+  }
+}
+

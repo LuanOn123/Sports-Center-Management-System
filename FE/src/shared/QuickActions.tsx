@@ -158,7 +158,7 @@ export function QuickActions({
         aria-label="Tiện ích nhanh"
         onPointerEnter={cancelClose}
       >
-        <AIChatBubble launcher={(launch) => action("Trợ lý AI", Bot, launch)} />
+        <AIChatBubble personal={role === "MEMBER"} launcher={(launch) => action("Trợ lý AI", Bot, launch)} />
         <FloatingChat
           userId={userId}
           onUnreadCountChange={setUnreadCount}

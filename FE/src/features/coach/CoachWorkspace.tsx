@@ -2,6 +2,7 @@ import { ScheduleAnalytics } from "../../shared/analytics/ScheduleAnalytics";
 import { StatusBadge as Badge } from "../../shared/StatusBadge";
 import { sportNames } from "../../shared/sports";
 import { Attendance } from "../../shared/Attendance";
+import { TrainingPlans } from "../../shared/TrainingPlans";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -449,6 +450,7 @@ export function CoachWorkspace({
               Đến lịch dạy
             </Link>
           </div>
+          <TrainingPlans key={idOf(detail)} classId={idOf(detail)} coach />
         </Modal>
       )}
     </div>

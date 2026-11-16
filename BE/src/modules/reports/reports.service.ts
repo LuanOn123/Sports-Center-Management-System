@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma.js";
+import type { Prisma } from "@prisma/client";
 import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
@@ -206,6 +207,35 @@ export async function getEnrollmentReport(startDate: string, endDate: string) {
     cancelledEnrollments,
     topClasses: topClassesResult,
     enrollmentsByClassType: byType,
+  };
+}
+
+export async function getFacilityActivity(startDate: string, endDate: string) {
+  const facilityId = requestContext.getStore()?.facilityId;
+  if (!facilityId) throw new AppError("Cần chọn cơ sở để xem báo cáo.", 400);
+  const period = {
+    gte: new Date(`${startDate}T00:00:00+07:00`),
+    lte: new Date(`${endDate}T23:59:59.999+07:00`),
+  };
+  if (!Number.isFinite(+period.gte) || !Number.isFinite(+period.lte) || period.gte > period.lte)
+    throw new AppError("Khoảng ngày báo cáo không hợp lệ.", 400);
+  const enrollmentWhere: Prisma.EnrollmentWhereInput = { class: { facilityId }, bookedAt: period };
+  const activeAccounts: Prisma.MemberProfileWhereInput = {
+    user: { role: "MEMBER", isActive: true },
+    OR: [
+      { enrollments: { some: { ...enrollmentWhere, status: { in: ["BOOKED", "COMPLETED"] } } } },
+      { visits: { some: { facilityId, checkInAt: period } } },
+    ],
+  };
+  const [activeMembers, newMembers, bookings] = await Promise.all([
+    prisma.memberProfile.count({ where: activeAccounts }),
+    prisma.memberProfile.count({ where: { ...activeAccounts, createdAt: period } }),
+    prisma.enrollment.groupBy({ by: ["status"], where: enrollmentWhere, _count: { _all: true } }),
+  ]);
+  return {
+    activeMembers,
+    newMembers,
+    bookingsByStatus: Object.fromEntries(bookings.map((row) => [row.status, row._count._all])),
   };
 }
 
