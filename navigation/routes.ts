@@ -34,6 +34,8 @@ export const ROUTES = {
   support: '/member/support',
   /** Chính sách sử dụng (web: Policies) — cả Hội viên và Huấn luyện viên */
   policies: '/policies',
+  /** Hướng dẫn sử dụng (web: HelpPanel) — cả Hội viên và Huấn luyện viên */
+  help: '/help',
   payments: '/member/payments',
   coachChanges: '/coach/coach-changes',
   coachFeedback: '/coach/feedback',

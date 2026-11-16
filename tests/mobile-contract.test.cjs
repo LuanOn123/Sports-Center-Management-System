@@ -1010,14 +1010,25 @@ test('coach learner screen only shows what BE gives a coach: no email/phone/pref
 const WEB_CLIENT = '1111-web.apps.googleusercontent.com';
 const IOS_CLIENT = '2222-ios.apps.googleusercontent.com';
 
-// Nạp lib/googleSignIn với môi trường giả lập: ExecutionEnvironment của Expo, biến môi trường và module Google native
-function loadGoogle({ environment = 'standalone', webClientId = WEB_CLIENT, iosClientId = '', native } = {}) {
+// Nạp lib/googleSignIn với môi trường giả lập: ExecutionEnvironment của Expo, biến môi trường, registry module native của React Native
+// và thư viện Google. `registered`: bản đang chạy đã gắn module native RNGoogleSignin (mặc định: có khi test đưa module giả vào).
+// `loads.count` đếm số lần thư viện Google bị nạp: khi module native chưa gắn, require() của thư viện KHÔNG ném lỗi cho try/catch —
+// Metro (guardedLoadModule) báo thẳng là lỗi nghiêm trọng (màn đỏ "Uncaught Error" khi đăng xuất trong Expo Go) — nên không được nạp.
+function loadGoogle({ environment = 'standalone', webClientId = WEB_CLIENT, iosClientId = '', native, registered = native !== undefined, loads = { count: 0 } } = {}) {
   const saved = { web: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID };
   process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID = webClientId; process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID = iosClientId;
   try {
     const stubs = {
       'expo-constants': () => ({ __esModule: true, default: { executionEnvironment: environment }, ExecutionEnvironment: { StoreClient: 'storeClient', Standalone: 'standalone', Bare: 'bare' } }),
-      '@react-native-google-signin/google-signin': native ?? (() => { throw new Error("TurboModuleRegistry.getEnforcing(...): 'RNGoogleSignin' could not be found"); }),
+      'react-native': () => ({
+        Platform: { OS: 'web', select: (values) => values.web || values.default },
+        TurboModuleRegistry: { get: (name) => (registered && name === 'RNGoogleSignin' ? {} : null) },
+      }),
+      '@react-native-google-signin/google-signin': () => {
+        loads.count += 1;
+        if (!native) throw new Error("TurboModuleRegistry.getEnforcing(...): 'RNGoogleSignin' could not be found");
+        return native();
+      },
     };
     return loadApp('http://localhost/api/v1', stubs).load('lib/googleSignIn');
   } finally {
@@ -1043,13 +1054,26 @@ function fakeGoogleModule(overrides = {}) {
   return { module, calls, codes };
 }
 
-test('Google sign-in explains why it is unavailable instead of crashing: Expo Go, missing config, missing native module, web', () => {
-  // Expo Go không có module native → lý do 'expo-go' và không bao giờ nạp thư viện
-  assert.equal(loadGoogle({ environment: 'storeClient' }).googleSignInUnavailableReason(), 'expo-go');
+test('Google sign-in explains why it is unavailable instead of crashing: Expo Go, missing config, missing native module, web', async () => {
+  // Expo Go không có module native → lý do 'expo-go'. Không hàm nào được nạp thư viện Google, kể cả đăng xuất:
+  // đăng xuất trong Expo Go từng báo "Uncaught Error: 'RNGoogleSignin' could not be found" vì require() thư viện bị Metro coi là lỗi nghiêm trọng
+  const expoGo = { count: 0 };
+  const inExpoGo = loadGoogle({ environment: 'storeClient', loads: expoGo });
+  assert.equal(inExpoGo.googleSignInUnavailableReason(), 'expo-go');
+  await assert.rejects(inExpoGo.signInWithGoogle(), /Expo Go/);
+  await assert.doesNotReject(inExpoGo.signOutOfGoogle());
+  assert.match(inExpoGo.googleErrorMessage(new Error('Lỗi khác')), /Lỗi khác/);
+  assert.equal(expoGo.count, 0, 'Expo Go: không được nạp thư viện Google');
   // Thiếu Web client ID → chưa cấu hình
   assert.equal(loadGoogle({ webClientId: '' }).googleSignInUnavailableReason(), 'not-configured');
-  // Development build cũ chưa gắn thư viện Google: require ném lỗi → báo cần build lại, không sập
-  assert.equal(loadGoogle().googleSignInUnavailableReason(), 'native-module-missing');
+  // Development build cũ chưa gắn module native Google: registry không có RNGoogleSignin → báo cần build lại và không nạp thư viện
+  const oldBuild = { count: 0 };
+  const withoutNative = loadGoogle({ loads: oldBuild });
+  assert.equal(withoutNative.googleSignInUnavailableReason(), 'native-module-missing');
+  await assert.rejects(withoutNative.signInWithGoogle(), /build lại/);
+  await assert.doesNotReject(withoutNative.signOutOfGoogle());
+  assert.equal(oldBuild.count, 0, 'thiếu module native: không được nạp thư viện Google');
+  // Đã gắn module native → dùng được (registry được hỏi đúng tên RNGoogleSignin)
   assert.equal(loadGoogle({ native: fakeGoogleModule().module }).googleSignInUnavailableReason(), null);
   // Mọi thông điệp đều có tiếng Việt và nêu hướng xử lý
   const text = loadApp('http://localhost/api/v1').load('constants/auth').GOOGLE_TEXT;
@@ -1731,4 +1755,55 @@ test('chat shows who is online and who is typing like the web, and the tab badge
   assert.match(readSource('hooks/shared/useChatUnreadCount.ts'), /socket\.on\('newMessage', refresh\)/);
   // Mở cuộc trò chuyện xong thì số chưa đọc đổi ngay
   assert.match(readSource('hooks/shared/useChat.ts'), /invalidateQueries\(\{ queryKey: \['chat-unread-count'\] \}\)/);
+});
+
+// ─── Phase 5: hướng dẫn sử dụng ───────────────────────────────────────────────────────────────────────────────────────
+
+test('help guide: topics per role follow the web HelpPanel, the steps match the real screens and every topic opens a screen its role can reach', () => {
+  const app = loadApp('http://localhost/api/v1');
+  const help = app.load('lib/help'); const c = app.load('constants/help'); const cfg = app.load('navigation/helpConfig');
+  const { ROUTES, canAccessRoute } = app.load('navigation/routes'); const menus = app.load('navigation/accountMenuConfig');
+  // Web: hội viên 3 chủ đề, HLV 2 (cùng thứ tự); mobile thêm "Điểm danh" cho mỗi vai trò
+  assert.deepEqual(c.MEMBER_GUIDES.map((g) => g.id), ['classes', 'membership', 'profile', 'attendance']);
+  assert.deepEqual(c.COACH_GUIDES.map((g) => g.id), ['schedule', 'classes', 'attendance']);
+  assert.equal(help.guidesForRole('COACH'), c.COACH_GUIDES); assert.equal(help.guidesForRole('MEMBER'), c.MEMBER_GUIDES); assert.equal(help.guidesForRole(undefined), c.MEMBER_GUIDES);
+  for (const [role, guides] of [['MEMBER', c.MEMBER_GUIDES], ['COACH', c.COACH_GUIDES]]) {
+    for (const guide of guides) {
+      assert.equal(guide.steps.length, 3, `${role}/${guide.id}: ba bước như web`);
+      const route = cfg.HELP_ROUTE[guide.target];
+      assert.ok(route, `${role}/${guide.id} có màn đích`);
+      assert.ok(canAccessRoute(role, String(route).split('/').filter(Boolean)), `${role} mở được màn của "${guide.title}"`);
+    }
+    const entries = menus.getAccountMenuForRole(role).flatMap((group) => group.items).filter((item) => item.route === ROUTES.help);
+    assert.equal(entries.length, 1, `${role}: đúng một lối vào Hướng dẫn sử dụng`);
+  }
+  // Lời dẫn và ô tìm giữ chữ của web
+  assert.equal(c.HELP_TEXT.intro, 'Các bước thực hiện những công việc thường dùng trong không gian của bạn.');
+  assert.equal(c.HELP_TEXT.searchPlaceholder, 'Ví dụ: lịch, gói, thanh toán…');
+  assert.equal(c.HELP_TEXT.noResult, 'Không tìm thấy hướng dẫn. Thử từ khóa khác hoặc xóa nội dung tìm kiếm.');
+
+  // Câu chữ khớp app thật: giờ mở điểm danh, tên nút, tên mục trong menu Tài khoản, giới hạn tệp
+  const attendance = app.load('constants/attendance');
+  assert.equal(attendance.ATTENDANCE_OPEN_BEFORE_MS, 30 * 60_000);
+  assert.match(JSON.stringify(c.MEMBER_GUIDES), /Từ 30 phút trước giờ học/); assert.match(JSON.stringify(c.COACH_GUIDES), /từ 30 phút trước giờ bắt đầu/);
+  assert.ok(c.MEMBER_GUIDES[3].steps[1].includes(attendance.MY_ATTENDANCE_TEXT.scan), 'tên nút quét mã khớp màn Chuyên cần');
+  assert.match(readSource('components/coach/CoachAttendanceView.tsx'), /Tạo mã QR/);
+  assert.deepEqual(attendance.COACH_ATTENDANCE_STATUSES.map((s) => attendance.ATTENDANCE_STATUS_LABEL[s]), ['Có mặt', 'Đi muộn', 'Vắng mặt']);
+  const memberLabels = menus.getAccountMenuForRole('MEMBER').flatMap((group) => group.items).map((item) => item.label);
+  for (const label of ['Gói thành viên', 'Thông tin cá nhân & bảo mật', 'Điểm danh & chuyên cần']) assert.ok(memberLabels.includes(label), `menu hội viên có "${label}"`);
+  assert.ok(menus.getAccountMenuForRole('COACH').flatMap((group) => group.items).some((item) => item.label === 'Lớp phụ trách'));
+  assert.equal(app.load('constants/chat').CHAT_FILE_MAX_BYTES, 10 * 1024 * 1024); assert.match(JSON.stringify(c.HELP_TIPS), /tối đa 10 MB/);
+
+  // Tìm: không phân biệt hoa thường và dấu, tìm cả trong các bước
+  const ids = (query) => help.filterGuides(c.MEMBER_GUIDES, query).map((g) => g.id);
+  assert.deepEqual(ids(''), ['classes', 'membership', 'profile', 'attendance']); assert.deepEqual(ids('   '), ids(''));
+  assert.ok(ids('thanh toan').includes('membership')); assert.ok(ids('THANH TOÁN').includes('membership'));
+  assert.deepEqual(ids('qr'), ['attendance']); assert.deepEqual(ids('zzzz'), []);
+  assert.equal(help.normalizeSearch('Đặt Lịch'), 'dat lich');
+
+  // Route mỏng, mở được cho cả hai vai trò
+  const route = readSource('app/help.tsx'); assert.match(route, /HelpGuideView/); assert.ok(!/useState|useQuery|api\./.test(route));
+  assert.equal(canAccessRoute('COACH', ['help']), true); assert.equal(canAccessRoute('MEMBER', ['help']), true);
+  const view = readSource('components/account/HelpGuideView.tsx');
+  assert.match(view, /TEXT\.openFeature/); assert.match(view, /TEXT\.policies/); assert.match(view, /HELP_TIPS/);
 });
