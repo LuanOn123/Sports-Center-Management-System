@@ -1,0 +1,37 @@
+// Shared report-diagram style. Sources embed this configuration for portable exports.
+// The user's strict monochrome requirement overrides sequence AGENTS.md's default-theme rule.
+export const config = {
+  theme: 'base',
+  look: 'classic',
+  fontFamily: 'Arial, sans-serif',
+  themeVariables: {
+    background: '#FFFFFF', primaryColor: '#FFFFFF', secondaryColor: '#FFFFFF', tertiaryColor: '#FFFFFF',
+    primaryTextColor: '#000000', secondaryTextColor: '#000000', tertiaryTextColor: '#000000',
+    primaryBorderColor: '#000000', secondaryBorderColor: '#000000', tertiaryBorderColor: '#000000',
+    lineColor: '#000000', textColor: '#000000', mainBkg: '#FFFFFF', nodeBorder: '#000000',
+    clusterBkg: '#FFFFFF', clusterBorder: '#000000', edgeLabelBackground: '#FFFFFF',
+    actorBkg: '#FFFFFF', actorBorder: '#000000', actorTextColor: '#000000', actorLineColor: '#000000',
+    signalColor: '#000000', signalTextColor: '#000000', labelBoxBkgColor: '#FFFFFF',
+    labelBoxBorderColor: '#000000', labelTextColor: '#000000', loopTextColor: '#000000',
+    noteBkgColor: '#FFFFFF', noteBorderColor: '#000000', noteTextColor: '#000000',
+    activationBkgColor: '#FFFFFF', activationBorderColor: '#000000',
+    sequenceNumberColor: '#000000', relationColor: '#000000', relationLabelColor: '#000000',
+    attributeBackgroundColorOdd: '#FFFFFF', attributeBackgroundColorEven: '#FFFFFF',
+    fontFamily: 'Arial, sans-serif', fontSize: '14px',
+  },
+  themeCSS: 'text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*="dasharray"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}',
+  sequence: {
+    mirrorActors: false, diagramMarginX: 12, diagramMarginY: 12,
+    // Classic stick figures occupy 80px, regardless of the participant box height.
+    // A shorter shared header lets the first message collide with the actor label.
+    actorMargin: 36, width: 210, height: 80, boxMargin: 8, boxTextMargin: 6,
+    messageMargin: 28, noteMargin: 8, bottomMarginAdj: 1,
+    fontFamily: 'Arial, sans-serif', actorFontFamily: 'Arial, sans-serif',
+    messageFontFamily: 'Arial, sans-serif', noteFontFamily: 'Arial, sans-serif',
+    actorFontSize: 14, messageFontSize: 14, noteFontSize: 14,
+    wrap: true, wrapPadding: 8, useMaxWidth: false,
+  },
+  flowchart: { htmlLabels: false, curve: 'linear', nodeSpacing: 20, rankSpacing: 35, padding: 12, useMaxWidth: false },
+  er: { useMaxWidth: false, minEntityWidth: 120, entityPadding: 10 },
+};
+export const directive = `%%{init: ${JSON.stringify(config)}}%%`;

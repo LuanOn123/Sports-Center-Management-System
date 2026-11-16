@@ -1,0 +1,57 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% USE CASE: Tải ảnh đại diện
+%% SOURCE: BE/src/modules/auth/auth.service.ts
+%% SOURCE: BE/src/modules/auth/auth.routes.ts
+%% SOURCE: BE/src/modules/auth/auth.controller.ts
+%% SOURCE: BE/src/utils/avatarStorage.ts
+%% SOURCE: FE/src/pages/member/ProfilePage.tsx
+%% HTTP prefix: /api/v1. API lane includes verified middleware and errorHandler.
+%% Grouped read and validation calls short-circuit on error. No Repository layer is implied.
+%% No always-Cloudinary claim. Actual driver depends on configuration. File storage is not a SQL transaction.
+sequenceDiagram
+    actor A as User
+    participant UI as ProfilePage / Profile
+    participant API as Express middleware / errorHandler
+    participant C as authController
+    participant S as authService
+    participant DB as Mongo models / Prisma
+    participant Store as avatarStorage
+    A->>UI: Upload avatar image
+    UI->>API: POST /api/v1/auth/me/avatar
+    activate API
+    API->>API: authenticate and avatarUpload
+    alt authentication or upload rejected
+        API-->>UI: Authentication or upload error
+    else request accepted
+        API->>C: uploadAvatar(req, res, next)
+        activate C
+        alt multipart avatar missing
+            C-->>API: 400 avatar required
+        else file present
+            C->>Store: storeAvatarImage(file, ownerId, publicBaseUrl)
+            activate Store
+            Store-->>C: Stored URL or storage exception
+            deactivate Store
+            C->>S: updateAvatar(userId, avatarUrl) if storage succeeded
+            activate S
+            S->>DB: User.findById with old avatarUrl
+            DB-->>S: User or null
+            alt user missing or storage / persistence fails
+                S-->>C: 404 or propagated exception
+            else user exists and writes succeed
+                S->>DB: User.updateOne(avatarUrl) and synchronizeUserProjection
+                DB-->>S: Updated identity projection
+                S->>Store: Best-effort removeStoredAvatar for replaced old URL
+                S-->>C: getMe(userId) profile
+            end
+            deactivate S
+            C-->>API: Updated profile or next(error)
+        end
+        deactivate C
+        API-->>UI: 200 avatar result or mapped error
+    end
+    deactivate API
+    UI-->>A: Show updated avatar or upload failure
+%% Storage errors short-circuit before updateAvatar. Driver may be local disk or Cloudinary.
+%% Storage is not a database validation operation or part of a distributed transaction.

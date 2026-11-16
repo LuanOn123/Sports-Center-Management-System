@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const TermStatusEnum = z.enum(["PLANNING", "OPEN_REGISTRATION", "IN_PROGRESS", "CLOSED"]);
+const facilityIdSchema = z.string().trim().min(1, "ID cơ sở không hợp lệ").nullable().optional();
 
 export const CreateTermSchema = z
   .object({
@@ -25,7 +26,7 @@ export const CreateTermSchema = z
       .datetime({ message: "Ngày đóng đăng ký không hợp lệ (ISO format)" }),
     status: TermStatusEnum.optional().default("PLANNING"),
     description: z.string().max(500).optional(),
-    facilityId: z.string().uuid("ID cơ sở không hợp lệ").nullable().optional(),
+    facilityId: facilityIdSchema,
   })
   .superRefine((data, ctx) => {
     const start = new Date(data.startDate).getTime();
@@ -44,7 +45,7 @@ export const CreateTermSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["registrationEndDate"],
-        message: "Ngày đóng cổng đăng ký phải sau ngày mở cổng đăng ký",
+        message: "Thời điểm đóng đăng ký phải sau thời điểm mở đăng ký",
       });
     }
     if (regEnd > end) {
@@ -72,7 +73,7 @@ export const UpdateTermSchema = z
     registrationEndDate: z.string().datetime().optional(),
     status: TermStatusEnum.optional(),
     description: z.string().max(500).nullable().optional(),
-    facilityId: z.string().uuid("ID cơ sở không hợp lệ").nullable().optional(),
+    facilityId: facilityIdSchema,
   })
   .superRefine((data, ctx) => {
     if (data.startDate && data.endDate) {
@@ -89,7 +90,7 @@ export const UpdateTermSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["registrationEndDate"],
-          message: "Ngày đóng cổng đăng ký phải sau ngày mở cổng đăng ký",
+          message: "Thời điểm đóng đăng ký phải sau thời điểm mở đăng ký",
         });
       }
     }

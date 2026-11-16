@@ -21,6 +21,21 @@ dialog::backdrop {
   letter-spacing: -0.025em;
   line-height: 1.35;
 }
+dialog.modal-with-scroll-body[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}
+.modal-with-scroll-body > .modal-head {
+  position: static;
+  flex-shrink: 0;
+}
+.modal-scroll-body {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
 .modal-footer {
   position: sticky;
   bottom: 0;
@@ -95,8 +110,10 @@ dialog::backdrop {
   font-size: 12px !important;
 }
 .detail-list > .detail-content {
-  border-bottom: 1px solid #e3ebe5;
   margin: 0;
+}
+.detail-list > .detail-content:last-child {
+  border-bottom: 0;
 }
 .detail-tabs {
   display: flex;

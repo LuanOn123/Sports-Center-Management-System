@@ -1,0 +1,2148 @@
+{
+  "date": "2026-11-01",
+  "baselineCommit": "4a9e6603e3aa2d3cd56e2c8785fd27a3430d9535",
+  "sources": [
+    {
+      "file": "docs/architecture/database-erd.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/architecture/sports-center-use-cases.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/01-tech-stack.png",
+      "type": ".png",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/01-tech-stack.svg",
+      "type": ".svg",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/02-system-architecture.png",
+      "type": ".png",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/02-system-architecture.svg",
+      "type": ".svg",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/03-use-case-admin-manager.png",
+      "type": ".png",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/03-use-case-admin-manager.svg",
+      "type": ".svg",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/04-use-case-receptionist-coach.png",
+      "type": ".png",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/04-use-case-receptionist-coach.svg",
+      "type": ".svg",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/05-use-case-member-guest.png",
+      "type": ".png",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/05-use-case-member-guest.svg",
+      "type": ".svg",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/06-web-architecture-corrected.png",
+      "type": ".png",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/06-web-architecture-corrected.svg",
+      "type": ".svg",
+      "existedBefore": false
+    },
+    {
+      "file": "docs/presentation/07-web-architecture-english.png",
+      "type": ".png",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/07-web-architecture-english.svg",
+      "type": ".svg",
+      "existedBefore": false
+    },
+    {
+      "file": "docs/presentation/diagrams.md",
+      "block": 1,
+      "type": "embedded Mermaid",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/diagrams.md",
+      "block": 2,
+      "type": "embedded Mermaid",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/diagrams.md",
+      "block": 3,
+      "type": "embedded Mermaid",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/diagrams.md",
+      "block": 4,
+      "type": "embedded Mermaid",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/diagrams.md",
+      "block": 5,
+      "type": "embedded Mermaid",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/diagrams.md",
+      "block": 6,
+      "type": "embedded Mermaid",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/diagrams.md",
+      "block": 7,
+      "type": "embedded Mermaid",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/diagrams.md",
+      "block": 8,
+      "type": "embedded Mermaid",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-01_create_facility.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-02_update_facility.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-03_assign_facility_manager.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-04_assign_facility_staff.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-05_create_facility_coach.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-06_manage_sports.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-07_facility_overview_report.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-08_export_report_csv.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-09_create_receptionist.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-01_guest_register_otp.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-02_user_login.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-03b_consume_reset_otp.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-03_forgot_reset_password.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-04_refresh_session.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-05_logout.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-06_update_profile.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-07_change_password.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-08_upload_avatar.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/COA-01_view_schedule_students.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/COA-02_take_attendance.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/COA-04_request_coach_change.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/COA-05_view_member_profile.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/EXT-02_ai_assistant.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-01_browse_memberships.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-02_purchase_membership.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-03_cancel_membership_refund.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-04_search_classes.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-05_book_class.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-06_view_booking_status.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-07_qr_check_in.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-08_notifications.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-09b_chat_attachment.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-09_chat.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-10_receipts.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-11_feedback_rating.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-12_join_waitlist.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-13_cancel_waitlist.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-14_cancel_booking.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-15_transfer_booking.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-16_request_class_leave.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-17_appeal_penalty.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-18_submit_issue.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-19_edit_open_issue.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-20_update_health_notes.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-01_create_class_schedule_wizard.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-02_assign_coach.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-03_manage_memberships_tuition.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-04_manage_staff_roles.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-05_revenue_report.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-06_audit_log.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-07_create_term.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-08_update_term.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-09_create_room.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-10_update_room.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-11_transfer_room_schedules.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-12_create_class.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-13_update_class.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-14_create_schedule_batch.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-15_update_cancel_schedule.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-16_complete_session.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-17_decide_coach_change.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-18_decide_member_staff_leave.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-19_apply_penalty.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-20_revoke_penalty.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-21_review_attendance_report.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-22_correct_attendance.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-23_attendance_report.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-24_cross_facility_usage.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-01_update_room_capabilities.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-02_update_coach_specializations.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-03_create_time_slot.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-04_create_schedule_pattern.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-05_resolve_support_issue.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-06_trigger_class_reminders.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-07_scan_attendance_warnings.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/PAY-01_sepay_webhook_settlement.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/PAY-02_poll_checkout_reconcile.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/PAY-03_retry_activation.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/PAY-04_approve_unactivated_refund.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-01_create_member.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-02_manage_booking_check_in.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-03_rotate_qr_session.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-05_confirm_refund.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-06_create_counter_order.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-07_confirm_counter_order.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-08_sell_membership.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-09_renew_membership.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-10_cancel_membership.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-11_monitor_attendance.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-12_send_attendance_warning.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-13_report_attendance_violation.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-14_request_staff_leave.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/SYS-01_waitlist_promotion.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/SYS-02_subscription_lifecycle.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/SYS-03_notification_outbox.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/sequence-diagrams/SYS-04_socket_send_message.mmd",
+      "type": ".mmd",
+      "existedBefore": true
+    },
+    {
+      "file": "docs/presentation/generate_visuals.py",
+      "type": "diagram authoring helper",
+      "existedBefore": true,
+      "executionVerified": false
+    },
+    {
+      "file": "docs/presentation/render_png.cjs",
+      "type": "diagram authoring helper",
+      "existedBefore": true,
+      "executionVerified": true
+    },
+    {
+      "file": "docs/presentation/07-english-image-prompt.txt",
+      "type": "diagram authoring helper",
+      "existedBefore": true,
+      "executionVerified": true
+    },
+    {
+      "file": "docs/presentation/use-cases.json",
+      "type": "diagram label metadata",
+      "existedBefore": true,
+      "executionVerified": true
+    }
+  ],
+  "changes": [
+    {
+      "file": "docs/architecture/database-erd.mmd",
+      "status": "modified",
+      "beforeSha256": "e046650aeee0e4bd48fb79701bd0123ac5eb86e4b734c898604955f7001b3893",
+      "afterSha256": "43f5f678df985e0630d1d260a6fae66c4799a9fb7641d128e97fd8e4b4eb74f2"
+    },
+    {
+      "file": "docs/architecture/DATABASE_ERD.md",
+      "status": "modified",
+      "beforeSha256": "fffd592c2a708f61ed28a8baa3bb08d05b86bac8522fecec4ef0782d3ca3706f",
+      "afterSha256": "e452705a19ecf1aa40e9fe4a93c2419d0ee5abe16d9ea660dd47a980a86d92ea"
+    },
+    {
+      "file": "docs/architecture/sports-center-use-cases.mmd",
+      "status": "modified",
+      "beforeSha256": "ed5aab9761a003e9ad2db134e2f0638d7e0f5b137f49b1b1153dbeb80899b292",
+      "afterSha256": "f2d29f576268856892bd8265f4660871982e6ed06835cec5c3dd5834e3f2fe24"
+    },
+    {
+      "file": "docs/architecture/USE_CASES.md",
+      "status": "modified",
+      "beforeSha256": "9a17ee9594a6f4fd435ea3423381bf66f7ecec8d0a83f4d1011cb16d8c0d9bc3",
+      "afterSha256": "62aa6d82c6d3d22738d7de548d0ea5ce07d67ed81f0f349eaf5756fcea2d7328"
+    },
+    {
+      "file": "docs/diagram-audit/build-report.mjs",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "79e68401a03becd819f2b6f4108335b1dd08a530896717f1b89bc439a789cae5"
+    },
+    {
+      "file": "docs/diagram-audit/exports/ADM-01_create_facility.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "e6e988c2a2f98ec72ad8b113e91cddeea3077e5440fd6ac053f05416851da622"
+    },
+    {
+      "file": "docs/diagram-audit/exports/ADM-02_update_facility.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "c1e463483c1a512ef35310a4417dcf73b90271cf3c016edde152f9e816df0d35"
+    },
+    {
+      "file": "docs/diagram-audit/exports/ADM-03_assign_facility_manager.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "71fa228c9dae7147778ca05847ae96f91bf5dc8ba713a01317f51beb2131313d"
+    },
+    {
+      "file": "docs/diagram-audit/exports/ADM-04_assign_facility_staff.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "fa03557b932cf79ccbf4aa6e64f8996629b3a20e52cab023e89efc3a81931dd2"
+    },
+    {
+      "file": "docs/diagram-audit/exports/ADM-05_create_facility_coach.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "299b735cd53b8ff837b9ce05c1ea494b645c83f13fba7d79b1ecc1f714471d49"
+    },
+    {
+      "file": "docs/diagram-audit/exports/ADM-06_manage_sports.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "ba7bdb03a802e8972c6499ab0c8aa10e0097fa96eb0f496f5778ffd030591748"
+    },
+    {
+      "file": "docs/diagram-audit/exports/ADM-07_facility_overview_report.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "e390c9428f4111f92f5ae0ad84bfc71a379c8364701856f1c3c70be906b3dc2f"
+    },
+    {
+      "file": "docs/diagram-audit/exports/ADM-08_export_report_csv.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "e8f4936bb54dcebe7a519f1a7edc574b600c7eed4a98f1702aa7312ab9358eb9"
+    },
+    {
+      "file": "docs/diagram-audit/exports/ADM-09_create_receptionist.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "ca4c938173c02bbd66bd150e8eb25d66c2b16198c3e7647eebf91bb7d1d2eb3c"
+    },
+    {
+      "file": "docs/diagram-audit/exports/AUTH-01_guest_register_otp.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "e4424b53196b4714d7d73881f25ca2865b339317436afea178e3637510e1c23e"
+    },
+    {
+      "file": "docs/diagram-audit/exports/AUTH-02_user_login.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "36a70ef722b0c4ce707f4e0ef8fbcd19b0d5fde6937ef207b4a3b6cc5f2b6c7d"
+    },
+    {
+      "file": "docs/diagram-audit/exports/AUTH-03b_consume_reset_otp.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "986b305794e3c609789ae16812984bd2fbb93cb95bfe2b8bff66bb52b4dc5aa2"
+    },
+    {
+      "file": "docs/diagram-audit/exports/AUTH-03_forgot_reset_password.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "52e86c7a6588fc70829ab09b831c603f46c95cc348750f29e0e408270ab21d39"
+    },
+    {
+      "file": "docs/diagram-audit/exports/AUTH-04_refresh_session.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "fba196f0af83ed70206bc2559e71f8dbbe5904da778d28968ae3a32526c057ad"
+    },
+    {
+      "file": "docs/diagram-audit/exports/AUTH-05_logout.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "ec8abd36717bd6fa9e2ae64e766e868a38812c501796fa594cac73c9aa2ef377"
+    },
+    {
+      "file": "docs/diagram-audit/exports/AUTH-06_update_profile.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "1db846560092bd5f67deceb6ad4d1a619012cca0c3a91a9b645add43d0f36bd5"
+    },
+    {
+      "file": "docs/diagram-audit/exports/AUTH-07_change_password.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "b0c4922994ec6f2087ac1b46fc0e3ba069989b3bea712e438d3c1fac6db3ac10"
+    },
+    {
+      "file": "docs/diagram-audit/exports/AUTH-08_upload_avatar.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "f832e1e86232a9f4c9f998be6847d25b8bcbe442641fe5aadb511ee37d6ca7e7"
+    },
+    {
+      "file": "docs/diagram-audit/exports/COA-01_view_schedule_students.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "aa02bb8d5d6676bed67be736c87e9459b99ba7912e90c55247198f3fbd027c39"
+    },
+    {
+      "file": "docs/diagram-audit/exports/COA-02_take_attendance.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "4b5e6f2874af2fa83d4a9b48f4d8e7f54cfb77b1a7ce155a80a3294ce294381f"
+    },
+    {
+      "file": "docs/diagram-audit/exports/COA-04_request_coach_change.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "df25c2c55083253bf850914ab67670f1d2be030c6e0d84fb31517327d4886e9a"
+    },
+    {
+      "file": "docs/diagram-audit/exports/COA-05_view_member_profile.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "01a9f548237cbc84400a54d0d9129aa0e3401315de5fe796e253a508097ff533"
+    },
+    {
+      "file": "docs/diagram-audit/exports/database-erd.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "44542bb0dfa409513e78478e43ec6f324f540390974c76ccc1ab3f26bd2c9443"
+    },
+    {
+      "file": "docs/diagram-audit/exports/EXT-02_ai_assistant.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "e12dfdd20781064cb8363ec8df99a2ebe66bec8ac18c33ed5b9719a49a28de1a"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-01_browse_memberships.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "a5bf74de95e1648c0f5ccbc5aa69fa21b9c8de38a14fdfa3099f28f0170cfa3e"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-02_purchase_membership.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "6688f690f29e4c37b3dc8859c2ea5d3584b2bd6c64a87ca81e79ee3e06b115b3"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-03_cancel_membership_refund.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "06983908a45a3e92f3567ffd26314bbaa7ae194bda6e44eb866af8866c9f30e7"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-04_search_classes.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "e4eaf1a2a4491412734124335500655c6176234cf647875c05608cdcb195e165"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-05_book_class.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "a0c102e1c822c2d36ee416e8901044cb7a1b30b3cfe326ac6e5e49dc28e26959"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-06_view_booking_status.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "c6380ca0bbafa7da1af5ac3b010f8151708cdde740be4070eafb4cda2d3ded38"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-07_qr_check_in.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "d8231b478cb73f29e44afb51c981c797d3db4a892c55d4848bb3c21cb639cce3"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-08_notifications.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "7b0d107f725c10d6c7b4436839ccc947f4c4d7942e2cf7af330ab8d7e63adf31"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-09b_chat_attachment.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "7e2625acc679fe5ddee19099178f12b09aa4a481664e725b17dff43121f41867"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-09_chat.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "d33752ba1d5ee570072f35c1c83cb480dad002ac4b4b018aa35517d6246c845b"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-10_receipts.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "512252519e3f52e86392243dc27dc5c90f270c212cff52c1e781d2528e3bb2da"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-11_feedback_rating.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "d577ea8c7eca26e07bf70763365c966d20424b00ebbb81da3147d8d4d48dff93"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-12_join_waitlist.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "da4dc722f83b284ee154f564d70279d7d129e9924c88e57cf206204610e35b9f"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-13_cancel_waitlist.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "f3fb864e1010d5e94b30f9ef44493258c8f936af45e453fd7ae5511944d83d41"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-14_cancel_booking.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "87ae93de37b7418cc28017289755ee4f9123505c605f9a4ff62aab4c5b4b62ee"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-15_transfer_booking.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "21a2d31e824cfc597dfc56f0d32e83659ce8d2e46f0ac9da87913a4f1cd9c46f"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-16_request_class_leave.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "cadec97a5a9d582743c3b9538a58719fa3d2cf15e1b3fbb5beeab92a85236b3d"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-17_appeal_penalty.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "9dcdfe69bc7e634010aec6d907437c0bfe4c56e14ee4c963327a5c8724034b0f"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-18_submit_issue.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "4d4e0178c89f572db1e9bfbb4a03e1c4828b598089a2b0be48aa1ccbdb711aa4"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-19_edit_open_issue.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "f0b1b5bb52f88c18da4f1072bda247e9191e0e74fef3647dd3dfb5572b75d61e"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MEM-20_update_health_notes.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "15b7ccb7770ccd11ff4e9dffdc884743607dc54bb3fcd07354e3c01e0abfbad4"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-01_create_class_schedule_wizard.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "4a754bbe769afa0797c7ff551c0bb9131d919e9240bc0319e6083a797dce6917"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-02_assign_coach.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "3412dab42c4f25eb03eab9c26cb476bfbbb91b01652c15cc08d50a872ca00e55"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-03_manage_memberships_tuition.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "757313ee2412852808e7ea6449d6cc504550a68a37ed5c372aaeb98af279f0b9"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-04_manage_staff_roles.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "113585ddf1eb377c3905070b9a6999f06f394f110aa628212225daede52941a0"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-05_revenue_report.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "661e3523d05587511cb24aed343090c1988c8f3479844e372abefe87bcfb7055"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-06_audit_log.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "5146682d87b43e0322caa76c6e00f15152e504388c93d70400c9f80a18e70418"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-07_create_term.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "e5acbec0035d691b32ba97d1d33f1945cd8e76557dc10ba5d5b6755f54073d9e"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-08_update_term.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "a8ede737497c6471cf4b68317fe7ad6c9981ef132ceaf3d24205b6c97fcae69a"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-09_create_room.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "4fde295af71c5507b3947ea111250ed3ea00a5914a3435d4f6139c6dc718594f"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-10_update_room.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "a830adbced83a8e50cb9009d91aaedfac62062553a621f26a3987390baf69183"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-11_transfer_room_schedules.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "880593c0b6ada29bcbd3be92ca2b6a725a3a9a5f42f9f204b05fdf967c225383"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-12_create_class.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "65bae4c9e7fca9c77e23ae888ea115f69361de0faabb769d7d7e977fe4b4bba4"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-13_update_class.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "e26b23b8a463a956b0a74212ce447d973af9a8414747e02fc2a3289edd1f3dde"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-14_create_schedule_batch.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "9551f683ac8e6e3b3c8d2a60211190072bbecd15cadccc29b38cf761c4297d3b"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-15_update_cancel_schedule.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "2da4f7f34cebdbc7a8d3a3e787f56a192655927eecc47dd65d47ef3a7e952b64"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-16_complete_session.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "f57ede730580de24d8b23ca44d00198eeea6d71b605e8af0b03bef8bcae2bf89"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-17_decide_coach_change.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "ddeca07b65d115800b9c1c8703467de37facccb7a320094c6e5bea7c28ece0b0"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-18_decide_member_staff_leave.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "53acf62a38a3441563db9aa0288187d8dcc56807b3c25d9e2f63e1a58bba2782"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-19_apply_penalty.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "2a1fb94548941998468f026d9436f4dc749ac64b6ad3093c59412cbd3b5cfc39"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-20_revoke_penalty.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "0f1c5b9b179e489217759c9ee83a60fe4b03cc18ffab36ed8b702642d0867d3f"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-21_review_attendance_report.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "300b8610ae19de848897a903e1a4a48767cf5ba5cfd972e7fdafe17eb5c4b9e5"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-22_correct_attendance.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "d6faec6c7b69d961a9150a81fd48dd8788520da70c223a6ec98149cdd0c0101c"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-23_attendance_report.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "47d572d4cefe504223e242adbbc5d4471540adae558e50a783cb464b12cda34d"
+    },
+    {
+      "file": "docs/diagram-audit/exports/MGR-24_cross_facility_usage.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "d6df323d4fb0fad837389f0a9c41f8d79190d58e11a6c4f03d1997ebf52fa60a"
+    },
+    {
+      "file": "docs/diagram-audit/exports/OPS-01_update_room_capabilities.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "4477d0ad38837b48452dcd9c1bc66a5caf150b9ebadb310251d822f39c98695e"
+    },
+    {
+      "file": "docs/diagram-audit/exports/OPS-02_update_coach_specializations.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "76cf6f5146aaecbc1dc88093d822d76c1c392124871de128cb7c030a73dd2f03"
+    },
+    {
+      "file": "docs/diagram-audit/exports/OPS-03_create_time_slot.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "85ba1157571461ffd0b587e145e9c8ed158aa6781014903124b6784e333361ea"
+    },
+    {
+      "file": "docs/diagram-audit/exports/OPS-04_create_schedule_pattern.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "7974d51c016174d3b09a1f06fe3ee154a98103e1c90fe7ac4df95687bd895661"
+    },
+    {
+      "file": "docs/diagram-audit/exports/OPS-05_resolve_support_issue.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "ed9572898e703625d4f58316cbd05f0b564f04bc6fe87d651cb201339218879e"
+    },
+    {
+      "file": "docs/diagram-audit/exports/OPS-06_trigger_class_reminders.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "7c145cb1b44f9822e2dfbb991f85acbfab1a1bab52d75f6822adb351848f7b9e"
+    },
+    {
+      "file": "docs/diagram-audit/exports/OPS-07_scan_attendance_warnings.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "f864f4e015d90657ea132e996c31951f6f9af39cd3bf2f3e68a987df27cdac0a"
+    },
+    {
+      "file": "docs/diagram-audit/exports/PAY-01_sepay_webhook_settlement.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "2b49cdc3e7c3f44abdd7106f627e4fa6ba45a18015429ac3a8bb07d705d63a4d"
+    },
+    {
+      "file": "docs/diagram-audit/exports/PAY-02_poll_checkout_reconcile.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "938e7b6ad714fcadd83af7f23463514069971344c9512778d4df83ad01165cff"
+    },
+    {
+      "file": "docs/diagram-audit/exports/PAY-03_retry_activation.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "a195646d8b999bc0fc18059238712fdc0c4873363ea909044a9042c8a541b663"
+    },
+    {
+      "file": "docs/diagram-audit/exports/PAY-04_approve_unactivated_refund.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "d1a2ef250664db4a69e82bb66cad31f6f41d1234541016b53bee6f9615c2c0ce"
+    },
+    {
+      "file": "docs/diagram-audit/exports/presentation-1.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "efa954c4d182251677eb7aaf9bde6a518eaa6204560fc23176981e8f337dc21e"
+    },
+    {
+      "file": "docs/diagram-audit/exports/presentation-2.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "987bdc3eafd95a251c478cbfc9925425e93e04539f80bc58c3b13c65c38fec6d"
+    },
+    {
+      "file": "docs/diagram-audit/exports/presentation-3.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "97f5eb9fb28d22948ecfa6720ae82f3b6022bd80c127a46ad11b5e0e6f4950fd"
+    },
+    {
+      "file": "docs/diagram-audit/exports/presentation-4.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "4ebdeb99429cae1528a871da93a7fff1c111fb4d55f66d9e5713d238b90d537d"
+    },
+    {
+      "file": "docs/diagram-audit/exports/presentation-5.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "42386bcbc4a044c3f399b023b70f4a8df228821c091d7f703b564f35117fd3de"
+    },
+    {
+      "file": "docs/diagram-audit/exports/presentation-6.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "112736e27ddcf9d4f7f4c85b9dc2bfc5dcabd279ede32c522ada0c50a9c091e1"
+    },
+    {
+      "file": "docs/diagram-audit/exports/presentation-7.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "927561e63b75b7c06d6c93145727732189f7a5aaf0b33ccfaa34a73f64290f9c"
+    },
+    {
+      "file": "docs/diagram-audit/exports/presentation-8.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "a0832e30ea7c61a370dc036bab71ca7d651d6a867072ee1cabb79596f4f3c5b3"
+    },
+    {
+      "file": "docs/diagram-audit/exports/REC-01_create_member.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "89ddb74cafbb037b53b97c005b53187602a49a87b7c1095135dd44692ce8e0bf"
+    },
+    {
+      "file": "docs/diagram-audit/exports/REC-02_manage_booking_check_in.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "a4a5a5a33a7c6038547a1a9e10d7e9da949eff81810ff01b531f89e012fefd43"
+    },
+    {
+      "file": "docs/diagram-audit/exports/REC-03_rotate_qr_session.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "3819dae770b0587cd5919c9e6dd1e706b8de13df070cd65d70a4c38f5ea85718"
+    },
+    {
+      "file": "docs/diagram-audit/exports/REC-05_confirm_refund.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "09b6c62c0b81dcaf8479e37a00b4b1ce52893483838c57fc511d551f1b5b89aa"
+    },
+    {
+      "file": "docs/diagram-audit/exports/REC-06_create_counter_order.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "48925aab11eae267335e9b869f6d46b20aef88cc746681472b4943b40baf3d59"
+    },
+    {
+      "file": "docs/diagram-audit/exports/REC-07_confirm_counter_order.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "c9ba8ee989f7947bcd971dac5a0a85e3ec0b04fb4d6126f9012999513834157d"
+    },
+    {
+      "file": "docs/diagram-audit/exports/REC-08_sell_membership.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "ba0e17c642eb4434c26522dbfe5f2fa6ab9d123cdb7f5adb8a75c7cbb6dc202b"
+    },
+    {
+      "file": "docs/diagram-audit/exports/REC-09_renew_membership.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "7ead5fe40746dc61d8f6c15941b8f1097fa011a5c4022aefbaebf9353870dbee"
+    },
+    {
+      "file": "docs/diagram-audit/exports/REC-10_cancel_membership.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "e3c8b7042ee9a99a7f3390418fdbb2f0ed0a3368bb3064f295cdd5912da3df17"
+    },
+    {
+      "file": "docs/diagram-audit/exports/REC-11_monitor_attendance.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "9cf8f40dacb019a8ec29bbb0452a339cdab12c9e11b6969154c30bb99a36b205"
+    },
+    {
+      "file": "docs/diagram-audit/exports/REC-12_send_attendance_warning.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "633a697eabea1c04ae5f3308cdd57c17473edcb17165b4b9b4d1b369ca23d160"
+    },
+    {
+      "file": "docs/diagram-audit/exports/REC-13_report_attendance_violation.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "09f51bf552e711246ae28862d2eebfe12fb27d4110b2f5e366ddbdd8f0441f0d"
+    },
+    {
+      "file": "docs/diagram-audit/exports/REC-14_request_staff_leave.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "99134665ec06cdca3018e6543b4ffc648b3752ad03a1f3bf726092d3f3c23206"
+    },
+    {
+      "file": "docs/diagram-audit/exports/sports-center-use-cases.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "117c0db16696011eff13e2d67810cf276401400a3d2b9499cf3ec90a685b832d"
+    },
+    {
+      "file": "docs/diagram-audit/exports/SYS-01_waitlist_promotion.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "d10d6048aac6d1dbb67ca3a785d501ccb66616f820ea057ccf46bebe8069408a"
+    },
+    {
+      "file": "docs/diagram-audit/exports/SYS-02_subscription_lifecycle.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "baf7e0ed71ccd40e171a6fc59e6e187e41ac279925242bc1e41475e1d7fc6be2"
+    },
+    {
+      "file": "docs/diagram-audit/exports/SYS-03_notification_outbox.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "db5f0242f103402572a715f8c91dd8f792ca7d038e1cb8c9a21d324b88ea100b"
+    },
+    {
+      "file": "docs/diagram-audit/exports/SYS-04_socket_send_message.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "ad681d9229b97663d25bbeb4505d913d23e39b9fac41c0e7752a0376abd41bf8"
+    },
+    {
+      "file": "docs/diagram-audit/FILES.md",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "bd69af6ebc04954001e0adfc17562b9ce38bfebce3d184a8f1e694ac63740cac"
+    },
+    {
+      "file": "docs/diagram-audit/final-checks.json",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "dd8a894db5479e446294f86bcb7e6e87e5caff6f42ab8764d024feb8a147f990"
+    },
+    {
+      "file": "docs/diagram-audit/findings.json",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "126b4e3eb2850090c2cf3bee3ec16040eb648277e3214c19845d1ec85248404f"
+    },
+    {
+      "file": "docs/diagram-audit/inspect-layout.mjs",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "a7ddd56e71d3145270f425211f266c12a7807a0a3b0ff30b9f244623be7c157a"
+    },
+    {
+      "file": "docs/diagram-audit/inventory.json",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": null,
+      "note": "Self-describing manifest; own hash intentionally omitted"
+    },
+    {
+      "file": "docs/diagram-audit/layout-review.json",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "2af3a172e95750e44c03b84a4cf71288c3ac053b4cdc95e061f8533e555bb9c5"
+    },
+    {
+      "file": "docs/diagram-audit/REPORT.md",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "6a204467af7e80a9c9b465c48e5beefb1261c6c8d18b0409db7c5ac828f97eaf"
+    },
+    {
+      "file": "docs/diagram-audit/style.mjs",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "183e626626590dfb15d3a49889bbf905f3eb6443afc9eb5ccacbde4bd2b2596d"
+    },
+    {
+      "file": "docs/diagram-audit/traceability.json",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "38173d8cf7dca316e7e6c9c076590f6068f5ef544192f1288437557939d177e6"
+    },
+    {
+      "file": "docs/diagram-audit/TRACEABILITY.md",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "cd429c2e4cbea1f15e42ba4e7d00da3cb6ea7312d9a09c875c723589430b608c"
+    },
+    {
+      "file": "docs/diagram-audit/update-erd.mjs",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "53dd886b37ddc5aede3510b8175271734ba1fa0ec3e55db0fa28396b7dc38700"
+    },
+    {
+      "file": "docs/diagram-audit/validation.json",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "c1f034c0f42a81e2b35dceb8c4cfa2d641dd863a10daa92282471d03b1fecfac"
+    },
+    {
+      "file": "docs/diagram-audit/verify-all.mjs",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "f0284127bf7d057f5e6a79f795240d0b7e08755d7022f865852be292631a2b50"
+    },
+    {
+      "file": "docs/presentation/01-tech-stack.png",
+      "status": "modified",
+      "beforeSha256": "4d8ccd8980b34473cdd0f4460f2213fed058a87d7a3322ed6d3aa439cd4241ef",
+      "afterSha256": "aadba8e480edd9c98d0cf245d62f407f0b726cffaf81524befa1e20ad5c84920"
+    },
+    {
+      "file": "docs/presentation/01-tech-stack.svg",
+      "status": "modified",
+      "beforeSha256": "4d39bef7bc262ac72339c327e4169d94807f3879d84c559c935f785cd3471fc4",
+      "afterSha256": "877445ab18d6496feed5e03b8cdf37bc5fd8e7f8b2ed5975eb525956c4d4030a"
+    },
+    {
+      "file": "docs/presentation/02-system-architecture.png",
+      "status": "modified",
+      "beforeSha256": "de530ed5660447d7718a97eb1de6199af7ee30d5ba36f255417322f5028a71b3",
+      "afterSha256": "9fc421262ece64b1213def3a7b0206d438adc4605b60c58297a4c6ea9e4ad5b3"
+    },
+    {
+      "file": "docs/presentation/02-system-architecture.svg",
+      "status": "modified",
+      "beforeSha256": "10d355a61e0c590dc92be19149bcb90c3aa8f4d08cb8595f419bdc1ccd96d96e",
+      "afterSha256": "23ea9f3c2ed3690297b5900a8a77ad15a55036d8eb8330b943384c9640f311dd"
+    },
+    {
+      "file": "docs/presentation/03-use-case-admin-manager.png",
+      "status": "modified",
+      "beforeSha256": "93e32f00c1bea2938da0b38d2d0ac16c2dbdecd9974d3f89cbb1048f94a6df35",
+      "afterSha256": "edcdc329fcd067b6d8140f32d1e54c676c53bec61100eeb05b6273b23dd00408"
+    },
+    {
+      "file": "docs/presentation/03-use-case-admin-manager.svg",
+      "status": "modified",
+      "beforeSha256": "9c888e86e62e496ce2c66734dff994bd346d45253716e09a209fabb53c916baa",
+      "afterSha256": "847326d5843b06515a3db0b0c31591955a32d6aaf105c16dad4f2e0c3acce41d"
+    },
+    {
+      "file": "docs/presentation/04-use-case-receptionist-coach.png",
+      "status": "modified",
+      "beforeSha256": "5c58da7551a8d9bddcf8f6bf98331128dedb64fd72ad1a9db4dfb571ad1582c0",
+      "afterSha256": "bd6bf6476f6d904fadabf363cc6da84a318359084e3547211609b77a831e930f"
+    },
+    {
+      "file": "docs/presentation/04-use-case-receptionist-coach.svg",
+      "status": "modified",
+      "beforeSha256": "509d46ef032e08db914629d27d5cad04d1672b50ce7fb70394ccb11e7b3d9f25",
+      "afterSha256": "6ce2203fc40a75664783be4894f5b3be94717251bbae90a8f163ddf7617bf1be"
+    },
+    {
+      "file": "docs/presentation/05-use-case-member-guest.png",
+      "status": "modified",
+      "beforeSha256": "12475e7291edcfb51f01e2d8cbe32c5e2e1d1206a91a295530ddb306711b8ec5",
+      "afterSha256": "2388bfdbef6d0b42dc37a21f293aa1d9c8281810d6140bfe17cd249c7fd8f400"
+    },
+    {
+      "file": "docs/presentation/05-use-case-member-guest.svg",
+      "status": "modified",
+      "beforeSha256": "28477610fd515de06130a2b61de0e0c674f8d1f100743c57a6934e4424e28c2c",
+      "afterSha256": "222bd390ac1430f1ad0b2e0d972f2471a2cf214e5556286792b23d4ec8482b81"
+    },
+    {
+      "file": "docs/presentation/06-web-architecture-corrected.png",
+      "status": "modified",
+      "beforeSha256": "371efd6a0d98bc9ec1ad6d406334197588eca2446792753ce24c7bca94c9e0dd",
+      "afterSha256": "8e9f1b004311581fce78e17ed18a24db11adbfa56a5c0af9c0fb2fada4e94974"
+    },
+    {
+      "file": "docs/presentation/06-web-architecture-corrected.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "add339b99ee2d4e4c173065f7dda6d35c294d25483bbbbedf6c2a4d8398bd3a4"
+    },
+    {
+      "file": "docs/presentation/06-web-architecture-review.md",
+      "status": "modified",
+      "beforeSha256": "9573452a1c54f7a153fc75766ce9fe0b4d80548fd72c3c4188ddf41054a98890",
+      "afterSha256": "7bd2c028ffd14852fce26957ffdcee3c98cdb01b4ca048f8732b0b08b104cf1c"
+    },
+    {
+      "file": "docs/presentation/07-english-image-prompt.txt",
+      "status": "modified",
+      "beforeSha256": "b6516bd210f797f25a9a7259e27bdb1fed5e52c8d667a8e7b31ddc243ac85993",
+      "afterSha256": "50ae7043708fb60026f20e5be04f2f70f3349bb6a33bdf9805c8662818d545c4"
+    },
+    {
+      "file": "docs/presentation/07-web-architecture-english.png",
+      "status": "modified",
+      "beforeSha256": "5e876a9f37d9eb305f50a20c54043744f150bb398e4c0f1a271245bcde0fbf79",
+      "afterSha256": "bd92c2979fc95087becd0090812ce2c947a6e69aed87dccba76e72444e2f2992"
+    },
+    {
+      "file": "docs/presentation/07-web-architecture-english.svg",
+      "status": "created",
+      "beforeSha256": null,
+      "afterSha256": "22131c0ac834df43b889a2069aece82a981956dc17ff440deddaaadfdbfe8b0b"
+    },
+    {
+      "file": "docs/presentation/diagrams.md",
+      "status": "modified",
+      "beforeSha256": "2463d28fbfc74f859b50022430f9ed43eeb9a16de3af05f897b9386ad9b95740",
+      "afterSha256": "b8753d24625a03ce055a1204c515af9032bd4f56cae286d6433aecf76d08ebb5"
+    },
+    {
+      "file": "docs/presentation/generate_visuals.py",
+      "status": "modified",
+      "beforeSha256": "977addfb24c54d121f18812fff919de5e54c164924b83f6e877bb9eb5c81dcd2",
+      "afterSha256": "69a61456ad554a4f8bc1a98e5a48b5cdf254702f89d6a57bfd946a2287b56387"
+    },
+    {
+      "file": "docs/presentation/README.md",
+      "status": "modified",
+      "beforeSha256": "edd9649d93342f042ee6cecce024aaf66f22a44e2c9dd875ef13d79aaa71e52f",
+      "afterSha256": "0ce467d5fa5e3b8d2368cf8a8f11f02da2077a144c4ca32140828522b2448205"
+    },
+    {
+      "file": "docs/presentation/render_png.cjs",
+      "status": "modified",
+      "beforeSha256": "fdf01e4b01e4bc05036f3f411b7ae35691b4854750d094c9145f69a858c03458",
+      "afterSha256": "cb9f8c12cf81c67d5a590fede2d7e19f28279c783b1b67af12b8c6d82f0d4858"
+    },
+    {
+      "file": "docs/presentation/use-cases.json",
+      "status": "modified",
+      "beforeSha256": "392d6326d5bda1fc12973974c636a583e86ba0bab1f057db292993155dcd8263",
+      "afterSha256": "e4b15b93d2a5cb10bcc68b8a686355afd03868ab6bb195f85a73b2400debd941"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-01_create_facility.mmd",
+      "status": "modified",
+      "beforeSha256": "ae7b747bdc9455cc0d39dfaa2c5bd8bb1581e3496193fb8a0b05856338dc0511",
+      "afterSha256": "567ce3781e28d8b58dee305ac071cc85e2b06ec3f67f7b63200c2ba0bcb64ef9"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-02_update_facility.mmd",
+      "status": "modified",
+      "beforeSha256": "d1e267eacfc34c9d769b8073d74b53e9530088932aa032c53b08e5d70296facd",
+      "afterSha256": "04091470381da5dadf4391f45049643cd200bfb485d8875727e1c86d628ea6e2"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-03_assign_facility_manager.mmd",
+      "status": "modified",
+      "beforeSha256": "995628293cc8eb44b9908c07a6dd89416082a18d84b42091046edcc1455ff7d0",
+      "afterSha256": "b2803e2c53f6c9861c45b526ea97fb664ec144ca9be27901ec6771af158a387c"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-04_assign_facility_staff.mmd",
+      "status": "modified",
+      "beforeSha256": "2546e1f228540760b70f936dbe6f2aa37d36cb798e7788fb36ae4e372e013977",
+      "afterSha256": "07cda3da062aaba4334dd568c8cc602e6d139d2229473b86169af38576ab20a8"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-05_create_facility_coach.mmd",
+      "status": "modified",
+      "beforeSha256": "9ad78d1eab6dcc33f01d2dbeffc5c7898c75a3c465c297dbce2cec9645d9271c",
+      "afterSha256": "a232af20d786d28efeb619a91e3ae804c15657bdd8b6c8d2d76586337be23a2e"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-06_manage_sports.mmd",
+      "status": "modified",
+      "beforeSha256": "0d3252fa042d3ccb2e6ecf6928d4012df4326c837690b8de352c636d7636def4",
+      "afterSha256": "b66270bdd53fec294331eb680ff5c4fea352edeaa85589404089bbc9fa709197"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-07_facility_overview_report.mmd",
+      "status": "modified",
+      "beforeSha256": "46d6f5260d9a2d4a0bae38f15dcc120656144f6e6914d504b871a65c85ae799a",
+      "afterSha256": "348dc03d8a6ae7b500d2416eace5027bd328b4dd43efcbb95a177181034e3d4f"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-08_export_report_csv.mmd",
+      "status": "modified",
+      "beforeSha256": "06a22e0eaba0b832f83082eb906488e7c2a066fa916b1b7214518bd4e9ded0ef",
+      "afterSha256": "9e8a458239b50d95fb66dd5bf6d3995a2bf833c6fd0539a364029bcb72d18e8a"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-09_create_receptionist.mmd",
+      "status": "modified",
+      "beforeSha256": "27ee95d27189aa2dde703f3f28378266d8a49c037280edc8b33695926f746c54",
+      "afterSha256": "51b166e295f9d1244b0c818335b579f324709fda2d21aa3296d11c3e1e9655f8"
+    },
+    {
+      "file": "docs/sequence-diagrams/audit-results.json",
+      "status": "modified",
+      "beforeSha256": "a3668f9f30976fc65379f404552dcab4c7fca3a2e863ba6f529936ececf55b4e",
+      "afterSha256": "d3e3dd2d666a1fb4c2aa4a8d6de8f70fe4897177001851c538553b5a22917d03"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUDIT_REPORT.vi.md",
+      "status": "modified",
+      "beforeSha256": "286529fb3a3be5e8758555c3a7cbf5da6fa217125fe7ebfa97320d30c6d7ea2e",
+      "afterSha256": "590b07695dc3c37c5f3ac777fc05e2ed647e55a9a3add726fdcadfe0d6ce1d64"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-01_guest_register_otp.mmd",
+      "status": "modified",
+      "beforeSha256": "1fdf7245ef4ccc26fe4e69395fc411e58865b778f3333efee2bfb084ed5f659b",
+      "afterSha256": "f2e30d45aed0f3d8719bdce0000bba86929ad47e6f33b4b4a9f605834210749f"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-02_user_login.mmd",
+      "status": "modified",
+      "beforeSha256": "eab95e82c8259ff1244da2588adc561c4b3696b376ca70aa57befe42686d45a3",
+      "afterSha256": "e7eb3d50b99c99f682aa073d2f861ba83d1eb2556303e51d4023bf0b01c2bc48"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-03b_consume_reset_otp.mmd",
+      "status": "modified",
+      "beforeSha256": "aa558a35c12ccae4e1c4538dcd0edd0314dab809a540055f6b9f6af30e18c2f6",
+      "afterSha256": "fefed1572197c0266ddcc517ff205eb994515a857fc46e388c9207ba168c81cd"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-03_forgot_reset_password.mmd",
+      "status": "modified",
+      "beforeSha256": "886588af89ec5f6cdc9ea05a3f80bb45d10338a92cd18bd0260084abc27fbccb",
+      "afterSha256": "be2db912c36189feb4c05449fc9db38e36bb27bbed8e4904675e5bbef5fce746"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-04_refresh_session.mmd",
+      "status": "modified",
+      "beforeSha256": "510b469f718d5c365fb88456078f15cef155b101e987ffc3ecb8da92ca4c4d55",
+      "afterSha256": "554bbf7e5df360e6bc0b9c321624852693d75f7150001d22d5411c524f3dc01e"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-05_logout.mmd",
+      "status": "modified",
+      "beforeSha256": "3868f46434a40fab8935af8f19b94e35a3cfbcb0dd60454f32aa73044b2620fc",
+      "afterSha256": "c0747a1947ae0de8fe58a98b9eb4da18b7ed17bc7b2ff467f61b98568fbcde95"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-06_update_profile.mmd",
+      "status": "modified",
+      "beforeSha256": "423cadaeef612507d2d1ea7adeacaebc3782e7959b6eebc881d4cc697cb8429b",
+      "afterSha256": "46c69ea95a2b8fed80351eacb5e61be23933b6dbd9bf4ca8140b3ea500881895"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-07_change_password.mmd",
+      "status": "modified",
+      "beforeSha256": "0495bc56d1867d83d3d6607ac47493a10dfbb58e7461f9542f9564fd133c97ee",
+      "afterSha256": "0ec40a5c5ec0361018778a4c1027d2fece28a10aabb4ec24114f56be43f1e87e"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-08_upload_avatar.mmd",
+      "status": "modified",
+      "beforeSha256": "3557f9f447efa9a944b98aac77bdecb5e5f1de30ad31f4d115bbca703afef9e9",
+      "afterSha256": "87a30191427042041af21b0b81a6a834dd9306915d41d170ad518ab6f4c2a400"
+    },
+    {
+      "file": "docs/sequence-diagrams/catalog.json",
+      "status": "modified",
+      "beforeSha256": "c774409257beca88249c5886d88602a1072d92ec7c86b1b0e2479a4a82e59c04",
+      "afterSha256": "65c24361e8116cc11e506c99079af8a4b29d1076fa0d8ba69863fb26cb32ba63"
+    },
+    {
+      "file": "docs/sequence-diagrams/checksums.json",
+      "status": "modified",
+      "beforeSha256": "bd21a08caedb98a7dd3ff521cfdb4ac628a61b6e54f9465bafe5c25d25ac4daf",
+      "afterSha256": "6da1a19115447e29b269effda6138e33b77db8e12a4b19850ca2f83e7164a975"
+    },
+    {
+      "file": "docs/sequence-diagrams/COA-01_view_schedule_students.mmd",
+      "status": "modified",
+      "beforeSha256": "b38363febeb3809a18dba353171f1e057cee35b62e95db801746171d30ca2a50",
+      "afterSha256": "e272f5ea7c4b0cd7b8384738862d63b8b870bfbb2598d8cb9410a98ade9443fe"
+    },
+    {
+      "file": "docs/sequence-diagrams/COA-02_take_attendance.mmd",
+      "status": "modified",
+      "beforeSha256": "1295badc2811c7288ee259628d6fafcf24e196aaea2e84beaa7ab747d55b4386",
+      "afterSha256": "700eadbb484f5041d013ddf417cb24a5ab9aa1e0f6345cc1c8a23faf2543f353"
+    },
+    {
+      "file": "docs/sequence-diagrams/COA-04_request_coach_change.mmd",
+      "status": "modified",
+      "beforeSha256": "aa8f2eeffdbe57051e52ceb98da1193fdaeac27caaf6a2b4213a9f965bbd340f",
+      "afterSha256": "189b7b1e8918d7ee76c92ef23a03e5664f76e22cf0c9fcf80605e0120f42784b"
+    },
+    {
+      "file": "docs/sequence-diagrams/COA-05_view_member_profile.mmd",
+      "status": "modified",
+      "beforeSha256": "c8394249644d2c1181a3f951d21c408d40458dfa1879536bb8f8246c47021575",
+      "afterSha256": "416afd148034c1d52309faea878e8d4af80b42187742ee3f64285e20a2680868"
+    },
+    {
+      "file": "docs/sequence-diagrams/COVERAGE.md",
+      "status": "modified",
+      "beforeSha256": "8def849f215927d4e172110d5e20f9d439be31885da9eb80781259b70ff77a3f",
+      "afterSha256": "9afa6f50ccd1e3e5952cc60e24b0d5b0725b8b55b8a27faab3bacf31a59a6708"
+    },
+    {
+      "file": "docs/sequence-diagrams/EXT-02_ai_assistant.mmd",
+      "status": "modified",
+      "beforeSha256": "81c22344f309c4d4037883c940cc86eb3c3b0b615b5a4c4328f76903caf6397c",
+      "afterSha256": "759ce61a6ad1e5a42617ef8caca92a6f567e868237ba7d5f53ac90e543258ff1"
+    },
+    {
+      "file": "docs/sequence-diagrams/INDEX.md",
+      "status": "modified",
+      "beforeSha256": "0699a792b459c73e538f4e77bbe3bde68a0db2dffd4a0f888f751c1cf8bc7a5e",
+      "afterSha256": "4b9a8138facb4575ef0f26e3d6a5e7356f1ae194ccbb8d33df7d88ca7fad74c6"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-01_browse_memberships.mmd",
+      "status": "modified",
+      "beforeSha256": "b10d5b0985393671189d25f377639a5b4fa0dbe0817f555c420d00ce284051fa",
+      "afterSha256": "41ae77ccafefdd4767179ab84fbc263c565c110dc7e9784356f804660ebcb0d6"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-02_purchase_membership.mmd",
+      "status": "modified",
+      "beforeSha256": "fd3ff8bfbaa46a7170c200bf0222f51710262c671964a2463fedcc0f95469dc3",
+      "afterSha256": "104f4f656a2068814b25ccdf0033a94d473e3fa9b881ef8a204e9edcf3cb44de"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-03_cancel_membership_refund.mmd",
+      "status": "modified",
+      "beforeSha256": "1e7bbafea64ed6e22ea3535f0324613ae1120c018ebb108a6f58a0a2a830fc05",
+      "afterSha256": "fc31938ca79c1f73a1ec3c4e5e7c95dfbce977118cfd8de068ac591cdd621da7"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-04_search_classes.mmd",
+      "status": "modified",
+      "beforeSha256": "69f3f76ec0e585e6609bde482d9a00ad3339cef2e1f22866fd8cce949ecbe717",
+      "afterSha256": "4e00adbb40e19cbe9d27a37920d67e7d5b70f94e8aabfe8280bd1177f8605eae"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-05_book_class.mmd",
+      "status": "modified",
+      "beforeSha256": "42f406f0532660144d83cb503f2ddaed0b65a6a8cc8bafc161b132e3fe0e1ee0",
+      "afterSha256": "4967c2908050be31435e321f38c29a9a913f67a4fc10633935e3687dc96f6f4d"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-06_view_booking_status.mmd",
+      "status": "modified",
+      "beforeSha256": "7909b518022ed39f56c628ac30c4779c2612bfe209273313bf4149ee844457e7",
+      "afterSha256": "54e1636f55ec8d5e1e02294bad8a2e7fef4e36759dc65e1dc997ea4d8b7b62b1"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-07_qr_check_in.mmd",
+      "status": "modified",
+      "beforeSha256": "53485562ba2b35bab13c448f6d1d08075f8cd8e381e74d0beb211f7659a40b2c",
+      "afterSha256": "df6cca74cd720c538b242d6dcf6b58004c445b1d6e063fc927ab492825e5389b"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-08_notifications.mmd",
+      "status": "modified",
+      "beforeSha256": "e9248251a456c821f62d88f17448c5aad2c9d2ba9b7f87eb35284718b85680ea",
+      "afterSha256": "51a6052cefaf0bb9b904b12553f7cde60cc0db21a800a88b37ff5ddb6e1f522a"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-09b_chat_attachment.mmd",
+      "status": "modified",
+      "beforeSha256": "20815ed857dac36f5a462ef077d02fdc0e32f5000ce509a2184377c19587ed2c",
+      "afterSha256": "67d821f8be72a4fde205a610a93c40cd888a5b3c03be62d54d026496d26e4ac8"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-09_chat.mmd",
+      "status": "modified",
+      "beforeSha256": "19ebcdcfc7b355415de08fca8c316b6ea552bd4e5d8936dc06f84a9cc411313e",
+      "afterSha256": "caa4366b2f6f33f1de1d7775d20b7ebf12aa89cd803113388d744bc4c09429ce"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-10_receipts.mmd",
+      "status": "modified",
+      "beforeSha256": "ef9ecb527df738a9d2acc952aac0e55eb5b7f5b24387b1c81c34c2b648b00895",
+      "afterSha256": "bb1d381d1e8c578acb82c84ada37d92f713b97aba3baf9d8b136a61d56e948f9"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-11_feedback_rating.mmd",
+      "status": "modified",
+      "beforeSha256": "d70275698206e179b4ae99d3467062bb2955208ce68eeac8efbb20f1b1268ba9",
+      "afterSha256": "f9a0011310e8d383dfed5b23c449a9d8c04ada42bbe5d3fc016cf4e28d2cca43"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-12_join_waitlist.mmd",
+      "status": "modified",
+      "beforeSha256": "ba4061fadcaa505d6e87956abab5fcb1da70259091e635372c025e243b94d012",
+      "afterSha256": "db5e0dafd81d636d8482a912083beeff5ef5ea34fbf09e59354bbf54f94fb3b5"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-13_cancel_waitlist.mmd",
+      "status": "modified",
+      "beforeSha256": "16c72597db80198bb887ab65d8c5e89bc9852409117b06ad44958ff804a74097",
+      "afterSha256": "d0d2124bfd6602982f536fba59e2d6abdbea2cda7a9e993ee65dd0ac0308c492"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-14_cancel_booking.mmd",
+      "status": "modified",
+      "beforeSha256": "983d9e8983867882671444ddea1be740449108f29b6750afc89b484e75e52d87",
+      "afterSha256": "14d78da91096b4df7eafb0283e4c9bbe508739a872c4f6bdf47f1df785b8010e"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-15_transfer_booking.mmd",
+      "status": "modified",
+      "beforeSha256": "03dee38cec932611a5ec9efef7c1ce436e6c4ec9e7155c5bd645c7cb81d03e57",
+      "afterSha256": "0de7ebd68422b5f3290363601e3bbf400424c92dad1f045d332cc3390d8215ff"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-16_request_class_leave.mmd",
+      "status": "modified",
+      "beforeSha256": "a8f603fcc47c096d01ca158a633068b212904e1a447d2aca676aa7889f6d0209",
+      "afterSha256": "a5aa4c851e725d649a270bd38fdd7aa9d7c4c6081a2e4754726fc2a4b5175cd0"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-17_appeal_penalty.mmd",
+      "status": "modified",
+      "beforeSha256": "47d8f00c3473c0fc153ce6a8b5a9afe6f393dfbe5651d84303336b89bd75e203",
+      "afterSha256": "482ad6f88ea828e047d228e31c848b6440af67350751b92ffbb68a0bc7672c71"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-18_submit_issue.mmd",
+      "status": "modified",
+      "beforeSha256": "b19c6fa4b22fe47a14b9bf02d7dbf52ca408f56bf49833cf408e12d0851c2bcb",
+      "afterSha256": "c98ffa057e2e1995aec03e1cf7ff694bdc520d08cd3b9d8677cf5bcd3c28fa92"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-19_edit_open_issue.mmd",
+      "status": "modified",
+      "beforeSha256": "0ff71f546f852d2596a3d6eec2686071a315a47c8afc1ee6119ef723e557acee",
+      "afterSha256": "ae8fd781999c12f491fe57f763acac733f2731b3de304fee93010aa34c258b5b"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-20_update_health_notes.mmd",
+      "status": "modified",
+      "beforeSha256": "57ea7b0c675711c42ee330dc33936685c855316b3d7d7e1a906db99d8fc1528a",
+      "afterSha256": "cba96d9189b6cc8c5454bf1e3932c5b9e8269eba48d98f0ca57448d7817294d1"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-01_create_class_schedule_wizard.mmd",
+      "status": "modified",
+      "beforeSha256": "741e409434c576ba85581f6324abf8c4a9bee649cb1e71cda84fab00bf04115f",
+      "afterSha256": "576cf7ace7df1e1d241c776941afbaf103507a3a282006f554e0d94214624d89"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-02_assign_coach.mmd",
+      "status": "modified",
+      "beforeSha256": "3e26a65c9d65d278d553eae0aca40705e8e04ee3a73a4ce0e400c19473dfdf42",
+      "afterSha256": "6a09dd3f8e1687c1da3102fc0ba77bff9db7dbb2a00056d478e891aeedfae765"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-03_manage_memberships_tuition.mmd",
+      "status": "modified",
+      "beforeSha256": "b409ba8bb86dd4b66b492682d6896b4b10e0a957e57d7d150333f2ccc3dbf565",
+      "afterSha256": "d079be199dd63dc8b5a0ae667ee2198b36c6fce64de2562e41eb93a578e5ba7f"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-04_manage_staff_roles.mmd",
+      "status": "modified",
+      "beforeSha256": "216042c1d6acb6727b6e0342d0eec35a3680a07d4ec3665f2c5ef37d708b0278",
+      "afterSha256": "910753042f8ae5d20c4e55eb36779685145d7981d87b21395d4f6c8c84c00192"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-05_revenue_report.mmd",
+      "status": "modified",
+      "beforeSha256": "d0d332f22dc259313e899dbae717e9c527bdf087ff89972a3f5544af59457da2",
+      "afterSha256": "64c1289c18f903896af61f7f73d0e758798630677af7ec4f8a888f9b9d51087b"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-06_audit_log.mmd",
+      "status": "modified",
+      "beforeSha256": "1802cddeddbe1a39000209e3a163386a05d370aaf996d4a74718a5d488293d8d",
+      "afterSha256": "b77b11af4ef2673595b72669416da133a83d3e8da4953326945de62a33a23882"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-07_create_term.mmd",
+      "status": "modified",
+      "beforeSha256": "26748c41ebc75ba47773241cbe8565f6b866fca538e55fe774c1b21e05f4b59b",
+      "afterSha256": "b2a4bf8bac7b3f90d3d468cdb0070b8d2621b982935df5bb01d774077215b39e"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-08_update_term.mmd",
+      "status": "modified",
+      "beforeSha256": "38132eaceb74521bbd30348be9fdb8b995641996f6af84c9fc97dfc85c6f2fb8",
+      "afterSha256": "044ca846823fe3b501727fa1a25313185d8268e50e7cc6b09bc80dec7ae1277c"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-09_create_room.mmd",
+      "status": "modified",
+      "beforeSha256": "719a997d49e4349db58bafe47d7bad6fa6570fd55ef4d9978ac8d98cc412337c",
+      "afterSha256": "dc411252e386ae261ac5b98185b60b7b2e652ccb621b97f854da8c9215fe924e"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-10_update_room.mmd",
+      "status": "modified",
+      "beforeSha256": "7272edf70adcac4879288060a7271abc994d21e025424f67602c03568d73a619",
+      "afterSha256": "27d4bdcb8b7ed73f6c3b3580e55230d531235a052aed3e7a582d4ffa6b08aadf"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-11_transfer_room_schedules.mmd",
+      "status": "modified",
+      "beforeSha256": "0059abccff5ec6feddb9689b1a8fa0d4a314fc97725ee77d3be8144a9d33163a",
+      "afterSha256": "3e11282f76c87a1a3a5cd33776732f7dd53789eea3e7b249dd88375917edba21"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-12_create_class.mmd",
+      "status": "modified",
+      "beforeSha256": "1e7155063a3c31dcff924892fdb400f1b4e07c6aaffd8c11e498da13443389b2",
+      "afterSha256": "fd4ad2c35a73adb9db4ed92c431b846ef0e65130caebc68a5c553195c756f95a"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-13_update_class.mmd",
+      "status": "modified",
+      "beforeSha256": "9da79454eca23645d57d251fec071e3088e640a9b5ba59751e87a66da5d5c635",
+      "afterSha256": "4f0ca1d2740143df09ed070ff1519476123a96433b96fa56fb20a3af3c65fca5"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-14_create_schedule_batch.mmd",
+      "status": "modified",
+      "beforeSha256": "45dc6865e0814e17db169c23fe13fbdbee2cfbce2bebdf88391a3e61e1d9e1ad",
+      "afterSha256": "63403a659993989d49b94034ffc562242b68d384f1b4d29ac5d76cc7035db798"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-15_update_cancel_schedule.mmd",
+      "status": "modified",
+      "beforeSha256": "46c8ae97aa92047602e068186a4c606653bb56be8a408740a1569cc99f651dbe",
+      "afterSha256": "25cfe4082b96932ac3d9c9ab439a2b55c9b81bf698f8191c75a16b810e9ac849"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-16_complete_session.mmd",
+      "status": "modified",
+      "beforeSha256": "aa0a647db81ea6b54916b41698b94b27c407833843db53baf08e72c3cff50a3b",
+      "afterSha256": "0e0271cad2cdfe1bd10b95f0faba913acbed4fff3e41b639e82380d550372d5c"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-17_decide_coach_change.mmd",
+      "status": "modified",
+      "beforeSha256": "82bd9a91f2313c68f29b9e0b50e8cecde484a85f3ca410916b1df3e68fe36887",
+      "afterSha256": "794759b6371e6c3240412e4ae1cccae1b7adab88e9b99a9686986925f20cfb22"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-18_decide_member_staff_leave.mmd",
+      "status": "modified",
+      "beforeSha256": "cc49064bd6c41db68c5bbc8ef4dc2cc52ae0fb2713c97bd054f2ab26564c733c",
+      "afterSha256": "e6c7fbd06188c3956cad6cca0f6abf3187c9cc045680449477663d130afd1523"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-19_apply_penalty.mmd",
+      "status": "modified",
+      "beforeSha256": "8c94c980efbf6f1a5188c8ae74f2959027997f61774ee1d7c5c29a534caee294",
+      "afterSha256": "a59438d3b73d0245e0fa8e4377640815abffdfe24a51451d6dba3484c578328b"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-20_revoke_penalty.mmd",
+      "status": "modified",
+      "beforeSha256": "9b461b2b1ee1dbfa88133010d5cce26ce403e0f8527827259db325ab7c7d1d7b",
+      "afterSha256": "e13a0a84198019b5091a7bd9cc660f888fb550149bae5aa98308772bb4d1aaed"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-21_review_attendance_report.mmd",
+      "status": "modified",
+      "beforeSha256": "53b637d9c3e9c7bbcefff3cfcec7b446b43cce066d0f1472f9eb79dee55fa7af",
+      "afterSha256": "03da7ec2c64d898639b60a211d1ba90b23c97be4cf32c1766d14a03f6062cfec"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-22_correct_attendance.mmd",
+      "status": "modified",
+      "beforeSha256": "b166a45a940a081658ea9048dfe76434673e6ab6e50c3a0e3f1e9532b505211c",
+      "afterSha256": "8375b415e0490c804e2642ef60eb35923a8563de846d3ea14310d2b63a5ddab5"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-23_attendance_report.mmd",
+      "status": "modified",
+      "beforeSha256": "e82c0ae8d96b472d07f0a185f08c19f44138b81bdbe784ff6d678026e4738b67",
+      "afterSha256": "e69b3d14e985517488bd99a98ed6010fad5e5be97d243b2de20df7fc0f12638e"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-24_cross_facility_usage.mmd",
+      "status": "modified",
+      "beforeSha256": "168191c0606c99877dc86cfae131b1660245b544715cd2d60cfe521051f5e726",
+      "afterSha256": "94d21e9729820b851bbbfed4a5a16e1706b6d0b1e4b188079027d944802d89c9"
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-01_update_room_capabilities.mmd",
+      "status": "modified",
+      "beforeSha256": "495ba68842d00eb805285a4a755c61c16a7a1994085b7074526223387d6bc7d5",
+      "afterSha256": "e98f12630ca3c88499622a2b3e710740ca63f00b2aa8fb8e98005bce73db37f8"
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-02_update_coach_specializations.mmd",
+      "status": "modified",
+      "beforeSha256": "a4188b18a8d4062dff1e019c918add35222dfde0334da5eae1edb67386a45a2b",
+      "afterSha256": "64758d7bb4f93b42d1713469a37454b0292996ef83d7562c1482dd8f1c5bca11"
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-03_create_time_slot.mmd",
+      "status": "modified",
+      "beforeSha256": "056db290f8b95243ff58d099058e155ed3f2c98f69c5480177c366aacabfe610",
+      "afterSha256": "f8ab0e01e4e55b98a4d23cb608d73adea458d4c9760b1e470fe9a69dc1b4c19e"
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-04_create_schedule_pattern.mmd",
+      "status": "modified",
+      "beforeSha256": "e3871d0de445d0476f364ad54777275d064d9ddced8323acf1921fea9f644a81",
+      "afterSha256": "f0d8ad213ea6f29e58fd1ea4a16d7095d4aa04edbced090906f294c9ed9ca047"
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-05_resolve_support_issue.mmd",
+      "status": "modified",
+      "beforeSha256": "1363282610158ad87869f439ada4db65fa9ca1042e90657327136a21f2963d65",
+      "afterSha256": "4c3f1a1cebb52b65ed7de6ff5633c1649c936e8ae76094ffe93bafef296b436d"
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-06_trigger_class_reminders.mmd",
+      "status": "modified",
+      "beforeSha256": "0bb202d85f659c968065529a5cfda6b3455c970b398323133eb5e7eb5c65d774",
+      "afterSha256": "10baf8d639b97ed8fbff342d295123dbbb1d304d595bf3f91cf44dac7d8ecb10"
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-07_scan_attendance_warnings.mmd",
+      "status": "modified",
+      "beforeSha256": "dc6fd2a567eea6f00db1150b32ef3bff186f818fd3b35e0db9beebb31513967e",
+      "afterSha256": "0a035496a563761b3fa65b2b20c7de0cbb4d576f0209eb664401aad6a7b3a082"
+    },
+    {
+      "file": "docs/sequence-diagrams/PAY-01_sepay_webhook_settlement.mmd",
+      "status": "modified",
+      "beforeSha256": "e2951808e8a97b567b0a99bfcea57fb3b541fa9e13de1b70200104a25024f65a",
+      "afterSha256": "a6f40e9817091b5fd3b2693c66719b753e9a37ea0607db778f08fea7a8fb7cf5"
+    },
+    {
+      "file": "docs/sequence-diagrams/PAY-02_poll_checkout_reconcile.mmd",
+      "status": "modified",
+      "beforeSha256": "279d1960a86775928c6862a66079b4a24da6c45c5444f57effd8d6ed8b371207",
+      "afterSha256": "8337e27270a309922f7fed9f4500bd191fcf64f68f78f34b2f60391b985d71be"
+    },
+    {
+      "file": "docs/sequence-diagrams/PAY-03_retry_activation.mmd",
+      "status": "modified",
+      "beforeSha256": "8f71fde622cafff62fff55dcac00a19968eb336bba932feea978a9029793ad2a",
+      "afterSha256": "7640fa59fd86f1650dd487c8189fdb16a97a89213c15c8f9049eee2c1a24bf78"
+    },
+    {
+      "file": "docs/sequence-diagrams/PAY-04_approve_unactivated_refund.mmd",
+      "status": "modified",
+      "beforeSha256": "ab2b915cc48671fdb849245d163c94b4ecd9e57e46caaeda6480eaf90e5c4f16",
+      "afterSha256": "e40e014c4363e138adb66883fccc7f35c3bcbb00667bdeff8054e9b811e36957"
+    },
+    {
+      "file": "docs/sequence-diagrams/README.md",
+      "status": "modified",
+      "beforeSha256": "57d594e2466a18e4e5cfa1a21ea6d4a54eb3d273b25698c109f4f11596e0915e",
+      "afterSha256": "7f7915a10648b0d3339e74a6768c33c778936b4cd025724d8ba6e09343929377"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-01_create_member.mmd",
+      "status": "modified",
+      "beforeSha256": "eb2a15383bbf3270b2a6cc33c48fbcb948ef0bd9d7239e7aee3427588f788d94",
+      "afterSha256": "456dc0dc905eb812ab540af9a797ee6eda8df412a93155a261b12bc8b0dd8b47"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-02_manage_booking_check_in.mmd",
+      "status": "modified",
+      "beforeSha256": "067de8ac77cecb2237d007fee36250350d6d5f4a470d3a7f5f905f7bf2e102ef",
+      "afterSha256": "36820318f70e0bfc4bef5a5fab33e5bed840201833af4ffeb5db06418af1f9af"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-03_rotate_qr_session.mmd",
+      "status": "modified",
+      "beforeSha256": "90246e3ea18aedbf27395189158135b427870ab930ba62c1bfef6c69af44aa24",
+      "afterSha256": "f5a7bac78bb6ac9a76c044125972169a3d8427701daca94eaf05c3aece453472"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-05_confirm_refund.mmd",
+      "status": "modified",
+      "beforeSha256": "71ecf379405fbf9d0295e83a6eb2e5551748116904663b265709094a824a9b5c",
+      "afterSha256": "ea7b1c5044961279acff7201117ebb381a56ea8bf530ec545611b5ecbca99025"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-06_create_counter_order.mmd",
+      "status": "modified",
+      "beforeSha256": "56e5bcf97f00fb5b2aecce339ef613b7f6dbdb630004b8619913318c207742c5",
+      "afterSha256": "d5e645c4e7b967362ddca557cccd65c35d839a49a34840e29da2b20f7631dabc"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-07_confirm_counter_order.mmd",
+      "status": "modified",
+      "beforeSha256": "ef3d447997a61d9c7b72644f7a99371f2a83c22ee3fdd9211c41c83d59c0b361",
+      "afterSha256": "2b7ca6b16583d9cad6d410a64e8b3892b285311921aec2c0f05ea2413465c053"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-08_sell_membership.mmd",
+      "status": "modified",
+      "beforeSha256": "3cf59c44faa241f6f86ffa098e934b41765b858c09c230503de01275bdce0c51",
+      "afterSha256": "7b77d7f5cb92997d1cc5b533484972933b0b003434ad6121746fa30d710d94ce"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-09_renew_membership.mmd",
+      "status": "modified",
+      "beforeSha256": "2119e646e8ebf785f9fcd2d6e28780a67cad66ab3707c04ad24565f42134e0f6",
+      "afterSha256": "2ba757e20cd133a766ec8b808f2ce62f2678fb796ffab2d9a52f83d75745345b"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-10_cancel_membership.mmd",
+      "status": "modified",
+      "beforeSha256": "c4871192ce8b5fcb89f24546a84db6711077774a5b8c83a46df60c1148cb664b",
+      "afterSha256": "afbbf021671a20f1e4a25adbd55a6a7384fa9caab202335c265d418f27e782a8"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-11_monitor_attendance.mmd",
+      "status": "modified",
+      "beforeSha256": "1653cedc810c0c3dfc9beaefa41b2c9722bd8576ded1273d1772a6c28b7a6ff0",
+      "afterSha256": "f25efa45a82c5ae1a77ef326dc01888ce904e9e9380016b9191557ed4b1020d3"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-12_send_attendance_warning.mmd",
+      "status": "modified",
+      "beforeSha256": "bee2384bb36eab624ee9d27ff3c3bf04970d97735ac270e2bb2a0340f24cc267",
+      "afterSha256": "95e9c7bb46fd3369d94fb7106869745feb8f11fc27236ad98ec58bfa016b203d"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-13_report_attendance_violation.mmd",
+      "status": "modified",
+      "beforeSha256": "76b2e0ae7c2d4f429c9bd1a5eba2d4c87df723ac0906eeec8c7a7140ec0ccfca",
+      "afterSha256": "3b1265617b8a828626d6a5c38d7f55217a9141f52dcaa3b0733480b38b23054c"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-14_request_staff_leave.mmd",
+      "status": "modified",
+      "beforeSha256": "d6663846c27727a5e3782b0e925324798b92ed37ce83b7614e09e5684d0513b8",
+      "afterSha256": "1bd2df2b8b64b1d875c662e13e5ce8e685c1ed0e754301445b550253588fa3d9"
+    },
+    {
+      "file": "docs/sequence-diagrams/SYS-01_waitlist_promotion.mmd",
+      "status": "modified",
+      "beforeSha256": "31f7132117e428ab03590e5777be689d4eb43f181599372aa3d9ac0728f3c168",
+      "afterSha256": "28c6fb05380a2cb9ece8e53ebb5416ca47f6d184f90c763eaf9b1eb157874e82"
+    },
+    {
+      "file": "docs/sequence-diagrams/SYS-02_subscription_lifecycle.mmd",
+      "status": "modified",
+      "beforeSha256": "7b38a33292df9ac4736d43f94ff5cd05cc4b5382cf31ab2c89e26da8012b25af",
+      "afterSha256": "41e9210881269fd68e534c5d5891c5934d8338403ef67107572d429b4fc92716"
+    },
+    {
+      "file": "docs/sequence-diagrams/SYS-03_notification_outbox.mmd",
+      "status": "modified",
+      "beforeSha256": "c08b4be55ec5d7e1dfc0996ed070d6d781d41508758d50d7a7fbc8a663c398b8",
+      "afterSha256": "38e915e44f99d995cda0b007d564d0bd2d201af65ba8d843c1f2e4044287d5c3"
+    },
+    {
+      "file": "docs/sequence-diagrams/SYS-04_socket_send_message.mmd",
+      "status": "modified",
+      "beforeSha256": "b3c359ca44aa2a6e78257801e1c55c702d27669f0384bcecf7b5a888238ddfe4",
+      "afterSha256": "09722e21876dca5684b4d763dab16d0eb873766c94c50b6480b2a5a90b2c2242"
+    },
+    {
+      "file": "docs/sequence-diagrams/validation-results.json",
+      "status": "modified",
+      "beforeSha256": "89d29a74ab271427890f7121d587c013306ca1468335369a46c2a545f1e5ea61",
+      "afterSha256": "d901eedccdf3867066e68734ecc1871657897e7cb3f3ba9539c5ac73455d2883"
+    },
+    {
+      "file": "docs/sequence-diagrams/verify.mjs",
+      "status": "modified",
+      "beforeSha256": "5998dcbbefc83e22ef9920a6a34897dcb0ed92502211134e9479fb41589afa61",
+      "afterSha256": "7c62bb6805d015920f10fe80ec23f2cf606e024a21bf47de26dd69d67463ddde"
+    }
+  ],
+  "excluded": [
+    "AGENTS.md instructional Mermaid example",
+    "pulse-logo.png and application media",
+    "Generated exports counted as renditions, not new workflows"
+  ],
+  "unsupportedFormatsFound": [],
+  "authoringHelperLimitation": "Python generator source reviewed but execution unverified: configured interpreter is missing. Node renderer executed successfully."
+}

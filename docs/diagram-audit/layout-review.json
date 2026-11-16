@@ -1,0 +1,570 @@
+{
+  "method": "Browser text segment bounds; potential collisions require inspection, not a proof of all layout quality.",
+  "files": [
+    {
+      "file": "docs/sequence-diagrams/ADM-01_create_facility.mmd",
+      "textSegments": 25,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-02_update_facility.mmd",
+      "textSegments": 36,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-03_assign_facility_manager.mmd",
+      "textSegments": 53,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-04_assign_facility_staff.mmd",
+      "textSegments": 42,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-05_create_facility_coach.mmd",
+      "textSegments": 53,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-06_manage_sports.mmd",
+      "textSegments": 35,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-07_facility_overview_report.mmd",
+      "textSegments": 36,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-08_export_report_csv.mmd",
+      "textSegments": 37,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-09_create_receptionist.mmd",
+      "textSegments": 54,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-01_guest_register_otp.mmd",
+      "textSegments": 53,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-02_user_login.mmd",
+      "textSegments": 72,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-03_forgot_reset_password.mmd",
+      "textSegments": 45,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-03b_consume_reset_otp.mmd",
+      "textSegments": 48,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-04_refresh_session.mmd",
+      "textSegments": 39,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-05_logout.mmd",
+      "textSegments": 32,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-06_update_profile.mmd",
+      "textSegments": 37,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-07_change_password.mmd",
+      "textSegments": 39,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-08_upload_avatar.mmd",
+      "textSegments": 40,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/COA-01_view_schedule_students.mmd",
+      "textSegments": 46,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/COA-02_take_attendance.mmd",
+      "textSegments": 45,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/COA-04_request_coach_change.mmd",
+      "textSegments": 42,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/COA-05_view_member_profile.mmd",
+      "textSegments": 41,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/EXT-02_ai_assistant.mmd",
+      "textSegments": 42,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-01_browse_memberships.mmd",
+      "textSegments": 37,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-02_purchase_membership.mmd",
+      "textSegments": 67,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-03_cancel_membership_refund.mmd",
+      "textSegments": 53,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-04_search_classes.mmd",
+      "textSegments": 37,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-05_book_class.mmd",
+      "textSegments": 83,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-06_view_booking_status.mmd",
+      "textSegments": 41,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-07_qr_check_in.mmd",
+      "textSegments": 89,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-08_notifications.mmd",
+      "textSegments": 34,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-09_chat.mmd",
+      "textSegments": 39,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-09b_chat_attachment.mmd",
+      "textSegments": 41,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-10_receipts.mmd",
+      "textSegments": 37,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-11_feedback_rating.mmd",
+      "textSegments": 44,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-12_join_waitlist.mmd",
+      "textSegments": 49,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-13_cancel_waitlist.mmd",
+      "textSegments": 37,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-14_cancel_booking.mmd",
+      "textSegments": 45,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-15_transfer_booking.mmd",
+      "textSegments": 54,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-16_request_class_leave.mmd",
+      "textSegments": 45,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-17_appeal_penalty.mmd",
+      "textSegments": 46,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-18_submit_issue.mmd",
+      "textSegments": 35,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-19_edit_open_issue.mmd",
+      "textSegments": 34,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-20_update_health_notes.mmd",
+      "textSegments": 45,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-01_create_class_schedule_wizard.mmd",
+      "textSegments": 78,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-02_assign_coach.mmd",
+      "textSegments": 47,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-03_manage_memberships_tuition.mmd",
+      "textSegments": 36,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-04_manage_staff_roles.mmd",
+      "textSegments": 47,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-05_revenue_report.mmd",
+      "textSegments": 45,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-06_audit_log.mmd",
+      "textSegments": 32,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-07_create_term.mmd",
+      "textSegments": 38,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-08_update_term.mmd",
+      "textSegments": 46,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-09_create_room.mmd",
+      "textSegments": 39,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-10_update_room.mmd",
+      "textSegments": 46,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-11_transfer_room_schedules.mmd",
+      "textSegments": 51,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-12_create_class.mmd",
+      "textSegments": 42,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-13_update_class.mmd",
+      "textSegments": 44,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-14_create_schedule_batch.mmd",
+      "textSegments": 47,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-15_update_cancel_schedule.mmd",
+      "textSegments": 47,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-16_complete_session.mmd",
+      "textSegments": 50,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-17_decide_coach_change.mmd",
+      "textSegments": 76,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-18_decide_member_staff_leave.mmd",
+      "textSegments": 48,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-19_apply_penalty.mmd",
+      "textSegments": 50,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-20_revoke_penalty.mmd",
+      "textSegments": 47,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-21_review_attendance_report.mmd",
+      "textSegments": 53,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-22_correct_attendance.mmd",
+      "textSegments": 39,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-23_attendance_report.mmd",
+      "textSegments": 41,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-24_cross_facility_usage.mmd",
+      "textSegments": 41,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-01_update_room_capabilities.mmd",
+      "textSegments": 41,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-02_update_coach_specializations.mmd",
+      "textSegments": 44,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-03_create_time_slot.mmd",
+      "textSegments": 26,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-04_create_schedule_pattern.mmd",
+      "textSegments": 43,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-05_resolve_support_issue.mmd",
+      "textSegments": 38,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-06_trigger_class_reminders.mmd",
+      "textSegments": 43,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-07_scan_attendance_warnings.mmd",
+      "textSegments": 44,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/PAY-01_sepay_webhook_settlement.mmd",
+      "textSegments": 72,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/PAY-02_poll_checkout_reconcile.mmd",
+      "textSegments": 44,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/PAY-03_retry_activation.mmd",
+      "textSegments": 59,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/PAY-04_approve_unactivated_refund.mmd",
+      "textSegments": 53,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-01_create_member.mmd",
+      "textSegments": 48,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-02_manage_booking_check_in.mmd",
+      "textSegments": 55,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-03_rotate_qr_session.mmd",
+      "textSegments": 56,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-05_confirm_refund.mmd",
+      "textSegments": 54,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-06_create_counter_order.mmd",
+      "textSegments": 38,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-07_confirm_counter_order.mmd",
+      "textSegments": 50,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-08_sell_membership.mmd",
+      "textSegments": 48,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-09_renew_membership.mmd",
+      "textSegments": 52,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-10_cancel_membership.mmd",
+      "textSegments": 52,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-11_monitor_attendance.mmd",
+      "textSegments": 42,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-12_send_attendance_warning.mmd",
+      "textSegments": 54,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-13_report_attendance_violation.mmd",
+      "textSegments": 49,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-14_request_staff_leave.mmd",
+      "textSegments": 35,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/SYS-01_waitlist_promotion.mmd",
+      "textSegments": 50,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/SYS-02_subscription_lifecycle.mmd",
+      "textSegments": 37,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/SYS-03_notification_outbox.mmd",
+      "textSegments": 35,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/sequence-diagrams/SYS-04_socket_send_message.mmd",
+      "textSegments": 32,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/architecture/database-erd.mmd",
+      "textSegments": 71,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/architecture/sports-center-use-cases.mmd",
+      "textSegments": 6,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/presentation/diagrams.md#1",
+      "textSegments": 2,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/presentation/diagrams.md#2",
+      "textSegments": 13,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/presentation/diagrams.md#3",
+      "textSegments": 4,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/presentation/diagrams.md#4",
+      "textSegments": 4,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/presentation/diagrams.md#5",
+      "textSegments": 4,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/presentation/diagrams.md#6",
+      "textSegments": 4,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/presentation/diagrams.md#7",
+      "textSegments": 4,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/presentation/diagrams.md#8",
+      "textSegments": 4,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/presentation/01-tech-stack.svg",
+      "textSegments": 35,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/presentation/02-system-architecture.svg",
+      "textSegments": 40,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/presentation/03-use-case-admin-manager.svg",
+      "textSegments": 25,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/presentation/04-use-case-receptionist-coach.svg",
+      "textSegments": 23,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/presentation/05-use-case-member-guest.svg",
+      "textSegments": 20,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/presentation/06-web-architecture-corrected.svg",
+      "textSegments": 33,
+      "possibleTextCollisions": []
+    },
+    {
+      "file": "docs/presentation/07-web-architecture-english.svg",
+      "textSegments": 33,
+      "possibleTextCollisions": []
+    }
+  ]
+}

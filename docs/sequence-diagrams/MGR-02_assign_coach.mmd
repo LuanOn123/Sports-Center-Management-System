@@ -1,0 +1,55 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% USE CASE: Phân công HLV chính cho lớp
+%% SOURCE: BE/src/modules/classes/classes.service.ts
+%% SOURCE: BE/src/modules/classes/classes.routes.ts
+%% SOURCE: FE/src/features/manage/CoachAssignmentForm.tsx
+%% SOURCE: FE/src/features/manage/CoachAssignmentForm.tsx
+%% HTTP prefix: /api/v1. API lane includes verified middleware and errorHandler.
+%% Grouped read and validation calls short-circuit on error. No Repository layer is implied.
+%% Support Coach uses POST /classes/:id/coaches/support. Session substitution is a separate use case.
+%% assignCoach rechecks overlap but does not call validateResources or an approved-leave query here. Those additional checks are enforced when scheduling.
+sequenceDiagram
+    actor A as Center Manager
+    participant UI as CoachAssignmentForm
+    participant API as Express middleware / errorHandler
+    participant C as classesController
+    participant S as classesService
+    participant DB as Prisma / PostgreSQL
+
+    A->>UI: Choose primary Coach for class
+    UI->>API: POST /api/v1/classes/:id/coaches
+    activate API
+    API->>API: authenticate, checkFacilityScope, authorizeExact(MANAGER), validate request
+    alt request guard rejects
+        API-->>UI: 400 / 401 / 403 error
+    else request accepted
+        API->>C: assignCoach(req, res, next)
+        activate C
+        C->>S: assignCoach(classId, coachId, isPrimary)
+        activate S
+        S->>DB: Read class, active Coach, facility staff assignment, specializations and upcoming schedule conflicts
+        activate DB
+        DB-->>S: Requested records and validation context
+        deactivate DB
+        S->>S: Require matching facility and sport expertise, reject upcoming schedule overlap
+        S->>S: Lock class assignment and target Coach, recheck overlap before changing primary assignment
+        alt class / Coach missing, expertise mismatch or resource conflict
+            S-->>C: 400 / 404 / 409
+        else business conditions satisfied
+            S->>DB: Transaction unsets previous primary and upserts ClassMember with requested isPrimary
+            activate DB
+            DB-->>S: Saved result
+            deactivate DB
+            S->>S: notifyCoachChange after assignment persistence
+            S-->>C: Updated class Coach assignment
+        end
+        deactivate S
+        C-->>API: response or next(error)
+        deactivate C
+        API-->>UI: 200 result or mapped error
+    end
+    deactivate API
+    UI-->>A: Show result or actionable error
+
+%% Request validation schemas (see route evidence): AssignCoachSchema

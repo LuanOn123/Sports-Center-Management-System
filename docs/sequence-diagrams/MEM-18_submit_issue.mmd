@@ -1,0 +1,41 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% USE CASE: Gửi yêu cầu hỗ trợ
+%% SOURCE: BE/src/modules/operations/operations.routes.ts
+%% SOURCE: BE/src/modules/operations/requesters.service.ts
+%% SOURCE: FE/src/features/operations/OperationsPage.tsx
+%% HTTP prefix: /api/v1. API lane includes verified middleware and errorHandler.
+%% Grouped read and validation calls short-circuit on error. No Repository layer is implied.
+%% The route returns sendSuccess with its default 200, not an invented 201.
+sequenceDiagram
+    actor A as Member
+    participant UI as OperationsPage
+    participant API as Express API middleware
+    participant S as operationHandlers
+    participant DB as Prisma / PostgreSQL
+
+    A->>UI: Submit support issue at selected facility
+    UI->>API: POST /api/v1/issues
+    activate API
+    API->>API: authenticate, checkFacilityScope, authorize(MEMBER, COACH, RECEPTIONIST, MANAGER)
+    alt request guard rejects
+        API-->>UI: 400 / 401 / 403 error
+    else request accepted
+        API->>S: operationHandlers POST /issues
+        activate S
+        S->>S: Resolve actor and facility from requestContext
+        S->>S: Validate title and description, reject embedded attendance violation reports
+        alt invalid body or attempted attendance-report bypass
+            S-->>API: 400
+        else business conditions satisfied
+            S->>DB: issue.create(requesterId, requesterRole, memberId for MEMBER, facilityId)
+            activate DB
+            DB-->>S: Saved result
+            deactivate DB
+            S-->>API: New support issue
+        end
+        deactivate S
+        API-->>UI: 200 result or mapped error
+    end
+    deactivate API
+    UI-->>A: Show result or actionable error

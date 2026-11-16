@@ -1,0 +1,58 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% USE CASE: Xem trạng thái thanh toán và đối soát dự phòng
+%% SOURCE: BE/src/modules/payments/sepay-payments.service.ts
+%% SOURCE: BE/src/modules/payments/sepay-api.client.ts
+%% SOURCE: BE/src/modules/payments/payments.routes.ts
+%% SOURCE: FE/src/shared/SepayCheckout.tsx
+%% Optional reconciliation is triggered by reading a PENDING checkout, not an invented public reconcile endpoint.
+%% Shared settlement deduplicates bank transactions across webhook and reconciliation.
+%% A reconciliation exception skips its reread, is caught by getSepayCheckout and preserves polling availability.
+%% No match produces no payment mutation. Shared settlement persistence is detailed in PAY-01.
+sequenceDiagram
+    actor A as Member
+    participant UI as SepayCheckoutModal
+    participant API as Express middleware / errorHandler
+    participant C as paymentsController
+    participant S as sepayPaymentsService
+    participant DB as Prisma / PostgreSQL
+    participant Bank as SePay transaction API
+    A->>UI: Wait for transfer result
+    loop checkout polling enabled
+        UI->>API: GET /api/v1/payments/sepay/:id
+        activate API
+        API->>API: authenticate and checkFacilityScope
+        alt authentication or scope rejected
+            API-->>UI: 400 / 401 / 403
+        else request accepted
+            API->>C: sepayGetCheckout(req, res, next)
+            activate C
+            C->>S: getSepayCheckout(userId, role, paymentId)
+            activate S
+            S->>DB: payment.findUnique and verify allowed operator
+            DB-->>S: Payment and ownership context
+            alt payment missing, wrong gateway or ownership denied
+                S-->>C: 403 / 404
+            else payment accessible
+                opt PENDING and configured reconciliation allowed by throttle
+                    S->>Bank: fetchSepayTransactionsByCode(time window)
+                    activate Bank
+                    Bank-->>S: Transactions or upstream error
+                    deactivate Bank
+                    S->>S: Match movement and call shared settlement only when matched
+                    S->>DB: Reread payment if reconciliation returns normally
+                    DB-->>S: Current money and activation states
+                end
+                S-->>C: Checkout including status, activationStatus and subscriptionId
+            end
+            deactivate S
+            C-->>API: Response or next(error)
+            deactivate C
+            API-->>UI: 200 checkout or mapped error
+        end
+        deactivate API
+        UI-->>A: Show pending, activated, scheduled or review outcome
+    end
+%% NESTING_EXCEPTION: polling, HTTP guard, ownership guard and optional reconciliation are independent.
+%% Upstream reconciliation errors skip its reread, are caught, and do not alone fail polling.
+%% No match does not mutate the payment. Shared settlement internals are PAY-01.

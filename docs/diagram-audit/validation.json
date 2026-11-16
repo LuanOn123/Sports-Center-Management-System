@@ -1,0 +1,1986 @@
+{
+  "date": "2026-11-01",
+  "renderer": "Mermaid / Chromium via Playwright",
+  "drawioImportTested": false,
+  "runtimeTested": false,
+  "qaDir": "C:\\Users\\ontri\\AppData\\Local\\Temp\\scms-diagram-standardization-qa",
+  "files": [
+    {
+      "file": "docs/sequence-diagrams/ADM-01_create_facility.mmd",
+      "export": "docs/diagram-audit/exports/ADM-01_create_facility.svg",
+      "sourceSha256": "567ce3781e28d8b58dee305ac071cc85e2b06ec3f67f7b63200c2ba0bcb64ef9",
+      "width": 1134,
+      "height": 837,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 25,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-02_update_facility.mmd",
+      "export": "docs/diagram-audit/exports/ADM-02_update_facility.svg",
+      "sourceSha256": "04091470381da5dadf4391f45049643cd200bfb485d8875727e1c86d628ea6e2",
+      "width": 1134,
+      "height": 1123,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 36,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-03_assign_facility_manager.mmd",
+      "export": "docs/diagram-audit/exports/ADM-03_assign_facility_manager.svg",
+      "sourceSha256": "b2803e2c53f6c9861c45b526ea97fb664ec144ca9be27901ec6771af158a387c",
+      "width": 1395,
+      "height": 1550,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 53,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-04_assign_facility_staff.mmd",
+      "export": "docs/diagram-audit/exports/ADM-04_assign_facility_staff.svg",
+      "sourceSha256": "07cda3da062aaba4334dd568c8cc602e6d139d2229473b86169af38576ab20a8",
+      "width": 1172,
+      "height": 1208,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 42,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-05_create_facility_coach.mmd",
+      "export": "docs/diagram-audit/exports/ADM-05_create_facility_coach.svg",
+      "sourceSha256": "a232af20d786d28efeb619a91e3ae804c15657bdd8b6c8d2d76586337be23a2e",
+      "width": 1666,
+      "height": 1688,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 6,
+      "bottoms": 0,
+      "labelCount": 53,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-06_manage_sports.mmd",
+      "export": "docs/diagram-audit/exports/ADM-06_manage_sports.svg",
+      "sourceSha256": "b66270bdd53fec294331eb680ff5c4fea352edeaa85589404089bbc9fa709197",
+      "width": 1380,
+      "height": 1087,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 35,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-07_facility_overview_report.mmd",
+      "export": "docs/diagram-audit/exports/ADM-07_facility_overview_report.svg",
+      "sourceSha256": "348dc03d8a6ae7b500d2416eace5027bd328b4dd43efcbb95a177181034e3d4f",
+      "width": 1142,
+      "height": 1090,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 36,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-08_export_report_csv.mmd",
+      "export": "docs/diagram-audit/exports/ADM-08_export_report_csv.svg",
+      "sourceSha256": "9e8a458239b50d95fb66dd5bf6d3995a2bf833c6fd0539a364029bcb72d18e8a",
+      "width": 1134,
+      "height": 1123,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 37,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/ADM-09_create_receptionist.mmd",
+      "export": "docs/diagram-audit/exports/ADM-09_create_receptionist.svg",
+      "sourceSha256": "51b166e295f9d1244b0c818335b579f324709fda2d21aa3296d11c3e1e9655f8",
+      "width": 1668,
+      "height": 1705,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 6,
+      "bottoms": 0,
+      "labelCount": 54,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-01_guest_register_otp.mmd",
+      "export": "docs/diagram-audit/exports/AUTH-01_guest_register_otp.svg",
+      "sourceSha256": "f2e30d45aed0f3d8719bdce0000bba86929ad47e6f33b4b4a9f605834210749f",
+      "width": 1632,
+      "height": 1608,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 6,
+      "bottoms": 0,
+      "labelCount": 53,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-02_user_login.mmd",
+      "export": "docs/diagram-audit/exports/AUTH-02_user_login.svg",
+      "sourceSha256": "e7eb3d50b99c99f682aa073d2f861ba83d1eb2556303e51d4023bf0b01c2bc48",
+      "width": 1879,
+      "height": 2225,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 7,
+      "bottoms": 0,
+      "labelCount": 72,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-03_forgot_reset_password.mmd",
+      "export": "docs/diagram-audit/exports/AUTH-03_forgot_reset_password.svg",
+      "sourceSha256": "be2db912c36189feb4c05449fc9db38e36bb27bbed8e4904675e5bbef5fce746",
+      "width": 1630,
+      "height": 1414,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 6,
+      "bottoms": 0,
+      "labelCount": 45,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-03b_consume_reset_otp.mmd",
+      "export": "docs/diagram-audit/exports/AUTH-03b_consume_reset_otp.svg",
+      "sourceSha256": "fefed1572197c0266ddcc517ff205eb994515a857fc46e388c9207ba168c81cd",
+      "width": 1640,
+      "height": 1503,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 6,
+      "bottoms": 0,
+      "labelCount": 48,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-04_refresh_session.mmd",
+      "export": "docs/diagram-audit/exports/AUTH-04_refresh_session.svg",
+      "sourceSha256": "554bbf7e5df360e6bc0b9c321624852693d75f7150001d22d5411c524f3dc01e",
+      "width": 1394,
+      "height": 1195,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 39,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-05_logout.mmd",
+      "export": "docs/diagram-audit/exports/AUTH-05_logout.svg",
+      "sourceSha256": "c0747a1947ae0de8fe58a98b9eb4da18b7ed17bc7b2ff467f61b98568fbcde95",
+      "width": 1388,
+      "height": 1036,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 32,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-06_update_profile.mmd",
+      "export": "docs/diagram-audit/exports/AUTH-06_update_profile.svg",
+      "sourceSha256": "46c69ea95a2b8fed80351eacb5e61be23933b6dbd9bf4ca8140b3ea500881895",
+      "width": 1380,
+      "height": 1173,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 37,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-07_change_password.mmd",
+      "export": "docs/diagram-audit/exports/AUTH-07_change_password.svg",
+      "sourceSha256": "0ec40a5c5ec0361018778a4c1027d2fece28a10aabb4ec24114f56be43f1e87e",
+      "width": 1387,
+      "height": 1251,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 39,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/AUTH-08_upload_avatar.mmd",
+      "export": "docs/diagram-audit/exports/AUTH-08_upload_avatar.svg",
+      "sourceSha256": "87a30191427042041af21b0b81a6a834dd9306915d41d170ad518ab6f4c2a400",
+      "width": 1623,
+      "height": 1299,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 6,
+      "bottoms": 0,
+      "labelCount": 40,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/COA-01_view_schedule_students.mmd",
+      "export": "docs/diagram-audit/exports/COA-01_view_schedule_students.svg",
+      "sourceSha256": "e272f5ea7c4b0cd7b8384738862d63b8b870bfbb2598d8cb9410a98ade9443fe",
+      "width": 1408,
+      "height": 1326,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 46,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/COA-02_take_attendance.mmd",
+      "export": "docs/diagram-audit/exports/COA-02_take_attendance.svg",
+      "sourceSha256": "700eadbb484f5041d013ddf417cb24a5ab9aa1e0f6345cc1c8a23faf2543f353",
+      "width": 1380,
+      "height": 1364,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 45,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/COA-04_request_coach_change.mmd",
+      "export": "docs/diagram-audit/exports/COA-04_request_coach_change.svg",
+      "sourceSha256": "189b7b1e8918d7ee76c92ef23a03e5664f76e22cf0c9fcf80605e0120f42784b",
+      "width": 1151,
+      "height": 1350,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 42,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/COA-05_view_member_profile.mmd",
+      "export": "docs/diagram-audit/exports/COA-05_view_member_profile.svg",
+      "sourceSha256": "416afd148034c1d52309faea878e8d4af80b42187742ee3f64285e20a2680868",
+      "width": 1380,
+      "height": 1191,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 41,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/EXT-02_ai_assistant.mmd",
+      "export": "docs/diagram-audit/exports/EXT-02_ai_assistant.svg",
+      "sourceSha256": "759ce61a6ad1e5a42617ef8caca92a6f567e868237ba7d5f53ac90e543258ff1",
+      "width": 1624,
+      "height": 1368,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 6,
+      "bottoms": 0,
+      "labelCount": 42,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-01_browse_memberships.mmd",
+      "export": "docs/diagram-audit/exports/MEM-01_browse_memberships.svg",
+      "sourceSha256": "41ae77ccafefdd4767179ab84fbc263c565c110dc7e9784356f804660ebcb0d6",
+      "width": 1387,
+      "height": 1123,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 37,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-02_purchase_membership.mmd",
+      "export": "docs/diagram-audit/exports/MEM-02_purchase_membership.svg",
+      "sourceSha256": "104f4f656a2068814b25ccdf0033a94d473e3fa9b881ef8a204e9edcf3cb44de",
+      "width": 1665,
+      "height": 1996,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 6,
+      "bottoms": 0,
+      "labelCount": 67,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-03_cancel_membership_refund.mmd",
+      "export": "docs/diagram-audit/exports/MEM-03_cancel_membership_refund.svg",
+      "sourceSha256": "fc31938ca79c1f73a1ec3c4e5e7c95dfbce977118cfd8de068ac591cdd621da7",
+      "width": 1420,
+      "height": 1500,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 53,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-04_search_classes.mmd",
+      "export": "docs/diagram-audit/exports/MEM-04_search_classes.svg",
+      "sourceSha256": "4e00adbb40e19cbe9d27a37920d67e7d5b70f94e8aabfe8280bd1177f8605eae",
+      "width": 1387,
+      "height": 1106,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 37,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-05_book_class.mmd",
+      "export": "docs/diagram-audit/exports/MEM-05_book_class.svg",
+      "sourceSha256": "4967c2908050be31435e321f38c29a9a913f67a4fc10633935e3687dc96f6f4d",
+      "width": 1643,
+      "height": 2641,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 6,
+      "bottoms": 0,
+      "labelCount": 83,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-06_view_booking_status.mmd",
+      "export": "docs/diagram-audit/exports/MEM-06_view_booking_status.svg",
+      "sourceSha256": "54e1636f55ec8d5e1e02294bad8a2e7fef4e36759dc65e1dc997ea4d8b7b62b1",
+      "width": 1386,
+      "height": 1174,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 41,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-07_qr_check_in.mmd",
+      "export": "docs/diagram-audit/exports/MEM-07_qr_check_in.svg",
+      "sourceSha256": "df6cca74cd720c538b242d6dcf6b58004c445b1d6e063fc927ab492825e5389b",
+      "width": 1642,
+      "height": 2770,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 6,
+      "bottoms": 0,
+      "labelCount": 89,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-08_notifications.mmd",
+      "export": "docs/diagram-audit/exports/MEM-08_notifications.svg",
+      "sourceSha256": "51a6052cefaf0bb9b904b12553f7cde60cc0db21a800a88b37ff5ddb6e1f522a",
+      "width": 1386,
+      "height": 1122,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 34,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-09_chat.mmd",
+      "export": "docs/diagram-audit/exports/MEM-09_chat.svg",
+      "sourceSha256": "caa4366b2f6f33f1de1d7775d20b7ebf12aa89cd803113388d744bc4c09429ce",
+      "width": 1390,
+      "height": 1340,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 39,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-09b_chat_attachment.mmd",
+      "export": "docs/diagram-audit/exports/MEM-09b_chat_attachment.svg",
+      "sourceSha256": "67d821f8be72a4fde205a610a93c40cd888a5b3c03be62d54d026496d26e4ac8",
+      "width": 1139,
+      "height": 1283,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 41,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-10_receipts.mmd",
+      "export": "docs/diagram-audit/exports/MEM-10_receipts.svg",
+      "sourceSha256": "bb1d381d1e8c578acb82c84ada37d92f713b97aba3baf9d8b136a61d56e948f9",
+      "width": 1404,
+      "height": 1123,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 37,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-11_feedback_rating.mmd",
+      "export": "docs/diagram-audit/exports/MEM-11_feedback_rating.svg",
+      "sourceSha256": "f9a0011310e8d383dfed5b23c449a9d8c04ada42bbe5d3fc016cf4e28d2cca43",
+      "width": 1385,
+      "height": 1292,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 44,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-12_join_waitlist.mmd",
+      "export": "docs/diagram-audit/exports/MEM-12_join_waitlist.svg",
+      "sourceSha256": "db5e0dafd81d636d8482a912083beeff5ef5ea34fbf09e59354bbf54f94fb3b5",
+      "width": 1385,
+      "height": 1482,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 49,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-13_cancel_waitlist.mmd",
+      "export": "docs/diagram-audit/exports/MEM-13_cancel_waitlist.svg",
+      "sourceSha256": "d0d2124bfd6602982f536fba59e2d6abdbea2cda7a9e993ee65dd0ac0308c492",
+      "width": 1391,
+      "height": 1173,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 37,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-14_cancel_booking.mmd",
+      "export": "docs/diagram-audit/exports/MEM-14_cancel_booking.svg",
+      "sourceSha256": "14d78da91096b4df7eafb0283e4c9bbe508739a872c4f6bdf47f1df785b8010e",
+      "width": 1395,
+      "height": 1392,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 45,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-15_transfer_booking.mmd",
+      "export": "docs/diagram-audit/exports/MEM-15_transfer_booking.svg",
+      "sourceSha256": "0de7ebd68422b5f3290363601e3bbf400424c92dad1f045d332cc3390d8215ff",
+      "width": 1396,
+      "height": 1622,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 54,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-16_request_class_leave.mmd",
+      "export": "docs/diagram-audit/exports/MEM-16_request_class_leave.svg",
+      "sourceSha256": "a5aa4c851e725d649a270bd38fdd7aa9d7c4c6081a2e4754726fc2a4b5175cd0",
+      "width": 1419,
+      "height": 1309,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 45,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-17_appeal_penalty.mmd",
+      "export": "docs/diagram-audit/exports/MEM-17_appeal_penalty.svg",
+      "sourceSha256": "482ad6f88ea828e047d228e31c848b6440af67350751b92ffbb68a0bc7672c71",
+      "width": 1408,
+      "height": 1384,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 46,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-18_submit_issue.mmd",
+      "export": "docs/diagram-audit/exports/MEM-18_submit_issue.svg",
+      "sourceSha256": "c98ffa057e2e1995aec03e1cf7ff694bdc520d08cd3b9d8677cf5bcd3c28fa92",
+      "width": 1139,
+      "height": 1128,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 35,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-19_edit_open_issue.mmd",
+      "export": "docs/diagram-audit/exports/MEM-19_edit_open_issue.svg",
+      "sourceSha256": "ae8fd781999c12f491fe57f763acac733f2731b3de304fee93010aa34c258b5b",
+      "width": 1142,
+      "height": 1106,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 34,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MEM-20_update_health_notes.mmd",
+      "export": "docs/diagram-audit/exports/MEM-20_update_health_notes.svg",
+      "sourceSha256": "cba96d9189b6cc8c5454bf1e3932c5b9e8269eba48d98f0ca57448d7817294d1",
+      "width": 1413,
+      "height": 1309,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 45,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-01_create_class_schedule_wizard.mmd",
+      "export": "docs/diagram-audit/exports/MGR-01_create_class_schedule_wizard.svg",
+      "sourceSha256": "576cf7ace7df1e1d241c776941afbaf103507a3a282006f554e0d94214624d89",
+      "width": 1678,
+      "height": 2561,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 6,
+      "bottoms": 0,
+      "labelCount": 78,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-02_assign_coach.mmd",
+      "export": "docs/diagram-audit/exports/MGR-02_assign_coach.svg",
+      "sourceSha256": "6a09dd3f8e1687c1da3102fc0ba77bff9db7dbb2a00056d478e891aeedfae765",
+      "width": 1413,
+      "height": 1456,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 47,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-03_manage_memberships_tuition.mmd",
+      "export": "docs/diagram-audit/exports/MGR-03_manage_memberships_tuition.svg",
+      "sourceSha256": "d079be199dd63dc8b5a0ae667ee2198b36c6fce64de2562e41eb93a578e5ba7f",
+      "width": 1402,
+      "height": 1156,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 36,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-04_manage_staff_roles.mmd",
+      "export": "docs/diagram-audit/exports/MGR-04_manage_staff_roles.svg",
+      "sourceSha256": "910753042f8ae5d20c4e55eb36779685145d7981d87b21395d4f6c8c84c00192",
+      "width": 1380,
+      "height": 1376,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 47,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-05_revenue_report.mmd",
+      "export": "docs/diagram-audit/exports/MGR-05_revenue_report.svg",
+      "sourceSha256": "64c1289c18f903896af61f7f73d0e758798630677af7ec4f8a888f9b9d51087b",
+      "width": 1418,
+      "height": 1297,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 45,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-06_audit_log.mmd",
+      "export": "docs/diagram-audit/exports/MGR-06_audit_log.svg",
+      "sourceSha256": "b77b11af4ef2673595b72669416da133a83d3e8da4953326945de62a33a23882",
+      "width": 1134,
+      "height": 1022,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 32,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-07_create_term.mmd",
+      "export": "docs/diagram-audit/exports/MGR-07_create_term.svg",
+      "sourceSha256": "b2a4bf8bac7b3f90d3d468cdb0070b8d2621b982935df5bb01d774077215b39e",
+      "width": 1414,
+      "height": 1190,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 38,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-08_update_term.mmd",
+      "export": "docs/diagram-audit/exports/MGR-08_update_term.svg",
+      "sourceSha256": "044ca846823fe3b501727fa1a25313185d8268e50e7cc6b09bc80dec7ae1277c",
+      "width": 1410,
+      "height": 1431,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 46,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-09_create_room.mmd",
+      "export": "docs/diagram-audit/exports/MGR-09_create_room.svg",
+      "sourceSha256": "dc411252e386ae261ac5b98185b60b7b2e652ccb621b97f854da8c9215fe924e",
+      "width": 1410,
+      "height": 1207,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 39,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-10_update_room.mmd",
+      "export": "docs/diagram-audit/exports/MGR-10_update_room.svg",
+      "sourceSha256": "27d4bdcb8b7ed73f6c3b3580e55230d531235a052aed3e7a582d4ffa6b08aadf",
+      "width": 1413,
+      "height": 1381,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 46,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-11_transfer_room_schedules.mmd",
+      "export": "docs/diagram-audit/exports/MGR-11_transfer_room_schedules.svg",
+      "sourceSha256": "3e11282f76c87a1a3a5cd33776732f7dd53789eea3e7b249dd88375917edba21",
+      "width": 1425,
+      "height": 1519,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 51,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-12_create_class.mmd",
+      "export": "docs/diagram-audit/exports/MGR-12_create_class.svg",
+      "sourceSha256": "fd4ad2c35a73adb9db4ed92c431b846ef0e65130caebc68a5c553195c756f95a",
+      "width": 1410,
+      "height": 1258,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 42,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-13_update_class.mmd",
+      "export": "docs/diagram-audit/exports/MGR-13_update_class.svg",
+      "sourceSha256": "4f0ca1d2740143df09ed070ff1519476123a96433b96fa56fb20a3af3c65fca5",
+      "width": 1413,
+      "height": 1347,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 44,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-14_create_schedule_batch.mmd",
+      "export": "docs/diagram-audit/exports/MGR-14_create_schedule_batch.svg",
+      "sourceSha256": "63403a659993989d49b94034ffc562242b68d384f1b4d29ac5d76cc7035db798",
+      "width": 1425,
+      "height": 1448,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 47,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-15_update_cancel_schedule.mmd",
+      "export": "docs/diagram-audit/exports/MGR-15_update_cancel_schedule.svg",
+      "sourceSha256": "25cfe4082b96932ac3d9c9ab439a2b55c9b81bf698f8191c75a16b810e9ac849",
+      "width": 1410,
+      "height": 1456,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 47,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-16_complete_session.mmd",
+      "export": "docs/diagram-audit/exports/MGR-16_complete_session.svg",
+      "sourceSha256": "0e0271cad2cdfe1bd10b95f0faba913acbed4fff3e41b639e82380d550372d5c",
+      "width": 1424,
+      "height": 1552,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 50,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-17_decide_coach_change.mmd",
+      "export": "docs/diagram-audit/exports/MGR-17_decide_coach_change.svg",
+      "sourceSha256": "794759b6371e6c3240412e4ae1cccae1b7adab88e9b99a9686986925f20cfb22",
+      "width": 1433,
+      "height": 2353,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 76,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-18_decide_member_staff_leave.mmd",
+      "export": "docs/diagram-audit/exports/MGR-18_decide_member_staff_leave.svg",
+      "sourceSha256": "e6c7fbd06188c3956cad6cca0f6abf3187c9cc045680449477663d130afd1523",
+      "width": 1164,
+      "height": 1432,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 48,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-19_apply_penalty.mmd",
+      "export": "docs/diagram-audit/exports/MGR-19_apply_penalty.svg",
+      "sourceSha256": "a59438d3b73d0245e0fa8e4377640815abffdfe24a51451d6dba3484c578328b",
+      "width": 1426,
+      "height": 1557,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 50,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-20_revoke_penalty.mmd",
+      "export": "docs/diagram-audit/exports/MGR-20_revoke_penalty.svg",
+      "sourceSha256": "e13a0a84198019b5091a7bd9cc660f888fb550149bae5aa98308772bb4d1aaed",
+      "width": 1425,
+      "height": 1393,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 47,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-21_review_attendance_report.mmd",
+      "export": "docs/diagram-audit/exports/MGR-21_review_attendance_report.svg",
+      "sourceSha256": "03da7ec2c64d898639b60a211d1ba90b23c97be4cf32c1766d14a03f6062cfec",
+      "width": 1429,
+      "height": 1550,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 53,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-22_correct_attendance.mmd",
+      "export": "docs/diagram-audit/exports/MGR-22_correct_attendance.svg",
+      "sourceSha256": "8375b415e0490c804e2642ef60eb35923a8563de846d3ea14310d2b63a5ddab5",
+      "width": 1410,
+      "height": 1207,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 39,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-23_attendance_report.mmd",
+      "export": "docs/diagram-audit/exports/MGR-23_attendance_report.svg",
+      "sourceSha256": "e69b3d14e985517488bd99a98ed6010fad5e5be97d243b2de20df7fc0f12638e",
+      "width": 1390,
+      "height": 1246,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 41,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/MGR-24_cross_facility_usage.mmd",
+      "export": "docs/diagram-audit/exports/MGR-24_cross_facility_usage.svg",
+      "sourceSha256": "94d21e9729820b851bbbfed4a5a16e1706b6d0b1e4b188079027d944802d89c9",
+      "width": 1397,
+      "height": 1191,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 41,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-01_update_room_capabilities.mmd",
+      "export": "docs/diagram-audit/exports/OPS-01_update_room_capabilities.svg",
+      "sourceSha256": "e98f12630ca3c88499622a2b3e710740ca63f00b2aa8fb8e98005bce73db37f8",
+      "width": 1170,
+      "height": 1350,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 41,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-02_update_coach_specializations.mmd",
+      "export": "docs/diagram-audit/exports/OPS-02_update_coach_specializations.svg",
+      "sourceSha256": "64758d7bb4f93b42d1713469a37454b0292996ef83d7562c1482dd8f1c5bca11",
+      "width": 1176,
+      "height": 1326,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 44,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-03_create_time_slot.mmd",
+      "export": "docs/diagram-audit/exports/OPS-03_create_time_slot.svg",
+      "sourceSha256": "f8ab0e01e4e55b98a4d23cb608d73adea458d4c9760b1e470fe9a69dc1b4c19e",
+      "width": 1164,
+      "height": 871,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 26,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-04_create_schedule_pattern.mmd",
+      "export": "docs/diagram-audit/exports/OPS-04_create_schedule_pattern.svg",
+      "sourceSha256": "f0d8ad213ea6f29e58fd1ea4a16d7095d4aa04edbced090906f294c9ed9ca047",
+      "width": 1164,
+      "height": 1397,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 43,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-05_resolve_support_issue.mmd",
+      "export": "docs/diagram-audit/exports/OPS-05_resolve_support_issue.svg",
+      "sourceSha256": "4c3f1a1cebb52b65ed7de6ff5633c1649c936e8ae76094ffe93bafef296b436d",
+      "width": 1152,
+      "height": 1174,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 38,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-06_trigger_class_reminders.mmd",
+      "export": "docs/diagram-audit/exports/OPS-06_trigger_class_reminders.svg",
+      "sourceSha256": "10baf8d639b97ed8fbff342d295123dbbb1d304d595bf3f91cf44dac7d8ecb10",
+      "width": 1433,
+      "height": 1275,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 43,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/OPS-07_scan_attendance_warnings.mmd",
+      "export": "docs/diagram-audit/exports/OPS-07_scan_attendance_warnings.svg",
+      "sourceSha256": "0a035496a563761b3fa65b2b20c7de0cbb4d576f0209eb664401aad6a7b3a082",
+      "width": 1429,
+      "height": 1292,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 44,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/PAY-01_sepay_webhook_settlement.mmd",
+      "export": "docs/diagram-audit/exports/PAY-01_sepay_webhook_settlement.svg",
+      "sourceSha256": "a6f40e9817091b5fd3b2693c66719b753e9a37ea0607db778f08fea7a8fb7cf5",
+      "width": 1400,
+      "height": 2089,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 72,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/PAY-02_poll_checkout_reconcile.mmd",
+      "export": "docs/diagram-audit/exports/PAY-02_poll_checkout_reconcile.svg",
+      "sourceSha256": "8337e27270a309922f7fed9f4500bd191fcf64f68f78f34b2f60391b985d71be",
+      "width": 1631,
+      "height": 1363,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 6,
+      "bottoms": 0,
+      "labelCount": 44,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/PAY-03_retry_activation.mmd",
+      "export": "docs/diagram-audit/exports/PAY-03_retry_activation.svg",
+      "sourceSha256": "7640fa59fd86f1650dd487c8189fdb16a97a89213c15c8f9049eee2c1a24bf78",
+      "width": 1405,
+      "height": 1748,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 59,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/PAY-04_approve_unactivated_refund.mmd",
+      "export": "docs/diagram-audit/exports/PAY-04_approve_unactivated_refund.svg",
+      "sourceSha256": "e40e014c4363e138adb66883fccc7f35c3bcbb00667bdeff8054e9b811e36957",
+      "width": 1151,
+      "height": 1652,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 53,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-01_create_member.mmd",
+      "export": "docs/diagram-audit/exports/REC-01_create_member.svg",
+      "sourceSha256": "456dc0dc905eb812ab540af9a797ee6eda8df412a93155a261b12bc8b0dd8b47",
+      "width": 1406,
+      "height": 1496,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 48,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-02_manage_booking_check_in.mmd",
+      "export": "docs/diagram-audit/exports/REC-02_manage_booking_check_in.svg",
+      "sourceSha256": "36820318f70e0bfc4bef5a5fab33e5bed840201833af4ffeb5db06418af1f9af",
+      "width": 1410,
+      "height": 1675,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 55,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-03_rotate_qr_session.mmd",
+      "export": "docs/diagram-audit/exports/REC-03_rotate_qr_session.svg",
+      "sourceSha256": "f5a7bac78bb6ac9a76c044125972169a3d8427701daca94eaf05c3aece453472",
+      "width": 1663,
+      "height": 1725,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 6,
+      "bottoms": 0,
+      "labelCount": 56,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-05_confirm_refund.mmd",
+      "export": "docs/diagram-audit/exports/REC-05_confirm_refund.svg",
+      "sourceSha256": "ea7b1c5044961279acff7201117ebb381a56ea8bf530ec545611b5ecbca99025",
+      "width": 1163,
+      "height": 1564,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 54,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-06_create_counter_order.mmd",
+      "export": "docs/diagram-audit/exports/REC-06_create_counter_order.svg",
+      "sourceSha256": "d5e645c4e7b967362ddca557cccd65c35d839a49a34840e29da2b20f7631dabc",
+      "width": 1152,
+      "height": 1174,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 38,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-07_confirm_counter_order.mmd",
+      "export": "docs/diagram-audit/exports/REC-07_confirm_counter_order.svg",
+      "sourceSha256": "2b7ca6b16583d9cad6d410a64e8b3892b285311921aec2c0f05ea2413465c053",
+      "width": 1416,
+      "height": 1600,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 50,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-08_sell_membership.mmd",
+      "export": "docs/diagram-audit/exports/REC-08_sell_membership.svg",
+      "sourceSha256": "7b77d7f5cb92997d1cc5b533484972933b0b003434ad6121746fa30d710d94ce",
+      "width": 1401,
+      "height": 1415,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 48,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-09_renew_membership.mmd",
+      "export": "docs/diagram-audit/exports/REC-09_renew_membership.svg",
+      "sourceSha256": "2ba757e20cd133a766ec8b808f2ce62f2678fb796ffab2d9a52f83d75745345b",
+      "width": 1407,
+      "height": 1483,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 52,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-10_cancel_membership.mmd",
+      "export": "docs/diagram-audit/exports/REC-10_cancel_membership.svg",
+      "sourceSha256": "afbbf021671a20f1e4a25adbd55a6a7384fa9caab202335c265d418f27e782a8",
+      "width": 1429,
+      "height": 1483,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 52,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-11_monitor_attendance.mmd",
+      "export": "docs/diagram-audit/exports/REC-11_monitor_attendance.svg",
+      "sourceSha256": "f25efa45a82c5ae1a77ef326dc01888ce904e9e9380016b9191557ed4b1020d3",
+      "width": 1430,
+      "height": 1208,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 42,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-12_send_attendance_warning.mmd",
+      "export": "docs/diagram-audit/exports/REC-12_send_attendance_warning.svg",
+      "sourceSha256": "95e9c7bb46fd3369d94fb7106869745feb8f11fc27236ad98ec58bfa016b203d",
+      "width": 1431,
+      "height": 1633,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 54,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-13_report_attendance_violation.mmd",
+      "export": "docs/diagram-audit/exports/REC-13_report_attendance_violation.svg",
+      "sourceSha256": "3b1265617b8a828626d6a5c38d7f55217a9141f52dcaa3b0733480b38b23054c",
+      "width": 1413,
+      "height": 1427,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 49,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/REC-14_request_staff_leave.mmd",
+      "export": "docs/diagram-audit/exports/REC-14_request_staff_leave.svg",
+      "sourceSha256": "1bd2df2b8b64b1d875c662e13e5ce8e685c1ed0e754301445b550253588fa3d9",
+      "width": 1152,
+      "height": 1189,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 35,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/SYS-01_waitlist_promotion.mmd",
+      "export": "docs/diagram-audit/exports/SYS-01_waitlist_promotion.svg",
+      "sourceSha256": "28c6fb05380a2cb9ece8e53ebb5416ca47f6d184f90c763eaf9b1eb157874e82",
+      "width": 1155,
+      "height": 1797,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 50,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/SYS-02_subscription_lifecycle.mmd",
+      "export": "docs/diagram-audit/exports/SYS-02_subscription_lifecycle.svg",
+      "sourceSha256": "41e9210881269fd68e534c5d5891c5934d8338403ef67107572d429b4fc92716",
+      "width": 1191,
+      "height": 1133,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 37,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/SYS-03_notification_outbox.mmd",
+      "export": "docs/diagram-audit/exports/SYS-03_notification_outbox.svg",
+      "sourceSha256": "38e915e44f99d995cda0b007d564d0bd2d201af65ba8d843c1f2e4044287d5c3",
+      "width": 1175,
+      "height": 1256,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 4,
+      "bottoms": 0,
+      "labelCount": 35,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/sequence-diagrams/SYS-04_socket_send_message.mmd",
+      "export": "docs/diagram-audit/exports/SYS-04_socket_send_message.svg",
+      "sourceSha256": "09722e21876dca5684b4d763dab16d0eb873766c94c50b6480b2a5a90b2c2242",
+      "width": 1397,
+      "height": 1070,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 5,
+      "bottoms": 0,
+      "labelCount": 32,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": 18,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/architecture/database-erd.mmd",
+      "export": "docs/diagram-audit/exports/database-erd.svg",
+      "sourceSha256": "43f5f678df985e0630d1d260a6fae66c4799a9fb7641d128e97fd8e4b4eb74f2",
+      "width": 8073,
+      "height": 5283,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 0,
+      "bottoms": 0,
+      "labelCount": 71,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": null,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/architecture/sports-center-use-cases.mmd",
+      "export": "docs/diagram-audit/exports/sports-center-use-cases.svg",
+      "sourceSha256": "f2d29f576268856892bd8265f4660871982e6ed06835cec5c3dd5834e3f2fe24",
+      "width": 1475,
+      "height": 3487,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 0,
+      "bottoms": 0,
+      "labelCount": 3,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": null,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/presentation/diagrams.md#1",
+      "export": "docs/diagram-audit/exports/presentation-1.svg",
+      "sourceSha256": "442a41ae768fd6535eb1979ea412f67e4372b72bda3fd04f8550ce0242fc4e87",
+      "width": 618,
+      "height": 531,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 0,
+      "bottoms": 0,
+      "labelCount": 1,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": null,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/presentation/diagrams.md#2",
+      "export": "docs/diagram-audit/exports/presentation-2.svg",
+      "sourceSha256": "df76da0090dc057540216bee15e9d69fe5e94290bcd4dbcf1e99de5c3a1bf4ab",
+      "width": 888,
+      "height": 1082,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 0,
+      "bottoms": 0,
+      "labelCount": 6,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": null,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/presentation/diagrams.md#3",
+      "export": "docs/diagram-audit/exports/presentation-3.svg",
+      "sourceSha256": "a7cc09307cd871b0260162df1607e9865c44730bd1cdd3a6be9657e965996469",
+      "width": 533,
+      "height": 836,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 0,
+      "bottoms": 0,
+      "labelCount": 1,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": null,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/presentation/diagrams.md#4",
+      "export": "docs/diagram-audit/exports/presentation-4.svg",
+      "sourceSha256": "3a74e7525e811558d5ea4ff83f910806f3d50243b53ad254a1862bb16b9d68bc",
+      "width": 533,
+      "height": 815,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 0,
+      "bottoms": 0,
+      "labelCount": 1,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": null,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/presentation/diagrams.md#5",
+      "export": "docs/diagram-audit/exports/presentation-5.svg",
+      "sourceSha256": "841d36adea95c039c16b35558893bb6e5253183b2c6b44e91d8c52f573ce241b",
+      "width": 533,
+      "height": 815,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 0,
+      "bottoms": 0,
+      "labelCount": 1,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": null,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/presentation/diagrams.md#6",
+      "export": "docs/diagram-audit/exports/presentation-6.svg",
+      "sourceSha256": "f3e0632def54b99559a5f54055be0d505ebeafed78346c0517d0878392641645",
+      "width": 513,
+      "height": 628,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 0,
+      "bottoms": 0,
+      "labelCount": 1,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": null,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/presentation/diagrams.md#7",
+      "export": "docs/diagram-audit/exports/presentation-7.svg",
+      "sourceSha256": "bf5b06874c16698985c95f212744d17d3fe768b63a0739b63ca86b78e5f58cf7",
+      "width": 533,
+      "height": 753,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 0,
+      "bottoms": 0,
+      "labelCount": 1,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": null,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/presentation/diagrams.md#8",
+      "export": "docs/diagram-audit/exports/presentation-8.svg",
+      "sourceSha256": "2b703fd4b430005d38d940990b1671e7521224c8310e58e76087f57d30b359e6",
+      "width": 493,
+      "height": 420,
+      "badPaint": [],
+      "emptyLabels": [],
+      "badLifelines": 0,
+      "headers": 0,
+      "bottoms": 0,
+      "labelCount": 1,
+      "fontFamilies": [
+        "Arial, sans-serif"
+      ],
+      "lifelineBottomPadding": null,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/presentation/01-tech-stack.svg",
+      "sourceSha256": "877445ab18d6496feed5e03b8cdf37bc5fd8e7f8b2ed5975eb525956c4d4030a",
+      "badPaint": [],
+      "width": 1600,
+      "height": 900,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/presentation/02-system-architecture.svg",
+      "sourceSha256": "23ea9f3c2ed3690297b5900a8a77ad15a55036d8eb8330b943384c9640f311dd",
+      "badPaint": [],
+      "width": 1600,
+      "height": 900,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/presentation/03-use-case-admin-manager.svg",
+      "sourceSha256": "847326d5843b06515a3db0b0c31591955a32d6aaf105c16dad4f2e0c3acce41d",
+      "badPaint": [],
+      "width": 1600,
+      "height": 900,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/presentation/04-use-case-receptionist-coach.svg",
+      "sourceSha256": "6ce2203fc40a75664783be4894f5b3be94717251bbae90a8f163ddf7617bf1be",
+      "badPaint": [],
+      "width": 1600,
+      "height": 900,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/presentation/05-use-case-member-guest.svg",
+      "sourceSha256": "222bd390ac1430f1ad0b2e0d972f2471a2cf214e5556286792b23d4ec8482b81",
+      "badPaint": [],
+      "width": 1600,
+      "height": 900,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/presentation/06-web-architecture-corrected.svg",
+      "sourceSha256": "add339b99ee2d4e4c173065f7dda6d35c294d25483bbbbedf6c2a4d8398bd3a4",
+      "badPaint": [],
+      "width": 1400,
+      "height": 860,
+      "status": "PASS"
+    },
+    {
+      "file": "docs/presentation/07-web-architecture-english.svg",
+      "sourceSha256": "22131c0ac834df43b889a2069aece82a981956dc17ff440deddaaadfdbfe8b0b",
+      "badPaint": [],
+      "width": 1400,
+      "height": 860,
+      "status": "PASS"
+    }
+  ],
+  "total": 113,
+  "passed": 113,
+  "failed": 0,
+  "mermaidVersion": "12.2.0",
+  "renderTested": true,
+  "visualReview": {
+    "contactSheets": 7,
+    "sequenceSources": 96,
+    "mermaidSourcesAndBlocks": 106,
+    "nativeSvgSources": 7,
+    "textOverlapCandidates": 0,
+    "notes": "All contact sheets and selected full-size complex sequences inspected; native SVG paint/XML/text bounds checked. No direct draw.io import."
+  }
+}

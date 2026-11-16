@@ -1,0 +1,62 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% USE CASE: Đôn danh sách chờ khi có chỗ
+%% SOURCE: BE/src/modules/waitlist/waitlist.worker.ts
+%% SOURCE: BE/src/modules/waitlist/waitlist.promotion.ts
+%% SOURCE: BE/src/modules/enrollments/enrollments.service.ts
+%% SOURCE: BE/src/server.ts
+%% Internal worker, no human UI or fabricated HTTP API. Cancellation callers can invoke the same promotion helper.
+%% Candidate lock or eligibility failure skips candidate without falsely cancelling the WAITING entry.
+%% Each successful call claims at most one entry. Worker may repeat calls while capacity remains.
+sequenceDiagram
+    actor T as Server timer
+    participant W as runWaitlistPromotions
+    participant S as promoteNextEligible
+    participant E as enrollmentsService
+    participant DB as Prisma / PostgreSQL
+    T->>W: Retry promotion every 60 seconds
+    activate W
+    W->>DB: Query future active sessions with WAITING entries and free seats
+    DB-->>W: Available session candidates
+    loop available schedule
+        W->>DB: Begin transaction, try schedule lock and reread schedule
+        DB-->>W: Fresh state and acquired flag
+        alt busy, missing or closed schedule
+            W->>W: Skip without promotion
+        else locked future SCHEDULED session
+            W->>S: promoteNextEligible(tx, scheduleId, schedule)
+            activate S
+            S->>DB: waitlistEntry.findMany(WAITING, position ascending)
+            DB-->>S: Candidate queue
+            loop candidate until first successful claim
+                S->>DB: Savepoint and try subscription / quota / class locks
+                DB-->>S: Acquired or busy
+                opt candidate locks acquired
+                    S->>S: activateMemberDue(tx, memberId)
+                    S->>E: assertCanBook(tx, memberId, schedule)
+                    activate E
+                    E-->>S: Eligible subscription / old enrollment or rejection
+                    deactivate E
+                end
+                alt candidate locks busy
+                    S->>DB: Roll back to candidate savepoint and continue
+                else candidate not eligible
+                    S->>S: Keep WAITING and continue
+                else candidate eligible
+                    S->>DB: CAS WAITING to PROMOTED, create / reactivate BOOKED only if claim succeeds
+                    DB-->>S: Promoted enrollment or lost claim
+                    S->>S: enqueueNotification only for successful claim
+                    S->>DB: Create corresponding outbox row only when promoted
+                end
+            end
+            S-->>W: Promoted enrollment or null
+            deactivate S
+            W->>DB: Commit transaction
+        end
+    end
+    W->>W: Flush notifications if any promotion succeeded
+    W-->>T: Promoted count or error logged for later retry
+    deactivate W
+%% NESTING_EXCEPTION: worker loop, schedule guard, candidate loop and candidate guard require four frames.
+%% Claim and write groups short-circuit when CAS count is not one. Skipped entries remain WAITING.
+%% activateMemberDue is an entitlement helper invoked by promotion, not an enrollmentsService method.

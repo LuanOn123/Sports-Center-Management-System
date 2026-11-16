@@ -16,13 +16,14 @@ const STATUS_LABELS: Record<TermStatus, string> = {
   CLOSED: "Đã đóng",
 };
 
-function fmtDate(d: string) {
+function fmtDate(d: string, withTime = false) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("vi-VN", {
+  return new Date(d).toLocaleString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
     timeZone: "Asia/Ho_Chi_Minh",
+    ...(withTime ? { hour: "2-digit", minute: "2-digit", hourCycle: "h23" } : {}),
   });
 }
 
@@ -38,10 +39,18 @@ type TermFormData = {
   facilityId?: string | null;
 };
 
-/** Convert YYYY-MM-DD → ISO datetime string (start of day UTC) */
-function toISODate(d: string, endOfDay = false): string {
-  if (!d) return "";
-  return new Date(`${d}T${endOfDay ? "23:59:59" : "00:00:00"}+07:00`).toISOString();
+const vietnamOffsetMs = 7 * 60 * 60 * 1000;
+
+function toDateInput(iso: string | undefined, withTime = false): string {
+  if (!iso) return "";
+  return new Date(Date.parse(iso) + vietnamOffsetMs).toISOString().slice(0, withTime ? 16 : 10);
+}
+
+function toISODate(value: string, original: string | undefined, endOfDay = false): string {
+  const withTime = value.includes("T");
+  if (original && value === toDateInput(original, withTime)) return original;
+  const localTime = withTime ? `${value}:00` : `${value}T${endOfDay ? "23:59:59" : "00:00:00"}`;
+  return new Date(`${localTime}+07:00`).toISOString();
 }
 
 /** Auto-generate a code from term name + year, e.g. "KY_THU_2026" */
@@ -61,7 +70,6 @@ function TermForm({
   initial,
   facilities,
   role = "ADMIN",
-  managerFacilityId,
   onSave,
   onCancel,
   isPending,
@@ -70,22 +78,20 @@ function TermForm({
   initial?: Partial<TermFormData>;
   facilities?: Array<{ id: string; name: string; code: string }>;
   role?: "ADMIN" | "MANAGER";
-  managerFacilityId?: string;
   onSave: (data: TermFormData) => void;
   onCancel: () => void;
   isPending: boolean;
   error: unknown;
 }) {
   const isManager = role === "MANAGER";
-  const defaultFacility = isManager ? (managerFacilityId || getFacilityId() || "") : "";
   const [code, setCode] = useState(initial?.code ?? "");
   const [name, setName] = useState(initial?.name ?? "");
-  const [startDate, setStartDate] = useState(initial?.startDate?.slice(0, 10) ?? "");
-  const [endDate, setEndDate] = useState(initial?.endDate?.slice(0, 10) ?? "");
-  const [regStart, setRegStart] = useState(initial?.registrationStartDate?.slice(0, 10) ?? "");
-  const [regEnd, setRegEnd] = useState(initial?.registrationEndDate?.slice(0, 10) ?? "");
+  const [startDate, setStartDate] = useState(toDateInput(initial?.startDate));
+  const [endDate, setEndDate] = useState(toDateInput(initial?.endDate));
+  const [regStart, setRegStart] = useState(toDateInput(initial?.registrationStartDate, true));
+  const [regEnd, setRegEnd] = useState(toDateInput(initial?.registrationEndDate));
   const [status, setStatus] = useState<TermStatus>(initial?.status ?? "PLANNING");
-  const [facilityId, setFacilityId] = useState<string>(initial?.facilityId ?? defaultFacility);
+  const [facilityId, setFacilityId] = useState<string>(initial?.facilityId ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [localError, setLocalError] = useState<string>("");
 
@@ -106,21 +112,22 @@ function TermForm({
       setLocalError("Ngày kết thúc kỳ phải sau ngày bắt đầu.");
       return;
     }
-    if (regEnd <= regStart) {
-      setLocalError("Ngày kết thúc đăng ký phải sau ngày mở đăng ký.");
+    const registrationStartDate = toISODate(regStart, initial?.registrationStartDate);
+    const registrationEndDate = toISODate(regEnd, initial?.registrationEndDate, true);
+    if (Date.parse(registrationEndDate) <= Date.parse(registrationStartDate)) {
+      setLocalError("Thời điểm đóng đăng ký phải sau thời điểm mở đăng ký.");
       return;
     }
-    // Convert date-only strings to full ISO datetime required by BE
     onSave({
       code: trimmedCode,
       name: name.trim(),
-      startDate: toISODate(startDate),
-      endDate: toISODate(endDate, true),
-      registrationStartDate: toISODate(regStart),
-      registrationEndDate: toISODate(regEnd, true),
+      startDate: toISODate(startDate, initial?.startDate),
+      endDate: toISODate(endDate, initial?.endDate, true),
+      registrationStartDate,
+      registrationEndDate,
       status,
       description: description.trim() || undefined,
-      facilityId: isManager ? (managerFacilityId || getFacilityId() || null) : (facilityId || null),
+      ...(!isManager && { facilityId: facilityId || null }),
     });
   }
 
@@ -174,12 +181,12 @@ function TermForm({
         </label>
         {/* Registration window */}
         <label>
-          Mở đăng ký từ *
-          <input type="date" required value={regStart} onChange={(e) => setRegStart(e.target.value)} />
+          Mở đăng ký từ (giờ Việt Nam) *
+          <input type="datetime-local" required value={regStart} onChange={(e) => setRegStart(e.target.value)} />
         </label>
         <label>
           Đóng đăng ký vào *
-          <input type="date" required value={regEnd} min={regStart} onChange={(e) => setRegEnd(e.target.value)} />
+          <input type="date" required value={regEnd} min={regStart.slice(0, 10)} onChange={(e) => setRegEnd(e.target.value)} />
         </label>
         {/* Status (edit only) */}
         {isEditing && (
@@ -372,7 +379,7 @@ export function AdminTerms({ role = "ADMIN" }: { role?: "ADMIN" | "MANAGER" } = 
           <div style={{ background: "var(--surface)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
             <strong>1. Tạo kỳ học & Mở đăng ký sớm</strong>
             <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 12 }}>
-              Đặt ngày mở đăng ký trước ngày bắt đầu và chuyển trạng thái sang <code>Mở đăng ký</code> để học viên đặt chỗ trước.
+              Đặt thời điểm mở đăng ký trước ngày bắt đầu và chuyển trạng thái sang <code>Mở đăng ký</code> để học viên đặt chỗ trước.
             </p>
           </div>
           <div style={{ background: "var(--surface)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
@@ -578,7 +585,7 @@ export function AdminTerms({ role = "ADMIN" }: { role?: "ADMIN" | "MANAGER" } = 
                   <dt style={{ color: "var(--muted)", fontWeight: 500 }}>Kỳ học:</dt>
                   <dd style={{ margin: 0 }}>{fmtDate(term.startDate)} → {fmtDate(term.endDate)}</dd>
                   <dt style={{ color: "var(--muted)", fontWeight: 500 }}>Đăng ký:</dt>
-                  <dd style={{ margin: 0 }}>{fmtDate(term.registrationStartDate)} → {fmtDate(term.registrationEndDate)}</dd>
+                  <dd style={{ margin: 0 }}>{fmtDate(term.registrationStartDate, true)} → {fmtDate(term.registrationEndDate)}</dd>
                   {term._count && (
                     <>
                       <dt style={{ color: "var(--muted)", fontWeight: 500 }}>Buổi học:</dt>
@@ -656,7 +663,6 @@ export function AdminTerms({ role = "ADMIN" }: { role?: "ADMIN" | "MANAGER" } = 
           <TermForm
             facilities={facilities}
             role={role}
-            managerFacilityId={managerFacilityId}
             onSave={(data) => createMutation.mutate(data)}
             onCancel={() => setCreating(false)}
             isPending={createMutation.isPending}
@@ -672,7 +678,6 @@ export function AdminTerms({ role = "ADMIN" }: { role?: "ADMIN" | "MANAGER" } = 
             initial={editing}
             facilities={facilities}
             role={role}
-            managerFacilityId={managerFacilityId}
             onSave={(data) => updateMutation.mutate({ ...data, id: editing.id })}
             onCancel={() => setEditing(null)}
             isPending={updateMutation.isPending}

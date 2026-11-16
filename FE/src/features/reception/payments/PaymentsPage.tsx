@@ -7,7 +7,9 @@ import { useReceptionDetail, useReceptionList } from "../api";
 import { StatusAction } from "../../../shared/StatusAction";
 import { paymentTransitions } from "../../../shared/businessRules";
 import { Heading, ListState, MemberPicker, Table } from "../components";
-export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
+export function PaymentsPage({
+  role = "RECEPTIONIST",
+}: { role?: "ADMIN" | "RECEPTIONIST" }) {
   const [member, setMember] = useState<RecordData | null>(null);
   const [invoiceId, setInvoiceId] = useState("");
   const [paymentId, setPaymentId] = useState("");
@@ -34,7 +36,7 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
   );
   return (
     <>
-      <Heading title="Thanh toán & hóa đơn" />
+      <Heading title="Thanh toán & hoàn tiền" />
       {refund && (
         <RefundConfirmation payment={refund} onClose={() => setRefund(null)} />
       )}
@@ -102,6 +104,9 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
                       </dd>
                     </div>
                   </dl>
+                  {rows.some((row) => row.gateway) && (
+                    <p>Trạng thái thu tiền online được cập nhật qua đối soát.</p>
+                  )}
                   <Table
                     rows={rows}
                     columns={[
@@ -118,17 +123,11 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
                         >
                           Chi tiết
                         </button>
-                        {Boolean(row.gateway) && (
-                          <small>
-                            Giao dịch online được cập nhật sau khi hệ thống xác
-                            nhận thanh toán.
-                          </small>
-                        )}
                         {row.activationStatus === "REQUIRES_REVIEW" &&
                           row.status === "SUCCESS" && (
                             <div role="status">
                               {row.refundRequestedAt
-                                ? "Đã duyệt yêu cầu hoàn — chờ trả tiền và xác nhận biên nhận"
+                                ? "Đã duyệt yêu cầu hoàn tiền"
                                 : "Cần đối soát — chưa kích hoạt gói"}
                               {role === "ADMIN" &&
                                 !row.refundRequestedAt &&
@@ -153,7 +152,7 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
                             className="button small"
                             onClick={() => setRefund(row)}
                           >
-                            Xác nhận hoàn {money(row.refundRequestedAmount)}
+                            Xác nhận hoàn tiền ({money(row.refundRequestedAmount)})
                           </button>
                         )}
                         <StatusAction
@@ -377,8 +376,9 @@ function RefundConfirmation({
         }}
       >
         <p>
-          Chỉ xác nhận sau khi đã trả {money(payment.refundRequestedAmount)}.
-          Thao tác này ghi nhận tiền thực tế, không tự chuyển khoản.
+          Sau khi trả {money(payment.refundRequestedAmount)} cho hội viên,
+          lễ tân hoặc quản trị hệ thống nhập mã biên nhận hoặc mã chuyển khoản
+          để ghi nhận khoản tiền đã trả.
         </p>
         <fieldset disabled={save.isPending}>
           <label>

@@ -1,0 +1,54 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% USE CASE: Chatbot trả lời bằng dữ liệu trung tâm
+%% SOURCE: BE/src/modules/ai/ai.service.ts
+%% SOURCE: BE/src/modules/ai/ai.routes.ts
+%% SOURCE: BE/src/modules/ai/ai.schema.ts
+%% SOURCE: FE/src/features/ai/AIChatBubble.tsx
+%% Public API, no invented authentication or booking/payment mutation. Client-supplied history is handled as current code implements.
+sequenceDiagram
+    actor A as Guest
+    participant UI as AIChatBubble
+    participant API as Express middleware / errorHandler
+    participant C as aiController
+    participant S as aiService
+    participant DB as Prisma / PostgreSQL
+    participant AI as Groq
+
+    A->>UI: Ask about center plans, sports or timetable
+    UI->>API: POST /api/v1/ai/chat (message, history)
+    activate API
+    API->>API: validate request
+    alt invalid body
+        API-->>UI: 400 validation error
+    else body valid
+        API->>C: chat(req, res, next)
+        activate C
+        C->>S: chatWithAssistant(data)
+        activate S
+        S->>S: getSportsCenterPromptContext()
+        S->>DB: facility, sport, class, membershipPlan, term and classSchedule.findMany
+        DB-->>S: Live center context
+        S->>S: Build system prompt, supplied history and current message
+        alt Groq API configuration missing
+            S-->>C: 503 AI not configured
+        else provider configured
+            S->>AI: chat.completions.create with configured model
+            activate AI
+            AI-->>S: Generated reply or provider failure
+            deactivate AI
+            alt provider failure
+                S-->>C: 500 AI connection error
+            else reply available
+                S-->>C: reply text or configured empty-reply fallback
+            end
+        end
+        deactivate S
+        C-->>API: response or next(error)
+        deactivate C
+        API-->>UI: 200 reply or mapped error
+    end
+    deactivate API
+    UI-->>A: Display answer or error
+
+%% Request validation schemas (see route evidence): AiChatSchema

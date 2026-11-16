@@ -1,0 +1,92 @@
+%%{init: {"theme":"base","look":"classic","fontFamily":"Arial, sans-serif","themeVariables":{"background":"#FFFFFF","primaryColor":"#FFFFFF","secondaryColor":"#FFFFFF","tertiaryColor":"#FFFFFF","primaryTextColor":"#000000","secondaryTextColor":"#000000","tertiaryTextColor":"#000000","primaryBorderColor":"#000000","secondaryBorderColor":"#000000","tertiaryBorderColor":"#000000","lineColor":"#000000","textColor":"#000000","mainBkg":"#FFFFFF","nodeBorder":"#000000","clusterBkg":"#FFFFFF","clusterBorder":"#000000","edgeLabelBackground":"#FFFFFF","actorBkg":"#FFFFFF","actorBorder":"#000000","actorTextColor":"#000000","actorLineColor":"#000000","signalColor":"#000000","signalTextColor":"#000000","labelBoxBkgColor":"#FFFFFF","labelBoxBorderColor":"#000000","labelTextColor":"#000000","loopTextColor":"#000000","noteBkgColor":"#FFFFFF","noteBorderColor":"#000000","noteTextColor":"#000000","activationBkgColor":"#FFFFFF","activationBorderColor":"#000000","sequenceNumberColor":"#000000","relationColor":"#000000","relationLabelColor":"#000000","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#FFFFFF","fontFamily":"Arial, sans-serif","fontSize":"14px"},"themeCSS":"text,tspan{font-family:Arial,sans-serif!important;font-size:14px!important} .actor-line{stroke:#000000!important;stroke-dasharray:5 4!important} .loopLine:not([style*=\"dasharray\"]){stroke-dasharray:none!important} .messageText,.labelText,.loopText,.noteText{fill:#000000!important} .entityBox,.attributeBoxOdd,.attributeBoxEven{fill:#FFFFFF!important;stroke:#000000!important}","sequence":{"mirrorActors":false,"diagramMarginX":12,"diagramMarginY":12,"actorMargin":36,"width":210,"height":80,"boxMargin":8,"boxTextMargin":6,"messageMargin":28,"noteMargin":8,"bottomMarginAdj":1,"fontFamily":"Arial, sans-serif","actorFontFamily":"Arial, sans-serif","messageFontFamily":"Arial, sans-serif","noteFontFamily":"Arial, sans-serif","actorFontSize":14,"messageFontSize":14,"noteFontSize":14,"wrap":true,"wrapPadding":8,"useMaxWidth":false},"flowchart":{"htmlLabels":false,"curve":"linear","nodeSpacing":20,"rankSpacing":35,"padding":12,"useMaxWidth":false},"er":{"useMaxWidth":false,"minEntityWidth":120,"entityPadding":10}}}%%
+%% STATUS: IMPLEMENTED
+%% SCOPE: Current Member UI registers the nearest term as a whole course, not one session.
+%% SOURCES: FE/src/pages/member/ClassDetailPage.tsx, FE/src/api/enrollments.api.ts
+%% SOURCES: BE/src/modules/enrollments/enrollments.routes.ts, enrollments.controller.ts, course-enrollment.service.ts
+%% SOURCES: BE/src/modules/enrollments/term-membership-policy.ts, enrollment-quota.service.ts
+%% Normal coverage requires lastSession.endTime <= subscription.endDate.
+%% Since startTime < endTime, normal coverage also enforces startTime < subscription.endDate.
+%% EXCEPTION IN CODE: HALF_REMAINING_TERM_V1 permits term coverage beyond subscription.endDate.
+%% No invented repository. DB calls below aggregate actual Prisma reads and writes.
+%% API lane groups real middleware and enrollmentsController to keep the diagram readable.
+%% The eligibility read is skipped when the fresh-session guard throws SESSIONS_CHANGED.
+%% Transaction persistence failures roll back. Post-commit quota errors do not undo bookings.
+sequenceDiagram
+    actor A as Member
+    participant UI as ClassDetailPage
+    participant API as Express middleware / errorHandler
+    participant C as enrollmentsController
+    participant S as courseEnrollmentService
+    participant DB as Prisma / PostgreSQL
+    participant N as notificationsService
+    A->>UI: Confirm whole-course registration
+    UI->>API: POST /api/v1/enrollments/bulk
+    activate API
+    API->>API: authenticate, checkFacilityScope, validate request
+    alt request rejected
+        API-->>UI: 400 / 401 / 403
+    else request accepted
+        API->>C: enrollWholeCourse(req, res, next)
+        activate C
+        C->>DB: resolveMemberProfileId reads own MemberProfile by userId
+        DB-->>C: MemberProfile or null
+        alt own profile missing
+            C-->>API: next(AppError 404)
+        else own profile resolved
+            C->>S: enrollWholeCourse(classId, memberProfileId, options)
+            activate S
+            S->>DB: Read active Member, active Class and future SCHEDULED sessions
+            DB-->>S: Entities and nearest-term session set
+            alt invalid account / class or no future sessions
+                S-->>C: AppError 400 / 404
+            else initial entities valid
+                S->>DB: Begin transaction, lock subscription, quota, member-class and schedules
+                S->>DB: Reread session status and start time under locks
+                DB-->>S: Fresh sessions
+                opt fresh sessions unchanged
+                    S->>S: evaluateCourseEligibility
+                S->>DB: Read entitlement, terms, distinct-class quota, penalties, seats and conflicts
+                DB-->>S: Eligibility inputs and valid grant source
+                S->>S: Require final session end <= plan end, or verified term grant
+                S->>S: Enforce Premium, registration window, capacity, penalty and travel checks
+                end
+                alt stale sessions or any blocker
+                    S->>DB: Roll back transaction
+                    S-->>C: 409 COURSE_ENROLLMENT_FAILED with details
+                else all target sessions eligible
+                    S->>DB: Create / reactivate BOOKED rows with subscriptionId and grant, optionally save health notes
+                    DB-->>S: BOOKED / REACTIVATED / ALREADY_BOOKED results
+                    S->>DB: Commit transaction
+                end
+                opt committed and enrolledNow greater than zero
+                    S->>N: createNotification(ENROLLMENT_CONFIRMED)
+                    activate N
+                    N-->>S: Best-effort promise
+                    deactivate N
+                end
+                opt transaction committed
+                    S->>S: Read updated concurrent-class quota
+                    S->>DB: Read effective plan and distinct future booked classes
+                    DB-->>S: Updated quota
+                    S-->>C: Summary, quota and session results
+                end
+            end
+            deactivate S
+            C-->>API: sendCreated or next(error)
+        end
+        deactivate C
+        API-->>UI: 201 registration or mapped error
+    end
+    deactivate API
+    UI-->>A: Show confirmation / blockers and refresh successful registration data
+%% NESTING_EXCEPTION: independent request, profile, entity and locked eligibility guards require four frames.
+%% Normal positive-duration sessions satisfy startTime < endDate because endTime <= endDate.
+%% HALF_REMAINING_TERM_V1 permits a verified term grant beyond subscription end, requiring business-spec review.
+%% Already BOOKED / COMPLETED sessions are retained, cancelled rows are reactivated rather than duplicated.
+%% Guard groups short-circuit. An initial or stale-session error skips subsequent queries and persistence.
+%% Persistence failure rolls back. Post-commit quota failure cannot undo committed bookings.
+
+%% IMPLEMENTATION_GAP: bulk eligibility does not reuse assertCanBook removal-report / facility-member-limit checks.
+%% IMPLEMENTATION_GAP: conflict candidate query omits travel-buffer neighbors just outside the whole-course time span.
+
+%% Request validation schemas (see route evidence): EnrollWholeCourseSchema
