@@ -2,6 +2,7 @@ import { prisma } from "../../config/prisma.js";
 import type { Prisma } from "@prisma/client";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
+import { termStatusWhere, withTermStatus } from "./term-status.js";
 
 export async function createTerm(data: any) {
   const existing = await prisma.term.findUnique({
@@ -16,7 +17,7 @@ export async function createTerm(data: any) {
   const registrationStartDate = new Date(data.registrationStartDate);
   const registrationEndDate = new Date(data.registrationEndDate);
 
-  return prisma.term.create({
+  const term = await prisma.term.create({
     data: {
       ...data,
       facilityId: data.facilityId || null,
@@ -30,6 +31,7 @@ export async function createTerm(data: any) {
       _count: { select: { schedules: true, patterns: true } },
     },
   });
+  return withTermStatus(term, new Date());
 }
 
 export async function listTerms(query: any) {
@@ -50,11 +52,7 @@ export async function listTerms(query: any) {
         AND: [
           facilityWhere,
           {
-            OR: [
-              { status: "IN_PROGRESS" },
-              { status: "OPEN_REGISTRATION" },
-              { status: { not: "CLOSED" }, startDate: { lte: now }, endDate: { gte: now } },
-            ],
+            OR: [termStatusWhere("IN_PROGRESS", now), termStatusWhere("OPEN_REGISTRATION", now)],
           },
         ],
       },
@@ -64,11 +62,11 @@ export async function listTerms(query: any) {
         _count: { select: { schedules: true, patterns: true } },
       },
     });
-    return { term: currentTerm };
+    return { term: currentTerm && withTermStatus(currentTerm, now) };
   }
 
   const where: any = {};
-  if (query.status) where.status = query.status;
+  if (query.status) where.AND = [termStatusWhere(query.status, now)];
   if (query.search) {
     where.OR = [
       { name: { contains: query.search, mode: "insensitive" } },
@@ -110,7 +108,7 @@ export async function listTerms(query: any) {
     }),
   ]);
 
-  return { terms, pagination: buildPaginationMeta(total, page, limit) };
+  return { terms: terms.map((term) => withTermStatus(term, now)), pagination: buildPaginationMeta(total, page, limit) };
 }
 
 export async function getTermById(id: string) {
@@ -128,11 +126,12 @@ export async function getTermById(id: string) {
     },
   });
   if (!term) throw new AppError("Không tìm thấy kỳ học", 404);
-  return term;
+  return withTermStatus(term, new Date());
 }
 
 export async function getCurrentTerm(facilityId?: string) {
   const now = new Date();
+  const currentStatus = { OR: [termStatusWhere("IN_PROGRESS", now), termStatusWhere("OPEN_REGISTRATION", now)] };
   const facilityWhere = facilityId
     ? { OR: [{ facilityId }, { facilityId: null }] }
     : {};
@@ -141,11 +140,7 @@ export async function getCurrentTerm(facilityId?: string) {
     const facilityTerm = await prisma.term.findFirst({
       where: {
         facilityId,
-        OR: [
-          { status: "IN_PROGRESS" },
-          { status: "OPEN_REGISTRATION" },
-          { status: { not: "CLOSED" }, startDate: { lte: now }, endDate: { gte: now } },
-        ],
+        ...currentStatus,
       },
       orderBy: { startDate: "asc" },
       include: {
@@ -153,21 +148,12 @@ export async function getCurrentTerm(facilityId?: string) {
         _count: { select: { schedules: true, patterns: true } },
       },
     });
-    if (facilityTerm) return facilityTerm;
+    if (facilityTerm) return withTermStatus(facilityTerm, now);
   }
 
   const currentTerm = await prisma.term.findFirst({
     where: {
-      AND: [
-        facilityWhere,
-        {
-          OR: [
-            { status: "IN_PROGRESS" },
-            { status: "OPEN_REGISTRATION" },
-            { status: { not: "CLOSED" }, startDate: { lte: now }, endDate: { gte: now } },
-          ],
-        },
-      ],
+      AND: [facilityWhere, currentStatus],
     },
     orderBy: [
       // Ưu tiên kỳ toàn hệ thống (facilityId = null) khi không có facilityId cụ thể
@@ -179,7 +165,7 @@ export async function getCurrentTerm(facilityId?: string) {
       _count: { select: { schedules: true, patterns: true } },
     },
   });
-  return currentTerm;
+  return currentTerm && withTermStatus(currentTerm, now);
 }
 
 async function updateTermInternal(id: string, data: any, managerFacilityId?: string) {
@@ -207,7 +193,9 @@ async function updateTermInternal(id: string, data: any, managerFacilityId?: str
   }
 
   const nextStatuses: Record<string, string[]> = { PLANNING: ["OPEN_REGISTRATION"], OPEN_REGISTRATION: ["IN_PROGRESS", "CLOSED"], IN_PROGRESS: ["CLOSED"], CLOSED: [] };
-  if (data.status && data.status !== term.status && !nextStatuses[term.status]?.includes(data.status))
+  const scheduledStatus = withTermStatus(term, new Date()).status;
+  const canClose = data.status === "CLOSED" && scheduledStatus !== "PLANNING";
+  if (data.status && data.status !== term.status && !canClose && !nextStatuses[term.status]?.includes(data.status))
     throw new AppError("Không thể chuyển trạng thái kỳ học theo chiều ngược hoặc bỏ qua bước mở đăng ký.", 409);
   const merged = { ...term, ...data };
   const start = new Date(merged.startDate), end = new Date(merged.endDate);
@@ -245,7 +233,7 @@ async function updateTermInternal(id: string, data: any, managerFacilityId?: str
   if (data.registrationStartDate) updateData.registrationStartDate = new Date(data.registrationStartDate);
   if (data.registrationEndDate) updateData.registrationEndDate = new Date(data.registrationEndDate);
 
-  return prisma.term.update({
+  const updated = await prisma.term.update({
     where: { id },
     data: updateData,
     include: {
@@ -253,6 +241,7 @@ async function updateTermInternal(id: string, data: any, managerFacilityId?: str
       _count: { select: { schedules: true, patterns: true } },
     },
   });
+  return withTermStatus(updated, new Date());
 }
 
 export async function deleteTerm(id: string, managerFacilityId?: string) {

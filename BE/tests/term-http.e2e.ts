@@ -43,7 +43,6 @@ async function runHttpTest() {
         endDate,
         registrationStartDate: regStartDate,
         registrationEndDate: regEndDate,
-        status: "PLANNING",
         description: "Kiểm thử tạo và mở kỳ học qua HTTP API",
       }),
     });
@@ -51,6 +50,7 @@ async function runHttpTest() {
     const createJson = await createRes.json() as any;
     assert.equal(createRes.status, 201, `POST /terms thất bại: ${JSON.stringify(createJson)}`);
     termId = createJson.data.id;
+    assert.equal(createJson.data.status, "OPEN_REGISTRATION");
     console.log(`   ✓ POST /terms thành công (201 Created), ID: ${termId}`);
 
     // 2. PATCH /terms/:id - Mở kỳ học (chuyển sang OPEN_REGISTRATION)
@@ -108,12 +108,10 @@ async function runHttpTest() {
       await fetch(`${BASE_URL}/terms/${termId}`, { method: "DELETE", headers }).catch(() => {});
     }
     throw err;
-  } finally {
-    process.exit(0);
   }
 }
 
-runHttpTest().catch((err) => {
+runHttpTest().then(() => process.exit(0)).catch((err) => {
   console.error("❌ Lỗi HTTP test:", err);
   process.exit(1);
 });

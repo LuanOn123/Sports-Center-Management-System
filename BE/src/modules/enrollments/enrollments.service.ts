@@ -18,6 +18,7 @@ import {
 import { checkFacilityMemberLimit } from "../facilities/facility-limits.service.js";
 import { readTermMembershipGrant, termMembershipCovers } from "./term-membership-policy.js";
 import { ensureMemberCourseGoal } from "../attendance/goal-evaluation.service.js";
+import { termRegistrationBlocker } from "../terms/term-status.js";
 
 export type BookableSchedule = {
   id: string;
@@ -123,37 +124,8 @@ export async function assertCanBook(
   if (termId) {
     const term = await tx.term.findUnique({ where: { id: termId } });
     if (term) {
-      const now = new Date();
-      if (term.status === "PLANNING") {
-        throw new AppError(
-          `Kỳ học "${term.name}" đang trong giai đoạn lập kế hoạch, chưa mở đăng ký.`,
-          403,
-          { code: "TERM_REGISTRATION_NOT_OPEN", termId: term.id }
-        );
-      }
-      if (term.status === "CLOSED") {
-        throw new AppError(
-          `Kỳ học "${term.name}" đã kết thúc, không thể đăng ký thêm.`,
-          403,
-          { code: "TERM_CLOSED", termId: term.id }
-        );
-      }
-      if (now < term.registrationStartDate) {
-        const openDate = term.registrationStartDate.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
-        throw new AppError(
-          `Kỳ học "${term.name}" chưa đến thời gian đăng ký. Thời gian mở đăng ký: ${openDate}.`,
-          403,
-          { code: "TERM_REGISTRATION_NOT_STARTED", termId: term.id, registrationStartDate: term.registrationStartDate }
-        );
-      }
-      if (now > term.registrationEndDate) {
-        const closeDate = term.registrationEndDate.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
-        throw new AppError(
-          `Kỳ học "${term.name}" đã hết hạn đăng ký vào ngày ${closeDate}.`,
-          403,
-          { code: "TERM_REGISTRATION_CLOSED", termId: term.id, registrationEndDate: term.registrationEndDate }
-        );
-      }
+      const blocker = termRegistrationBlocker(term, new Date());
+      if (blocker) throw new AppError(blocker.message, 403, { code: blocker.code, ...blocker.details });
     }
   }
 

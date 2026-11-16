@@ -31,33 +31,32 @@ export function MemberTermBanner({
   const now = new Date();
   const start = new Date(term.registrationStartDate);
   const end = new Date(term.registrationEndDate);
-  const open =
-    !["PLANNING", "CLOSED"].includes(term.status) && now >= start && now <= end;
+  const closed = term.status === "CLOSED";
+  const upcoming = !closed && now < start;
+  const open = !closed && now >= start && now <= end;
   const days = Math.max(
     0,
     Math.ceil((end.getTime() - now.getTime()) / 86400000),
   );
   const status =
-    term.status === "CLOSED"
+    closed
       ? "Đã kết thúc"
-      : term.status === "PLANNING"
-        ? "Đang chuẩn bị"
-        : now < start
-          ? "Sắp mở đăng ký"
-          : open
-            ? "Đang mở đăng ký"
-            : "Đã đóng đăng ký";
+      : upcoming
+        ? "Sắp mở đăng ký"
+        : open
+          ? "Đang mở đăng ký"
+          : "Đã đóng đăng ký";
   const description =
-    term.status === "CLOSED"
+    closed
       ? `Kỳ học kết thúc ngày ${fmtDate(term.endDate)}.`
-      : term.status === "PLANNING" || now < start
+      : upcoming
         ? `Dự kiến mở đăng ký từ ${fmtDate(start, true)} đến ${fmtDate(end)}.`
         : open
           ? `Đăng ký đến ${fmtDate(end)}${days > 0 ? ` · còn ${days} ngày` : " · hạn đăng ký hôm nay"}. Chọn lớp phù hợp với lịch tập của bạn.`
           : `Đăng ký đã đóng ngày ${fmtDate(end)}.${term.status === "IN_PROGRESS" ? " Bạn vẫn có thể theo dõi các lớp đã đăng ký." : ""}`;
   const Icon = open
     ? CheckCircle2
-    : term.status === "PLANNING" || now < start
+    : upcoming
       ? Clock
       : CalendarDays;
   return (

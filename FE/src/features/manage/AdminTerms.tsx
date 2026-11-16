@@ -10,7 +10,7 @@ import type { Term, TermStatus } from "../../shared/generated";
 import "./admin.css";
 
 const STATUS_LABELS: Record<TermStatus, string> = {
-  PLANNING: "Lập kế hoạch",
+  PLANNING: "Chưa bắt đầu",
   OPEN_REGISTRATION: "Mở đăng ký",
   IN_PROGRESS: "Đang diễn ra",
   CLOSED: "Đã đóng",
@@ -34,7 +34,6 @@ type TermFormData = {
   endDate: string;
   registrationStartDate: string;
   registrationEndDate: string;
-  status?: TermStatus;
   description?: string | null;
   facilityId?: string | null;
 };
@@ -90,7 +89,6 @@ function TermForm({
   const [endDate, setEndDate] = useState(toDateInput(initial?.endDate));
   const [regStart, setRegStart] = useState(toDateInput(initial?.registrationStartDate, true));
   const [regEnd, setRegEnd] = useState(toDateInput(initial?.registrationEndDate));
-  const [status, setStatus] = useState<TermStatus>(initial?.status ?? "PLANNING");
   const [facilityId, setFacilityId] = useState<string>(initial?.facilityId ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [localError, setLocalError] = useState<string>("");
@@ -125,7 +123,6 @@ function TermForm({
       endDate: toISODate(endDate, initial?.endDate, true),
       registrationStartDate,
       registrationEndDate,
-      status,
       description: description.trim() || undefined,
       ...(!isManager && { facilityId: facilityId || null }),
     });
@@ -188,17 +185,6 @@ function TermForm({
           Đóng đăng ký vào *
           <input type="date" required value={regEnd} min={regStart.slice(0, 10)} onChange={(e) => setRegEnd(e.target.value)} />
         </label>
-        {/* Status (edit only) */}
-        {isEditing && (
-          <label>
-            Trạng thái
-            <select value={status} onChange={(e) => setStatus(e.target.value as TermStatus)}>
-              {(Object.entries(STATUS_LABELS) as [TermStatus, string][]).map(([v, l]) => (
-                <option key={v} value={v}>{l}</option>
-              ))}
-            </select>
-          </label>
-        )}
         {/* Facility assignment */}
         <label className="wide">
           Áp dụng cho Cơ sở (Chi nhánh)
@@ -379,7 +365,7 @@ export function AdminTerms({ role = "ADMIN" }: { role?: "ADMIN" | "MANAGER" } = 
           <div style={{ background: "var(--surface)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
             <strong>1. Tạo kỳ học & Mở đăng ký sớm</strong>
             <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 12 }}>
-              Đặt thời điểm mở đăng ký trước ngày bắt đầu và chuyển trạng thái sang <code>Mở đăng ký</code> để học viên đặt chỗ trước.
+              Cổng đăng ký tự mở vào giờ đã đặt. Chọn giờ mở trước ngày bắt đầu kỳ nếu muốn học viên đặt chỗ sớm.
             </p>
           </div>
           <div style={{ background: "var(--surface)", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)" }}>
