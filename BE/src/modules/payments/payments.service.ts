@@ -1,6 +1,7 @@
 import { revokeSubscriptionBookings } from "../subscriptions/entitlement.service.js";
 import { lockMemberSubscription } from "../../utils/dbLocks.js";
 import { prisma } from "../../config/prisma.js";
+import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { createNotification } from "../notifications/notifications.service.js";
@@ -182,22 +183,27 @@ export async function updatePaymentStatus(
   if (status === "REFUNDED") {
     setImmediate(async () => {
       try {
-        const mem = await prisma.memberProfile.findUnique({
-          where: { id: payment.memberId },
-          select: { userId: true },
-        });
-        if (mem?.userId) {
-          await createNotification(
-            mem.userId,
-            "PAYMENT_REFUNDED",
-            "Hoàn tiền thành công",
-            `Trung tâm đã hoàn tất chi trả ${Number(updateData.refundedAmount).toLocaleString("vi-VN")}đ cho bạn (Mã giao dịch #${payment.id.slice(0, 8)}). Mã biên nhận: ${confirmation?.reference}.`,
-            {
-              reason: confirmation?.reason,
-              metadata: { paymentId: payment.id, reference: confirmation?.reference },
+        await requestContext.run(
+          { ...requestContext.getStore(), transaction: undefined },
+          async () => {
+            const mem = await prisma.memberProfile.findUnique({
+              where: { id: payment.memberId },
+              select: { userId: true },
+            });
+            if (mem?.userId) {
+              await createNotification(
+                mem.userId,
+                "PAYMENT_REFUNDED",
+                "Hoàn tiền thành công",
+                `Trung tâm đã hoàn tất chi trả ${Number(updateData.refundedAmount).toLocaleString("vi-VN")}đ cho bạn (Mã giao dịch #${payment.id.slice(0, 8)}). Mã biên nhận: ${confirmation?.reference}.`,
+                {
+                  reason: confirmation?.reason,
+                  metadata: { paymentId: payment.id, reference: confirmation?.reference },
+                }
+              );
             }
-          );
-        }
+          }
+        );
       } catch (e) {
         console.error("Failed to notify member of refund:", e);
       }
