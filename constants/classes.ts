@@ -2,6 +2,7 @@
 // Nhãn / tham số hiển thị lớp học (khớp FE web: StatusBadge REGULAR / PREMIUM)
 
 import type { AreaType, ClassType } from '../lib/types';
+import { FILTER_TEXT } from './filters';
 import { Colors } from './theme';
 
 export const CLASS_TYPE_LABEL: Record<ClassType, string> = {
@@ -27,16 +28,22 @@ export const CLASS_AREA_LABEL: Record<AreaType, string> = {
 /** Bộ lọc khu vực ở Khám phá (undefined = tất cả) */
 export const CLASS_AREA_FILTERS: (AreaType | undefined)[] = [undefined, 'INDOOR', 'OUTDOOR', 'POOL'];
 
-/** Bảng "Bộ lọc" của Khám phá: khu vực + kỳ học (hạng lớp và môn tập có hàng chip riêng trên màn hình) */
+/**
+ * Bảng "Bộ lọc" của Khám phá: môn tập, hạng lớp, khu vực và kỳ học (web: bốn ô chọn cạnh ô tìm kiếm).
+ * Màn chính chỉ có ô tìm kiếm + nút "Bộ lọc"; bộ lọc đang bật hiện thành chip gỡ được (components/shared/ActiveFilterChips).
+ * Chữ chung của mọi bảng lọc (nút, "Tất cả", "Xóa bộ lọc", nhãn gỡ chip) lấy từ FILTER_TEXT.
+ */
 export const CLASS_FILTER_TEXT = {
-  button: 'Bộ lọc',
+  ...FILTER_TEXT,
   sheetTitle: 'Bộ lọc lớp học',
+  sport: 'Môn tập',
+  type: 'Hạng lớp',
   area: 'Khu vực tập',
   term: 'Kỳ học',
   currentTerm: 'Kỳ hiện tại',
-  all: 'Tất cả',
-  done: 'Xong',
-  clear: 'Xóa bộ lọc',
+  /** Nút chính của bảng lọc: số lớp đang hiện (cập nhật ngay khi chọn) */
+  apply: (count: number) => `Xem ${count} lớp`,
+  noResult: 'Không có lớp phù hợp',
   noTerms: 'Cơ sở này chưa có kỳ học nào.',
 } as const;
 
@@ -64,6 +71,16 @@ export const SESSION_TONE_COLOR = {
 
 /** Còn ít chỗ hơn hoặc bằng số này thì báo "Sắp kín" */
 export const LOW_SLOT_THRESHOLD = 3;
+
+/**
+ * "Các buổi của khóa" ở chi tiết lớp (components/classes/CourseSessionList): hiện gọn trong khung vừa đúng `visibleRows` buổi,
+ * các buổi còn lại kéo xuống ngay trong khung. `estimatedRowHeight` (px) chỉ dùng tới khi đo được chiều cao thật của các dòng.
+ */
+export const COURSE_SESSION_LIST = {
+  visibleRows: 5,
+  estimatedRowHeight: 64,
+  moreHint: (total: number) => `Kéo xuống trong khung để xem đủ ${total} buổi`,
+} as const;
 
 /**
  * Lớp của tôi (web MyClassesPage): hội viên không tự hủy hay đổi buổi — mỗi lớp chỉ có "Xem lớp",

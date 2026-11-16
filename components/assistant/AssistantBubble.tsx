@@ -90,7 +90,7 @@ export function AssistantBubble() {
             onAccessibilityTap={open}
             style={[styles.circle, WEB_DRAG_STYLE]}
           >
-            {pending ? <ActivityIndicator size="small" color={Colors.text.inverse} /> : <Icon name="auto-awesome" size={26} color={Colors.text.inverse} />}
+            {pending ? <ActivityIndicator size="small" color={Colors.text.inverse} /> : <Icon name="smart-toy" size={26} color={Colors.text.inverse} />}
           </View>
           {unread ? <View style={styles.unreadDot} /> : null}
           <TouchableOpacity

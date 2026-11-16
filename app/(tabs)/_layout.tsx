@@ -65,10 +65,12 @@ export default function TabLayout() {
           }}
           options={{
             title: tab.title,
-            // Màn con (Hồ sơ, Thông báo…) vẫn nằm trong Tabs để giữ thanh tab nhưng không có nút trên thanh.
+            // Tab không có nút trên thanh (Lớp của tôi, Điểm danh của hội viên…) vẫn nằm trong Tabs.
             // Expo Router 58 đổi `href: null` thành `hidden: true` = KHÔNG điều hướng tới được (tự chuyển về Trang chủ),
             // nên thu gọn khung của nút (display: none): màn vẫn mở được qua router.push mà không chiếm chỗ trên thanh tab.
             ...(tab.visible ? {} : { tabBarItemStyle: { display: 'none' as const } }),
+            // Tab chứa Stack bên trong (Tài khoản): rời tab thì về màn đầu, quay lại luôn thấy menu thay vì màn con đang mở dở
+            ...(tab.popToTopOnBlur ? { popToTopOnBlur: true } : {}),
             tabBarIcon: ({ color }) =>
               tab.isChat ? (
                 <ChatTabIcon color={color} />

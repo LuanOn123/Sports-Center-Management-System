@@ -11,6 +11,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AlertModal, AppLoadingScreen, NoFacilityScreen } from '../components';
 import { AssistantBubble } from '../components/assistant';
 import { ROUTES, canAccessRoute } from '../navigation/routes';
+import { SWIPE_BACK_OPTIONS } from '../navigation/stackOptions';
 import { useAppStateFocus } from '../hooks/shared/useAppStateFocus';
 
 const queryClient = new QueryClient({
@@ -58,7 +59,8 @@ function RootLayoutContent() {
   return (
     <>
       <AuthGuard />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg.primary } }}>
+      {/* Vuốt từ trái sang phải ở bất kỳ đâu để quay lại trang trước (SWIPE_BACK_OPTIONS dùng chung cho mọi Stack, kể cả Stack lồng nhau) */}
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.bg.primary }, ...SWIPE_BACK_OPTIONS }}>
         <Stack.Protected guard={!isAuthenticated}>
           <Stack.Screen name="auth" />
         </Stack.Protected>
@@ -67,6 +69,7 @@ function RootLayoutContent() {
           <Stack.Screen name="classes/[id]" />
           <Stack.Screen name="schedule/[scheduleId]" />
           <Stack.Screen name="chat" />
+          <Stack.Screen name="notifications" />
           <Stack.Screen name="assistant" options={{ animation: 'slide_from_bottom' }} />
         </Stack.Protected>
         <Stack.Protected guard={isAuthenticated && user?.role === 'MEMBER'}>

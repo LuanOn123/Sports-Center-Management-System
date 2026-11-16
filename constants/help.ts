@@ -5,7 +5,7 @@
 // Mỗi bước phải khớp luồng thật của app (tên tab, nút, thời gian mở điểm danh) — đổi màn hình thì sửa chữ ở đây.
 
 /** Màn mở bằng nút "Mở chức năng" của một chủ đề (đường dẫn ở navigation/helpConfig) */
-export type HelpTarget = 'classes' | 'membershipPlans' | 'profile' | 'myAttendance' | 'schedule' | 'coachAttendance';
+export type HelpTarget = 'classes' | 'coachClasses' | 'membershipPlans' | 'profile' | 'myAttendance' | 'schedule' | 'coachAttendance';
 
 export interface HelpGuide {
   id: string;
@@ -23,7 +23,7 @@ export const MEMBER_GUIDES: readonly HelpGuide[] = [
     steps: [
       'Mở tab Khám phá, tìm lớp theo bộ môn, hạng lớp, khu vực hoặc kỳ học.',
       'Mở chi tiết lớp, kiểm tra điều kiện gói và các buổi của khóa trước khi đăng ký.',
-      'Theo dõi kết quả trong tab Lịch học (Lịch học và Lớp của tôi).',
+      'Theo dõi kết quả trong tab Lịch tập (Lịch tập và Lớp của tôi).',
     ],
   },
   {
@@ -43,7 +43,7 @@ export const MEMBER_GUIDES: readonly HelpGuide[] = [
     steps: [
       'Vào Tài khoản → Thông tin cá nhân & bảo mật, điền mục tiêu và trình độ tập luyện rồi lưu hồ sơ.',
       'Cập nhật sở thích tập luyện để huấn luyện viên hiểu nhu cầu của bạn.',
-      'Xem các buổi đã đăng ký ở tab Lịch học.',
+      'Xem các buổi đã đăng ký ở tab Lịch tập.',
     ],
   },
   {
@@ -72,7 +72,7 @@ export const COACH_GUIDES: readonly HelpGuide[] = [
   {
     id: 'classes',
     title: 'Theo dõi lớp phụ trách',
-    target: 'classes',
+    target: 'coachClasses',
     steps: [
       'Vào Tài khoản → Lớp phụ trách để xem các lớp được phân công.',
       'Bấm Chi tiết lớp để xem buổi dạy sắp tới, hoặc Xem lịch dạy để lọc lịch theo lớp đó.',

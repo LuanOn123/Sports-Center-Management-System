@@ -23,6 +23,8 @@ export const joinWaitlist = (scheduleId: string) => api.post<WaitlistEntry>('/wa
 export const leaveWaitlist = (id: string) => api.delete(`/waitlist/${encodeURIComponent(id)}`);
 export const getMyVisits = (signal?: AbortSignal) => allPages<FacilityVisit>('/facility-visits/my', {}, signal);
 export const checkInFacility = () => api.post<FacilityVisit>('/facility-visits/check-in', { method: 'QR' });
+/** Lượt vào cửa mới nhất của hội viên (mọi cơ sở, mới nhất trước) — trang 1 cỡ 1; null khi chưa có lượt nào */
+export const getLatestVisit = async () => (await api.get<FacilityVisit[]>('/facility-visits/my', { page: '1', limit: '1' })).data[0] ?? null;
 export const getMyIssues = (signal?: AbortSignal) => allPages<SupportIssue>('/issues', {}, signal);
 export const createIssue = (body: { title: string; description: string }) => api.post<SupportIssue>('/issues', body);
 export const deleteIssue = (id: string) => api.delete(`/issues/${encodeURIComponent(id)}`);

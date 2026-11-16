@@ -6,27 +6,26 @@
 // Chỉ một vòng tải: chờ đủ dữ liệu rồi hiện cả trang (lớp từ Khám phá hiện ngay vì đã có trong cache).
 
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon } from '../shared/Icon';
-import { WaitlistAction } from '../member/WaitlistAction';
 import { EnrollConfirmSheet } from '../member/EnrollConfirmSheet';
 import { WorkflowScreen, WorkflowCard, WorkflowText, WorkflowButton, WorkflowState } from '../shared/WorkflowScreen';
-import { StatusBadge } from '../ui';
 import { TermNoticeCard } from './TermNoticeCard';
 import { MembershipCoverageNotice } from './MembershipCoverageNotice';
 import { EnrollmentBlockers } from './EnrollmentBlockers';
 import { ClassGoalCard } from './ClassGoalCard';
+import { CourseSessionList } from './CourseSessionList';
 import { CoachCard } from './CoachCard';
 import { CoachProfileSheet } from './CoachProfileSheet';
 import { WrongFacilityCard } from '../shared/WrongFacilityCard';
 import { useClassDetail } from '../../hooks/shared/useClassDetail';
-import { CLASS_TYPE_COLOR, CLASS_TYPE_LABEL, LOW_SLOT_THRESHOLD, SESSION_TONE_COLOR } from '../../constants/classes';
+import { CLASS_TYPE_COLOR, CLASS_TYPE_LABEL, LOW_SLOT_THRESHOLD } from '../../constants/classes';
 import { ENROLL_TEXT, type EnrollAction } from '../../constants/enrollment';
 import { Colors } from '../../constants/theme';
-import { canJoinSessionWaitlist, courseAvailability, enrollSummaryOf, formatSlot, sessionStatusLabel, type AvailabilityTone } from '../../lib/classPlan';
+import { courseAvailability, enrollSummaryOf, formatSlot, type AvailabilityTone } from '../../lib/classPlan';
 import { blockerGuidance, guidanceActions } from '../../lib/enrollmentBlockers';
-import { formatDate, formatTime, formatWeekdayDate } from '../../lib/format';
+import { formatDate, formatTime } from '../../lib/format';
 import { ROUTES } from '../../navigation/routes';
 
 const TONE_COLOR: Record<AvailabilityTone, string> = {
@@ -60,7 +59,8 @@ export function ClassDetailView({ id }: { id: string }) {
 
   const goToOtherClasses = () => {
     if (router.canGoBack()) router.back();
-    else router.replace(ROUTES.classes);
+    // HLV không có tab Khám phá: danh sách lớp của họ là "Lớp phụ trách"
+    else router.replace(d.isCoach ? ROUTES.coachClasses : ROUTES.classes);
   };
 
   // Gỡ vướng: việc về gói → màn Gói thành viên; quota đầy → tab Lịch, phần "Lớp của tôi" (web: blockerActions)
@@ -167,32 +167,14 @@ export function ClassDetailView({ id }: { id: string }) {
           )}
 
           {/* 3. Các buổi của khóa — CHỈ XEM (đăng ký theo cả khóa ở nút dưới đáy, giống web).
-              Thao tác duy nhất theo buổi: vào danh sách chờ khi buổi đã hết chỗ. */}
+              Hiện gọn trong khung 5 buổi, kéo xuống để xem tiếp (components/classes/CourseSessionList). */}
           {d.sessions.length > 0 && <SectionTitle icon="event">{`Các buổi của khóa (${d.sessions.length})`}</SectionTitle>}
           {d.sessions.length > 0 && (
-            <View className="bg-bg-surface rounded-lg border border-border overflow-hidden">
-              {d.sessions.map((session, index) => {
-                const label = sessionStatusLabel(session);
-                const booked = session.myEnrollmentStatus === 'BOOKED';
-                const row = (
-                  <View className={index < d.sessions.length - 1 ? 'px-lg py-md border-b border-divider' : 'px-lg py-md'}>
-                    <View className="flex-row items-center gap-md">
-                      <View className="flex-1">
-                        <Text className="text-sm text-text-primary font-bevn-semibold">{formatWeekdayDate(session.startTime)} · {formatTime(session.startTime)}–{formatTime(session.endTime)}</Text>
-                        <Text className="text-xs text-text-muted font-bevn-regular mt-0.5" numberOfLines={1}>
-                          {session.room?.name || 'Phòng tập'}{session.isFull ? '' : ` · còn ${session.remainingSlots}/${course?.capacity ?? value.capacity} chỗ`}
-                        </Text>
-                      </View>
-                      <StatusBadge label={label.text} color={SESSION_TONE_COLOR[label.tone]} />
-                    </View>
-                    {canJoinSessionWaitlist(session) && <View className="mt-sm"><WaitlistAction scheduleId={session.id} /></View>}
-                  </View>
-                );
-                return booked ? (
-                  <TouchableOpacity key={session.id} onPress={() => router.push(ROUTES.scheduleDetail(session.id))} activeOpacity={0.7}>{row}</TouchableOpacity>
-                ) : <View key={session.id}>{row}</View>;
-              })}
-            </View>
+            <CourseSessionList
+              sessions={d.sessions}
+              capacity={course?.capacity ?? value.capacity}
+              onOpenSession={(sessionId) => router.push(ROUTES.scheduleDetail(sessionId))}
+            />
           )}
         </>}
 

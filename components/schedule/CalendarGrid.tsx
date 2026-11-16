@@ -56,7 +56,7 @@ interface CalendarGridProps {
 
 export function CalendarGrid({ weeks, selected, counts, isInPeriod, onSelect }: CalendarGridProps) {
   return (
-    <View className="px-xl pt-sm pb-sm mt-md border-t border-b border-divider">
+    <View className="pt-md border-t border-divider">
       <View className="flex-row mb-xs">
         {WEEKDAY_SHORT_FROM_MONDAY.map((label) => (
           <Text key={label} className="flex-1 text-center text-xs text-text-muted font-bevn-semibold uppercase">{label}</Text>

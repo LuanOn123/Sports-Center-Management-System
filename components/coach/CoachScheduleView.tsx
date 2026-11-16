@@ -1,18 +1,20 @@
 // components/coach/CoachScheduleView.tsx
 // Màn Lịch dạy của HLV (web: CoachWorkspace mode "schedule") — logic ở hooks/coach/useCoachScheduleScreen.
 // Khung lịch Tuần / Tháng là components/schedule/ScheduleCalendar, dùng chung với tab Lịch của Hội viên.
+// Lọc lớp + trạng thái: MỘT hàng "Bộ lọc" trên danh sách buổi (mở bảng lọc); bộ lọc đang bật hiện thành chip gỡ được.
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenHeader } from '../shared/ScreenHeader';
-import { FilterChip } from '../shared/FilterChip';
-import { ChipRow } from '../shared/ChipRow';
+import { ActiveFilterChips } from '../shared/ActiveFilterChips';
+import { FilterBar } from '../shared/FilterBar';
 import { ScheduleCalendar } from '../schedule/ScheduleCalendar';
 import { ScheduleEventCard } from '../schedule/ScheduleEventCard';
+import { ScheduleFilterSheet } from './ScheduleFilterSheet';
 import { useCoachScheduleScreen } from '../../hooks/coach/useCoachScheduleScreen';
 import { CALENDAR_TEXT } from '../../constants/calendar';
-import { SCHEDULE_STATUSES, SCHEDULE_STATUS_COLOR, SCHEDULE_STATUS_LABEL } from '../../constants/schedule';
+import { SCHEDULE_FILTER_TEXT, SCHEDULE_STATUS_COLOR, SCHEDULE_STATUS_LABEL } from '../../constants/schedule';
 import { ROUTES } from '../../navigation/routes';
 import { ApiError } from '../../lib/api';
 
@@ -25,26 +27,24 @@ interface CoachScheduleViewProps {
 export function CoachScheduleView({ coachId, initialClassId }: CoachScheduleViewProps) {
   const router = useRouter();
   const screen = useCoachScheduleScreen(coachId, initialClassId);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   // Tab giữ nguyên params → xoá classId sau khi đã áp bộ lọc, để lần sau chọn lại đúng lớp đó thì param đổi giá trị và bộ lọc áp lại
   useEffect(() => {
     if (initialClassId) router.setParams({ classId: '' });
   }, [initialClassId, router]);
 
+  // Khoảng cách tới danh sách luôn 16px: hàng chip tự chừa 8px dưới chân nên khi có chip chỉ thêm 8px
+  const hasChips = screen.activeFilters.length > 0;
   const filters = (
-    <View className="-mx-xl mb-md">
-      <ChipRow>
-        <FilterChip label="Tất cả lớp của tôi" active={!screen.classFilter} onPress={() => screen.setClassFilter(null)} />
-        {screen.classes.map((c) => (
-          <FilterChip key={c.id} label={c.name} active={screen.classFilter === c.id} onPress={() => screen.setClassFilter(c.id)} />
-        ))}
-      </ChipRow>
-      <ChipRow>
-        <FilterChip label="Tất cả trạng thái" active={!screen.statusFilter} onPress={() => screen.setStatusFilter(null)} />
-        {SCHEDULE_STATUSES.map((s) => (
-          <FilterChip key={s} label={SCHEDULE_STATUS_LABEL[s]} active={screen.statusFilter === s} onPress={() => screen.setStatusFilter(s)} />
-        ))}
-      </ChipRow>
+    <View className={hasChips ? 'mb-sm' : 'mb-md'}>
+      <FilterBar hint={SCHEDULE_FILTER_TEXT.hint} count={screen.filterCount} onPress={() => setFilterOpen(true)} />
+      {/* Hàng chip có lề ngang riêng nên kéo ra sát mép để chip thẳng hàng với khung lịch; không có bộ lọc nào thì không hiện gì */}
+      {hasChips && (
+        <View className="-mx-xl mt-sm">
+          <ActiveFilterChips filters={screen.activeFilters} onRemove={screen.clearFilter} />
+        </View>
+      )}
     </View>
   );
 
@@ -72,6 +72,19 @@ export function CoachScheduleView({ coachId, initialClassId }: CoachScheduleView
             onPress={() => router.push(ROUTES.coachAttendanceFor(session.id))}
           />
         )}
+      />
+
+      <ScheduleFilterSheet
+        visible={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        classes={screen.classes}
+        classId={screen.classFilter}
+        onClass={screen.setClassFilter}
+        status={screen.statusFilter}
+        onStatus={screen.setStatusFilter}
+        activeCount={screen.filterCount}
+        onClear={screen.clearFilters}
+        resultCount={screen.isLoading ? undefined : screen.sessions.length}
       />
     </View>
   );
