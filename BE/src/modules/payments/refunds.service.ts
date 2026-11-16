@@ -20,7 +20,7 @@ export async function requestPaymentRefund(id: string, reason: string, user: { i
     if (!payment) throw new AppError("Payment not found", 404);
     await lockMemberSubscription(tx, payment.memberId);
 
-    if (user.role === "MEMBER" && payment.member.userId !== user.id) {
+    if (user.role === "MEMBER" && payment.member?.userId !== user.id) {
       throw new AppError("Forbidden: Bạn chỉ có thể yêu cầu hoàn tiền cho giao dịch của chính mình.", 403);
     }
 
@@ -29,6 +29,9 @@ export async function requestPaymentRefund(id: string, reason: string, user: { i
     }
 
     if (payment.refundRequestedAt) {
+      if (user.role === "ADMIN") {
+        return payment;
+      }
       throw new AppError("Giao dịch đã có yêu cầu hoàn tiền đang chờ xử lý.", 409, { code: "REFUND_ALREADY_REQUESTED" });
     }
 
@@ -92,8 +95,8 @@ export async function requestPaymentRefund(id: string, reason: string, user: { i
         await notifyReceptionistsAboutRefund({
           facilityId: payment.facilityId,
           paymentId: payment.id,
-          memberUserId: payment.member.user.id,
-          memberName: payment.member.user.fullName,
+          memberUserId: payment.member?.user?.id,
+          memberName: payment.member?.user?.fullName,
           refundAmount,
           reason,
         });
