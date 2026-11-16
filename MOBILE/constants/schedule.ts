@@ -1,6 +1,7 @@
 // constants/schedule.ts
 // Nhãn/màu trạng thái buổi học và khoảng thời gian tải lịch dạy (khớp FE web)
 
+import { FILTER_TEXT } from './filters';
 import { Colors } from './theme';
 import type { ScheduleStatus } from '../lib/types';
 
@@ -18,6 +19,24 @@ export const SCHEDULE_STATUS_COLOR: Record<ScheduleStatus, string> = {
 };
 
 export const SCHEDULE_STATUSES: ScheduleStatus[] = ['SCHEDULED', 'COMPLETED', 'CANCELLED'];
+
+/**
+ * Bảng "Bộ lọc" của Lịch dạy HLV (web: hai ô chọn "Lớp học" và "Trạng thái" trong CoachWorkspace mode "schedule").
+ * Màn chính chỉ có một hàng "Bộ lọc"; bộ lọc đang bật hiện thành chip gỡ được (components/shared/ActiveFilterChips).
+ */
+export const SCHEDULE_FILTER_TEXT = {
+  ...FILTER_TEXT,
+  sheetTitle: 'Bộ lọc lịch dạy',
+  /** Gợi ý trên hàng "Bộ lọc" khi chưa bật bộ lọc nào */
+  hint: 'Lọc theo lớp và trạng thái',
+  class: 'Lớp học',
+  status: 'Trạng thái',
+  allClasses: 'Tất cả lớp của tôi',
+  allStatuses: 'Tất cả trạng thái',
+  /** Nút chính của bảng lọc: số buổi dạy trong kỳ đang xem (cập nhật ngay khi chọn) */
+  apply: (count: number) => `Xem ${count} buổi`,
+  noResult: 'Không có buổi phù hợp',
+} as const;
 
 /** Tên thứ bắt đầu từ Thứ Hai (index 0) — như màn Lịch dạy của web */
 export const WEEKDAY_LONG_FROM_MONDAY = ['Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy', 'Chủ nhật'];

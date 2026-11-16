@@ -7,6 +7,7 @@ import { ROUTES } from './routes';
 
 export const HELP_ROUTE: Record<HelpTarget, Href> = {
   classes: ROUTES.classes,
+  coachClasses: ROUTES.coachClasses,
   membershipPlans: ROUTES.membershipPlans,
   profile: ROUTES.profile,
   myAttendance: ROUTES.myAttendance,

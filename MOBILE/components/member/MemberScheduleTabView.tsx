@@ -1,5 +1,5 @@
 // components/member/MemberScheduleTabView.tsx
-// Tab "Lịch" của hội viên: một header + bộ chuyển "Lịch học" / "Lớp của tôi".
+// Tab "Lịch" của hội viên: một header + bộ chuyển "Lịch tập" / "Lớp của tôi".
 // Hai phần giữ nguyên logic của web: SchedulePage (lịch theo tuần / tháng) và MyClassesPage (lớp đã đặt: Sắp tới | Hoàn thành |
 // Đã hủy, chỉ xem lớp — hội viên không tự hủy hay đổi buổi, cần hỗ trợ lịch thì liên hệ lễ tân).
 
@@ -13,7 +13,7 @@ import { MyClassesView } from './enrollments/MyClassesView';
 export type MemberScheduleSegment = 'week' | 'classes';
 
 const SEGMENTS: { value: MemberScheduleSegment; label: string }[] = [
-  { value: 'week', label: 'Lịch học' },
+  { value: 'week', label: 'Lịch tập' },
   { value: 'classes', label: 'Lớp của tôi' },
 ];
 
@@ -26,7 +26,7 @@ export function MemberScheduleTabView({ initial }: { initial?: MemberScheduleSeg
 
   return (
     <View className="flex-1 bg-bg-primary">
-      <ScreenHeader variant="tab" title="Lịch học" />
+      <ScreenHeader variant="tab" title="Lịch tập" />
       <View className="px-xl pb-sm">
         <Segmented options={SEGMENTS} value={segment} onChange={setSegment} />
       </View>

@@ -249,7 +249,7 @@ export function MyClassesView({ embedded = false }: { embedded?: boolean }) {
           [
             { id: 'upcoming', label: 'Sắp tới', icon: 'event-available', count: upcoming.length },
             { id: 'completed', label: 'Hoàn thành', icon: 'check-circle', count: completed.length },
-            { id: 'cancelled', label: 'Đã hủy', icon: 'cancel', count: cancelled.length },
+            { id: 'cancelled', label: 'Đã hủy', icon: 'event-busy', count: cancelled.length },
           ] as const
         ).map((tab) => {
           const isActive = activeTab === tab.id;

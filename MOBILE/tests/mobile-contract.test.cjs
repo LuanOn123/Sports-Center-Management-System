@@ -313,7 +313,8 @@ test('navigation: 5 tabs per role, every tab file registered, shortcuts and acco
   const visible = (role) => tabs.getTabConfigForRole(role).filter((t) => t.visible).map((t) => t.name);
   assert.deepEqual(visible('MEMBER'), ['index', 'classes', 'schedule', 'chat', 'account']);
   assert.deepEqual(visible('COACH'), ['index', 'schedule', 'coach-attendance', 'chat', 'account']);
-  const files = fs.readdirSync(path.resolve(__dirname, '../app/(tabs)')).filter((f) => f.endsWith('.tsx') && f !== '_layout.tsx').map((f) => f.replace('.tsx', '')).sort();
+  // Mỗi file .tsx và mỗi thư mục (tab chứa Stack bên trong, vd. account/) trong app/(tabs) là một tab phải được khai báo
+  const files = fs.readdirSync(path.resolve(__dirname, '../app/(tabs)'), { withFileTypes: true }).filter((e) => e.name !== '_layout.tsx' && (e.isDirectory() || e.name.endsWith('.tsx'))).map((e) => e.name.replace('.tsx', '')).sort();
   for (const role of ['MEMBER', 'COACH']) {
     assert.deepEqual(tabs.getTabConfigForRole(role).map((t) => t.name).sort(), files, role + ' must register every (tabs) route');
     const tabRoutes = visible(role).map((name) => name === 'index' ? ROUTES.home : '/(tabs)/' + name).concat(ROUTES.notifications);
@@ -561,15 +562,17 @@ test('tabs hidden from the bar stay navigable: Expo Router 58 turns href: null i
   const layout = fs.readFileSync(path.resolve(__dirname, '..', 'app/(tabs)/_layout.tsx'), 'utf8');
   const code = layout.replace(/\/\/.*$/gm, ''); // bỏ chú thích, chỉ xét code
   // Bản cũ viết `href: tab.visible ? undefined : null` → mọi cách đặt href trong layout đều bị coi là ẩn tab
-  assert.ok(!/\bhref\s*:/.test(code), 'href: null (kể cả dạng điều kiện) làm Hồ sơ, Thông báo… không mở được, tự về Trang chủ');
+  assert.ok(!/\bhref\s*:/.test(code), 'href: null (kể cả dạng điều kiện) làm tab ẩn không mở được, tự về Trang chủ');
   assert.ok(!/hidden:\s*true/.test(code));
   assert.match(code, /tabBarItemStyle:\s*\{\s*display:\s*'none'/); // ẩn bằng cách thu gọn khung nút tab
-  // Các màn con vẫn khai báo trong Tabs cho cả hai vai trò mobile
+  // Tab không có nút trên thanh vẫn khai báo trong Tabs cho từng vai trò (Thông tin cá nhân và Thông báo không còn là tab ẩn:
+  // chúng là màn con của Stack nên vuốt quay lại được — xem test "sub-screens are stack screens")
   const { getTabConfigForRole } = loadApp('http://localhost/api/v1').load('navigation/tabConfig');
+  const hiddenTabs = { MEMBER: ['coach-attendance', 'enrollments'], COACH: ['classes', 'enrollments'] };
   for (const role of ['MEMBER', 'COACH']) {
-    const names = getTabConfigForRole(role).map((t) => t.name);
-    for (const name of ['profile', 'notifications']) assert.ok(names.includes(name), `${role} thiếu màn ${name}`);
-    assert.equal(getTabConfigForRole(role).filter((t) => t.visible).length, 5);
+    const config = getTabConfigForRole(role);
+    assert.deepEqual(config.filter((t) => !t.visible).map((t) => t.name).sort(), hiddenTabs[role], `${role}: các tab ẩn`);
+    assert.equal(config.filter((t) => t.visible).length, 5);
   }
 });
 
@@ -1413,7 +1416,7 @@ test('terms are limited to the selected facility; the banner shows on Home and E
   assert.match(read('components/member/MemberHomeView.tsx'), /<TermBanner withAction \/>/);
   const explore = read('components/classes/ClassesExploreView.tsx');
   assert.match(explore, /!isCoach && <TermBanner \/>/);
-  assert.match(explore, /!isCoach && \(\s*<ClassFilterSheet/);
+  assert.match(explore, /<ClassFilterSheet\b[\s\S]*?showRegistrationFilters=\{!isCoach\}/);
   assert.match(read('hooks/shared/useClassesExplore.ts'), /useFacilityTerms\(\{ enabled: !isCoach \}\)/);
   assert.match(read('hooks/shared/useClasses.ts'), /filters\?\.areaType, filters\?\.termId/);
 });
@@ -1462,8 +1465,16 @@ test('tab role guard comes from canAccessRoute so the tab bar and the routes can
   assert.equal(routes.canAccessRoute('COACH', ['(tabs)', 'coach-attendance']), true);
   assert.equal(routes.canAccessRoute('MEMBER', ['(tabs)', 'coach-attendance']), false);
   assert.equal(routes.canAccessRoute(undefined, ['(tabs)', 'enrollments']), false);
-  for (const name of ['index', 'classes', 'schedule', 'chat', 'account', 'profile', 'notifications']) {
+  for (const name of ['index', 'schedule', 'chat', 'account']) {
     for (const role of ['MEMBER', 'COACH']) assert.equal(routes.canAccessRoute(role, ['(tabs)', name]), true, `${role} phải vào được tab ${name}`);
+  }
+  // Khám phá là tab của hội viên; chi tiết lớp (classes/[id]) dùng chung; HLV có "Lớp phụ trách" riêng trong khu vực coach
+  assert.equal(routes.canAccessRoute('MEMBER', ['(tabs)', 'classes']), true); assert.equal(routes.canAccessRoute('COACH', ['(tabs)', 'classes']), false);
+  for (const role of ['MEMBER', 'COACH']) assert.equal(routes.canAccessRoute(role, ['classes', '[id]']), true, `${role} xem được chi tiết lớp`);
+  assert.equal(routes.canAccessRoute('COACH', ['coach', 'classes']), true); assert.equal(routes.canAccessRoute('MEMBER', ['coach', 'classes']), false);
+  // Thông tin cá nhân (trong Stack của tab Tài khoản) và Thông báo (ngoài tabs) mở được cho cả hai vai trò
+  for (const role of ['MEMBER', 'COACH']) {
+    assert.equal(routes.canAccessRoute(role, ['(tabs)', 'account', 'profile']), true); assert.equal(routes.canAccessRoute(role, ['notifications']), true);
   }
   assert.match(readSource('app/(tabs)/_layout.tsx'), /guard=\{canAccessRoute\(user\?\.role, \['\(tabs\)', tab\.name\]\)\}/);
 });
@@ -1806,4 +1817,333 @@ test('help guide: topics per role follow the web HelpPanel, the steps match the 
   assert.equal(canAccessRoute('COACH', ['help']), true); assert.equal(canAccessRoute('MEMBER', ['help']), true);
   const view = readSource('components/account/HelpGuideView.tsx');
   assert.match(view, /TEXT\.openFeature/); assert.match(view, /TEXT\.policies/); assert.match(view, /HELP_TIPS/);
+});
+
+// ─── Vuốt từ trái sang phải để quay lại trang trước ──────────────────────────────────────────────────────────────────
+
+test('swipe from left to right goes back on every stack: one shared option set, every Stack layout spreads it, no screen switches it off', () => {
+  const { SWIPE_BACK_OPTIONS } = loadApp('http://localhost/api/v1').load('navigation/stackOptions');
+  // iOS 18 trở xuống chỉ nhận cử chỉ ở mép trái nếu không bật fullScreenGestureEnabled (iOS 26 trở lên mới mặc định bật)
+  assert.deepEqual({ ...SWIPE_BACK_OPTIONS }, { gestureEnabled: true, fullScreenGestureEnabled: true });
+
+  // Mọi layout có <Stack> phải rải SWIPE_BACK_OPTIONS vào screenOptions: Stack gốc và cả Stack lồng nhau (mỗi Stack có bộ nhận cử chỉ riêng)
+  const stackLayouts = sourceFilesUnder('app').filter(({ rel, source }) => rel.endsWith('/_layout.tsx') && /<Stack[\s>]/.test(stripComments(source)));
+  const scanned = stackLayouts.map(({ rel }) => rel);
+  for (const expected of ['app/_layout.tsx', 'app/auth/_layout.tsx', 'app/chat/_layout.tsx', 'app/coach/_layout.tsx', 'app/member/_layout.tsx', 'app/(tabs)/account/_layout.tsx']) {
+    assert.ok(scanned.includes(expected), `${expected} phải nằm trong các layout được quét (có <Stack>)`);
+  }
+  const withoutSwipeBack = stackLayouts.filter(({ source }) => {
+    const code = stripComments(source);
+    return !/\.\.\.SWIPE_BACK_OPTIONS/.test(code) || !/from '(\.\.\/)+navigation\/stackOptions'/.test(code);
+  }).map(({ rel }) => rel);
+  assert.deepEqual(withoutSwipeBack, [], 'Stack chưa bật vuốt quay lại: ' + withoutSwipeBack.join(', '));
+
+  // Không màn nào tự tắt cử chỉ (gestureEnabled: false / fullScreenGestureEnabled: false): vuốt quay lại áp dụng cho tất cả
+  const switchedOff = sourceFilesUnder('app', 'components', 'hooks', 'navigation')
+    .filter(({ source }) => /(?:fullScreenGestureEnabled|gestureEnabled)\s*:\s*false/.test(stripComments(source))).map(({ rel }) => rel);
+  assert.deepEqual(switchedOff, []);
+  // Các tab là màn đầu của Stack gốc (không có trang trước) và không phải Stack nên không cần cấu hình này
+  assert.ok(!/<Stack[\s>]/.test(stripComments(readSource('app/(tabs)/_layout.tsx'))));
+});
+
+test('sub-screens are stack screens, not hidden tabs: profile lives in the Account stack, notifications and coach classes are pushed over the tabs', () => {
+  const app = loadApp('http://localhost/api/v1'); const { ROUTES } = app.load('navigation/routes'); const tabs = app.load('navigation/tabConfig');
+  // Thông tin cá nhân: Stack lồng trong tab Tài khoản → thanh tab vẫn hiện, tab Tài khoản sáng, vuốt quay lại được
+  assert.equal(ROUTES.profile, '/(tabs)/account/profile');
+  for (const file of ['_layout.tsx', 'index.tsx', 'profile.tsx']) assert.ok(fs.existsSync(path.resolve(__dirname, '../app/(tabs)/account', file)), `app/(tabs)/account/${file}`);
+  const layout = readSource('app/(tabs)/account/_layout.tsx');
+  assert.match(stripComments(layout), /<Stack[\s>]/); assert.match(layout, /unstable_settings = \{ anchor: 'index' \}/);
+  // Không còn tab ẩn cho màn con; tab Tài khoản về menu khi rời tab
+  for (const role of ['MEMBER', 'COACH']) {
+    const config = tabs.getTabConfigForRole(role);
+    assert.ok(!config.some((t) => t.name === 'profile' || t.name === 'notifications'), `${role}: Thông tin cá nhân và Thông báo không còn là tab`);
+    assert.equal(config.find((t) => t.name === 'account').popToTopOnBlur, true);
+  }
+  assert.match(readSource('app/(tabs)/_layout.tsx'), /popToTopOnBlur/);
+  for (const stale of ['profile.tsx', 'notifications.tsx', 'account.tsx']) assert.ok(!fs.existsSync(path.resolve(__dirname, '../app/(tabs)', stale)), `app/(tabs)/${stale} đã chuyển chỗ`);
+  // Thông báo và Lớp phụ trách của HLV: màn đẩy lên trên tabs
+  assert.equal(ROUTES.notifications, '/notifications'); assert.equal(ROUTES.coachClasses, '/coach/classes');
+  for (const file of ['app/notifications.tsx', 'app/coach/classes.tsx']) assert.ok(fs.existsSync(path.resolve(__dirname, '..', file)), file);
+  assert.match(readSource('app/_layout.tsx'), /<Stack\.Screen name="notifications" \/>/);
+  // Mọi lối vào "Lớp phụ trách" của HLV dùng route riêng, không còn đi qua tab Khám phá của hội viên
+  const menu = app.load('navigation/accountMenuConfig').getAccountMenuForRole('COACH').flatMap((g) => g.items);
+  assert.ok(menu.some((i) => i.label === 'Lớp phụ trách' && i.route === ROUTES.coachClasses));
+  assert.ok(app.load('navigation/quickAccessConfig').getQuickAccessForRole('COACH').some((i) => i.route === ROUTES.coachClasses));
+  assert.equal(app.load('navigation/helpConfig').HELP_ROUTE.coachClasses, ROUTES.coachClasses);
+  assert.equal(app.load('constants/help').COACH_GUIDES.find((g) => g.id === 'classes').target, 'coachClasses');
+  assert.match(readSource('components/coach/CoachHomeView.tsx'), /router\.push\(ROUTES\.coachClasses\)/);
+  assert.match(readSource('components/classes/ClassDetailView.tsx'), /d\.isCoach \? ROUTES\.coachClasses : ROUTES\.classes/);
+});
+
+// ─── Lịch tập, thẻ thanh toán ở Trang chủ, khung "Các buổi của khóa" ─────────────────────────────────────────────────────
+
+test('the member schedule tab is named "Lịch tập" everywhere it is shown: tab bar, header, segment and help guide', () => {
+  const app = loadApp('http://localhost/api/v1'); const tabs = app.load('navigation/tabConfig');
+  assert.equal(tabs.getTabConfigForRole('MEMBER').find((t) => t.name === 'schedule').title, 'Lịch tập');
+  assert.equal(tabs.getTabConfigForRole('COACH').find((t) => t.name === 'schedule').title, 'Lịch dạy', 'HLV giữ tên "Lịch dạy"');
+  const tab = readSource('components/member/MemberScheduleTabView.tsx');
+  assert.match(tab, /label: 'Lịch tập'/); assert.match(tab, /title="Lịch tập"/); assert.ok(!/Lịch học/.test(tab), 'không còn tên cũ "Lịch học"');
+  const guides = JSON.stringify(app.load('constants/help').MEMBER_GUIDES);
+  assert.match(guides, /tab Lịch tập/); assert.ok(!/tab Lịch học/.test(guides));
+});
+
+test('Home shows the payment status card only while the payment time is open (or money waits for review); the plans screen keeps it', () => {
+  const { isAwaitingPayment, isPaymentStatusShownOnHome, requiresReview, isConfirmed } = loadApp('http://localhost/api/v1').load('lib/payment');
+  const NOW = Date.parse('2026-11-16T10:00:00Z');
+  const order = (patch = {}) => ({ paymentId: 'p1', orderCode: 'SC1', amount: 100000, status: 'PENDING', gateway: 'SEPAY', expiresAt: '2026-11-16T10:15:00Z', qrUrl: 'qr', transferContent: 'SC1', ...patch });
+  // Còn thời gian chuyển khoản → hiện
+  assert.equal(isPaymentStatusShownOnHome(order(), NOW), true);
+  assert.equal(isAwaitingPayment(order({ expiresAt: new Date(NOW + 1).toISOString() }), NOW), true);
+  // Tới đúng mốc hoặc quá hạn → ẩn (BE chỉ đổi đơn sang FAILED khi job định kỳ chạy, trước đó đơn vẫn PENDING)
+  assert.equal(isPaymentStatusShownOnHome(order({ expiresAt: new Date(NOW).toISOString() }), NOW), false);
+  assert.equal(isPaymentStatusShownOnHome(order({ expiresAt: '2026-11-16T09:59:59Z' }), NOW), false);
+  // Đơn BE đã đóng → ẩn dù hạn còn; hạn không đọc được → ẩn
+  for (const status of ['FAILED', 'REFUNDED']) assert.equal(isPaymentStatusShownOnHome(order({ status }), NOW), false);
+  assert.equal(isPaymentStatusShownOnHome(order({ expiresAt: 'không phải ngày' }), NOW), false);
+  // Tiền đã về nhưng chờ trung tâm đối soát → vẫn hiện dù quá hạn; đơn đã kích hoạt xong không còn là đơn chờ
+  const late = '2026-11-16T09:00:00Z';
+  assert.equal(requiresReview(order({ status: 'SUCCESS', requiresReview: true })), true);
+  assert.equal(isPaymentStatusShownOnHome(order({ status: 'SUCCESS', requiresReview: true, expiresAt: late }), NOW), true);
+  assert.equal(isPaymentStatusShownOnHome(order({ status: 'SUCCESS', activationStatus: 'REQUIRES_REVIEW', expiresAt: late }), NOW), true);
+  assert.equal(isConfirmed(order({ status: 'SUCCESS' })), true); assert.equal(isPaymentStatusShownOnHome(order({ status: 'SUCCESS', expiresAt: late }), NOW), false);
+  // Chỉ Trang chủ ẩn theo hạn, và ẩn đúng lúc hết giờ (hẹn một lần tại mốc hạn, không đếm từng giây)
+  const home = readSource('hooks/member/useMemberHome.ts');
+  assert.match(home, /useNowUntil\(latestPayment\?\.expiresAt\)/); assert.match(home, /isPaymentStatusShownOnHome\(latestPayment, now\)/);
+  assert.ok(!/isPaymentStatusShownOnHome|isAwaitingPayment/.test(readSource('hooks/member/useMembershipScreen.ts')), 'màn Gói thành viên vẫn hiện thẻ để tạo mã mới');
+  assert.ok(!/isPaymentStatusShownOnHome|isAwaitingPayment/.test(readSource('hooks/member/usePayment.ts')), 'usePendingPayment vẫn giữ đơn quá hạn');
+  const timer = readSource('hooks/shared/useNowUntil.ts'); assert.match(timer, /setTimeout\(arm/); assert.ok(!/setInterval/.test(timer));
+});
+
+test('class detail lists the course sessions in a frame of 5 rows and scrolls for the rest', () => {
+  const app = loadApp('http://localhost/api/v1');
+  const { COURSE_SESSION_LIST } = app.load('constants/classes'); const { framedRowsHeight } = app.load('lib/framedRows');
+  assert.equal(COURSE_SESSION_LIST.visibleRows, 5);
+  assert.match(COURSE_SESSION_LIST.moreHint(12), /12 buổi/);
+  // Khung cao đúng tổng chiều cao ĐÃ ĐO của 5 dòng đầu (dòng có nút danh sách chờ cao hơn); chưa đo đủ thì chưa có số đo
+  assert.equal(framedRowsHeight([60, 62, 150, 60, 61, 999], 5), 393);
+  assert.equal(framedRowsHeight([60, 62, 150, 60], 5), null);
+  assert.equal(framedRowsHeight([60, undefined, 150, 60, 61], 5), null);
+  assert.equal(framedRowsHeight([60, 0, 150, 60, 61], 5), null);
+  assert.equal(framedRowsHeight([60, 62], 0), null);
+  // Màn chi tiết lớp chỉ gọi danh sách có khung; khung cuộn lồng trong trang chạy cả trên Android; chỉ có khung khi nhiều hơn 5 buổi
+  const view = readSource('components/classes/ClassDetailView.tsx'); const list = readSource('components/classes/CourseSessionList.tsx');
+  assert.match(view, /<CourseSessionList\b/); assert.ok(!/sessionStatusLabel|<WaitlistAction/.test(view), 'các dòng buổi nằm trong CourseSessionList');
+  assert.match(list, /nestedScrollEnabled/); assert.match(list, /sessions\.length > visibleRows/); assert.match(list, /COURSE_SESSION_LIST/);
+  assert.match(readSource('hooks/shared/useFramedRows.ts'), /framedRowsHeight\(/);
+});
+
+// ─── Check-in cơ sở: thẻ QR hội viên (BE: lấy userId làm mã QR, lễ tân quét để check-in) ──────────────────────────────────
+
+test('facility check-in screen shows a member QR card holding the userId and announces a new visit once; the self button stays', () => {
+  const app = loadApp('http://localhost/api/v1');
+  const { memberCardPayload } = app.load('lib/memberCard'); const { newVisitSince } = app.load('lib/facilityVisit'); const workflow = app.load('constants/workflow');
+  // Nội dung mã QR = đúng userId (BE: reception-check-in nhận id hoặc userId của hồ sơ hội viên), cắt khoảng trắng; thiếu thì không có mã
+  assert.equal(memberCardPayload('6af9bd0b5bb4acf4009c151d'), '6af9bd0b5bb4acf4009c151d');
+  assert.equal(memberCardPayload('  abc  '), 'abc');
+  for (const missing of ['', '   ', undefined, null]) assert.equal(memberCardPayload(missing), null);
+  // Lượt mới = id khác mốc; lượt đã biết (kể cả check-in trùng, BE trả lại lượt cũ) hoặc chưa có dữ liệu thì không báo
+  assert.equal(newVisitSince('a', { id: 'a' }), null);
+  assert.deepEqual(newVisitSince('a', { id: 'b' }), { id: 'b' });
+  assert.deepEqual(newVisitSince(null, { id: 'first' }), { id: 'first' });
+  assert.equal(newVisitSince(null, null), null); assert.equal(newVisitSince('a', undefined), null);
+  // Hằng số: hỏi lượt mới đều đặn nhưng không dồn dập; mã đủ lớn cho máy quét; câu chữ có giờ và cơ sở
+  assert.ok(workflow.CHECKIN_WATCH_INTERVAL_MS >= 2000 && workflow.CHECKIN_WATCH_INTERVAL_MS <= 10000);
+  assert.ok(workflow.CHECKIN_QR_SIZE >= 200 && workflow.CHECKIN_QR_QUIET_ZONE > 0);
+  assert.match(workflow.CHECKIN_TEXT.arrivedByReception('17:45', 'Q1'), /Lễ tân.*17:45.*Q1/); assert.match(workflow.CHECKIN_TEXT.arrived('17:45', 'Q1'), /17:45.*Q1/);
+  // Nối dây: thẻ QR chỉ khi có hồ sơ hội viên, nội dung mã lấy từ lib (không viết tay), nút tự check-in vẫn còn
+  const view = readSource('components/member/CheckInView.tsx'); const card = readSource('components/member/checkin/MemberCardQr.tsx'); const hook = readSource('hooks/member/useCheckIn.ts');
+  assert.match(view, /hasProfile && <MemberCardQr/); assert.match(view, /<ArrivedBanner\b/); assert.match(view, /checkIn\.mutate\(\)/);
+  assert.match(card, /react-native-qrcode-svg/); assert.match(card, /<QRCode value=\{card\.payload\}/);
+  assert.match(hook, /memberCardPayload\(user\?\.id\)/); assert.match(hook, /useCheckInWatcher\(hasProfile\)/);
+  // Lượt do chính nút "Check-in" tạo ra không báo lần hai; chỉ hỏi lượt mới khi màn đang hiện
+  assert.match(hook, /watcher\.arrived\.id !== checkIn\.data\?\.data\.id/);
+  const watcher = readSource('hooks/member/useCheckInWatcher.ts');
+  assert.match(watcher, /enabled: enabled && focused/); assert.match(watcher, /refetchInterval: CHECKIN_WATCH_INTERVAL_MS/); assert.match(watcher, /newVisitSince\(baseline\.current, latest\.data\)/);
+  // Có lượt mới thì lịch sử vào cửa bên dưới được tải lại ngay (không để "Chưa có lượt vào cửa" cạnh dòng "Đã ghi nhận")
+  assert.match(watcher, /invalidateQueries\(\{ queryKey: \['facility-visits'\] \}\)/);
+});
+
+// ─── Icon: tab, menu Tài khoản và lối tắt Trang chủ dùng đúng icon lucide mà web dùng cho cùng chức năng ─────────────────
+
+test('mobile tab, account-menu and quick-access icons are the same lucide icons the website uses for the same features', () => {
+  const src = readSource('components/shared/Icon.tsx'); const body = src.slice(src.indexOf('const ICON_MAP'), src.indexOf('};', src.indexOf('const ICON_MAP')));
+  const lucide = Object.fromEntries([...body.matchAll(/^\s*'?([a-z0-9-]+)'?:\s*([A-Za-z0-9]+),/gm)].map((m) => [m[1], m[2]]));
+  const app = loadApp('http://localhost/api/v1'); const tabs = app.load('navigation/tabConfig'); const menu = app.load('navigation/accountMenuConfig'); const quick = app.load('navigation/quickAccessConfig');
+  // Thanh tab: web UserLayout (LayoutDashboard, Search, CalendarDays), PortalLayout (MessageCircle), ProfileMenu (UserRound), QuickActions "Điểm danh" (ScanLine)
+  const tabIcons = (role) => Object.fromEntries(tabs.getTabConfigForRole(role).filter((t) => t.visible).map((t) => [t.name, lucide[t.iconName]]));
+  assert.deepEqual(tabIcons('MEMBER'), { index: 'LayoutDashboard', classes: 'Search', schedule: 'CalendarDays', chat: 'MessageCircle', account: 'UserRound' });
+  assert.deepEqual(tabIcons('COACH'), { index: 'LayoutDashboard', schedule: 'CalendarDays', 'coach-attendance': 'ScanLine', chat: 'MessageCircle', account: 'UserRound' });
+  // Menu Tài khoản: web UserLayout (CreditCard, Bell), ProfileMenu (ReceiptText, LifeBuoy, UserRound), QuickActions (MapPin, Bot), HelpPanel (CircleHelp), PortalLayout (ShieldCheck).
+  // Cố ý KHÔNG theo web: "Danh sách chờ" (web dùng BookOpen trùng "Lớp của tôi") và "Điểm danh & chuyên cần" (web không có mục này trên thanh menu)
+  const menuIcons = (role) => Object.fromEntries(menu.getAccountMenuForRole(role).flatMap((g) => g.items).map((i) => [i.label, lucide[i.icon]]));
+  assert.deepEqual(menuIcons('MEMBER'), {
+    'Gói thành viên': 'CreditCard', 'Thanh toán & hóa đơn': 'ReceiptText', 'Điểm danh & chuyên cần': 'BarChart3', 'Check-in cơ sở': 'MapPin', 'Danh sách chờ': 'Hourglass',
+    'Thông báo': 'Bell', 'Yêu cầu hỗ trợ': 'LifeBuoy', 'Trợ lý AI': 'Bot', 'Hướng dẫn sử dụng': 'CircleHelp', 'Chính sách sử dụng': 'ShieldCheck', 'Thông tin cá nhân & bảo mật': 'UserRound',
+  });
+  // HLV: CoachLayout (BookOpen, ArrowLeftRight); "Đánh giá" giữ Star vì web dùng UserRound trùng icon tab Tài khoản
+  assert.deepEqual(menuIcons('COACH'), { 'Lớp phụ trách': 'BookOpen', 'Đổi HLV theo buổi': 'ArrowLeftRight', 'Đánh giá của hội viên': 'Star', 'Thông báo': 'Bell', 'Trợ lý AI': 'Bot', 'Hướng dẫn sử dụng': 'CircleHelp', 'Chính sách sử dụng': 'ShieldCheck', 'Thông tin cá nhân & bảo mật': 'UserRound' });
+  const quickIcons = (role) => Object.fromEntries(quick.getQuickAccessForRole(role).map((i) => [i.label, lucide[i.icon]]));
+  assert.deepEqual(quickIcons('MEMBER'), { 'Check-in': 'MapPin', 'Chuyên cần': 'BarChart3', 'Hóa đơn': 'ReceiptText', 'Trợ lý AI': 'Bot' });
+  assert.deepEqual(quickIcons('COACH'), { 'Lớp phụ trách': 'BookOpen', 'Đổi HLV': 'ArrowLeftRight', 'Đánh giá': 'Star', 'Trợ lý AI': 'Bot' });
+  // Bong bóng trợ lý AI nổi: web AIChatBubble dùng Bot; không còn chỗ nào dùng icon cũ 'auto-awesome' (Sparkles) cho trợ lý
+  assert.match(readSource('components/assistant/AssistantBubble.tsx'), /<Icon name="smart-toy"/);
+  // Chỗ khác có icon tương ứng trên web: dấu tích thành công = CheckCircle2, đăng xuất = LogOut, đính kèm = Paperclip, đọc hết = CheckCheck, khóa = Lock…
+  for (const [name, expected] of Object.entries({ 'check-circle': 'CircleCheck', logout: 'LogOut', 'attach-file': 'Paperclip', 'done-all': 'CheckCheck', lock: 'Lock', 'lock-outline': 'Lock', inbox: 'Inbox', email: 'Mail', error: 'CircleAlert', info: 'Info', favorite: 'HeartPulse' })) assert.equal(lucide[name], expected, name);
+  // "Lớp của tôi": tab Sắp tới / Hoàn thành / Đã hủy = CalendarCheck / CheckCircle2 / CalendarX như web
+  const classesView = readSource('components/member/enrollments/MyClassesView.tsx');
+  assert.match(classesView, /id: 'upcoming', label: 'Sắp tới', icon: 'event-available'/); assert.match(classesView, /id: 'completed', label: 'Hoàn thành', icon: 'check-circle'/); assert.match(classesView, /id: 'cancelled', label: 'Đã hủy', icon: 'event-busy'/);
+  assert.deepEqual([lucide['event-available'], lucide['event-busy']], ['CalendarCheck', 'CalendarX']);
+  // Mọi icon của tab / menu / lối tắt đều có bản lucide (không rơi về bộ MaterialIcons khác nét với web)
+  const names = ['MEMBER', 'COACH'].flatMap((role) => [
+    ...tabs.getTabConfigForRole(role).map((t) => t.iconName), ...menu.getAccountMenuForRole(role).flatMap((g) => g.items).map((i) => i.icon), ...quick.getQuickAccessForRole(role).map((i) => i.icon),
+  ]);
+  for (const name of names) assert.ok(lucide[name], `icon "${name}" phải có trong ICON_MAP`);
+});
+
+// ─── Khám phá: một hàng công cụ + bảng "Bộ lọc" + chip gỡ được; Lịch: Tuần / Tháng trải đều trong MỘT khung ──────────────────
+
+test('Explore filters: the count and the removable chips follow sport → type → area → term and survive while names are still loading', () => {
+  const app = loadApp('http://localhost/api/v1'); const f = app.load('lib/classFilters'); const text = app.load('constants/classes').CLASS_FILTER_TEXT;
+  const lookups = { sports: [{ id: 's1', name: 'Boxing cơ bản' }], terms: [{ id: 't1', name: 'Kỳ Thu 2026' }] };
+  // Số trên nút "Bộ lọc" = môn + hạng + khu vực + kỳ học; ô tìm kiếm luôn hiện trên màn hình nên không tính
+  assert.equal(f.classFilterCount({}), 0); assert.equal(f.classFilterCount({ sportId: undefined, classType: undefined }), 0);
+  assert.equal(f.classFilterCount({ sportId: 's1' }), 1); assert.equal(f.classFilterCount({ sportId: 's1', classType: 'PREMIUM', areaType: 'POOL', termId: 't1' }), 4);
+  // Chip theo thứ tự cố định bất kể thứ tự gán; hạng lớp và khu vực lấy nhãn tiếng Việt, môn và kỳ học lấy tên từ danh sách
+  assert.deepEqual(f.activeClassFilters({}, lookups), []);
+  assert.deepEqual(f.activeClassFilters({ termId: 't1', areaType: 'POOL', classType: 'PREMIUM', sportId: 's1' }, lookups), [
+    { key: 'sport', label: 'Boxing cơ bản' }, { key: 'type', label: 'Cao cấp' }, { key: 'area', label: 'Hồ bơi' }, { key: 'term', label: 'Kỳ Thu 2026' },
+  ]);
+  assert.deepEqual(f.activeClassFilters({ classType: 'REGULAR', areaType: 'INDOOR' }, lookups).map((x) => x.label), ['Tiêu chuẩn', 'Trong nhà']);
+  // Danh sách môn / kỳ học chưa tải xong: chip vẫn hiện (bằng tên nhóm lọc) để không nhấp nháy rồi biến mất
+  assert.deepEqual(f.activeClassFilters({ sportId: 'x', termId: 'y' }, { sports: [], terms: [] }), [{ key: 'sport', label: text.sport }, { key: 'term', label: text.term }]);
+  // Mỗi bộ lọc đếm trên nút có đúng một chip
+  const all = { sportId: 's1', classType: 'PREMIUM', areaType: 'POOL', termId: 't1' };
+  assert.equal(f.activeClassFilters(all, lookups).length, f.classFilterCount(all));
+  // Câu chữ của bảng lọc: nút chính theo số lớp, số bộ lọc đang bật, nhãn gỡ chip
+  assert.equal(text.apply(3), 'Xem 3 lớp'); assert.equal(text.remove('Cao cấp'), 'Bỏ lọc Cao cấp'); assert.equal(text.active(2), '2 bộ lọc đang bật');
+  for (const key of ['button', 'sheetTitle', 'sport', 'type', 'area', 'term', 'all', 'done', 'noResult', 'clear', 'noTerms']) assert.ok(text[key], `CLASS_FILTER_TEXT.${key}`);
+});
+
+test('Explore has one toolbar row, a filter sheet for both roles and removable chips — no always-visible rows of sport / type chips', () => {
+  const explore = stripComments(readSource('components/classes/ClassesExploreView.tsx'));
+  // Màn chính: ô tìm kiếm + nút Bộ lọc (huy hiệu = số bộ lọc) → chip đang bật gỡ được → số kết quả → danh sách
+  assert.match(explore, /<ClassSearchBar\b[\s\S]*?filterCount=\{explore\.filterCount\}[\s\S]*?onOpenFilters=\{\(\) => setFilterOpen\(true\)\}/);
+  assert.match(explore, /<ActiveFilterChips filters=\{explore\.activeFilters\} onRemove=\{explore\.clearFilter\} \/>/);
+  assert.ok(explore.indexOf('<ClassSearchBar') < explore.indexOf('<ActiveFilterChips') && explore.indexOf('<ActiveFilterChips') < explore.indexOf('<FlatList'));
+  // Một bảng lọc cho cả hội viên và HLV: khu vực + kỳ học chỉ bật cho hội viên, nút chính hiện số lớp, "Xóa bộ lọc" không đụng ô tìm kiếm
+  assert.match(explore, /<ClassFilterSheet\b[\s\S]*?showRegistrationFilters=\{!isCoach\}[\s\S]*?onClear=\{explore\.clearSelectedFilters\}[\s\S]*?resultCount=\{explore\.isLoading \? undefined : classes\.length\}/);
+  // Không còn hàng chip môn tập / hạng lớp cuộn ngang, ô nhập riêng hay nút "Bộ lọc" đứng riêng trên màn chính
+  assert.doesNotMatch(explore, /\b(FilterChip|ChipRow)\b|horizontal|<TextInput|<Pressable/);
+  assert.equal((explore.match(/<ClassFilterSheet\b/g) ?? []).length, 1, 'chỉ một bảng lọc, dùng chung cho hai vai trò');
+});
+
+test('the Explore filter sheet: sport + class type for everyone, area + term for members only, live result count on the main button', () => {
+  const sheet = stripComments(readSource('components/classes/ClassFilterSheet.tsx'));
+  const branch = sheet.indexOf('{showRegistrationFilters && ('); assert.ok(branch > 0, 'nhánh chỉ-hội-viên');
+  assert.match(sheet.slice(0, branch), /<FilterSection title=\{TEXT\.sport\}>/); assert.match(sheet.slice(0, branch), /<FilterSection title=\{TEXT\.type\}>/);
+  assert.doesNotMatch(sheet.slice(0, branch), /TEXT\.area|TEXT\.term/);
+  assert.match(sheet.slice(branch), /<FilterSection title=\{TEXT\.area\}>/); assert.match(sheet.slice(branch), /<FilterSection title=\{TEXT\.term\}>/);
+  // Nút chính theo số lớp (đang tải → "Xong"; 0 lớp → "Không có lớp phù hợp"; còn lại → "Xem N lớp"); khung + chân bảng là FilterSheet dùng chung
+  assert.match(sheet, /applyLabel=\{applyFilterLabel\(resultCount, TEXT\)\}/); assert.match(sheet, /activeCount=\{activeCount\}[\s\S]*onClear=\{onClear\}/);
+  // Nút "Bộ lọc" cạnh ô tìm kiếm: icon tune (lucide SlidersHorizontal), nhãn cho trình đọc màn hình kèm số bộ lọc, huy hiệu chỉ khi có bộ lọc
+  const bar = stripComments(readSource('components/classes/ClassSearchBar.tsx'));
+  assert.match(bar, /<Icon name="tune"/); assert.match(bar, /TEXT\.active\(filterCount\)/); assert.match(bar, /\{active && \(/); assert.match(bar, /<TextInput\b/);
+  assert.match(readSource('components/shared/Icon.tsx'), /\btune: SlidersHorizontal,/);
+  // Chip gỡ nhanh: không có bộ lọc thì không dựng gì; mỗi chip có nhãn "Bỏ lọc …" và gỡ đúng bộ lọc của nó
+  const chips = stripComments(readSource('components/shared/ActiveFilterChips.tsx'));
+  assert.match(chips, /filters\.length === 0\) return null/); assert.match(chips, /accessibilityLabel=\{FILTER_TEXT\.remove\(filter\.label\)\}/); assert.match(chips, /onRemove\(filter\.key\)/);
+});
+
+test('useClassesExplore exposes the filter count, the active chips and per-chip / bulk clearing; the sheet clear keeps the typed search', () => {
+  const hook = stripComments(readSource('hooks/shared/useClassesExplore.ts'));
+  assert.match(hook, /classFilterCount\(filterState\)/); assert.match(hook, /activeClassFilters\(filterState, \{ sports: sportList, terms: facilityTerms\.terms \}\)/);
+  assert.match(hook, /hasFilters = Boolean\(search\) \|\| filterCount > 0/);
+  // Xóa trong bảng lọc: chỉ bốn bộ lọc, giữ nguyên chữ đang tìm. "Xóa bộ lọc" ngoài màn chính: xóa luôn ô tìm kiếm.
+  const clearSelected = hook.slice(hook.indexOf('const clearSelectedFilters'), hook.indexOf('const clearFilters'));
+  assert.ok(!/setSearch/.test(clearSelected)); assert.match(clearSelected, /setSportId\(undefined\)[\s\S]*setClassType\(undefined\)[\s\S]*setAreaType\(undefined\)[\s\S]*setTermId\(undefined\)/);
+  assert.match(hook.slice(hook.indexOf('const clearFilters'), hook.indexOf('const clearFilter =')), /setSearch\(''\)[\s\S]*clearSelectedFilters\(\)/);
+  // Gỡ từng chip: mỗi khóa xóa đúng một bộ lọc
+  assert.match(hook, /key === 'sport'\) setSportId\(undefined\)[\s\S]*?key === 'type'\) setClassType\(undefined\)[\s\S]*?key === 'area'\) setAreaType\(undefined\)[\s\S]*?else setTermId\(undefined\)/);
+  assert.match(hook, /return \{[\s\S]*filterCount, activeFilters,[\s\S]*clearFilters, clearSelectedFilters, clearFilter,/);
+  assert.doesNotMatch(hook, /advancedFilterCount|clearAdvancedFilters/);
+  // HLV vẫn không tải kỳ học (không có bộ lọc kỳ)
+  assert.match(hook, /useFacilityTerms\(\{ enabled: !isCoach \}\)/);
+});
+
+test('the week / month calendar is ONE card: Tuần | Tháng is a full-width control above the period navigation, not a pill in a corner', () => {
+  const header = stripComments(readSource('components/schedule/CalendarHeader.tsx')); const frame = stripComments(readSource('components/schedule/ScheduleCalendar.tsx'));
+  const grid = stripComments(readSource('components/schedule/CalendarGrid.tsx')); const seg = stripComments(readSource('components/ui/Segmented.tsx'));
+  // Bộ chuyển Tuần / Tháng trải hết bề ngang khung (không phải nút nhỏ dồn một góc); tông "soft" vì nằm dưới bộ chuyển chính của màn
+  assert.match(header, /<Segmented tone="soft" options=\{CALENDAR_MODES\} value=\{mode\} onChange=\{calendar\.setMode\} \/>/);
+  assert.ok(header.indexOf('<Segmented') < header.indexOf('<NavButton'), 'bộ chuyển nằm trên hàng điều hướng kỳ');
+  // Điều hướng kỳ: nút tròn hai bên, tiêu đề ở giữa; "Tuần này" / "Về hôm nay" cùng chiều cao nên tiêu đề không nhảy khi đổi kỳ
+  assert.match(header, /justify-between/); assert.match(header, /className="h-6 mt-xs justify-center"/); assert.equal((header.match(/<NavButton\b/g) ?? []).length, 2);
+  // Bộ chuyển, điều hướng và lưới cùng nằm trong MỘT khung bo góc (thẳng hàng với lề màn hình); lưới không còn viền trên + dưới riêng và lề riêng
+  assert.match(frame, /className="mx-xl mt-md bg-bg-surface border border-border rounded-xl p-md gap-md">(?:\s|\{\})*<CalendarHeader calendar=\{calendar\} \/>(?:\s|\{\})*<CalendarGrid\b/);
+  assert.doesNotMatch(grid, /border-b\b/); assert.doesNotMatch(grid, /\bpx-xl\b/); assert.match(grid, /border-t border-divider/);
+  // Segmented có hai tông; mặc định vẫn là solid nên các màn khác không đổi
+  assert.match(seg, /tone\?: 'solid' \| 'soft'/); assert.match(seg, /tone = 'solid'/);
+  for (const file of ['components/member/MemberScheduleTabView.tsx', 'components/coach/TeachingSummaryCard.tsx', 'components/coach/CoachChangesView.tsx']) assert.doesNotMatch(readSource(file), /tone="soft"/, file);
+});
+
+// ─── Lịch dạy HLV: cùng kiểu bộ lọc với Khám phá (một hàng "Bộ lọc" + bảng lọc + chip gỡ được) ───────────────────────────
+
+test('shared filter pieces: the main button label follows the result count, one text set feeds every filter sheet, one sheet frame', () => {
+  const app = loadApp('http://localhost/api/v1'); const { applyFilterLabel } = app.load('lib/filters');
+  const classes = app.load('constants/classes').CLASS_FILTER_TEXT; const schedule = app.load('constants/schedule').SCHEDULE_FILTER_TEXT; const shared = app.load('constants/filters').FILTER_TEXT;
+  // Đang tải → "Xong"; không có kết quả → câu báo; còn lại → "Xem N …" — mỗi màn dùng đơn vị riêng (lớp / buổi)
+  assert.equal(applyFilterLabel(undefined, classes), 'Xong'); assert.equal(applyFilterLabel(0, classes), 'Không có lớp phù hợp'); assert.equal(applyFilterLabel(7, classes), 'Xem 7 lớp');
+  assert.equal(applyFilterLabel(undefined, schedule), 'Xong'); assert.equal(applyFilterLabel(0, schedule), 'Không có buổi phù hợp'); assert.equal(applyFilterLabel(12, schedule), 'Xem 12 buổi');
+  // Chữ chung (nút, "Tất cả", "Xóa bộ lọc", nhãn gỡ chip, số bộ lọc) chỉ viết ở một chỗ; hai bộ chữ riêng trải nó vào
+  for (const text of [classes, schedule]) for (const key of Object.keys(shared)) assert.equal(text[key], shared[key], `chữ chung "${key}" phải lấy từ FILTER_TEXT`);
+  assert.equal(shared.remove('Yoga'), 'Bỏ lọc Yoga'); assert.equal(shared.active(1), '1 bộ lọc đang bật');
+  // Khung bảng lọc dùng chung: "Xóa bộ lọc" tắt khi chưa bật gì, nút chính đóng bảng; cả hai bảng lọc dựng trên khung đó
+  const frame = stripComments(readSource('components/shared/FilterSheet.tsx'));
+  assert.match(frame, /title=\{FILTER_TEXT\.clear\} disabled=\{activeCount === 0\} onPress=\{onClear\}/); assert.match(frame, /title=\{applyLabel\} onPress=\{onClose\}/);
+  for (const file of ['components/classes/ClassFilterSheet.tsx', 'components/coach/ScheduleFilterSheet.tsx']) {
+    const source = stripComments(readSource(file));
+    assert.match(source, /<FilterSheet\b/, file); assert.match(source, /applyLabel=\{applyFilterLabel\(resultCount, TEXT\)\}/, file); assert.doesNotMatch(source, /\bBottomSheet\b|<Button\b/, file);
+  }
+});
+
+test('Coach schedule filters: count, chips and filtering follow the web selects (class + status) and keep a chip while classes load', () => {
+  const f = loadApp('http://localhost/api/v1').load('lib/scheduleFilters');
+  const classes = [{ id: 'c1', name: 'Yoga Flow' }, { id: 'c2', name: 'Boxing cơ bản' }];
+  // Số trên hàng "Bộ lọc" = lớp + trạng thái
+  assert.equal(f.scheduleFilterCount({ classId: null, status: null }), 0); assert.equal(f.scheduleFilterCount({ classId: 'c1', status: null }), 1); assert.equal(f.scheduleFilterCount({ classId: 'c1', status: 'COMPLETED' }), 2);
+  // Chip: lớp trước, trạng thái sau; tên lớp lấy từ danh sách, trạng thái dùng nhãn như web
+  assert.deepEqual(f.activeScheduleFilters({ classId: null, status: null }, classes), []);
+  assert.deepEqual(f.activeScheduleFilters({ classId: 'c2', status: 'SCHEDULED' }, classes), [{ key: 'class', label: 'Boxing cơ bản' }, { key: 'status', label: 'Đã lên lịch' }]);
+  assert.deepEqual(f.activeScheduleFilters({ classId: null, status: 'CANCELLED' }, classes), [{ key: 'status', label: 'Đã hủy' }]);
+  // Mở từ "Xem lịch dạy" của một lớp khi danh sách lớp chưa tải xong: chip vẫn hiện, bằng tên nhóm lọc
+  assert.deepEqual(f.activeScheduleFilters({ classId: 'c9', status: null }, []), [{ key: 'class', label: 'Lớp học' }]);
+  // Lọc buổi: đúng lớp VÀ đúng trạng thái; mục nào để trống thì không lọc theo mục đó
+  const sessions = [{ id: 's1', classId: 'c1', status: 'SCHEDULED' }, { id: 's2', classId: 'c1', status: 'COMPLETED' }, { id: 's3', classId: 'c2', status: 'SCHEDULED' }, { id: 's4', classId: 'c2', status: 'CANCELLED' }];
+  const ids = (state) => f.filterSchedules(sessions, state).map((s) => s.id);
+  assert.deepEqual(ids({ classId: null, status: null }), ['s1', 's2', 's3', 's4']);
+  assert.deepEqual(ids({ classId: 'c1', status: null }), ['s1', 's2']); assert.deepEqual(ids({ classId: null, status: 'SCHEDULED' }), ['s1', 's3']);
+  assert.deepEqual(ids({ classId: 'c2', status: 'SCHEDULED' }), ['s3']); assert.deepEqual(ids({ classId: 'c1', status: 'CANCELLED' }), []);
+  // Mỗi bộ lọc đếm trên hàng có đúng một chip
+  const both = { classId: 'c1', status: 'COMPLETED' }; assert.equal(f.activeScheduleFilters(both, classes).length, f.scheduleFilterCount(both));
+});
+
+test('Coach schedule has one "Bộ lọc" row, a filter sheet and removable chips — the two always-visible chip rows are gone', () => {
+  const view = stripComments(readSource('components/coach/CoachScheduleView.tsx')); const hook = stripComments(readSource('hooks/coach/useCoachScheduleScreen.ts'));
+  // Màn chính: một hàng "Bộ lọc" (số bộ lọc đang bật) rồi chip gỡ được, đặt làm đầu danh sách buổi; bảng lọc mở từ hàng đó
+  assert.match(view, /<FilterBar hint=\{SCHEDULE_FILTER_TEXT\.hint\} count=\{screen\.filterCount\} onPress=\{\(\) => setFilterOpen\(true\)\} \/>/);
+  assert.match(view, /<ActiveFilterChips filters=\{screen\.activeFilters\} onRemove=\{screen\.clearFilter\} \/>/); assert.match(view, /listHeader=\{filters\}/);
+  assert.ok(view.indexOf('<FilterBar') < view.indexOf('<ActiveFilterChips'));
+  assert.match(view, /<ScheduleFilterSheet\b[\s\S]*?classes=\{screen\.classes\}[\s\S]*?onClear=\{screen\.clearFilters\}[\s\S]*?resultCount=\{screen\.isLoading \? undefined : screen\.sessions\.length\}/);
+  // Hai hàng chip "Tất cả lớp của tôi…" / "Tất cả trạng thái…" luôn hiện đã bỏ
+  assert.doesNotMatch(view, /\b(FilterChip|ChipRow)\b|SCHEDULE_STATUSES|Tất cả/);
+  // Bảng lọc: một nhóm lớp (kèm "Tất cả lớp của tôi") và một nhóm trạng thái (kèm "Tất cả trạng thái")
+  const sheet = stripComments(readSource('components/coach/ScheduleFilterSheet.tsx'));
+  assert.match(sheet, /<FilterSection title=\{TEXT\.class\}>[\s\S]*?TEXT\.allClasses[\s\S]*?classes\.map/); assert.match(sheet, /<FilterSection title=\{TEXT\.status\}>[\s\S]*?TEXT\.allStatuses[\s\S]*?SCHEDULE_STATUSES\.map/);
+  // Hook: lọc bằng lib, đếm + chip + gỡ từng chip + xóa hết; mở từ "Xem lịch dạy" của một lớp vẫn lọc sẵn lớp đó (chip hiện ngay)
+  assert.match(hook, /filterSchedules\(schedules, \{ classId: classFilter, status: statusFilter \}\)/); assert.match(hook, /activeScheduleFilters\(filterState, filterClasses\)/);
+  assert.match(hook, /key === 'class' \? setClassFilter\(null\) : setStatusFilter\(null\)/); assert.match(hook.slice(hook.indexOf('const clearFilters')), /setClassFilter\(null\);\s*setStatusFilter\(null\)/);
+  assert.match(hook, /return \{[\s\S]*filterCount,\s*activeFilters,\s*clearFilter,\s*clearFilters,/); assert.match(hook, /useState<string \| null>\(initialClassId \|\| null\)/);
+  // Hàng "Bộ lọc" trải hết bề ngang: icon tune, nhãn kèm số bộ lọc cho trình đọc màn hình, huy hiệu số chỉ khi có bộ lọc
+  const bar = stripComments(readSource('components/shared/FilterBar.tsx'));
+  assert.match(bar, /<Icon name="tune"/); assert.match(bar, /FILTER_TEXT\.active\(count\)/); assert.match(bar, /\{active \? \(/); assert.match(bar, /className="flex-row items-center gap-sm h-12 px-md bg-bg-surface rounded-lg border"/);
 });

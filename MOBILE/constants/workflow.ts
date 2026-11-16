@@ -34,10 +34,26 @@ export const CHECKIN_TEXT = {
   facilityFallback: 'Cơ sở',
   byReception: 'Tại quầy',
   selfService: 'Tự check-in',
+  /** Thẻ hội viên QR: lễ tân quét mã (nội dung = userId, lib/memberCard) để ghi nhận hội viên đã đến cơ sở */
+  qrTitle: 'Mã QR check-in',
+  qrIntro: 'Đưa mã này cho lễ tân quét để ghi nhận bạn đã đến cơ sở. Mã dùng được ở mọi cơ sở.',
+  qrLabel: (name: string) => `Mã QR check-in của ${name}`,
+  qrMissing: 'Chưa tạo được mã QR vì thiếu mã tài khoản. Hãy đăng nhập lại.',
+  /** Báo khi một lượt vào cửa mới xuất hiện lúc màn đang mở (thường là lễ tân vừa quét mã) */
+  arrived: (time: string, facility: string) => `Đã ghi nhận bạn vào cửa lúc ${time} tại ${facility}.`,
+  arrivedByReception: (time: string, facility: string) => `Lễ tân đã ghi nhận bạn vào cửa lúc ${time} tại ${facility}.`,
+  dismiss: 'Đóng',
 } as const;
 
 /** Giá trị `method` của lượt vào cửa do lễ tân ghi nhận */
 export const VISIT_METHOD_RECEPTION = 'RECEPTION';
+
+/** Mã QR check-in (px): đủ lớn để máy quét của lễ tân đọc từ màn hình điện thoại; vùng trắng quanh mã giúp máy nhận ra biên */
+export const CHECKIN_QR_SIZE = 220;
+export const CHECKIN_QR_QUIET_ZONE = 12;
+
+/** Chu kỳ hỏi lượt vào cửa mới nhất khi màn Check-in đang mở (để báo ngay khi lễ tân vừa quét) */
+export const CHECKIN_WATCH_INTERVAL_MS = 4000;
 
 /** Danh sách chờ theo buổi (web: Waitlist) */
 export const WAITLIST_TEXT = {

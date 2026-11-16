@@ -17,17 +17,17 @@ export interface QuickAccessItem {
 }
 
 const MEMBER_ITEMS: QuickAccessItem[] = [
-  { icon: 'login', label: 'Check-in', route: ROUTES.checkin, color: Colors.feature.emerald },
+  { icon: 'place', label: 'Check-in', route: ROUTES.checkin, color: Colors.feature.emerald },
   { icon: 'insights', label: 'Chuyên cần', route: ROUTES.myAttendance, color: Colors.feature.cyan },
   { icon: 'receipt-long', label: 'Hóa đơn', route: ROUTES.payments, color: Colors.feature.amber },
-  { icon: 'auto-awesome', label: 'Trợ lý AI', route: ROUTES.aiAssistant, color: Colors.feature.violet },
+  { icon: 'smart-toy', label: 'Trợ lý AI', route: ROUTES.aiAssistant, color: Colors.feature.violet },
 ];
 
 const COACH_ITEMS: QuickAccessItem[] = [
-  { icon: 'class', label: 'Lớp phụ trách', route: ROUTES.classes, color: Colors.feature.lime },
+  { icon: 'class', label: 'Lớp phụ trách', route: ROUTES.coachClasses, color: Colors.feature.lime },
   { icon: 'swap-horiz', label: 'Đổi HLV', route: ROUTES.coachChanges, color: Colors.feature.amber },
   { icon: 'star', label: 'Đánh giá', route: ROUTES.coachFeedback, color: Colors.feature.pink },
-  { icon: 'auto-awesome', label: 'Trợ lý AI', route: ROUTES.aiAssistant, color: Colors.feature.violet },
+  { icon: 'smart-toy', label: 'Trợ lý AI', route: ROUTES.aiAssistant, color: Colors.feature.violet },
 ];
 
 export function getQuickAccessForRole(role: Role | undefined): QuickAccessItem[] {

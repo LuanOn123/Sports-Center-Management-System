@@ -67,7 +67,7 @@ export function CoachHomeView({ user }: { user: User | null }) {
         <View className="mb-lg"><ClassCardSkeleton /></View>
       ) : !next ? (
         <View className="mb-lg">
-          <EmptyState icon="event-available" title="Chưa có buổi dạy sắp tới" actionLabel="Xem lớp phụ trách" onAction={() => router.push(ROUTES.classes)} />
+          <EmptyState icon="event-available" title="Chưa có buổi dạy sắp tới" actionLabel="Xem lớp phụ trách" onAction={() => router.push(ROUTES.coachClasses)} />
         </View>
       ) : (
         <Card accent={Colors.primary} className="mb-lg" onPress={() => router.push(ROUTES.scheduleDetail(next.id))}>

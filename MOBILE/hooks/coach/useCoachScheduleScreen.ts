@@ -1,5 +1,6 @@
 // hooks/coach/useCoachScheduleScreen.ts
-// Logic màn Lịch dạy của HLV — theo FE web (CoachWorkspace mode "schedule"): xem theo Tuần hoặc Tháng, lọc lớp + trạng thái.
+// Logic màn Lịch dạy của HLV — theo FE web (CoachWorkspace mode "schedule"): xem theo Tuần hoặc Tháng, lọc lớp + trạng thái
+// (quy tắc lọc ở lib/scheduleFilters; bảng "Bộ lọc" ở components/coach/ScheduleFilterSheet).
 // Khung lịch (kỳ đang xem, ngày chọn, điều hướng) dùng chung với Hội viên: hooks/shared/useScheduleCalendar.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -7,6 +8,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCoachSchedules } from './useCoachSchedules';
 import { useScheduleCalendar } from '../shared/useScheduleCalendar';
 import { calendarClasses } from '../../lib/coachSchedule';
+import { activeScheduleFilters, filterSchedules, scheduleFilterCount, type ScheduleFilterKey } from '../../lib/scheduleFilters';
 import type { ScheduleStatus } from '../../lib/types';
 
 /** `initialClassId`: mở từ "Xem lịch dạy" của một lớp (web: /coach/schedule?classId=…) → lọc sẵn lớp đó */
@@ -39,9 +41,20 @@ export function useCoachScheduleScreen(coachId: string | undefined, initialClass
   const filterClasses = useMemo(() => calendarClasses(classes, schedules), [classes, schedules]);
 
   const sessions = useMemo(
-    () => schedules.filter((s) => (!classFilter || s.classId === classFilter) && (!statusFilter || s.status === statusFilter)),
+    () => filterSchedules(schedules, { classId: classFilter, status: statusFilter }),
     [schedules, classFilter, statusFilter],
   );
+
+  const filterState = { classId: classFilter, status: statusFilter };
+  /** Số bộ lọc trong bảng "Bộ lọc" (lớp, trạng thái) — hiện trên hàng "Bộ lọc" */
+  const filterCount = scheduleFilterCount(filterState);
+  /** Bộ lọc đang bật, mỗi cái một chip gỡ được ở màn chính */
+  const activeFilters = activeScheduleFilters(filterState, filterClasses);
+  const clearFilters = () => {
+    setClassFilter(null);
+    setStatusFilter(null);
+  };
+  const clearFilter = (key: ScheduleFilterKey) => (key === 'class' ? setClassFilter(null) : setStatusFilter(null));
 
   return {
     calendar,
@@ -56,5 +69,9 @@ export function useCoachScheduleScreen(coachId: string | undefined, initialClass
     setClassFilter,
     statusFilter,
     setStatusFilter,
+    filterCount,
+    activeFilters,
+    clearFilter,
+    clearFilters,
   };
 }

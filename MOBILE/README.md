@@ -98,8 +98,9 @@ MOBILE/
 ├── app/                  # Route (Expo Router) — CHỈ đọc params + render 1 View, không chứa logic/UI
 │   ├── _layout.tsx       # Provider + AuthGuard (chặn theo đăng nhập & vai trò)
 │   ├── auth/             # Đăng nhập, đăng ký, hoàn tất đăng ký Google, quên mật khẩu
-│   ├── (tabs)/           # Trang chủ, Tin nhắn, Hồ sơ (+ các tab ẩn: classes, enrollments,
-│   │                     #   schedule, notifications, coach-attendance)
+│   ├── (tabs)/           # Tab theo vai trò: index, classes, schedule, chat, account, coach-attendance (+ enrollments ẩn)
+│   │                     #   account/ là Stack lồng nhau: menu Tài khoản → Thông tin cá nhân (thanh tab vẫn hiện, tab Tài khoản sáng)
+│   ├── notifications.tsx # Thông báo — đẩy lên trên tabs để vuốt từ trái sang phải quay về đúng màn vừa bấm chuông
 │   ├── classes/[id].tsx, schedule/[scheduleId].tsx, payment/[paymentId].tsx, chat/[userId].tsx
 │   ├── policies.tsx      # Chính sách sử dụng (nội dung ở constants/policies.ts)
 │   ├── assistant.tsx     # Màn chat Trợ lý AI (route mỏng, mở từ bong bóng nổi hoặc menu)
@@ -112,7 +113,7 @@ MOBILE/
 │   └── coach/            # Màn/khối của Huấn luyện viên (Lịch dạy, Điểm danh, …)
 ├── hooks/{shared,member,coach}/   # State + business logic (React Query)
 ├── services/             # Gọi API thuần, đặt tên theo nghiệp vụ (attendanceService, coachService…)
-├── navigation/           # routes.ts (ROUTES + quyền theo vai trò), tabConfig, quickAccessConfig
+├── navigation/           # routes.ts (ROUTES + quyền theo vai trò), tabConfig, quickAccessConfig, stackOptions (vuốt từ trái sang phải để quay lại — dùng cho mọi Stack)
 ├── constants/            # theme, membership, payment, schedule, attendance — không hard code trong màn
 ├── lib/                  # api, storage, socket, format, date, businessRules (bản sao FE web), types
 ├── context/              # AuthContext (phiên đăng nhập, cơ sở), AssistantContext (cuộc trò chuyện AI)

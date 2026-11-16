@@ -17,16 +17,19 @@ export const ROUTES = {
   home: '/(tabs)',
   chat: '/(tabs)/chat',
   account: '/(tabs)/account',
-  profile: '/(tabs)/profile',
+  /** Thông tin cá nhân: màn con trong Stack của tab Tài khoản — vẫn có thanh tab (tab Tài khoản sáng) và vuốt quay lại được */
+  profile: '/(tabs)/account/profile',
+  /** Khám phá (hội viên); HLV xem lớp phụ trách ở coachClasses */
   classes: '/(tabs)/classes',
   schedule: '/(tabs)/schedule',
-  notifications: '/(tabs)/notifications',
   enrollments: '/(tabs)/enrollments',
   /** Tab Lịch, mở sẵn phần "Lớp của tôi" */
   myClasses: { pathname: '/(tabs)/schedule', params: { view: 'classes' } } as Href,
   coachAttendance: '/(tabs)/coach-attendance',
 
   // Màn ngoài tabs
+  /** Thông báo: đẩy lên trên các tab (không thanh tab) để vuốt từ trái sang phải quay về đúng màn vừa bấm chuông */
+  notifications: '/notifications',
   membershipPlans: '/membership/plans',
   myAttendance: '/attendance/my',
   checkin: '/member/checkin',
@@ -37,6 +40,8 @@ export const ROUTES = {
   /** Hướng dẫn sử dụng (web: HelpPanel) — cả Hội viên và Huấn luyện viên */
   help: '/help',
   payments: '/member/payments',
+  /** Lớp phụ trách của HLV (hội viên dùng tab Khám phá = classes) — nằm trong khu vực coach nên vuốt quay lại được */
+  coachClasses: '/coach/classes',
   coachChanges: '/coach/coach-changes',
   coachFeedback: '/coach/feedback',
   /** Hồ sơ học viên; kèm buổi dạy để lấy liên hệ, lưu ý sức khỏe và tiến độ từ danh sách học viên của buổi đó */
@@ -56,22 +61,31 @@ export const ROUTES = {
 } as const;
 
 /**
- * Vai trò được vào từng nhóm route (theo segment đầu tiên, hoặc tên tab trong "(tabs)").
+ * Vai trò được vào từng nhóm route ngoài tabs (theo segment đầu tiên).
  * Route không có trong bảng = mọi vai trò đã đăng nhập đều vào được.
  */
 const ROUTE_ROLES: Record<string, readonly Role[]> = {
-  enrollments: ['MEMBER'],
   membership: ['MEMBER'],
   payment: ['MEMBER'],
   attendance: ['MEMBER'],
   member: ['MEMBER'],
   invoice: ['MEMBER'],
   coach: ['COACH'],
+};
+
+/**
+ * Vai trò được vào từng tab trong "(tabs)" (theo segment ngay sau "(tabs)"). Bảng riêng vì tên tab có thể trùng nhóm route ngoài tabs:
+ * tab "classes" (Khám phá) chỉ của hội viên, còn "classes/[id]" (chi tiết lớp) dùng chung cho cả hai vai trò.
+ */
+const TAB_ROLES: Record<string, readonly Role[]> = {
+  classes: ['MEMBER'],
+  enrollments: ['MEMBER'],
   'coach-attendance': ['COACH'],
 };
 
 export function canAccessRoute(role: Role | undefined, segments: readonly string[]) {
-  const name = segments[0] === '(tabs)' ? segments[1] : segments[0];
-  const allowed = name ? ROUTE_ROLES[name] : undefined;
+  const inTabs = segments[0] === '(tabs)';
+  const name = inTabs ? segments[1] : segments[0];
+  const allowed = name ? (inTabs ? TAB_ROLES : ROUTE_ROLES)[name] : undefined;
   return !allowed || (role !== undefined && allowed.includes(role));
 }

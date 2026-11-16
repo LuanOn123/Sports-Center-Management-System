@@ -1,35 +1,34 @@
 // components/classes/ClassesExploreView.tsx
-// Màn Khám phá (hội viên) / Lớp phụ trách (HLV): tiêu đề → tìm kiếm → hai hàng chip lọc môn tập + hạng lớp (không nhãn)
-// → số kết quả → danh sách thẻ lớp (hội viên: bấm cả thẻ để xem chi tiết và đăng ký; HLV: "Chi tiết lớp" / "Xem lịch dạy").
+// Màn Khám phá (hội viên) / Lớp phụ trách (HLV): tiêu đề → cơ sở + kỳ học → MỘT hàng gồm ô tìm kiếm và nút "Bộ lọc"
+// (môn tập, hạng lớp, khu vực, kỳ học nằm trong bảng lọc) → chip gỡ nhanh, chỉ hiện khi có bộ lọc đang bật → số kết quả →
+// danh sách thẻ lớp (hội viên: bấm cả thẻ để xem chi tiết và đăng ký; HLV: "Chi tiết lớp" / "Xem lịch dạy").
 
-import React, { useRef, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Pressable } from 'react-native';
-import type { TextInputInstance } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../shared/Icon';
 import { ScreenHeader } from '../shared/ScreenHeader';
+import { ActiveFilterChips } from '../shared/ActiveFilterChips';
 import { FacilityPicker } from '../shared/FacilityPicker';
-import { FilterChip } from '../shared/FilterChip';
 import { ClassCardSkeleton } from '../shared/Skeleton';
 import { CoachClassCard } from '../coach/CoachClassCard';
 import { TermBanner } from '../member/TermBanner';
 import { ClassCard } from './ClassCard';
 import { ClassFilterSheet } from './ClassFilterSheet';
+import { ClassSearchBar } from './ClassSearchBar';
 import { useClassesExplore } from '../../hooks/shared/useClassesExplore';
-import { CLASS_FILTER_TEXT, CLASS_TYPE_FILTERS, CLASS_TYPE_LABEL } from '../../constants/classes';
 import { Colors, Spacing } from '../../constants/theme';
 import { Haptic } from '../../lib/haptics';
 import { ROUTES } from '../../navigation/routes';
 
 export function ClassesExploreView() {
   const router = useRouter();
-  const searchInputRef = useRef<TextInputInstance>(null);
+  // HLV: màn đẩy lên trên tabs (không có thanh tab) nên chừa chỗ cho thanh home của máy; hội viên ở tab thì thanh tab đã lo
+  const insets = useSafeAreaInsets();
   const [filterOpen, setFilterOpen] = useState(false);
   const explore = useClassesExplore();
   const { isCoach, classes } = explore;
-
-  const sportOptions = [{ id: '', name: 'Tất cả' }, ...explore.sports];
-  const filterActive = explore.advancedFilterCount > 0;
 
   return (
     <View className="flex-1 bg-bg-primary">
@@ -42,68 +41,15 @@ export function ClassesExploreView() {
         {!isCoach && <TermBanner />}
       </View>
 
-      {/* Tìm kiếm */}
-      <View className="px-xl mb-md">
-        <Pressable
-          onPress={() => searchInputRef.current?.focus()}
-          className="flex-row items-center bg-bg-surface rounded-lg px-md border border-border"
-        >
-          <Icon name="search" size={20} color={Colors.text.muted} style={{ marginRight: 4 }} />
-          <TextInput
-            ref={searchInputRef}
-            className="flex-1 py-md text-text-primary text-md font-bevn-regular"
-            placeholder={isCoach ? 'Tìm trong lớp bạn phụ trách...' : 'Tìm kiếm lớp học...'}
-            placeholderTextColor={Colors.text.muted}
-            value={explore.search}
-            onChangeText={explore.setSearch}
-            returnKeyType="search"
-          />
-          {Boolean(explore.search) && (
-            <TouchableOpacity onPress={() => explore.setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityLabel="Xóa tìm kiếm">
-              <Icon name="close" size={18} color={Colors.text.muted} />
-            </TouchableOpacity>
-          )}
-        </Pressable>
-      </View>
-
-      {/* Lọc theo môn tập — chỉ có chip, không có nhãn chữ */}
-      <View>
-        <FlatList
-          horizontal
-          accessibilityLabel="Lọc theo môn tập"
-          style={{ flexGrow: 0 }}
-          data={sportOptions}
-          keyExtractor={(s) => s.id || 'all'}
-          showsHorizontalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingHorizontal: Spacing.xl, gap: Spacing.sm, paddingBottom: Spacing.md }}
-          renderItem={({ item }) => (
-            <FilterChip label={item.name} active={(explore.sportId ?? '') === item.id} onPress={() => explore.setSportId(item.id || undefined)} />
-          )}
-        />
-      </View>
-
-      {/* Lọc theo hạng lớp (lớp Cao cấp cần gói Premium) — chỉ có chip, không có nhãn chữ */}
-      <View className="flex-row flex-wrap px-xl gap-sm mb-md">
-        {CLASS_TYPE_FILTERS.map((type) => (
-          <FilterChip key={type ?? 'all'} label={type ? CLASS_TYPE_LABEL[type] : 'Tất cả'} active={explore.classType === type} onPress={() => explore.setClassType(type)} />
-        ))}
-        {/* Khu vực + kỳ học nằm trong bảng "Bộ lọc" để không chiếm thêm hàng trên màn hình nhỏ (chỉ hội viên, như web) */}
-        {!isCoach && (
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel={CLASS_FILTER_TEXT.button}
-            className="flex-row items-center gap-1 px-md py-xs rounded-full border"
-            style={{ backgroundColor: filterActive ? Colors.primary + '22' : Colors.bg.surface, borderColor: filterActive ? Colors.primary : Colors.border }}
-            onPress={() => { Haptic.selection(); setFilterOpen(true); }}
-          >
-            <Icon name="tune" size={14} color={filterActive ? Colors.primary : Colors.text.secondary} />
-            <Text className="text-sm font-bevn-medium" style={{ color: filterActive ? Colors.primary : Colors.text.secondary }}>
-              {filterActive ? `${CLASS_FILTER_TEXT.button} · ${explore.advancedFilterCount}` : CLASS_FILTER_TEXT.button}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      {/* Tìm kiếm + nút Bộ lọc: một hàng duy nhất; mọi bộ lọc nằm trong bảng lọc */}
+      <ClassSearchBar
+        value={explore.search}
+        onChange={explore.setSearch}
+        placeholder={isCoach ? 'Tìm trong lớp bạn phụ trách...' : 'Tìm kiếm lớp học...'}
+        filterCount={explore.filterCount}
+        onOpenFilters={() => setFilterOpen(true)}
+      />
+      <ActiveFilterChips filters={explore.activeFilters} onRemove={explore.clearFilter} />
 
       {/* Số kết quả */}
       {!explore.isLoading && (
@@ -130,7 +76,7 @@ export function ClassesExploreView() {
           keyExtractor={(c) => c.id}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.md, gap: Spacing.md }}
+          contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.xl + (isCoach ? insets.bottom : 0), gap: Spacing.md }}
           refreshControl={<RefreshControl refreshing={false} onRefresh={() => { Haptic.light(); void explore.refresh(); }} tintColor={Colors.primary} />}
           ListEmptyComponent={
             <View className="items-center mt-[60px]">
@@ -164,20 +110,26 @@ export function ClassesExploreView() {
         />
       )}
 
-      {!isCoach && (
-        <ClassFilterSheet
-          visible={filterOpen}
-          onClose={() => setFilterOpen(false)}
-          areaType={explore.areaType}
-          onAreaType={explore.setAreaType}
-          terms={explore.terms}
-          termId={explore.termId}
-          onTerm={explore.setTermId}
-          currentTermId={explore.currentTermId}
-          activeCount={explore.advancedFilterCount}
-          onClear={explore.clearAdvancedFilters}
-        />
-      )}
+      {/* Khu vực + kỳ học chỉ có ở hội viên (như web); môn tập và hạng lớp dùng cho cả hai vai trò */}
+      <ClassFilterSheet
+        visible={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        sports={explore.sports}
+        sportId={explore.sportId}
+        onSport={explore.setSportId}
+        classType={explore.classType}
+        onClassType={explore.setClassType}
+        showRegistrationFilters={!isCoach}
+        areaType={explore.areaType}
+        onAreaType={explore.setAreaType}
+        terms={explore.terms}
+        termId={explore.termId}
+        onTerm={explore.setTermId}
+        currentTermId={explore.currentTermId}
+        activeCount={explore.filterCount}
+        onClear={explore.clearSelectedFilters}
+        resultCount={explore.isLoading ? undefined : classes.length}
+      />
     </View>
   );
 }

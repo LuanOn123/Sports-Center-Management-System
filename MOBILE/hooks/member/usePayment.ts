@@ -13,6 +13,7 @@ import { QR_IMAGE_FILE_PREFIX, SEPAY_POLL_INTERVAL_MS } from '../../constants/pa
 import { ApiError } from '../../lib/api';
 import { storage } from '../../lib/storage';
 import { copyToClipboard, saveRemoteImageToLibrary, type SaveImageResult } from '../../lib/device';
+import { isConfirmed, requiresReview } from '../../lib/payment';
 import type { SepayCheckout } from '../../lib/types';
 
 /** Đơn thanh toán thuộc hội viên + cơ sở nào (BE scope đơn theo cơ sở) */
@@ -30,16 +31,6 @@ export interface CheckoutRequest {
   planId: string;
   /** ISO — chỉ gửi khi hẹn ngày kích hoạt (lib/planSwitch › checkoutStartDate) */
   startDate?: string;
-}
-
-/** Tiền đã về nhưng gói chưa kích hoạt được — chờ trung tâm đối soát */
-export function requiresReview(checkout: SepayCheckout) {
-  return Boolean(checkout.requiresReview || checkout.activationStatus === 'REQUIRES_REVIEW');
-}
-
-/** Thanh toán xong và gói đã kích hoạt (web: onConfirmed) */
-export function isConfirmed(checkout: SepayCheckout) {
-  return checkout.status === 'SUCCESS' && !requiresReview(checkout);
 }
 
 function invalidateAfterConfirmed(queryClient: QueryClient) {

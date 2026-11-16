@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useClasses, useSports } from './useClasses';
 import { useCurrentTerm, useFacilityTerms } from './useTerms';
+import { activeClassFilters, classFilterCount, type ClassFilterKey } from '../../lib/classFilters';
 import type { AreaType, ClassType } from '../../lib/types';
 
 export function useClassesExplore() {
@@ -29,19 +30,28 @@ export function useClassesExplore() {
     { enabled: !isCoach || Boolean(coachId) },
   );
 
-  /** Số bộ lọc trong bảng "Bộ lọc" (khu vực, kỳ học) — để hiện số trên nút */
-  const advancedFilterCount = Number(Boolean(areaType)) + Number(Boolean(termId));
-  const hasFilters = Boolean(search || sportId || classType) || advancedFilterCount > 0;
-  const clearFilters = () => {
-    setSearch('');
+  const sportList = sports.data?.data ?? [];
+  const filterState = { sportId, classType, areaType, termId };
+  /** Số bộ lọc trong bảng "Bộ lọc" (môn tập, hạng lớp, khu vực, kỳ học) — hiện trên nút; ô tìm kiếm không tính vì luôn hiện trên màn hình */
+  const filterCount = classFilterCount(filterState);
+  /** Bộ lọc đang bật, mỗi cái một chip gỡ được ở màn chính */
+  const activeFilters = activeClassFilters(filterState, { sports: sportList, terms: facilityTerms.terms });
+  const hasFilters = Boolean(search) || filterCount > 0;
+  const clearSelectedFilters = () => {
     setSportId(undefined);
     setClassType(undefined);
     setAreaType(undefined);
     setTermId(undefined);
   };
-  const clearAdvancedFilters = () => {
-    setAreaType(undefined);
-    setTermId(undefined);
+  const clearFilters = () => {
+    setSearch('');
+    clearSelectedFilters();
+  };
+  const clearFilter = (key: ClassFilterKey) => {
+    if (key === 'sport') setSportId(undefined);
+    else if (key === 'type') setClassType(undefined);
+    else if (key === 'area') setAreaType(undefined);
+    else setTermId(undefined);
   };
 
   return {
@@ -53,9 +63,9 @@ export function useClassesExplore() {
     termId, setTermId,
     terms: facilityTerms.terms,
     currentTermId: currentTerm.data?.id,
-    advancedFilterCount,
-    hasFilters, clearFilters, clearAdvancedFilters,
-    sports: sports.data?.data ?? [],
+    filterCount, activeFilters,
+    hasFilters, clearFilters, clearSelectedFilters, clearFilter,
+    sports: sportList,
     classes: classes.data?.data ?? [],
     isLoading: classes.isLoading,
     // Làm mới cả danh sách lớp lẫn lịch học / chỗ trống của từng thẻ

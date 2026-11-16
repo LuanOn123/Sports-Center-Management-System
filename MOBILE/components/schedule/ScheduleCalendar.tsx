@@ -43,17 +43,20 @@ export function ScheduleCalendar<T extends CalendarEvent>({
 
   return (
     <View className="flex-1 bg-bg-primary">
-      <CalendarHeader calendar={calendar} />
-      <CalendarGrid
-        weeks={calendar.period.weeks}
-        selected={calendar.selected}
-        counts={counts}
-        isInPeriod={(day) => inPeriod(calendar.period, day)}
-        onSelect={calendar.select}
-      />
+      {/* MỘT khung ôm cả bộ chuyển Tuần/Tháng, điều hướng kỳ và lưới ngày: cân đối hai bên và thẳng hàng với phần trên màn hình */}
+      <View className="mx-xl mt-md bg-bg-surface border border-border rounded-xl p-md gap-md">
+        <CalendarHeader calendar={calendar} />
+        <CalendarGrid
+          weeks={calendar.period.weeks}
+          selected={calendar.selected}
+          counts={counts}
+          isInPeriod={(day) => inPeriod(calendar.period, day)}
+          onSelect={calendar.select}
+        />
+      </View>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.xxxl }}
+        contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.lg, paddingBottom: Spacing.xxxl }}
         refreshControl={onRefresh ? <RefreshControl refreshing={pulling} onRefresh={onPull} tintColor={Colors.primary} /> : undefined}
       >
         {listHeader}

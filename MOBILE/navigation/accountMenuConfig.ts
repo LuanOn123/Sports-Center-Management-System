@@ -44,7 +44,7 @@ const MEMBER_MENU: AccountMenuGroup[] = [
   {
     title: 'Gói và thanh toán',
     items: [
-      { icon: 'workspace-premium', label: 'Gói thành viên', description: 'Gia hạn, nâng cấp, lịch sử gói', route: ROUTES.membershipPlans, color: Colors.feature.amber },
+      { icon: 'payment', label: 'Gói thành viên', description: 'Gia hạn, nâng cấp, lịch sử gói', route: ROUTES.membershipPlans, color: Colors.feature.amber },
       { icon: 'receipt-long', label: 'Thanh toán & hóa đơn', route: ROUTES.payments, color: Colors.feature.amber },
     ],
   },
@@ -52,7 +52,7 @@ const MEMBER_MENU: AccountMenuGroup[] = [
     title: 'Hoạt động tập luyện',
     items: [
       { icon: 'insights', label: 'Điểm danh & chuyên cần', route: ROUTES.myAttendance, color: Colors.feature.cyan },
-      { icon: 'login', label: 'Check-in cơ sở', route: ROUTES.checkin, color: Colors.feature.emerald },
+      { icon: 'place', label: 'Check-in cơ sở', route: ROUTES.checkin, color: Colors.feature.emerald },
       { icon: 'hourglass-empty', label: 'Danh sách chờ', route: ROUTES.waitlist, color: Colors.feature.violet },
     ],
   },
@@ -61,7 +61,7 @@ const MEMBER_MENU: AccountMenuGroup[] = [
     items: [
       { icon: 'notifications', label: 'Thông báo', route: ROUTES.notifications, color: Colors.feature.cyan },
       { icon: 'support-agent', label: 'Yêu cầu hỗ trợ', route: ROUTES.support, color: Colors.feature.pink },
-      { icon: 'auto-awesome', label: 'Trợ lý AI', route: ROUTES.aiAssistant, color: Colors.feature.violet },
+      { icon: 'smart-toy', label: 'Trợ lý AI', route: ROUTES.aiAssistant, color: Colors.feature.violet },
       HELP_ITEM,
       POLICIES_ITEM,
     ],
@@ -78,7 +78,7 @@ const COACH_MENU: AccountMenuGroup[] = [
   {
     title: 'Giảng dạy',
     items: [
-      { icon: 'class', label: 'Lớp phụ trách', route: ROUTES.classes, color: Colors.feature.lime },
+      { icon: 'class', label: 'Lớp phụ trách', route: ROUTES.coachClasses, color: Colors.feature.lime },
       { icon: 'swap-horiz', label: 'Đổi HLV theo buổi', route: ROUTES.coachChanges, color: Colors.feature.amber },
       { icon: 'star', label: 'Đánh giá của hội viên', route: ROUTES.coachFeedback, color: Colors.feature.pink },
     ],
@@ -87,7 +87,7 @@ const COACH_MENU: AccountMenuGroup[] = [
     title: 'Hỗ trợ',
     items: [
       { icon: 'notifications', label: 'Thông báo', route: ROUTES.notifications, color: Colors.feature.cyan },
-      { icon: 'auto-awesome', label: 'Trợ lý AI', route: ROUTES.aiAssistant, color: Colors.feature.violet },
+      { icon: 'smart-toy', label: 'Trợ lý AI', route: ROUTES.aiAssistant, color: Colors.feature.violet },
       HELP_ITEM,
       POLICIES_ITEM,
     ],
