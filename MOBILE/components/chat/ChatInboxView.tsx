@@ -1,6 +1,7 @@
 // components/chat/ChatInboxView.tsx
-// Tab Tin nhắn (web: Chat — danh sách cuộc trò chuyện): ô tìm, "Phòng chung" ghim đầu, các liên hệ kèm số chưa đọc.
-// Logic ở hooks/shared/useChatInbox; quy tắc gộp / lọc ở lib/chat.
+// Tab Tin nhắn (web: Chat — danh sách cuộc trò chuyện): ô tìm, "Phòng chung" ghim đầu, các cuộc trò chuyện (chưa đọc lên đầu) kèm
+// số chưa đọc và chấm trực tuyến; chưa tìm thì chỉ hiện người đã nhắn với mình, muốn nhắn người mới thì tìm tên.
+// Logic ở hooks/shared/useChatInbox; quy tắc gộp / lọc / xem trước ở lib/chat.
 
 import React, { useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, Pressable } from 'react-native';
@@ -14,6 +15,7 @@ import { GENERAL_CHAT_ID } from '../../services/chatService';
 import { CHAT_ROLE_COLOR, CHAT_ROLE_LABEL, CHAT_TEXT as TEXT, GENERAL_CHAT_TITLE } from '../../constants/chat';
 import { Colors } from '../../constants/theme';
 import { timeAgo } from '../../lib/format';
+import { inboxPreview } from '../../lib/chat';
 import { ROUTES } from '../../navigation/routes';
 
 export function ChatInboxView() {
@@ -82,10 +84,10 @@ export function ChatInboxView() {
             <View className="items-center mt-[60px] px-xl">
               <Icon name="chat-bubble-outline" size={52} color={Colors.text.muted} style={{ marginBottom: 12 }} />
               <Text className="text-lg font-bold font-bevn-bold text-text-primary mb-sm">
-                {inbox.search ? TEXT.noMatch : TEXT.noContacts}
+                {inbox.search ? TEXT.noMatch : TEXT.noConversations}
               </Text>
               <Text className="text-sm text-text-muted font-bevn-regular text-center">
-                {inbox.search ? TEXT.noMatchHint(inbox.search) : TEXT.noContactsHint}
+                {inbox.search ? TEXT.noMatchHint(inbox.search) : TEXT.noConversationsHint}
               </Text>
             </View>
           }
@@ -98,9 +100,14 @@ export function ChatInboxView() {
               onPress={() => router.push(ROUTES.chatThread(item.user.id, item.user.fullName))}
               activeOpacity={0.7}
             >
-              {/* Avatar */}
-              <View className="w-12 h-12 rounded-full bg-bg-elevated justify-center items-center border-2" style={{ borderColor: CHAT_ROLE_COLOR[item.user.role] ?? Colors.border }}>
-                <Text className="text-lg font-bold font-bevn-bold text-text-primary">{item.user.fullName[0]?.toUpperCase()}</Text>
+              {/* Avatar + chấm xanh khi đang trực tuyến */}
+              <View>
+                <View className="w-12 h-12 rounded-full bg-bg-elevated justify-center items-center border-2" style={{ borderColor: CHAT_ROLE_COLOR[item.user.role] ?? Colors.border }}>
+                  <Text className="text-lg font-bold font-bevn-bold text-text-primary">{item.user.fullName[0]?.toUpperCase()}</Text>
+                </View>
+                {inbox.online.has(item.user.id) && (
+                  <View accessibilityLabel={TEXT.online} className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-bg-surface" style={{ backgroundColor: Colors.status.success }} />
+                )}
               </View>
 
               {/* Content */}
@@ -123,18 +130,15 @@ export function ChatInboxView() {
                     </View>
                   )}
                 </View>
-                {item.latestMessage?.content ? (
-                  <Text
-                    className={clsx('text-sm font-bevn-regular', item.unreadCount > 0 ? 'text-text-secondary font-bevn-semibold' : 'text-text-muted')}
-                    numberOfLines={1}
-                  >
-                    {item.latestMessage.content}
-                  </Text>
-                ) : item.latestMessage?.fileUrl ? (
-                  <Text className="text-sm text-text-muted font-bevn-regular" numberOfLines={1}>{TEXT.attachmentPreview}</Text>
-                ) : (
-                  <Text className="text-sm text-text-muted font-bevn-regular italic" numberOfLines={1}>{TEXT.startConversation}</Text>
-                )}
+                <Text
+                  className={clsx(
+                    'text-sm font-bevn-regular',
+                    !item.latestMessage ? 'text-text-muted italic' : item.unreadCount > 0 ? 'text-text-secondary font-bevn-semibold' : 'text-text-muted',
+                  )}
+                  numberOfLines={1}
+                >
+                  {inboxPreview(item, inbox.currentUserId)}
+                </Text>
               </View>
             </TouchableOpacity>
           )}

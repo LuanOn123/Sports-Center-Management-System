@@ -12,10 +12,12 @@ import { KeyboardAwareView } from '../shared/KeyboardAwareView';
 import { ProtectedAttachment } from '../shared/ProtectedAttachment';
 import { WorkflowState } from '../shared/WorkflowScreen';
 import { useAuth } from '../../context/AuthContext';
-import { useChatMessages, usePartnerName } from '../../hooks/shared/useChat';
+import { useChatMessages, usePartner } from '../../hooks/shared/useChat';
 import { useChatComposer } from '../../hooks/shared/useChatComposer';
 import { useKeyboard } from '../../hooks/shared/useKeyboard';
-import { CHAT_MESSAGE_MAX_LENGTH, CHAT_TEXT as TEXT, GENERAL_CHAT_TITLE } from '../../constants/chat';
+import { usePresence } from '../../hooks/shared/usePresence';
+import { useTyping } from '../../hooks/shared/useTyping';
+import { CHAT_MESSAGE_MAX_LENGTH, CHAT_ROLE_LABEL, CHAT_TEXT as TEXT, GENERAL_CHAT_TITLE } from '../../constants/chat';
 import { Colors } from '../../constants/theme';
 import { formatDateSeparator, formatTime, isSameVietnamDay } from '../../lib/format';
 import { Haptic } from '../../lib/haptics';
@@ -32,9 +34,25 @@ export function ChatThreadView({ userId, name }: { userId: string; name?: string
   const keyboard = useKeyboard();
 
   const { messages, isLoading, handleSend, isGeneral, error, refetch } = useChatMessages(userId, user?.id);
-  const partnerName = usePartnerName(userId, name);
+  const partner = usePartner(userId, name);
+  const partnerName = partner.name;
   const composer = useChatComposer(handleSend, user);
   const headerTitle = isGeneral ? GENERAL_CHAT_TITLE : partnerName;
+  // Trực tuyến + "đang nhập…" chỉ có ở trò chuyện 1-1 (web: Conversation)
+  const online = usePresence();
+  const partnerOnline = !isGeneral && online.has(userId);
+  const typing = useTyping(userId, !isGeneral);
+  const subtitle = isGeneral ? TEXT.generalThreadSubtitle : partnerOnline ? TEXT.online : partner.role ? CHAT_ROLE_LABEL[partner.role] : undefined;
+
+  // Báo "đang nhập" theo từng ký tự; gửi tin (Enter hoặc nút) thì báo ngừng ngay
+  const changeText = (value: string) => {
+    composer.changeText(value);
+    typing.notify(value);
+  };
+  const submit = () => {
+    typing.stop();
+    void composer.submit();
+  };
 
   // Mở xong thì nhảy tới tin mới nhất; bàn phím bật lên thì cuộn tiếp để ô soạn không che tin cuối
   useEffect(() => {
@@ -67,17 +85,22 @@ export function ChatThreadView({ userId, name }: { userId: string; name?: string
         <TouchableOpacity className="p-1" onPress={handleBack} activeOpacity={0.7}>
           <Icon name="arrow-back" size={22} color={Colors.text.primary} />
         </TouchableOpacity>
-        <View className="w-9 h-9 rounded-full bg-[#D4FF0025] justify-center items-center">
-          {isGeneral ? (
-            <Icon name="group" size={18} color={Colors.primary} />
-          ) : (
-            <Text className="text-md font-bold font-bevn-bold text-primary">{partnerName[0]?.toUpperCase()}</Text>
+        <View>
+          <View className="w-9 h-9 rounded-full bg-[#D4FF0025] justify-center items-center">
+            {isGeneral ? (
+              <Icon name="group" size={18} color={Colors.primary} />
+            ) : (
+              <Text className="text-md font-bold font-bevn-bold text-primary">{partnerName[0]?.toUpperCase()}</Text>
+            )}
+          </View>
+          {partnerOnline && (
+            <View accessibilityLabel={TEXT.online} className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-bg-surface" style={{ backgroundColor: Colors.status.success }} />
           )}
         </View>
         <View className="flex-1">
           <Text className="text-md font-bold font-bevn-bold text-text-primary" numberOfLines={1}>{headerTitle}</Text>
-          {isGeneral && (
-            <Text className="text-xs text-text-secondary font-bevn-regular" numberOfLines={1}>{TEXT.generalThreadSubtitle}</Text>
+          {Boolean(subtitle) && (
+            <Text className="text-xs font-bevn-regular" style={{ color: partnerOnline ? Colors.status.success : Colors.text.secondary }} numberOfLines={1}>{subtitle}</Text>
           )}
         </View>
       </View>
@@ -134,7 +157,7 @@ export function ChatThreadView({ userId, name }: { userId: string; name?: string
                       className="text-[10px] font-bevn-regular mt-1 self-end"
                       style={{ color: isMine ? Colors.text.inverse + 'AA' : Colors.text.muted }}
                     >
-                      {formatTime(item.createdAt)}
+                      {formatTime(item.createdAt)}{isMine && index === messages.length - 1 ? ` · ${TEXT.sent}` : ''}
                     </Text>
                   </View>
                 </View>
@@ -146,6 +169,13 @@ export function ChatThreadView({ userId, name }: { userId: string; name?: string
               <Icon name="chat" size={48} color={Colors.text.muted} style={{ marginBottom: 12 }} />
               <Text className="text-md text-text-muted font-bevn-regular">{TEXT.threadEmpty}</Text>
             </View>
+          }
+          ListFooterComponent={
+            typing.partnerTyping ? (
+              <View accessibilityLiveRegion="polite" className="self-start rounded-lg rounded-bl-sm bg-bg-surface border border-border px-md py-sm mb-sm">
+                <Text className="text-xs text-text-secondary font-bevn-medium italic">{TEXT.typing}</Text>
+              </View>
+            ) : undefined
           }
         />
       )}
@@ -170,18 +200,18 @@ export function ChatThreadView({ userId, name }: { userId: string; name?: string
           className="flex-1 bg-bg-elevated rounded-lg px-lg py-sm text-text-primary font-bevn-regular text-sm max-h-[100px] border border-border"
           value={composer.text}
           editable={!composer.sending}
-          onChangeText={composer.changeText}
+          onChangeText={changeText}
           placeholder={TEXT.composerPlaceholder}
           placeholderTextColor={Colors.text.muted}
           multiline
           maxLength={CHAT_MESSAGE_MAX_LENGTH}
           submitBehavior="submit"
           returnKeyType="send"
-          onSubmitEditing={() => { void composer.submit(); }}
+          onSubmitEditing={submit}
           onKeyPress={(e) => {
             if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter' && !(e.nativeEvent as { shiftKey?: boolean }).shiftKey) {
               e.preventDefault();
-              void composer.submit();
+              submit();
             }
           }}
         />
@@ -189,7 +219,7 @@ export function ChatThreadView({ userId, name }: { userId: string; name?: string
           accessibilityRole="button"
           accessibilityLabel={TEXT.send}
           className={clsx('w-10 h-10 rounded-full justify-center items-center', hasContent ? 'bg-primary' : 'bg-bg-elevated')}
-          onPress={() => { void composer.submit(); }}
+          onPress={submit}
           disabled={composer.sending || !composer.canSend}
           activeOpacity={0.7}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}

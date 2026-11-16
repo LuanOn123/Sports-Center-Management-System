@@ -5,14 +5,16 @@ import { useEffect, useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getConversations, getContacts, getMessages, markMessagesRead, sendMessage, sendMessageWithFile, GENERAL_CHAT_ID } from '../../services/chatService';
 import type { DocumentPickerAsset } from 'expo-document-picker';
+import { CHAT_TEXT } from '../../constants/chat';
 import { getSocket } from '../../lib/socket';
 import type { ChatMessage, ChatConversation, User } from '../../lib/types';
 
-export function usePartnerName(userId: string | undefined, paramName?: string) {
-  const { data: contactsData } = useContacts();
-  if (paramName && paramName !== 'Người dùng') return paramName;
-  const contact = contactsData?.data?.find((c) => c.id === userId);
-  return contact?.fullName ?? paramName ?? 'Người dùng';
+/** Người đang trò chuyện: tên (ưu tiên tên truyền theo route, rồi danh sách liên hệ) và vai trò (nếu là liên hệ) */
+export function usePartner(userId: string | undefined, paramName?: string) {
+  const { contacts } = useContacts();
+  const contact = contacts.find((c) => c.id === userId);
+  const name = paramName && paramName !== CHAT_TEXT.unknownUser ? paramName : contact?.fullName ?? paramName ?? CHAT_TEXT.unknownUser;
+  return { name, role: contact?.role };
 }
 
 export function useConversations(currentUserId: string | undefined) {
@@ -73,10 +75,20 @@ export function useChatMessages(userId: string | undefined, currentUserId: strin
     if (query.data?.data) setMessages(query.data.data);
   }, [query.data]);
 
+  // Đã đọc xong thì số chưa đọc (huy hiệu tab Tin nhắn, danh sách hội thoại) đổi ngay, không chờ lượt hỏi định kỳ
+  const markRead = useCallback(() => {
+    void markMessagesRead(targetId)
+      .then(() => {
+        void queryClient.invalidateQueries({ queryKey: ['chat-unread-count'] });
+        void queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+      })
+      .catch(() => {});
+  }, [targetId, queryClient]);
+
   // Mark as read on mount — phòng chung không có khái niệm đã đọc, BE trả count:0
   useEffect(() => {
-    if (ready) void markMessagesRead(targetId).catch(() => {});
-  }, [ready, targetId]);
+    if (ready) markRead();
+  }, [ready, markRead]);
 
   // Listen for socket events
   useEffect(() => {
@@ -94,14 +106,12 @@ export function useChatMessages(userId: string | undefined, currentUserId: strin
         if (prev.some((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
-      if (!isGeneral && msg.senderId === userId) {
-        void markMessagesRead(targetId).catch(() => {});
-      }
+      if (!isGeneral && msg.senderId === userId) markRead();
     };
 
     socket.on('newMessage', handleNewMessage);
     return () => { socket.off('newMessage', handleNewMessage); };
-  }, [userId, currentUserId, isGeneral, ready, targetId]);
+  }, [userId, currentUserId, isGeneral, ready, markRead]);
 
   const handleSend = useCallback(
     async (content: string, currentUser?: User | null, attachment?: DocumentPickerAsset) => {

@@ -33,6 +33,12 @@ export const CHAT_FILE_ERROR = {
 /** Huy hiệu tin chưa đọc trên tab Tin nhắn tự làm mới mỗi chừng này */
 export const CHAT_UNREAD_REFRESH_MS = 30_000;
 
+/** Báo "đang nhập" cho người kia tắt sau chừng này mili-giây không gõ thêm (web: 1600) */
+export const CHAT_TYPING_IDLE_MS = 1_600;
+
+/** Phía nhận tự tắt "đang nhập…" sau chừng này nếu không nhận thêm tín hiệu (phòng khi tín hiệu "ngừng gõ" bị mất) */
+export const CHAT_TYPING_EXPIRE_MS = 5_000;
+
 /** Tên "phòng chung" — kênh chung của cả trung tâm */
 export const GENERAL_CHAT_TITLE = 'Phòng chung';
 
@@ -41,12 +47,21 @@ export const CHAT_TEXT = {
   searchPlaceholder: 'Tìm theo tên hoặc email...',
   generalSubtitle: 'Không gian trao đổi của trung tâm',
   generalThreadSubtitle: 'Không gian chung của trung tâm',
-  noContacts: 'Chưa có ai để nhắn tin',
-  noContactsHint: 'Chưa có huấn luyện viên/đội ngũ phù hợp',
-  noMatch: 'Không tìm thấy liên hệ',
+  // Chưa tìm thì chỉ hiện người đã nhắn với mình; muốn nhắn người mới thì tìm tên (web: Chat › chat-list-hint)
+  noConversations: 'Chưa có cuộc trò chuyện riêng',
+  noConversationsHint: 'Tìm tên ở ô phía trên để bắt đầu nhắn tin.',
+  noMatch: 'Không tìm thấy người phù hợp',
   noMatchHint: (query: string) => `Không có ai khớp với "${query}"`,
   startConversation: 'Chưa có tin nhắn — bấm để bắt đầu',
-  attachmentPreview: '[Tệp đính kèm]',
+  /** Dòng xem trước: tin của chính mình mở đầu bằng "Bạn: " */
+  youPrefix: 'Bạn: ',
+  attachmentSent: 'Đã gửi tệp đính kèm',
+  newMessage: 'Tin nhắn mới',
+  /** Chấm xanh + dòng phụ ở đầu cuộc trò chuyện khi người kia đang trực tuyến */
+  online: 'Đang hoạt động',
+  typing: 'đang nhập…',
+  /** Dưới tin cuối cùng của mình */
+  sent: 'Đã gửi',
   threadEmpty: 'Bắt đầu cuộc trò chuyện',
   composerPlaceholder: 'Nhắn tin...',
   unknownUser: 'Người dùng',

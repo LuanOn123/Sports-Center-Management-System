@@ -1509,21 +1509,44 @@ test('shared date formatters use Vietnam time (weekday long style, chat separato
   assert.deepEqual([12 * hour, 3 * day, 29 * day, 40 * day].map((ms) => f.formatReviewAge(iso, at(ms))), ['Hôm nay', '3 ngày trước', '29 ngày trước', '15/11/2026']);
 });
 
-test('chat inbox lists every allowed contact (newest conversation first) and searches by name or email', () => {
+test('chat inbox follows the web: unread first, then newest, then name; only people already chatted with until you search', () => {
   const chat = loadApp('http://localhost/api/v1').load('lib/chat');
-  const contacts = [{ id: 'a', fullName: 'An Nguyễn', email: 'an@mail.com' }, { id: 'b', fullName: 'Bình Lê', email: 'binh@mail.com' }, { id: 'c', fullName: 'Cường Trần' }];
+  const person = (id, fullName, email) => ({ id, fullName, email });
+  const an = person('a', 'An Nguyễn', 'an@mail.com'); const binh = person('b', 'Bình Lê', 'binh@mail.com'); const cuong = person('c', 'Cường Trần'); const dung = person('d', 'Dũng Phạm', 'dung@mail.com');
+  const former = person('old', 'Người cũ'); // không còn trong danh sách liên hệ nhưng vẫn có cuộc trò chuyện
+  const msg = (createdAt, senderId = 'x') => ({ senderId, content: 'hi', createdAt });
   const conversations = [
-    { user: contacts[0], latestMessage: { createdAt: '2026-11-01T10:00:00Z' }, unreadCount: 2 },
-    { user: contacts[1], latestMessage: { createdAt: '2026-11-02T10:00:00Z' }, unreadCount: 0 },
-    { user: { id: 'removed', fullName: 'Đã bị gỡ' }, latestMessage: { createdAt: '2026-11-03T10:00:00Z' }, unreadCount: 1 },
+    { user: an, latestMessage: msg('2026-11-01T10:00:00Z'), unreadCount: 2 }, // cũ nhất nhưng chưa đọc → lên đầu
+    { user: binh, latestMessage: msg('2026-11-02T10:00:00Z'), unreadCount: 0 },
+    { user: former, latestMessage: msg('2026-11-03T10:00:00Z'), unreadCount: 0 },
   ];
-  const rows = chat.buildInboxRows(contacts, conversations);
-  assert.deepEqual(rows.map((r) => r.user.id), ['b', 'a', 'c'], 'mới nhắn trước, chưa nhắn lần nào xuống cuối, người không còn là liên hệ thì không hiện');
-  assert.deepEqual(rows[2], { user: contacts[2], latestMessage: null, unreadCount: 0 });
-  assert.deepEqual(chat.filterInboxRows(rows, '  BINH@ ').map((r) => r.user.id), ['b']);
-  assert.deepEqual(chat.filterInboxRows(rows, 'nguyễn').map((r) => r.user.id), ['a']);
-  assert.equal(chat.filterInboxRows(rows, '   ').length, 3);
-  assert.equal(chat.filterInboxRows(rows, 'zzz').length, 0);
+  const rows = chat.buildInboxRows([an, binh, cuong, dung], conversations);
+  assert.deepEqual(rows.map((r) => r.user.id), ['a', 'old', 'b', 'c', 'd'], 'chưa đọc, rồi mới nhắn gần nhất, rồi theo tên (Cường trước Dũng)');
+  assert.deepEqual(rows[3], { user: cuong, latestMessage: null, unreadCount: 0 });
+
+  // Chưa tìm: chỉ người đã nhắn với mình; đang tìm: mọi liên hệ theo tên / email để bắt đầu cuộc trò chuyện mới
+  assert.deepEqual(chat.visibleInboxRows(rows, '').map((r) => r.user.id), ['a', 'old', 'b']);
+  assert.deepEqual(chat.visibleInboxRows(rows, '   ').map((r) => r.user.id), ['a', 'old', 'b']);
+  assert.deepEqual(chat.visibleInboxRows(rows, 'dung@').map((r) => r.user.id), ['d'], 'tìm ra cả người chưa nhắn lần nào');
+  assert.deepEqual(chat.visibleInboxRows(rows, '  BINH@ ').map((r) => r.user.id), ['b']);
+  assert.deepEqual(chat.visibleInboxRows(rows, 'nguyễn').map((r) => r.user.id), ['a']);
+  assert.equal(chat.visibleInboxRows(rows, 'zzz').length, 0);
+  assert.equal(chat.filterInboxRows(rows, '   ').length, 5);
+
+  // Dòng xem trước như web: "Bạn: …" cho tin của mình, tệp đính kèm, tin trống, chưa có tin
+  const preview = (latestMessage) => chat.inboxPreview({ user: an, latestMessage, unreadCount: 0 }, 'me');
+  assert.equal(preview({ senderId: 'x', content: 'chào', createdAt: '' }), 'chào');
+  assert.equal(preview({ senderId: 'me', content: 'chào', createdAt: '' }), 'Bạn: chào');
+  assert.equal(preview({ senderId: 'me', content: '', fileUrl: '/f', createdAt: '' }), 'Bạn: Đã gửi tệp đính kèm');
+  assert.equal(preview({ senderId: 'x', content: '', createdAt: '' }), 'Tin nhắn mới');
+  assert.equal(preview(null), 'Chưa có tin nhắn — bấm để bắt đầu');
+
+  // Trực tuyến: tập mới chỉ tạo khi có thay đổi, không sửa tập cũ
+  const base = new Set(['a']);
+  assert.equal(chat.applyPresence(base, 'a', true), base);
+  assert.deepEqual([...chat.applyPresence(base, 'b', true)], ['a', 'b']);
+  assert.deepEqual([...chat.applyPresence(base, 'a', false)], []);
+  assert.deepEqual([...base], ['a']);
 });
 
 test('password forms: reset checks OTP, then length, then confirmation; change-password schema reports the same rules per field', () => {
@@ -1635,4 +1658,77 @@ test('coach class cards: own card with type, capacity and status, and a link to 
   assert.match(readSource('app/(tabs)/schedule.tsx'), /initialClassId=\{classId\}/);
   assert.match(readSource('hooks/coach/useCoachScheduleScreen.ts'), /if \(initialClassId\) setClassFilter\(initialClassId\)/);
   assert.match(readSource('components/coach/CoachScheduleView.tsx'), /router\.setParams\(\{ classId: '' \}\)/);
+});
+
+// ─── Phase 4: thông báo (phân trang, lọc chưa đọc, nút hành động) và tin nhắn (trực tuyến, đang nhập) ──────────────────
+
+test('notifications load one page of 20 at a time, the BE filters unread, pages merge without duplicates', async () => fixture(async ({ load, requests, handle }) => {
+  const api = load('lib/api'); await api.saveTokens('member-token', 'refresh');
+  const n = load('lib/notifications'); const c = load('constants/notifications');
+  assert.equal(c.NOTIFICATION_PAGE_SIZE, 20); // như trang Thông báo của web
+  const page = (p, totalPages, ids) => ({ data: ids.map((id) => ({ id, body: 'x' })), pagination: { page: p, limit: 20, total: 45, totalPages } });
+  assert.equal(n.nextNotificationPage(page(1, 3, [])), 2);
+  assert.equal(n.nextNotificationPage(page(3, 3, [])), undefined, 'trang cuối thì hết');
+  assert.equal(n.nextNotificationPage({ data: [] }), undefined, 'BE không trả phân trang thì coi như một trang');
+  assert.deepEqual(n.mergeNotificationPages([page(1, 2, ['a', 'b', 'c']), page(2, 2, ['c', 'd'])]).map((x) => x.id), ['a', 'b', 'c', 'd'], 'thông báo mới chen vào làm trang sau lặp lại dòng cuối trang trước');
+  assert.equal(n.isLongNotification('x'.repeat(110)), false); assert.equal(n.isLongNotification('x'.repeat(111)), true);
+
+  // Service: đúng MỘT trang mỗi lần gọi (không lặp qua mọi trang như allPages), lọc chưa đọc do BE làm
+  handle(() => ({ data: [], pagination: { page: 2, limit: 20, total: 45, totalPages: 3 } }));
+  const service = load('services/notificationService');
+  const result = await service.getNotificationsPage({ page: '2', limit: '20', isRead: 'false' });
+  assert.equal(requests.length, 1); assert.equal(requests[0].path, '/api/v1/notifications');
+  assert.deepEqual([requests[0].query.get('page'), requests[0].query.get('limit'), requests[0].query.get('isRead')], ['2', '20', 'false']);
+  assert.equal(result.pagination.totalPages, 3);
+  await service.getNotificationsPage({ page: '1', limit: '20' });
+  assert.equal(requests.at(-1).query.has('isRead'), false, 'xem tất cả thì không gửi isRead');
+
+  const hook = readSource('hooks/shared/useNotifications.ts');
+  assert.match(hook, /useInfiniteQuery/); assert.ok(!/allPages/.test(hook + readSource('services/notificationService.ts')), 'không tải hết lịch sử thông báo');
+  assert.match(readSource('components/notifications/NotificationsView.tsx'), /onEndReached=\{n\.loadMore\}/);
+  assert.match(readSource('components/notifications/NotificationCard.tsx'), /TEXT\.reason\(item\.reason!\)/);
+}));
+
+test('notification action buttons: label and target per type; leave requests follow the coach-change page like the web', () => {
+  const app = loadApp('http://localhost/api/v1'); const nav = app.load('navigation/notificationRoute'); const { ROUTES } = app.load('navigation/routes');
+  const note = (type, metadata) => ({ id: 'n', userId: 'u', type, title: '', body: '', isRead: false, createdAt: '', metadata });
+  const action = (type, metadata, role) => { const target = nav.resolveNotificationTarget(note(type, metadata), role); return target && [target.kind, nav.notificationActionLabel(target.kind, role)]; };
+  assert.deepEqual(action('CHAT_MESSAGE', { senderId: 'u2' }, 'MEMBER'), ['chat', 'Mở tin nhắn']);
+  assert.deepEqual(action('SCHEDULE_UPDATED', { scheduleId: 's1' }, 'MEMBER'), ['schedule', 'Xem lịch tập']);
+  assert.deepEqual(action('SCHEDULE_UPDATED', { scheduleId: 's1' }, 'COACH'), ['schedule', 'Xem lịch dạy']);
+  assert.deepEqual(action('UPCOMING_CLASS', { classId: 'c1' }, 'MEMBER'), ['class', 'Xem lớp học']);
+  assert.deepEqual(action('SUBSCRIPTION_EXPIRING', undefined, 'MEMBER'), ['plans', 'Xem gói tập']);
+  assert.deepEqual(action('ATTENDANCE_WARNING', undefined, 'MEMBER'), ['attendance', 'Xem chuyên cần']);
+  assert.deepEqual(action('PAYMENT_SUCCESS', undefined, 'MEMBER'), ['payments', 'Xem thanh toán']);
+  assert.deepEqual(action('COACH_CHANGE_REJECTED', undefined, 'COACH'), ['coachChanges', 'Xem yêu cầu đổi HLV']);
+  assert.deepEqual(action('COACH_CHANGE_APPROVED', { scheduleId: 's9' }, 'COACH'), ['schedule', 'Xem lịch dạy']);
+  // Đơn nghỉ: HLV được đưa tới trang đổi HLV (web: /coach/leave chuyển tiếp tới /coach/coach-changes); hội viên không có màn đích
+  for (const type of ['LEAVE_REQUEST_SUBMITTED', 'LEAVE_REQUEST_APPROVED', 'LEAVE_REQUEST_REJECTED']) {
+    assert.deepEqual(action(type, undefined, 'COACH'), ['leave', 'Xem đơn nghỉ của tôi']);
+    assert.equal(nav.resolveNotificationRoute(note(type), 'COACH'), ROUTES.coachChanges);
+    assert.equal(nav.resolveNotificationRoute(note(type), 'MEMBER'), null);
+    assert.equal(nav.resolveNotificationRoute(note(type)), null);
+  }
+  // Thiếu dữ liệu để mở, hoặc loại không có màn đích: không có nút (bấm vào chỉ đánh dấu đã đọc)
+  assert.equal(action('CHAT_MESSAGE', {}, 'MEMBER'), null);
+  assert.equal(action('TRAINING_PLAN_ASSIGNED', undefined, 'MEMBER'), null);
+  assert.equal(action('GENERAL', undefined, 'MEMBER'), null);
+  assert.deepEqual(nav.resolveNotificationRoute(note('PAYMENT_FAILED')), ROUTES.payments, 'cách gọi cũ (không vai trò) vẫn đúng');
+});
+
+test('chat shows who is online and who is typing like the web, and the tab badge updates when a message arrives', () => {
+  const c = loadApp('http://localhost/api/v1').load('constants/chat');
+  assert.equal(c.CHAT_TYPING_IDLE_MS, 1600); // web: tắt "đang nhập" sau 1,6 giây không gõ
+  assert.ok(c.CHAT_TYPING_EXPIRE_MS > c.CHAT_TYPING_IDLE_MS);
+  const presence = readSource('hooks/shared/usePresence.ts');
+  assert.match(presence, /presence:list/); assert.match(presence, /presenceChanged/); assert.match(presence, /socket\.on\('disconnect', cleared\)/);
+  const typing = readSource('hooks/shared/useTyping.ts');
+  assert.match(typing, /socket\.emit\('typing', \{ receiverId: partnerId, isTyping \}\)/); assert.match(typing, /userId !== partnerId/);
+  const thread = readSource('components/chat/ChatThreadView.tsx');
+  assert.match(thread, /useTyping\(userId, !isGeneral\)/, 'phòng chung không có "đang nhập"');
+  assert.match(thread, /typing\.notify\(value\)/); assert.match(thread, /typing\.stop\(\)/);
+  assert.match(readSource('components/chat/ChatInboxView.tsx'), /inbox\.online\.has\(item\.user\.id\)/);
+  assert.match(readSource('hooks/shared/useChatUnreadCount.ts'), /socket\.on\('newMessage', refresh\)/);
+  // Mở cuộc trò chuyện xong thì số chưa đọc đổi ngay
+  assert.match(readSource('hooks/shared/useChat.ts'), /invalidateQueries\(\{ queryKey: \['chat-unread-count'\] \}\)/);
 });
