@@ -1,9 +1,8 @@
 // services/notificationService.ts
 // Tầng gọi API thuần túy — không có state, không có hook
 
-import { api } from '../lib/api';
+import { api, apiRequest } from '../lib/api';
 import type { AppNotification } from '../lib/types';
-import { allPages } from '../lib/pagedApi';
 
 export interface NotificationQuery {
   isRead?: 'true' | 'false';
@@ -12,9 +11,12 @@ export interface NotificationQuery {
   limit?: string;
 }
 
-/** GET /notifications */
-export const getNotifications = (query?: NotificationQuery) =>
-  allPages<AppNotification>('/notifications', query as Record<string, string | undefined>);
+/**
+ * GET /notifications — MỘT trang (BE: page, limit tối đa 100, isRead, type) kèm phân trang.
+ * Không tải hết mọi trang: người dùng lâu năm có hàng trăm thông báo, màn hình tải trang kế khi kéo xuống cuối.
+ */
+export const getNotificationsPage = (query: NotificationQuery, signal?: AbortSignal) =>
+  apiRequest<AppNotification[]>('/notifications', 'GET', { query: { ...query }, signal });
 
 /** GET /notifications/unread-count */
 export const getUnreadNotificationCount = () =>
