@@ -1,15 +1,18 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api, type RecordData } from "../../../shared/api";
 import { at, display, money } from "../../../shared/config";
-import { Details, ErrorState, Loading, Modal } from "../../../shared/ui";
+import { Details, Empty, ErrorState, Loading, Modal } from "../../../shared/ui";
 import { useReceptionDetail, useReceptionList } from "../api";
 import { StatusAction } from "../../../shared/StatusAction";
 import { paymentTransitions } from "../../../shared/businessRules";
 import { Heading, ListState, MemberPicker, Table } from "../components";
-export function PaymentsPage({
-  role = "RECEPTIONIST",
-}: { role?: "ADMIN" | "RECEPTIONIST" }) {
+
+export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "refunds";
+
   const [member, setMember] = useState<RecordData | null>(null);
   const [invoiceId, setInvoiceId] = useState("");
   const [paymentId, setPaymentId] = useState("");
@@ -17,6 +20,18 @@ export function PaymentsPage({
   const [refund, setRefund] = useState<RecordData | null>(null);
   const [exception, setException] = useState<RecordData | null>(null);
   const id = String(member?.id || "");
+
+  // Query tất cả yêu cầu hoàn tiền đang chờ lễ tân xử lý
+  const pendingRefunds = useQuery({
+    queryKey: ["payments", "refund-pending"],
+    queryFn: ({ signal }) =>
+      api<RecordData[]>("GET /payments", {
+        query: { refundPending: "true", limit: "50" },
+        signal,
+      }),
+    refetchInterval: 15_000,
+  });
+
   const payments = useReceptionList(
     "GET /payments",
     { memberId: id, status },
@@ -34,9 +49,56 @@ export function PaymentsPage({
     { id: paymentId },
     Boolean(paymentId),
   );
+
+  const pendingCount = pendingRefunds.data?.data?.length || 0;
+
   return (
     <>
-      <Heading title="Thanh toán & hoàn tiền" />
+      <Heading title="Thanh toán & hóa đơn" />
+
+      {/* Tabs chuyển đổi giữa Yêu cầu hoàn tiền và Tra cứu */}
+      <div
+        className="tab-nav"
+        style={{
+          display: "flex",
+          gap: "10px",
+          marginBottom: "20px",
+          borderBottom: "1px solid var(--border, #e2e8f0)",
+          paddingBottom: "10px",
+        }}
+      >
+        <button
+          type="button"
+          className={`button ${activeTab === "refunds" ? "primary" : ""}`}
+          onClick={() => setSearchParams({ tab: "refunds" })}
+          style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
+        >
+          Yêu cầu hoàn tiền cần xử lý
+          {pendingCount > 0 && (
+            <span
+              className="badge"
+              style={{
+                backgroundColor: "#ef4444",
+                color: "#ffffff",
+                padding: "2px 8px",
+                borderRadius: "999px",
+                fontSize: "12px",
+                fontWeight: 600,
+              }}
+            >
+              {pendingCount}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          className={`button ${activeTab === "search" ? "primary" : ""}`}
+          onClick={() => setSearchParams({ tab: "search" })}
+        >
+          Tra cứu thanh toán & hóa đơn theo hội viên
+        </button>
+      </div>
+
       {refund && (
         <RefundConfirmation payment={refund} onClose={() => setRefund(null)} />
       )}
@@ -46,158 +108,228 @@ export function PaymentsPage({
           onClose={() => setException(null)}
         />
       )}
-      <MemberPicker
-        value={member}
-        onChange={(m) => {
-          setMember(m);
-          setInvoiceId("");
-          setPaymentId("");
-        }}
-      />
-      {id && (
+
+      {/* TAB 1: YÊU CẦU HOÀN TIỀN CẦN XỬ LÝ */}
+      {activeTab === "refunds" && (
+        <section className="panel reception-section">
+          <h2>Danh sách yêu cầu hoàn tiền đang chờ</h2>
+          <p>
+            Các khoản hoàn tiền do hội viên yêu cầu hoặc do hủy gói tập cần lễ tân
+            xác nhận chi trả thực tế (tiền mặt / chuyển khoản).
+          </p>
+          {pendingRefunds.isPending ? (
+            <Loading variant="cards" />
+          ) : pendingRefunds.isError ? (
+            <ErrorState
+              error={pendingRefunds.error}
+              retry={() => pendingRefunds.refetch()}
+            />
+          ) : !pendingRefunds.data?.data?.length ? (
+            <Empty text="Hiện không có yêu cầu hoàn tiền nào đang chờ xử lý." />
+          ) : (
+            <Table
+              rows={pendingRefunds.data.data}
+              columns={[
+                ["id", "Mã đơn"],
+                ["refundRequestedAt", "Ngày yêu cầu"],
+                ["member", "Hội viên"],
+                ["subscription", "Gói tập"],
+                ["refundRequestedAmount", "Số tiền hoàn"],
+                ["refundReason", "Lý do hoàn"],
+              ]}
+              actions={(row) => {
+                return (
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "6px",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="button small primary"
+                      onClick={() => setRefund(row)}
+                    >
+                      Xác nhận hoàn {money(row.refundRequestedAmount || row.amount)}
+                    </button>
+                    <button
+                      type="button"
+                      className="button small"
+                      onClick={() => setPaymentId(String(row.id))}
+                    >
+                      Chi tiết
+                    </button>
+                  </div>
+                );
+              }}
+            />
+          )}
+        </section>
+      )}
+
+      {/* TAB 2: TRA CỨU THEO HỘI VIÊN */}
+      {activeTab === "search" && (
         <>
-          <section className="panel reception-section">
-            <h2>Lịch sử thanh toán</h2>
-            <p>
-              Khoản thu được tạo khi bán hoặc gia hạn gói. Vui lòng dùng chức
-              năng gói hội viên để ghi nhận đúng đơn và số tiền.
-            </p>
-            <label>
-              Lọc trạng thái
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-              >
-                <option value="">Tất cả</option>
-                {["PENDING", "SUCCESS", "FAILED", "REFUNDED"].map((s) => (
-                  <option key={s} value={s}>
-                    {display(s)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <ListState result={payments}>
-              {(rows) => (
-                <>
-                  <dl className="payment-summary">
-                    <div>
-                      <dt>Giao dịch đang hiển thị</dt>
-                      <dd>{rows.length}</dd>
-                    </div>
-                    <div>
-                      <dt>Đã thu trong danh sách</dt>
-                      <dd>
-                        {money(
-                          rows
-                            .filter((r) => r.status === "SUCCESS")
-                            .reduce(
-                              (total, r) => total + (Number(r.amount) || 0),
-                              0,
-                            ),
+          <MemberPicker
+            value={member}
+            onChange={(m) => {
+              setMember(m);
+              setInvoiceId("");
+              setPaymentId("");
+            }}
+          />
+          {id && (
+            <>
+              <section className="panel reception-section">
+                <h2>Lịch sử thanh toán</h2>
+                <p>
+                  Khoản thu được tạo khi bán hoặc gia hạn gói. Vui lòng dùng chức
+                  năng gói hội viên để ghi nhận đúng đơn và số tiền.
+                </p>
+                <label>
+                  Lọc trạng thái
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                  >
+                    <option value="">Tất cả</option>
+                    {["PENDING", "SUCCESS", "FAILED", "REFUNDED"].map((s) => (
+                      <option key={s} value={s}>
+                        {display(s)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <ListState result={payments}>
+                  {(rows) => (
+                    <>
+                      <dl className="payment-summary">
+                        <div>
+                          <dt>Giao dịch đang hiển thị</dt>
+                          <dd>{rows.length}</dd>
+                        </div>
+                        <div>
+                          <dt>Đã thu trong danh sách</dt>
+                          <dd>
+                            {money(
+                              rows
+                                .filter((r) => r.status === "SUCCESS")
+                                .reduce(
+                                  (total, r) => total + (Number(r.amount) || 0),
+                                  0,
+                                ),
+                            )}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Chờ xử lý trong danh sách</dt>
+                          <dd>
+                            {rows.filter((r) => r.status === "PENDING").length}
+                          </dd>
+                        </div>
+                      </dl>
+                      <Table
+                        rows={rows}
+                        columns={[
+                          ["amount", "Số tiền"],
+                          ["method", "Phương thức"],
+                          ["status", "Trạng thái"],
+                          ["createdAt", "Ngày tạo"],
+                        ]}
+                        actions={(row) => (
+                          <>
+                            <button
+                              className="button small"
+                              onClick={() => setPaymentId(String(row.id))}
+                            >
+                              Chi tiết
+                            </button>
+                            {Boolean(row.gateway) && (
+                              <small>
+                                Giao dịch online được cập nhật sau khi hệ thống xác
+                                nhận thanh toán.
+                              </small>
+                            )}
+                            {row.activationStatus === "REQUIRES_REVIEW" &&
+                              row.status === "SUCCESS" && (
+                                <div role="status">
+                                  {row.refundRequestedAt
+                                    ? "Đã duyệt yêu cầu hoàn — chờ trả tiền và xác nhận biên nhận"
+                                    : "Cần đối soát — chưa kích hoạt gói"}
+                                  {role === "ADMIN" &&
+                                    !row.refundRequestedAt &&
+                                    !row.subscriptionId && (
+                                      <>
+                                        <RetryActivation id={String(row.id)} />
+                                        <button
+                                          className="button small"
+                                          onClick={() => setException(row)}
+                                        >
+                                          Duyệt hoàn tiền chưa cấp gói
+                                        </button>
+                                      </>
+                                    )}
+                                  {role !== "ADMIN" && (
+                                    <small>Liên hệ quản trị viên để xử lý.</small>
+                                  )}
+                                </div>
+                              )}
+                            {row.status === "SUCCESS" && row.refundRequestedAt && (
+                              <button
+                                className="button small"
+                                onClick={() => setRefund(row)}
+                              >
+                                Xác nhận hoàn {money(row.refundRequestedAmount)}
+                              </button>
+                            )}
+                            <StatusAction
+                              operation="PATCH /payments/{id}/status"
+                              id={String(row.id)}
+                              statuses={paymentTransitions(
+                                String(row.status),
+                                role,
+                                row.gateway,
+                              ).filter((s) => s !== "REFUNDED")}
+                              explanation="Hoàn tiền phải qua bước xác nhận biên nhận thực tế; quyền học từ gói đó sẽ được thu hồi."
+                            />
+                          </>
                         )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Chờ xử lý trong danh sách</dt>
-                      <dd>
-                        {rows.filter((r) => r.status === "PENDING").length}
-                      </dd>
-                    </div>
-                  </dl>
-                  {rows.some((row) => row.gateway) && (
-                    <p>Trạng thái thu tiền online được cập nhật qua đối soát.</p>
+                      />
+                    </>
                   )}
-                  <Table
-                    rows={rows}
-                    columns={[
-                      ["amount", "Số tiền"],
-                      ["method", "Phương thức"],
-                      ["status", "Trạng thái"],
-                      ["createdAt", "Ngày tạo"],
-                    ]}
-                    actions={(row) => (
-                      <>
+                </ListState>
+              </section>
+              <section className="panel reception-section">
+                <h2>Hóa đơn hội viên</h2>
+                <ListState result={invoices}>
+                  {(rows) => (
+                    <Table
+                      rows={rows}
+                      columns={[
+                        ["invoiceNumber", "Số hóa đơn"],
+                        ["total", "Tổng tiền"],
+                        ["status", "Trạng thái"],
+                        ["issuedAt", "Ngày phát hành"],
+                      ]}
+                      actions={(row) => (
                         <button
                           className="button small"
-                          onClick={() => setPaymentId(String(row.id))}
+                          onClick={() => setInvoiceId(String(row.id))}
                         >
-                          Chi tiết
+                          Xem / In hóa đơn
                         </button>
-                        {row.activationStatus === "REQUIRES_REVIEW" &&
-                          row.status === "SUCCESS" && (
-                            <div role="status">
-                              {row.refundRequestedAt
-                                ? "Đã duyệt yêu cầu hoàn tiền"
-                                : "Cần đối soát — chưa kích hoạt gói"}
-                              {role === "ADMIN" &&
-                                !row.refundRequestedAt &&
-                                !row.subscriptionId && (
-                                  <>
-                                    <RetryActivation id={String(row.id)} />
-                                    <button
-                                      className="button small"
-                                      onClick={() => setException(row)}
-                                    >
-                                      Duyệt hoàn tiền chưa cấp gói
-                                    </button>
-                                  </>
-                                )}
-                              {role !== "ADMIN" && (
-                                <small>Liên hệ quản trị viên để xử lý.</small>
-                              )}
-                            </div>
-                          )}
-                        {row.status === "SUCCESS" && row.refundRequestedAt && (
-                          <button
-                            className="button small"
-                            onClick={() => setRefund(row)}
-                          >
-                            Xác nhận hoàn tiền ({money(row.refundRequestedAmount)})
-                          </button>
-                        )}
-                        <StatusAction
-                          operation="PATCH /payments/{id}/status"
-                          id={String(row.id)}
-                          statuses={paymentTransitions(
-                            String(row.status),
-                            role,
-                            row.gateway,
-                          ).filter((s) => s !== "REFUNDED")}
-                          explanation="Hoàn tiền phải qua bước xác nhận biên nhận thực tế; quyền học từ gói đó sẽ được thu hồi."
-                        />
-                      </>
-                    )}
-                  />
-                </>
-              )}
-            </ListState>
-          </section>
-          <section className="panel reception-section">
-            <h2>Hóa đơn hội viên</h2>
-            <ListState result={invoices}>
-              {(rows) => (
-                <Table
-                  rows={rows}
-                  columns={[
-                    ["invoiceNumber", "Số hóa đơn"],
-                    ["total", "Tổng tiền"],
-                    ["status", "Trạng thái"],
-                    ["issuedAt", "Ngày phát hành"],
-                  ]}
-                  actions={(row) => (
-                    <button
-                      className="button small"
-                      onClick={() => setInvoiceId(String(row.id))}
-                    >
-                      Xem / In hóa đơn
-                    </button>
+                      )}
+                    />
                   )}
-                />
-              )}
-            </ListState>
-          </section>
+                </ListState>
+              </section>
+            </>
+          )}
         </>
       )}
+
       {invoiceId && (
         <InvoiceDialog id={invoiceId} onClose={() => setInvoiceId("")} />
       )}
@@ -247,25 +379,23 @@ function ExceptionRefund({
         nhưng chưa cấp gói. Sau khi duyệt, hệ thống chặn kích hoạt lại khoản
         này.
       </p>
-      <p>
-        Đây là bước duyệt yêu cầu. Chỉ xác nhận đã hoàn sau khi trả tiền thực tế
-        và có biên nhận.
-      </p>
       <label>
-        Lý do hoàn ngoại lệ
+        Lý do duyệt hoàn
         <textarea
-          value={reason}
+          required
+          minLength={3}
           maxLength={1000}
-          onChange={(event) => setReason(event.target.value)}
-          disabled={mutation.isPending}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
         />
       </label>
       {mutation.error && <ErrorState error={mutation.error} />}
       <div className="modal-footer">
         <button
+          type="button"
           className="button"
-          onClick={onClose}
           disabled={mutation.isPending}
+          onClick={onClose}
         >
           Quay lại
         </button>
@@ -280,6 +410,7 @@ function ExceptionRefund({
     </Modal>
   );
 }
+
 export function InvoiceDialog({
   id,
   onClose,
@@ -376,9 +507,8 @@ function RefundConfirmation({
         }}
       >
         <p>
-          Sau khi trả {money(payment.refundRequestedAmount)} cho hội viên,
-          lễ tân hoặc quản trị hệ thống nhập mã biên nhận hoặc mã chuyển khoản
-          để ghi nhận khoản tiền đã trả.
+          Chỉ xác nhận sau khi đã trả {money(payment.refundRequestedAmount || payment.amount)}.
+          Thao tác này ghi nhận tiền thực tế, không tự chuyển khoản.
         </p>
         <fieldset disabled={save.isPending}>
           <label>
@@ -389,6 +519,7 @@ function RefundConfirmation({
               maxLength={200}
               value={reference}
               onChange={(e) => setReference(e.target.value)}
+              placeholder="VD: FT24012345678 hoặc Phiếu chi PC-01"
             />
           </label>
           <label>
@@ -399,6 +530,7 @@ function RefundConfirmation({
               maxLength={1000}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
+              placeholder="Nhập lý do chi hoàn tiền thực tế"
             />
           </label>
           {save.error && <ErrorState error={save.error} />}
