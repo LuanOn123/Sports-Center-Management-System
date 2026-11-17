@@ -117,39 +117,42 @@ test("membership registration and renewal use the selected profile and subscript
   });
   expect((await renewal).postDataJSON().requestId).not.toBe(initialSale.requestId);
 });
-test("booking uses member profile and schedule; cancellation requires confirmation", async ({
+test("whole-course booking sends the member and class; course cancellation requires confirmation", async ({
   page,
 }) => {
   await setup(page);
+  await page.route("**/api/v1/enrollments/courses/*/cancel", (route) =>
+    route.fulfill({ json: { success: true, data: { cancelledSessions: 4, cancelledWaitlist: 0 } } }),
+  );
   await page.goto("/receptionist/classes");
   await chooseMember(page);
   await page.getByRole("button", { name: "Xem đăng ký" }).first().click();
-  await page.getByRole("button", { name: /^Đăng ký cho / }).click();
+  await page.getByRole("button", { name: /^Đăng ký trọn khóa cho / }).click();
   const booking = page.waitForRequest(
-    (r) => r.method() === "POST" && r.url().endsWith("/enrollments"),
+    (r) => r.method() === "POST" && r.url().endsWith("/enrollments/bulk"),
   );
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Xác nhận đăng ký", exact: true })
     .click();
-  expect((await booking).postDataJSON()).toMatchObject({
+  const payload = (await booking).postDataJSON();
+  expect(payload).toEqual({
     memberId,
-    scheduleId: expect.any(String),
+    classId: expect.any(String),
   });
   await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(page.getByText(/Đã đăng ký trọn khóa.+4 buổi/)).toBeVisible();
   await page
-    .getByRole("button", { name: "Hủy đăng ký", exact: true })
+    .getByRole("button", { name: "Hủy toàn khóa", exact: true })
     .first()
     .click();
   const cancel = page.waitForRequest(
-    (r) => r.method() === "DELETE" && r.url().includes("/enrollments/"),
+    (r) => r.method() === "POST" && r.url().endsWith(`/enrollments/courses/${payload.classId}/cancel`),
   );
   await page
-    .getByRole("button", { name: "Xác nhận hủy đăng ký", exact: true })
+    .getByRole("button", { name: "Xác nhận hủy toàn khóa", exact: true })
     .click();
-  expect((await cancel).url()).toContain(
-    "6b6b6b6b-0000-4000-8000-000000000201",
-  );
+  expect((await cancel).postDataJSON()).toEqual({ memberId: "roster-member", termId: null });
 });
 test("cashier records collection against an existing counter order once", async ({
   page,

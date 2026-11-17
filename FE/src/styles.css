@@ -1987,6 +1987,27 @@ dialog::backdrop {
   font-size: var(--font-small);
 }
 
+.form-grid label.checkbox-field {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  line-height: 1.5;
+}
+
+.form-grid .checkbox-field > input[type="checkbox"] {
+  flex: none;
+  width: 1em;
+  height: 1em;
+  min-height: 0;
+  padding: 0;
+  margin: 0.125em 0 0;
+}
+
+.form-grid .checkbox-field > input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--member-accent, #72934e);
+  outline-offset: 3px;
+}
+
 .form-grid input,
 .form-grid select,
 .form-grid textarea {

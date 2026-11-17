@@ -1,13 +1,17 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   ChevronDown,
+  CreditCard,
   LifeBuoy,
   LogOut,
   ReceiptText,
   UserRound,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { currentMembershipQuery } from "../api/membership.api";
 import { Avatar } from "./Avatar";
+import { effectiveSubscription } from "./businessRules";
 import type { ProfileOk } from "./generated";
 import "./profile-menu.css";
 import { display } from "./config";
@@ -27,6 +31,17 @@ export function ProfileMenu({
   const trigger = useRef<HTMLButtonElement>(null);
   const id = useId();
   const location = useLocation();
+  const membership = useQuery(
+    currentMembershipQuery(user.role === "MEMBER" ? user.id : undefined),
+  );
+  const activePlan = effectiveSubscription(membership.data?.subscriptions ?? []);
+  const planName = activePlan
+    ? activePlan.planNameSnapshot ||
+      activePlan.plan?.name ||
+      display(activePlan.tier)
+    : null;
+  const planStatus =
+    planName ?? (membership.isSuccess ? "Chưa có gói hiệu lực" : null);
   useEffect(() => setOpen(false), [location.pathname]);
   useEffect(() => {
     if (!open) return;
@@ -53,6 +68,7 @@ export function ProfileMenu({
         type="button"
         className="member-profile-trigger"
         aria-label={`Menu hồ sơ của ${user.fullName}`}
+        aria-describedby={planStatus ? `${id}-plan` : undefined}
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((value) => !value)}
@@ -60,6 +76,15 @@ export function ProfileMenu({
         <span className="member-profile-name">
           <strong>{user.fullName}</strong>
           <small>{user.role === "STAFF" ? "Lễ tân" : display(user.role)}</small>
+          {planStatus && (
+            <small
+              id={`${id}-plan`}
+              className="member-profile-plan"
+              title={planStatus}
+            >
+              {planStatus}
+            </small>
+          )}
         </span>
         <Avatar user={user} interactive={false} />
         <ChevronDown size={14} aria-hidden="true" />
@@ -71,6 +96,12 @@ export function ProfileMenu({
           aria-label="Menu hồ sơ"
         >
           <div className="member-profile-caption">TÀI KHOẢN CỦA BẠN</div>
+          {planStatus && (
+            <Link to={`${base}/membership`}>
+              <CreditCard size={18} aria-hidden="true" />
+              <span className="member-profile-plan-link">{planStatus}</span>
+            </Link>
+          )}
           <Link to={`${base}/profile`}>
             <UserRound size={18} />
             Hồ sơ cá nhân

@@ -434,13 +434,13 @@ export function ClassForm({
         )}
         {Boolean(initial.id) && (
           <div className="wide">
-            <label>
+            <label className="checkbox-field">
               <input
                 type="checkbox"
                 checked={refreshRequirements}
                 onChange={(e) => setRefreshRequirements(e.target.checked)}
-              />{" "}
-              Cập nhật điều kiện lớp theo bộ môn hiện tại
+              />
+              <span>Cập nhật điều kiện lớp theo bộ môn hiện tại</span>
             </label>
             <p className="field-note">
               Bỏ chọn để giữ điều kiện đã lưu của lớp. Hệ thống sẽ kiểm tra toàn

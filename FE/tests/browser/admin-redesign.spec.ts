@@ -1,6 +1,34 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { setup } from "./fixtures";
+
+test("Admin can filter membership plans to inactive plans", async ({ page }) => {
+  await setup(page, "ADMIN");
+  await page.route(/\/api\/v1\/membership-plans(?:\?|$)/, (route) => {
+    const request = route.request();
+    const admin = request.headers().authorization === "Bearer fixture-token";
+    const filter = new URL(request.url()).searchParams.get("isActive");
+    const plans = [
+      { id: "active-plan", name: "Gói đang bán", isActive: true },
+      { id: "inactive-plan", name: "Gói đã ngừng bán", isActive: false },
+    ];
+    return route.fulfill({
+      json: {
+        success: true,
+        data: plans.filter((plan) => admin ? !filter || String(plan.isActive) === filter : plan.isActive),
+      },
+    });
+  });
+  await page.goto("/admin/membership-plans");
+  const filter = page.getByRole("combobox", { name: "Đang hoạt động", exact: true });
+  await filter.selectOption({ label: "Ngừng hoạt động" });
+  await expect(page.getByText("Gói đã ngừng bán", { exact: true })).toBeVisible();
+  await expect(page.getByText("Gói đang bán", { exact: true })).toHaveCount(0);
+  await filter.selectOption({ label: "Hoạt động" });
+  await expect(page.getByText("Gói đang bán", { exact: true })).toBeVisible();
+  await expect(page.getByText("Gói đã ngừng bán", { exact: true })).toHaveCount(0);
+});
+
 async function adminFixture(page: Page) {
   await setup(page, "ADMIN");
   const calls: {
@@ -21,6 +49,12 @@ async function adminFixture(page: Page) {
           role: "MANAGER",
           isActive: true,
           user: { fullName: "Quản lý cũ", email: "old@example.test" },
+        },
+        {
+          userId: "assigned-coach",
+          role: "COACH",
+          isActive: true,
+          user: { fullName: "HLV cơ sở A", email: "coach@example.test" },
         },
       ],
     },
@@ -185,6 +219,9 @@ test("admin facilities hide timezone and replace only a manager", async ({
 }) => {
   const calls = await adminFixture(page);
   await page.goto("/admin/facilities");
+  await expect(page.getByRole("button", { name: "Thay quản lý" })).toBeVisible();
+  await expect(page.getByText("HLV cơ sở A", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Thêm HLV" })).toHaveCount(0);
   await page.getByRole("button", { name: "Thêm cơ sở", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText(/Múi giờ|Timezone/i)).toHaveCount(0);

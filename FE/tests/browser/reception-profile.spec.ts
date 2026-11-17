@@ -41,7 +41,7 @@ for (const role of ["RECEPTIONIST", "STAFF"]) {
     await page.goto("/receptionist/classes");
     await page.getByRole("button", { name: "Xem đăng ký" }).first().click();
     await expect(
-      page.getByRole("columnheader", { name: "Trạng thái đặt chỗ" }),
+      page.getByRole("columnheader", { name: "Buổi đã đặt" }),
     ).toBeVisible();
     await expect(
       page.getByRole("columnheader", { name: "Chuyên cần" }),

@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { enrollmentsApi } from "../../api/enrollments.api";
-import { membershipApi } from "../../api/membership.api";
+import { currentMembershipQuery } from "../../api/membership.api";
 import {
   CreditCard,
   Volleyball,
@@ -28,12 +28,7 @@ export function DashboardPage() {
     data: subData,
     isLoading: subLoading,
     error: subError,
-  } = useQuery({
-    queryKey: ["current-membership", user?.id],
-    queryFn: () =>
-      user?.id ? membershipApi.getMySubscriptions(user.id) : null,
-    enabled: Boolean(user?.id),
-  });
+  } = useQuery(currentMembershipQuery(user?.id));
 
   // 2. Fetch member's upcoming enrollments
   const {
@@ -349,18 +344,9 @@ export function DashboardPage() {
               borderTop: "1px solid var(--member-surface-alt, #f0f4f2)",
             }}
           >
-            <Link
-              to="/member/membership"
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "var(--member-text, #203d31)",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              Xem chi tiết gói & gia hạn <ArrowRight size={15} />
+            <Link to="/member/membership" className="button primary">
+              <span>Xem chi tiết gói & gia hạn</span>
+              <ArrowRight size={15} aria-hidden="true" />
             </Link>
           </div>
         </div>
@@ -513,19 +499,9 @@ export function DashboardPage() {
               borderTop: "1px solid var(--member-surface-alt, #f0f4f2)",
             }}
           >
-            <Link
-              to="/member/my-classes"
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "var(--member-text, #203d31)",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              Quản lý lớp học của tôi ({upcomingClasses.length}){" "}
-              <ArrowRight size={15} />
+            <Link to="/member/my-classes" className="button primary">
+              <span>Quản lý lớp học của tôi ({upcomingClasses.length})</span>
+              <ArrowRight size={15} aria-hidden="true" />
             </Link>
           </div>
         </div>

@@ -34,14 +34,17 @@ type Assignment = {
   isActive: boolean;
   user: Staff;
 };
+type StaffView = "assigned" | "COACH" | "RECEPTIONIST";
+
 export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
   const isCoachOnly = initialRole === "COACH";
   const facilityId = getFacilityId();
   const cache = useQueryClient();
-  const [view, setView] = useState("assigned");
+  const [view, setView] = useState<StaffView>("assigned");
   const [search, setSearch] = useState("");
   const [role, setRole] = useState(isCoachOnly ? "COACH" : "");
   const [target, setTarget] = useState<Staff>();
+  const [removing, setRemoving] = useState<Staff>();
   const [coach, setCoach] = useState<string>();
   const [creatingCoach, setCreatingCoach] = useState(false);
   const [showCreateCoach, setShowCreateCoach] = useState(false);
@@ -55,8 +58,12 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
       ),
   });
   const pool = useQuery({
-    queryKey: ["manager-candidates", facilityId],
-    queryFn: ({ signal }) => api<Staff[]>("GET /staff-candidates", { signal }),
+    queryKey: ["manager-candidates", facilityId, view],
+    queryFn: ({ signal }) =>
+      api<Staff[]>("GET /staff-candidates", {
+        query: view === "assigned" ? undefined : { role: view },
+        signal,
+      }),
     enabled: view !== "assigned",
   });
   const assign = useMutation({
@@ -71,6 +78,16 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
     },
     onError: async () => {
       await cache.invalidateQueries({ queryKey: ["manager-candidates"] });
+    },
+  });
+  const remove = useMutation({
+    mutationFn: (user: Staff) =>
+      api("DELETE /facilities/{facilityId}/staff/{userId}/{role}", {
+        params: { facilityId, userId: user.id, role: user.role },
+      }),
+    onSuccess: async () => {
+      setRemoving(undefined);
+      await cache.invalidateQueries();
     },
   });
   const source = view === "assigned" ? assigned : pool;
@@ -89,6 +106,17 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
         .toLocaleLowerCase("vi")
         .includes(search.toLocaleLowerCase("vi")),
   );
+  const tabs: [StaffView, string][] = [
+    ["assigned", isCoachOnly ? "HLV tại cơ sở" : "Nhân sự cơ sở"],
+    ["COACH", "Huấn luyện viên chưa phân công"],
+  ];
+  if (!isCoachOnly) tabs.push(["RECEPTIONIST", "Lễ tân chưa phân công"]);
+  const openView = (next: StaffView) => {
+    setView(next);
+    setRole(isCoachOnly && next === "assigned" ? "COACH" : "");
+    setSearch("");
+  };
+  const candidateName = view === "RECEPTIONIST" ? "lễ tân" : "huấn luyện viên";
   return (
     <>
       <div className="page-heading">
@@ -98,20 +126,22 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
           <p>
             {assigned.data?.data.name} ·{" "}
             {isCoachOnly
-              ? "Quản lý đội ngũ Huấn luyện viên, lấy HLV từ Admin hoặc tạo mới cho cơ sở."
-              : "Phân công Huấn luyện viên và theo dõi nhân sự tại cơ sở bạn quản lý."}
+              ? "Phân công và quản lý huấn luyện viên tại cơ sở."
+              : "Phân công và quản lý huấn luyện viên, lễ tân tại cơ sở bạn phụ trách."}
           </p>
         </div>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           {view === "assigned" && (
             <button
               className="button"
-              onClick={() => {
-                setView("COACH");
-                setRole("");
-              }}
+              onClick={() => openView("COACH")}
             >
-              + Thêm HLV từ hệ thống (Admin)
+              + Thêm HLV từ hệ thống
+            </button>
+          )}
+          {!isCoachOnly && view === "assigned" && (
+            <button className="button" onClick={() => openView("RECEPTIONIST")}>
+              + Thêm lễ tân từ hệ thống
             </button>
           )}
           {!isCoachOnly && (
@@ -132,24 +162,18 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
       </div>
       <section className="panel">
         <div className="tabs">
-          {[
-            ["assigned", isCoachOnly ? "HLV tại cơ sở" : "Nhân sự cơ sở"],
-            ["COACH", isCoachOnly ? "HLV từ Admin (Chưa phân công)" : "Huấn luyện viên chưa phân công (Admin)"],
-          ].map(([key, text]) => (
+          {tabs.map(([key, text]) => (
             <button
               key={key}
               className={view === key ? "active" : ""}
               aria-pressed={view === key}
-              onClick={() => {
-                setView(key);
-                setRole(view === "assigned" && isCoachOnly ? "" : isCoachOnly ? "COACH" : "");
-              }}
+              onClick={() => openView(key)}
             >
               {text}
             </button>
           ))}
         </div>
-        {view === "COACH" && (
+        {view !== "assigned" && (
           <div
             style={{
               margin: "12px 0 16px",
@@ -161,7 +185,8 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
               color: "inherit",
             }}
           >
-            <strong>Danh sách Huấn luyện viên hệ thống (Admin):</strong> Đây là các tài khoản đã được Admin cấp quyền Huấn luyện viên nhưng chưa thuộc cơ sở nào. Bấm <em>"Phân công vào cơ sở"</em> để thêm HLV vào chi nhánh của bạn.
+            Đây là các {candidateName} chưa thuộc cơ sở nào. Bấm{" "}
+            <em>Phân công vào cơ sở</em> để bổ sung nhân sự.
           </div>
         )}
         <div className="filters">
@@ -193,9 +218,11 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
             text={
               view === "COACH"
                 ? "Không có Huấn luyện viên nào đang chờ phân công từ hệ thống."
-                : isCoachOnly
-                  ? "Chưa có Huấn luyện viên nào tại cơ sở này. Hãy bấm \"+ Thêm HLV từ hệ thống (Admin)\" hoặc \"+ Tạo Huấn luyện viên\" để thêm."
-                  : "Không có nhân sự phù hợp"
+                : view === "RECEPTIONIST"
+                  ? "Không có lễ tân nào chưa phân công."
+                  : isCoachOnly
+                    ? "Chưa có huấn luyện viên tại cơ sở này. Bạn có thể phân công HLV từ hệ thống hoặc tạo tài khoản mới."
+                    : "Không có nhân sự phù hợp"
             }
           />
         ) : (
@@ -252,17 +279,27 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
                     </td>
                     <td>
                       {view === "assigned" ? (
-                        s.role === "COACH" ? (
+                        <div className="row-actions">
+                          {s.role === "COACH" && (
+                            <button
+                              className="button small"
+                              title="Xem hồ sơ Huấn luyện viên"
+                              onClick={() => setCoach(s.id)}
+                            >
+                              <User size={14} aria-hidden="true" />
+                              <span>Xem hồ sơ</span>
+                            </button>
+                          )}
                           <button
-                            className="button small"
-                            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
-                            title="Xem hồ sơ Huấn luyện viên"
-                            onClick={() => setCoach(s.id)}
+                            className="button small danger"
+                            onClick={() => {
+                              remove.reset();
+                              setRemoving(s);
+                            }}
                           >
-                            <User size={14} aria-hidden="true" />
-                            <span>Xem hồ sơ</span>
+                            Gỡ phân công
                           </button>
-                        ) : null
+                        </div>
                       ) : (
                         <button
                           className="button primary small"
@@ -282,6 +319,38 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
           </div>
         )}
       </section>
+      {removing && (
+        <Modal
+          title="Gỡ phân công khỏi cơ sở"
+          dismissible={!remove.isPending}
+          onClose={() => setRemoving(undefined)}
+        >
+          <div className="confirmation-body">
+            <p>
+              Gỡ <strong>{removing.fullName}</strong> khỏi{" "}
+              <strong>{assigned.data?.data.name}</strong>? Tài khoản vẫn được
+              giữ trong hệ thống.
+            </p>
+            {remove.error && <ErrorState error={remove.error} />}
+            <div className="confirmation-actions">
+              <button
+                className="button"
+                disabled={remove.isPending}
+                onClick={() => setRemoving(undefined)}
+              >
+                Hủy
+              </button>
+              <button
+                className="button danger"
+                disabled={remove.isPending}
+                onClick={() => remove.mutate(removing)}
+              >
+                {remove.isPending ? "Đang gỡ…" : "Xác nhận gỡ"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {target && (
         <Modal
           title="Xác nhận phân công"

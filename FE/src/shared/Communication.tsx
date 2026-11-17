@@ -47,12 +47,23 @@ type Notification = {
   createdAt: string;
 };
 
+export function refundChatPath(receptionist: { id: string; fullName: string }, paymentId: string) {
+  const query = new URLSearchParams({
+    userId: receptionist.id,
+    message: `Chào ${receptionist.fullName}, tôi muốn trao đổi về yêu cầu hoàn tiền mã giao dịch #${paymentId.slice(0, 8)}. Nhờ bạn hỗ trợ.`,
+  });
+  return `/member/chat?${query}`;
+}
+
 export function getNotificationCta(
   n: Notification,
   role?: string,
 ): { label: string; to: string } | null {
   const type = String(n.type || "");
   const meta = n.metadata || {};
+  if (type === "CHAT_MESSAGE" && (role === "MEMBER" || role === "RECEPTIONIST") && typeof meta.senderId === "string" && meta.senderId) {
+    return { label: "Mở tin nhắn", to: `/${role.toLowerCase()}/chat?${new URLSearchParams({ userId: meta.senderId })}` };
+  }
   if (type.startsWith("COACH_CHANGE_") && ["COACH", "MANAGER", "ADMIN"].includes(role || "")) {
     return { label: "Xem yêu cầu đổi HLV", to: `/${role!.toLowerCase()}/coach-changes` };
   }
@@ -88,13 +99,10 @@ export function getNotificationCta(
   if (meta.action === "REFUND_ASSIGNED" && role === "MEMBER") {
     const receptionistId = String(meta.receptionistUserId || "");
     const receptionistName = String(meta.receptionistName || "lễ tân");
-    const paymentCode = String(meta.paymentId || "").slice(0, 8);
-    const msg = encodeURIComponent(
-      `Chào ${receptionistName}, tôi muốn trao đổi về yêu cầu hoàn tiền mã giao dịch #${paymentCode}. Nhờ bạn hỗ trợ.`,
-    );
+    if (!receptionistId) return null;
     return {
       label: "Nhắn tin với lễ tân",
-      to: `/member/chat?userId=${receptionistId}&message=${msg}`,
+      to: refundChatPath({ id: receptionistId, fullName: receptionistName }, String(meta.paymentId || "")),
     };
   }
   if (
@@ -812,13 +820,14 @@ export function Chat({
   const contactQuery = useQuery({
     queryKey: ["chat", "target-user", target],
     enabled: Boolean(target) && target !== "" && !contacts.data?.data.some((c) => c.id === target) && !conversationById.has(target || ""),
-    queryFn: ({ signal }) => api<RecordData>(`GET /users/${target}`, { signal }),
+    queryFn: ({ signal }) => api<Contact>("GET /users/{id}", { params: { id: target || "" }, signal }),
   });
 
   const selectedContact =
     contacts.data?.data.find((item) => item.id === target) ||
     conversationById.get(target || "")?.user ||
-    (contactQuery.data?.data as Contact | undefined);
+    contactQuery.data?.data;
+  const draft = target === queryUserId ? queryMessage : "";
   const selectConversation = (id: string) => setTarget(id);
   return (
     <div className={"workflow-page chat-page " + (compact ? "compact" : "")}>
@@ -958,7 +967,7 @@ export function Chat({
         </aside>
         {target !== null ? (
           <Conversation
-            key={target}
+            key={JSON.stringify([target, draft])}
             target={target}
             userId={userId}
             contact={selectedContact}
@@ -967,7 +976,7 @@ export function Chat({
             socket={socketRef.current}
             connected={connected}
             onBack={compact ? () => setTarget(null) : undefined}
-            initialMessage={queryMessage}
+            initialMessage={draft}
           />
         ) : (
           !compact && (

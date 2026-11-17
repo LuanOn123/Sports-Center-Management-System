@@ -100,13 +100,13 @@ export function CoachAssignmentForm({
           </select>
         </label>
         {!support && (
-          <label>
+          <label className="checkbox-field wide">
             <input
               type="checkbox"
               checked={primary}
               onChange={(e) => setPrimary(e.target.checked)}
             />
-            HLV chính
+            <span>HLV chính</span>
           </label>
         )}
         {!eligible.length && (

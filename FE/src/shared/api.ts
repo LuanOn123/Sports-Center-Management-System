@@ -244,10 +244,12 @@ async function apiRequest<T = RecordData>(
     query?: Record<string, string>;
     body?: unknown;
     signal?: AbortSignal;
+    requireAuth?: boolean;
   } = {},
 ): Promise<Envelope<T>> {
   const op = contract[key];
   if (!op) throw new Error("Undocumented operation: " + key);
+  const authenticated = options.requireAuth || op.security.length > 0;
   let path = op.path.replace(/\{(\w+)\}/g, (_, p) => {
     if (!options.params?.[p]) throw new Error("Missing path parameter " + p);
     return encodeURIComponent(options.params[p]);
@@ -272,14 +274,14 @@ async function apiRequest<T = RecordData>(
       op.method,
       options.body,
       options.signal,
-      op.security.length > 0,
+      authenticated,
     )) as Envelope<T>;
   } catch (e) {
     if (
       e instanceof ApiError &&
       e.status === 401 &&
       e.terminalSession &&
-      op.security.length
+      authenticated
     ) {
       clearSession();
       window.dispatchEvent(
@@ -290,7 +292,7 @@ async function apiRequest<T = RecordData>(
     if (
       e instanceof ApiError &&
       e.status === 401 &&
-      op.security.length &&
+      authenticated &&
       refreshToken
     ) {
       await refresh();
@@ -309,7 +311,7 @@ async function apiRequest<T = RecordData>(
         throw retryError;
       }
     }
-    if (e instanceof ApiError && e.status === 401 && op.security.length) {
+    if (e instanceof ApiError && e.status === 401 && authenticated) {
       clearSession();
       window.dispatchEvent(new Event("session-expired"));
     }
@@ -438,6 +440,9 @@ export async function api<T = RecordData>(
             : error instanceof Error
               ? error.message
               : "Thao tác không thành công. Vui lòng thử lại.",
+        key === "PATCH /class-schedules/{id}" && code === "SCHEDULE_IN_PAST"
+          ? { title: "Chuyển đổi không hợp lệ" }
+          : undefined,
       );
     }
     throw error;

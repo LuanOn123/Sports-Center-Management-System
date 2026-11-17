@@ -1,711 +1,375 @@
-import { useState, useMemo } from "react";
-import {
-  CalendarDays,
-  Search,
-  UserCheck,
-  UserPlus,
-  Trash2,
-  Clock,
-  MapPin,
-  Users,
-  AlertCircle,
-  X,
-} from "lucide-react";
-import { ScheduleAgenda } from "../../../shared/ScheduleAgenda";
-import type { RecordData } from "../../../shared/api";
-import { api } from "../../../shared/api";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api, type RecordData } from "../../../shared/api";
 import { at, display } from "../../../shared/config";
+import { ErrorState, Loading, Modal } from "../../../shared/ui";
+import { useDebouncedValue } from "../../../shared/useDebouncedValue";
+import type {
+  CoursePlan,
+  WholeCourseEnrollmentResult,
+} from "../../../types/member";
 import { useReceptionList } from "../api";
 import { Heading, ListState, MemberPicker } from "../components";
-import { StatusBadge } from "../../../shared/StatusBadge";
-import { ErrorState, Loading, Modal } from "../../../shared/ui";
-import "../../../shared/operation-surfaces.css";
-import { useQueryClient } from "@tanstack/react-query";
 
+type RegisteredMember = {
+  memberId: string;
+  fullName: string;
+  email: string;
+  bookedSessions: number;
+  completedSessions: number;
+};
 
-function formatDateTime(value: unknown) {
-  if (!value) return "—";
-  const d = new Date(String(value));
-  if (isNaN(d.getTime())) return "—";
-  return d.toLocaleString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
+type Target =
+  | { kind: "book"; memberId: string; fullName: string }
+  | {
+      kind: "cancel";
+      memberId: string;
+      fullName: string;
+      termId: string | null;
+    };
 
-
-function EnrollmentBadge({ status }: { status?: unknown }) {
-  const str = status ? String(status) : "";
-  switch (str) {
-    case "BOOKED":
-      return <span className="badge badge-success">Đã đăng ký</span>;
-    case "CANCELLED":
-      return <span className="badge badge-danger">Đã hủy</span>;
-    case "COMPLETED":
-      return <span className="badge badge-info">Hoàn tất</span>;
-    default:
-      return <span className="badge badge-neutral">{display(str)}</span>;
-  }
-}
+const date = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
 
 export function ClassesPage() {
-  const client = useQueryClient();
   const [member, setMember] = useState<RecordData | null>(null);
-  const [page, setPage] = useState(1);
-  const [date, setDate] = useState("");
-  const [schedule, setSchedule] = useState<RecordData | null>(null);
-
-  // Table search & filter states
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
-
-  // Booking & Cancellation states
-  const [showBookModal, setShowBookModal] = useState(false);
-  const [isBooking, setIsBooking] = useState(false);
-  const [bookError, setBookError] = useState<unknown>(null);
-
-  const [confirmCancelRow, setConfirmCancelRow] = useState<RecordData | null>(null);
-  const [isCancelling, setIsCancelling] = useState(false);
-  const [cancelError, setCancelError] = useState<unknown>(null);
-
-  const schedules = useReceptionList("GET /class-schedules", {
-    page: String(page),
-    limit: "10",
-    ...(date ? { date } : {}),
-  });
-
-  const enrollments = useReceptionList(
-    "GET /enrollments/schedule/{scheduleId}",
-    {},
-    { scheduleId: String(schedule?.id || "") },
-    Boolean(schedule?.id),
+  const [selected, setSelected] = useState<RecordData | null>(null);
+  const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedValue(search.trim());
+  const classes = useReceptionList(
+    "GET /classes",
+    searchQuery ? { search: searchQuery } : {},
   );
-
-
-  // Calculate schedule statistics
-  const totalBooked = useMemo(() => {
-    return (
-      enrollments.data?.data?.filter((r) => r.status === "BOOKED").length || 0
-    );
-  }, [enrollments.data?.data]);
-
-  const capacity = Number(at(schedule, "class.capacity")) || 0;
-  const spotsLeft =
-    capacity > 0 ? Math.max(0, capacity - totalBooked) : undefined;
-
-
-  // Selected member check
-  const selectedMemberId = member ? String(member.id) : "";
-  const isAlreadyEnrolled = useMemo(() => {
-    if (!selectedMemberId || !enrollments.data?.data) return false;
-    return enrollments.data.data.some(
-      (e) =>
-        (String(e.memberId) === selectedMemberId ||
-          String(at(e, "member.id")) === selectedMemberId) &&
-        e.status === "BOOKED",
-    );
-  }, [selectedMemberId, enrollments.data?.data]);
-
-  const isSchedulePast = schedule
-    ? new Date(String(schedule.startTime)).getTime() <= Date.now()
-    : false;
-  const isScheduleCancelled = schedule?.status === "CANCELLED";
-  const isFull = capacity > 0 && totalBooked >= capacity;
-
-  // Filtered enrollments for the streamlined table
-  const filteredEnrollments = useMemo(() => {
-    if (!enrollments.data?.data) return [];
-    return enrollments.data.data.filter((row) => {
-      if (statusFilter !== "ALL" && row.status !== statusFilter) {
-        return false;
-      }
-      if (searchTerm.trim()) {
-        const q = searchTerm.toLowerCase().trim();
-        const fullName = String(
-          at(row, "member.user.fullName") || "",
-        ).toLowerCase();
-        const email = String(
-          at(row, "member.user.email") || "",
-        ).toLowerCase();
-        const phone = String(
-          at(row, "member.user.phone") || "",
-        ).toLowerCase();
-        if (!fullName.includes(q) && !email.includes(q) && !phone.includes(q)) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [enrollments.data?.data, searchTerm, statusFilter]);
-
-  async function handleConfirmBook() {
-    if (!member || !schedule) return;
-    setIsBooking(true);
-    setBookError(null);
-    try {
-      await api("POST /enrollments", {
-        body: {
-          scheduleId: String(schedule.id),
-          memberId: String(member.id),
-        },
-      });
-      setShowBookModal(false);
-      void enrollments.refetch();
-      void client.invalidateQueries({
-        queryKey: ["reception", "GET /enrollments/schedule/{scheduleId}"],
-      });
-    } catch (err) {
-      setBookError(err);
-    } finally {
-      setIsBooking(false);
-    }
-  }
-
-  async function handleConfirmCancel(wholeCourse = false) {
-    if (!confirmCancelRow || !schedule) return;
-    setIsCancelling(true);
-    setCancelError(null);
-    try {
-      if (wholeCourse) {
-        await api("POST /enrollments/courses/{classId}/cancel", {
-          params: { classId: String(schedule.classId ?? at(schedule, "class.id")) },
-          body: { memberId: String(confirmCancelRow.memberId ?? at(confirmCancelRow, "member.id")), termId: schedule.termId ?? at(schedule, "term.id") ?? null },
-        });
-      } else {
-        await api("DELETE /enrollments/{id}", { params: { id: String(confirmCancelRow.id) } });
-      }
-      setConfirmCancelRow(null);
-      void enrollments.refetch();
-      void client.invalidateQueries({
-        queryKey: ["reception", "GET /enrollments/schedule/{scheduleId}"],
-      });
-    } catch (err) {
-      setCancelError(err);
-    } finally {
-      setIsCancelling(false);
-    }
-  }
 
   return (
     <>
-      <Heading title="Đăng ký lớp học" />
+      <Heading title="Đăng ký khóa học" />
       <ol className="booking-steps" aria-label="Các bước đăng ký">
-        <li className={!member ? "current" : "done"}>
+        <li className={member ? "done" : "current"}>
           <span>1</span>Chọn hội viên
         </li>
-        <li
-          className={member && !schedule ? "current" : schedule ? "done" : ""}
-        >
-          <span>2</span>Chọn buổi học
+        <li className={selected ? "done" : member ? "current" : ""}>
+          <span>2</span>Chọn khóa học
         </li>
-        <li className={member && schedule ? "current" : ""}>
-          <span>3</span>Xác nhận &amp; Quản lý đăng ký
+        <li className={member && selected ? "current" : ""}>
+          <span>3</span>Xác nhận đăng ký
         </li>
       </ol>
-
-      <MemberPicker
-        value={member}
-        onChange={(m) => {
-          setMember(m);
-        }}
-      />
-
+      <MemberPicker value={member} onChange={setMember} />
       <section className="panel reception-section">
-        <h2>Lịch học theo buổi</h2>
+        <h2>Khóa học tại cơ sở</h2>
         <div className="collection-toolbar">
-          <p>Chọn một buổi học để xem danh sách đăng ký và hỗ trợ hội viên.</p>
-          <label className="agenda-filter">
-            <CalendarDays size={18} aria-hidden="true" />
-            <span className="sr-only">Ngày học</span>
+          <label>
+            Tìm khóa học
             <input
-              aria-label="Ngày học"
-              type="date"
-              value={date}
-              onChange={(e) => {
-                setDate(e.target.value);
-                setPage(1);
-              }}
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
             />
           </label>
-          {date && (
-            <button
-              className="button small"
-              onClick={() => {
-                setDate("");
-                setPage(1);
-              }}
-            >
-              Tất cả ngày
-            </button>
-          )}
         </div>
-        <ListState result={schedules}>
-          {(rows) => (
-            <ScheduleAgenda
-              rows={rows}
-              selectedId={schedule ? String(schedule.id) : undefined}
-              actions={(row) => (
-                <button
-                  className={`button small ${String(row.id) === String(schedule?.id) ? "primary" : ""}`}
-                  onClick={() => setSchedule(row)}
-                >
-                  {String(row.id) === String(schedule?.id) ? "Đang chọn" : "Xem đăng ký"}
-                </button>
-              )}
-            />
-          )}
-        </ListState>
-        <div className="pagination">
-          <button
-            className="button"
-            disabled={page <= 1 || schedules.isFetching}
-            onClick={() => setPage(page - 1)}
-          >
-            Trang trước
-          </button>
-          <span>Trang {page}</span>
-          <button
-            className="button"
-            disabled={
-              schedules.isFetching ||
-              !schedules.data?.pagination ||
-              page >= schedules.data.pagination.totalPages
-            }
-            onClick={() => setPage(page + 1)}
-          >
-            Trang sau
-          </button>
-        </div>
-      </section>
-
-      {schedule && (
-        <section className="panel reception-section">
-          {/* Header information */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              flexWrap: "wrap",
-              gap: "12px",
-              borderBottom: "1px solid var(--color-border, #333)",
-              paddingBottom: "16px",
-              marginBottom: "16px",
-            }}
-          >
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <h2 style={{ margin: 0 }}>{display(at(schedule, "class.name"))}</h2>
-                <StatusBadge value={schedule.status} />
-              </div>
+        <ListState result={classes}>
+          {(rows) =>
+            rows.length ? (
               <div
-                style={{
-                  display: "flex",
-                  gap: "16px",
-                  color: "var(--color-text-muted, #888)",
-                  marginTop: "6px",
-                  fontSize: "14px",
-                  flexWrap: "wrap",
-                }}
+                className="table-scroll"
+                tabIndex={0}
+                role="region"
+                aria-label="Danh sách khóa học"
               >
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                  <Clock size={15} />
-                  {formatDateTime(schedule.startTime)} –{" "}
-                  {formatDateTime(schedule.endTime)}
-                </span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                  <MapPin size={15} />
-                  {display(at(schedule, "room.name")) || "Chưa xếp phòng"}
-                </span>
-              </div>
-            </div>
-
-            {/* Quick KPI stats */}
-            <div
-              style={{
-                display: "flex",
-                gap: "12px",
-                alignItems: "center",
-                flexWrap: "wrap",
-              }}
-            >
-              <div
-                style={{
-                  background: "var(--color-bg-secondary, rgba(255,255,255,0.05))",
-                  padding: "8px 14px",
-                  borderRadius: "8px",
-                  border: "1px solid var(--color-border, #444)",
-                  textAlign: "center",
-                }}
-              >
-                <div style={{ fontSize: "11px", color: "var(--color-text-muted, #aaa)", textTransform: "uppercase" }}>
-                  Sĩ số lớp
-                </div>
-                <div style={{ fontWeight: 600, fontSize: "15px" }}>
-                  {totalBooked} {capacity > 0 ? `/ ${capacity}` : ""}{" "}
-                  <span style={{ fontSize: "12px", fontWeight: "normal", color: spotsLeft === 0 ? "var(--color-danger, #ff4d4f)" : "var(--color-success, #52c41a)" }}>
-                    {spotsLeft === undefined ? "" : spotsLeft === 0 ? "(Hết chỗ)" : `(Còn ${spotsLeft})`}
-                  </span>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          {/* Quick action for selected member */}
-          <div
-            style={{
-              background: "var(--color-bg-card, rgba(255, 255, 255, 0.02))",
-              border: "1px solid var(--color-border, #333)",
-              borderRadius: "8px",
-              padding: "14px 16px",
-              marginBottom: "20px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: "12px",
-            }}
-          >
-            {member ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span className="avatar" aria-hidden="true">
-                  {String(at(member, "user.fullName") || "?").slice(0, 1)}
-                </span>
-                <div>
-                  <div style={{ fontWeight: 600 }}>
-                    Hội viên đã chọn: {display(at(member, "user.fullName"))}
-                  </div>
-                  <div style={{ fontSize: "12px", color: "var(--color-text-muted, #888)" }}>
-                    SĐT: {display(at(member, "user.phone")) || "—"} · Email: {display(at(member, "user.email")) || "—"}
-                  </div>
-                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope="col">Khóa học</th>
+                      <th scope="col">Hạng lớp</th>
+                      <th scope="col">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr key={String(row.id)}>
+                        <td>
+                          <strong>{display(row.name)}</strong>
+                        </td>
+                        <td>{display(row.classType)}</td>
+                        <td>
+                          <button
+                            className="button small"
+                            aria-pressed={selected?.id === row.id}
+                            onClick={() => setSelected(row)}
+                          >
+                            {selected?.id === row.id
+                              ? "Đang chọn"
+                              : "Xem đăng ký"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : (
-              <div style={{ color: "var(--color-text-muted, #888)", display: "flex", alignItems: "center", gap: "8px" }}>
-                <AlertCircle size={18} />
-                <span>Chưa chọn hội viên. Hãy chọn ở Bước 1 phía trên để tiến hành đăng ký.</span>
-              </div>
-            )}
+              <p>Không tìm thấy khóa học phù hợp.</p>
+            )
+          }
+        </ListState>
+      </section>
+      {selected && (
+        <CourseDetails
+          key={String(selected.id)}
+          courseClass={selected}
+          member={member}
+        />
+      )}
+    </>
+  );
+}
 
-            <div>
-              {member && isAlreadyEnrolled ? (
-                <div
-                  className="badge badge-warning"
-                  style={{ padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: "6px" }}
-                >
-                  <UserCheck size={16} />
-                  <span>Hội viên đã đăng ký buổi này</span>
-                </div>
-              ) : member && isSchedulePast ? (
-                <span className="badge badge-neutral">Buổi học đã qua hoặc đang diễn ra</span>
-              ) : member && isScheduleCancelled ? (
-                <span className="badge badge-danger">Buổi học đã bị hủy</span>
-              ) : member && isFull ? (
-                <span className="badge badge-danger">Lớp học đã đủ sĩ số ({capacity})</span>
-              ) : member ? (
-                <button
-                  className="button primary"
-                  onClick={() => {
-                    setBookError(null);
-                    setShowBookModal(true);
-                  }}
-                >
-                  <UserPlus size={16} />
-                  Đăng ký cho {display(at(member, "user.fullName"))}
-                </button>
-              ) : null}
-            </div>
-          </div>
+function CourseDetails({
+  courseClass,
+  member,
+}: {
+  courseClass: RecordData;
+  member: RecordData | null;
+}) {
+  const classId = String(courseClass.id);
+  const cache = useQueryClient();
+  const [target, setTarget] = useState<Target | null>(null);
+  const [notice, setNotice] = useState("");
+  const [search, setSearch] = useState("");
+  const planKey = ["reception", "course-plan", classId];
+  const rosterKey = ["reception", "course-registrations", classId];
+  const plan = useQuery({
+    queryKey: planKey,
+    queryFn: ({ signal }) =>
+      api<CoursePlan>("GET /classes/{id}/course-plan", {
+        params: { id: classId },
+        signal,
+      }),
+  });
+  const roster = useQuery({
+    queryKey: rosterKey,
+    queryFn: ({ signal }) =>
+      api<{ members: RegisteredMember[] }>("GET /classes/{id}/registrations", {
+        params: { id: classId },
+        signal,
+      }),
+  });
+  const change = useMutation({
+    mutationFn: async (action: Target) => {
+      if (action.kind === "book") {
+        const result = await api<WholeCourseEnrollmentResult>(
+          "POST /enrollments/bulk",
+          {
+            body: { classId, memberId: action.memberId },
+          },
+        );
+        const { enrolledNow, totalRegistered } = result.data.summary;
+        return enrolledNow > 0
+          ? `Đã đăng ký trọn khóa cho ${action.fullName} (${totalRegistered} buổi).`
+          : `${action.fullName} đã có đủ ${totalRegistered} buổi của khóa.`;
+      }
+      const result = await api<{
+        cancelledSessions: number;
+        cancelledWaitlist: number;
+      }>("POST /enrollments/courses/{classId}/cancel", {
+        params: { classId },
+        body: { memberId: action.memberId, termId: action.termId },
+      });
+      const { cancelledSessions, cancelledWaitlist } = result.data;
+      return cancelledSessions || cancelledWaitlist
+        ? `Đã hủy ${cancelledSessions} buổi học và ${cancelledWaitlist} lượt chờ của ${action.fullName}.`
+        : `${action.fullName} không có đăng ký hoặc lượt chờ cần hủy trong khóa này.`;
+    },
+    onSuccess: async (message) => {
+      await Promise.all([
+        cache.invalidateQueries({ queryKey: planKey }),
+        cache.invalidateQueries({ queryKey: rosterKey }),
+      ]);
+      setNotice(message);
+      setTarget(null);
+    },
+  });
+  const course = plan.data?.data.course;
+  const term = plan.data?.data.sessions[0]?.term;
+  const termId = plan.data?.data.sessions[0]?.termId ?? null;
+  const registered = roster.data?.data.members ?? [];
+  const searchText = search.trim().toLocaleLowerCase("vi");
+  const visible = registered.filter((row) =>
+    `${row.fullName} ${row.email}`.toLocaleLowerCase("vi").includes(searchText),
+  );
+  const open = (next: Target) => {
+    change.reset();
+    setNotice("");
+    setTarget(next);
+  };
 
-          {/* Table Toolbar: Search & Filter */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: "12px",
-              marginBottom: "12px",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: "1 1 280px", maxWidth: "420px" }}>
-              <div style={{ position: "relative", width: "100%" }}>
-                <Search
-                  size={16}
-                  style={{
-                    position: "absolute",
-                    left: "10px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "var(--color-text-muted, #888)",
-                  }}
-                />
-                <input
-                  type="text"
-                  placeholder="Tìm học viên theo tên, SĐT hoặc email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  style={{
-                    paddingLeft: "32px",
-                    width: "100%",
-                    borderRadius: "6px",
-                    height: "36px",
-                  }}
-                />
-              </div>
-              {searchTerm && (
-                <button
-                  className="icon-button"
-                  title="Xóa tìm kiếm"
-                  onClick={() => setSearchTerm("")}
-                >
-                  <X size={16} />
-                </button>
-              )}
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <label style={{ fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}>
-                <span>Trạng thái:</span>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  style={{ borderRadius: "6px", height: "36px", padding: "0 8px" }}
-                >
-                  <option value="ALL">Tất cả ({enrollments.data?.data?.length || 0})</option>
-                  <option value="BOOKED">Đã đăng ký ({totalBooked})</option>
-                  <option value="CANCELLED">Đã hủy</option>
-                  <option value="COMPLETED">Hoàn tất</option>
-                </select>
-              </label>
-
-              <span style={{ fontSize: "13px", color: "var(--color-text-muted, #888)" }}>
-                Hiển thị {filteredEnrollments.length} kết quả
-              </span>
-            </div>
-          </div>
-
-          {/* Streamlined & Optimized Roster Table */}
-          {enrollments.isPending ? (
-            <Loading />
-          ) : enrollments.isError ? (
-            <ErrorState error={enrollments.error} retry={() => enrollments.refetch()} />
-          ) : !enrollments.data?.data?.length ? (
-            <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--color-text-muted, #888)" }}>
-              <Users size={32} style={{ margin: "0 auto 12px", opacity: 0.5 }} />
-              <p>Chưa có hội viên nào đăng ký buổi học này.</p>
-            </div>
-          ) : !filteredEnrollments.length ? (
-            <div style={{ padding: "30px 20px", textAlign: "center", color: "var(--color-text-muted, #888)" }}>
-              <p>Không tìm thấy kết quả phù hợp với bộ lọc hiện tại.</p>
-              <button
-                className="button small"
-                onClick={() => {
-                  setSearchTerm("");
-                  setStatusFilter("ALL");
-                }}
-              >
-                Đặt lại bộ lọc
-              </button>
-            </div>
+  return (
+    <section className="panel reception-section">
+      <h2>{display(courseClass.name)}</h2>
+      {notice && (
+        <p className="operation-feedback" role="status">
+          {notice}
+        </p>
+      )}
+      {plan.isPending ? (
+        <Loading />
+      ) : plan.isError ? (
+        <ErrorState error={plan.error} retry={() => plan.refetch()} />
+      ) : course ? (
+        <>
+          <p>
+            {term && <>{term.name} · </>}
+            {course.totalSessions} buổi sắp tới ·{" "}
+            {date.format(new Date(course.firstSessionStart))} –{" "}
+            {date.format(new Date(course.lastSessionEnd))}
+          </p>
+          <ul>
+            {course.slots.map((slot) => (
+              <li key={slot.sessionIds[0]}>
+                {slot.weekdayLabel} · {slot.startTime}–{slot.endTime} ·{" "}
+                {slot.roomName} · {slot.sessionCount} buổi
+              </li>
+            ))}
+          </ul>
+          {member ? (
+            <button
+              className="button primary"
+              onClick={() =>
+                open({
+                  kind: "book",
+                  memberId: String(member.id),
+                  fullName: display(at(member, "user.fullName")),
+                })
+              }
+            >
+              Đăng ký trọn khóa cho {display(at(member, "user.fullName"))}
+            </button>
           ) : (
+            <p>Chọn hội viên để đăng ký trọn khóa.</p>
+          )}
+        </>
+      ) : (
+        <p>Khóa học chưa có buổi sắp tới để đăng ký.</p>
+      )}
+      <h3>Hội viên đã đăng ký</h3>
+      {roster.isPending ? (
+        <Loading />
+      ) : roster.isError ? (
+        <ErrorState error={roster.error} retry={() => roster.refetch()} />
+      ) : !registered.length ? (
+        <p>Chưa có hội viên đăng ký khóa học này.</p>
+      ) : (
+        <>
+          <label>
+            Tìm hội viên trong khóa
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          {visible.length ? (
             <div
               className="table-scroll"
               tabIndex={0}
               role="region"
-              aria-label="Bảng danh sách đăng ký buổi học"
+              aria-label="Hội viên đã đăng ký khóa học"
             >
               <table>
                 <thead>
                   <tr>
-                    <th scope="col" style={{ width: "40px" }}>#</th>
                     <th scope="col">Hội viên</th>
-                    <th scope="col">Số điện thoại</th>
                     <th scope="col">Email</th>
-                    <th scope="col">Trạng thái đặt chỗ</th>
-                    <th scope="col">Đăng ký lúc</th>
-                    <th scope="col" style={{ textAlign: "right" }}>Thao tác</th>
+                    <th scope="col">Buổi đã đặt</th>
+                    <th scope="col">Buổi hoàn tất</th>
+                    <th scope="col">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredEnrollments.map((row, index) => {
-                    const isBooked = row.status === "BOOKED";
-
-                    return (
-                      <tr key={String(row.id || index)}>
-                        <td style={{ color: "var(--color-text-muted, #888)", fontSize: "13px" }}>
-                          {index + 1}
-                        </td>
-                        <td>
-                          <div className="name-cell">
-                            <span className="avatar" aria-hidden="true">
-                              {String(at(row, "member.user.fullName") || "?").slice(0, 1)}
-                            </span>
-                            <strong>
-                              {display(at(row, "member.user.fullName"))}
-                            </strong>
-                          </div>
-                        </td>
-                        <td>
-                          {display(at(row, "member.user.phone")) || "—"}
-                        </td>
-                        <td style={{ color: "var(--color-text-muted, #888)", fontSize: "13px" }}>
-                          {display(at(row, "member.user.email")) || "—"}
-                        </td>
-                        <td>
-                          <EnrollmentBadge status={row.status} />
-                        </td>
-                        <td style={{ color: "var(--color-text-muted, #888)", fontSize: "13px" }}>
-                          {formatDateTime(row.bookedAt)}
-                        </td>
-                        <td style={{ textAlign: "right" }}>
+                  {visible.map((row) => (
+                    <tr key={row.memberId}>
+                      <td>{row.fullName}</td>
+                      <td>{row.email}</td>
+                      <td>{row.bookedSessions}</td>
+                      <td>{row.completedSessions}</td>
+                      <td>
+                        {course && row.bookedSessions > 0 && (
                           <button
                             className="button small danger"
-                            disabled={!isBooked || isSchedulePast || !row.id}
-                            title={
-                              isSchedulePast
-                                ? "Không thể hủy buổi học đã diễn ra"
-                                : !isBooked
-                                ? "Đăng ký đã ở trạng thái hủy/hoàn tất"
-                                : "Hủy đăng ký lớp cho hội viên này"
+                            onClick={() =>
+                              open({
+                                kind: "cancel",
+                                memberId: row.memberId,
+                                fullName: row.fullName,
+                                termId,
+                              })
                             }
-                            onClick={() => {
-                              setCancelError(null);
-                              setConfirmCancelRow(row);
-                            }}
                           >
-                            <Trash2 size={13} style={{ marginRight: "4px" }} />
-                            Hủy đăng ký
+                            Hủy toàn khóa
                           </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        )}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
+          ) : (
+            <p>Không tìm thấy hội viên phù hợp.</p>
           )}
-
-          <p className="field-note" style={{ marginTop: "16px" }}>
-            Lễ tân hỗ trợ đăng ký và hủy đăng ký lớp cho hội viên.
-          </p>
-        </section>
+        </>
       )}
-
-      {/* Modal: Confirm Booking */}
-      {showBookModal && member && schedule && (
+      {target && (
         <Modal
-          title="Xác nhận đăng ký buổi học"
-          onClose={() => {
-            if (!isBooking) setShowBookModal(false);
-          }}
-          dismissible={!isBooking}
+          title={
+            target.kind === "book"
+              ? "Xác nhận đăng ký trọn khóa"
+              : "Hủy toàn khóa"
+          }
+          dismissible={!change.isPending}
+          onClose={() => setTarget(null)}
         >
-          <p>
-            Bạn có chắc chắn muốn đăng ký buổi học này cho hội viên không?
-          </p>
-          <div
-            style={{
-              padding: "14px 16px",
-              margin: "14px 0",
-              background: "var(--color-bg-secondary, rgba(255,255,255,0.04))",
-              borderRadius: "8px",
-              border: "1px solid var(--color-border, #444)",
-              lineHeight: 1.6,
-            }}
-          >
-            <div>
-              <strong>Hội viên:</strong> {display(at(member, "user.fullName"))}{" "}
-              ({display(at(member, "user.phone")) || display(at(member, "user.email"))})
+          <div className="confirmation-body">
+            {target.kind === "book" ? (
+              <p>
+                Đăng ký toàn bộ {course?.totalSessions} buổi sắp tới của{" "}
+                <strong>{display(courseClass.name)}</strong> cho{" "}
+                <strong>{target.fullName}</strong>.
+              </p>
+            ) : (
+              <p>
+                Hủy các buổi chưa bắt đầu và lượt chờ của{" "}
+                <strong>{target.fullName}</strong> trong khóa{" "}
+                <strong>{display(courseClass.name)}</strong>
+                {term ? ` thuộc kỳ ${term.name}` : ""}?
+              </p>
+            )}
+            {change.error && <ErrorState error={change.error} />}
+            <div className="confirmation-actions">
+              <button
+                className="button"
+                disabled={change.isPending}
+                onClick={() => setTarget(null)}
+              >
+                Quay lại
+              </button>
+              <button
+                className={
+                  target.kind === "book" ? "button primary" : "button danger"
+                }
+                disabled={change.isPending}
+                onClick={() => change.mutate(target)}
+              >
+                {change.isPending
+                  ? "Đang xử lý…"
+                  : target.kind === "book"
+                    ? "Xác nhận đăng ký"
+                    : "Xác nhận hủy toàn khóa"}
+              </button>
             </div>
-            <div>
-              <strong>Lớp học:</strong> {display(at(schedule, "class.name"))}
-            </div>
-            <div>
-              <strong>Thời gian:</strong> {formatDateTime(schedule.startTime)}
-            </div>
-            <div>
-              <strong>Phòng tập:</strong> {display(at(schedule, "room.name")) || "Chưa xếp"}
-            </div>
-          </div>
-
-          {bookError != null && <ErrorState error={bookError} />}
-
-          <div className="modal-footer">
-            <button
-              className="button"
-              disabled={isBooking}
-              onClick={() => setShowBookModal(false)}
-            >
-              Quay lại
-            </button>
-            <button
-              className="button primary"
-              disabled={isBooking}
-              onClick={handleConfirmBook}
-            >
-              {isBooking ? "Đang xử lý…" : "Xác nhận đăng ký"}
-            </button>
           </div>
         </Modal>
       )}
-
-      {/* Modal: Confirm Cancel Enrollment */}
-      {confirmCancelRow && schedule && (
-        <Modal
-          title="Hủy đăng ký lớp học"
-          onClose={() => {
-            if (!isCancelling) setConfirmCancelRow(null);
-          }}
-          dismissible={!isCancelling}
-        >
-          <p>
-            Bạn có chắc chắn muốn hủy đăng ký của hội viên{" "}
-            <strong>
-              {display(at(confirmCancelRow, "member.user.fullName"))}
-            </strong>{" "}
-            trong buổi học{" "}
-            <strong>{display(at(schedule, "class.name"))}</strong>?
-          </p>
-          <div className="operation-callout operation-cancel">
-            <strong>Phạm vi hủy</strong>
-            <p>
-              Hủy một buổi chỉ áp dụng cho buổi đã chọn. Hủy toàn khóa áp
-              dụng cho tất cả buổi còn lại trong kỳ của lớp này.
-            </p>
-          </div>
-
-          {cancelError != null && <ErrorState error={cancelError} />}
-
-          <div className="modal-footer">
-            <button
-              className="button"
-              disabled={isCancelling}
-              onClick={() => setConfirmCancelRow(null)}
-            >
-              Quay lại
-            </button>
-            <button
-              className="button danger"
-              disabled={isCancelling}
-              onClick={() => handleConfirmCancel()}
-            >
-              {isCancelling ? "Đang hủy…" : "Xác nhận hủy đăng ký"}
-            </button>
-            <button
-              className="button danger"
-              disabled={isCancelling}
-              onClick={() => handleConfirmCancel(true)}
-            >
-              Hủy toàn khóa
-            </button>
-          </div>
-        </Modal>
-      )}
-    </>
+    </section>
   );
 }
