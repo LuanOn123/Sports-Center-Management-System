@@ -97,6 +97,8 @@ function fixture() {
   const db: any = {
     $executeRaw: async () => [],
     $transaction: async (callback: any) => callback(db),
+    issue: { findMany: async () => [] },
+    facility: { findUnique: async () => ({ maxMembers: null }) },
     membershipSubscription: {
       findFirst: async ({ where }: any) =>
         where.id ? { id: where.id } : where.status === "SCHEDULED"

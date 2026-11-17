@@ -168,10 +168,17 @@ for (const status of ["ACTIVE", "SCHEDULED", "EXPIRED"])
       const sub: any = { id: "source", status, memberId: "member" };
       let revoked: any;
       let memberLocked = false;
+      let paymentLocked = false;
       stub(prisma.payment, "findUnique", async () => payment);
       stub(prisma, "$transaction", async (run: any) =>
         run({
           $executeRaw: async (sql: TemplateStringsArray, memberId: string) => {
+            if (sql.join("?").includes("payment:webhook:")) {
+              assert.equal(memberId, "cash");
+              assert.equal(memberLocked, false);
+              paymentLocked = true;
+              return 0;
+            }
             assert.match(sql.join("?"), /membership:member:|enrollment:member-|enrollment:schedule:/);
             assert.ok(["member", "session"].includes(memberId));
             memberLocked = true;
@@ -179,6 +186,7 @@ for (const status of ["ACTIVE", "SCHEDULED", "EXPIRED"])
           },
           payment: {
             updateMany: async ({ data }: any) => {
+              assert.equal(paymentLocked, true);
               assert.equal(memberLocked, true);
               Object.assign(payment, data);
               return { count: 1 };

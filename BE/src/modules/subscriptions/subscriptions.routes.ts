@@ -28,6 +28,7 @@ const router = Router();
  *             required: [memberId, planId, paymentMethod]
  *             properties:
  *               memberId: { type: string }
+ *               requestId: { type: string, format: uuid, description: Reuse for a retry of the same counter purchase }
  *               planId: { type: string }
  *               startDate: { type: string }
  *               paymentMethod: { type: string, enum: [CASH, BANK_TRANSFER] }
@@ -54,10 +55,8 @@ router.post(
  *   post:
  *     summary: Renew a membership subscription
  *     description: |
- *       FINAL Policy A — renew là **replacement nguyên tử**: khóa theo member + CAS suspend
- *       gói ACTIVE hiện có, kỳ mới bắt đầu **ngay** (không stack sau endDate cũ, không tạo
- *       ACTIVE tương lai, không cộng ngày dư). Trả 409 `SUBSCRIPTION_STATE_CHANGED` nếu
- *       gói thay đổi giữa chừng.
+ *       Áp dụng cùng ma trận mua gói. Gia hạn cùng hạng tạo gói chờ bắt đầu
+ *       khi gói hiện tại hết hạn. Chỉ cấp gói và ghi hóa đơn khi xác nhận thu tiền.
  *     tags: [Subscriptions]
  *     parameters:
  *       - in: path
@@ -72,7 +71,9 @@ router.post(
  *             type: object
  *             required: [planId, paymentMethod]
  *             properties:
+ *               requestId: { type: string, format: uuid, description: Reuse for a retry of the same counter renewal }
  *               planId: { type: string }
+ *               startDate: { type: string }
  *               paymentMethod: { type: string, enum: [CASH, BANK_TRANSFER] }
  *               note: { type: string }
  *     responses:

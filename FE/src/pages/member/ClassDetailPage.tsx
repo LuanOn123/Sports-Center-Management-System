@@ -1315,7 +1315,7 @@ export function ClassDetailPage() {
                           </div>
                         </div>
                       )}
-                      {ev.results && <div style={{ whiteSpace: "pre-wrap" }}><strong>Kết quả buổi tập</strong><p>{ev.results}</p></div>}
+                      {ev.results && <div className="operation-callout"><strong>Kết quả buổi tập</strong><p className="operation-text">{ev.results}</p></div>}
                     </div>
                   );
                 })}
@@ -1582,7 +1582,10 @@ export function ClassDetailPage() {
 
       {cancelTarget && (
         <Modal title="Hủy đăng ký toàn khóa" onClose={() => setCancelTarget(null)} dismissible={!cancelCourse.isPending}>
-          <p>Thao tác này hủy tất cả buổi chưa diễn ra của khóa <strong>{cls.name}</strong> trong kỳ này.</p>
+          <div className="operation-callout operation-cancel">
+            <strong>{cls.name}</strong>
+            <p>Thao tác này hủy tất cả buổi chưa diễn ra của khóa trong kỳ này.</p>
+          </div>
           {cancelCourse.error && <ErrorState error={cancelCourse.error} />}
           <div className="modal-footer">
             <button className="button" disabled={cancelCourse.isPending} onClick={() => setCancelTarget(null)}>Quay lại</button>

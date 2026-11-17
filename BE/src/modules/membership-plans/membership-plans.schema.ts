@@ -3,7 +3,7 @@ import { z } from "zod";
 export const CreatePlanSchema = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
-  price: z.number().positive(),
+  price: z.number().int().positive(),
   durationDays: z.number().int().positive(),
   tier: z.enum(["MEMBERSHIP", "PREMIUM"]),
   // Quota lớp học song song: số Class KHÁC NHAU tối đa hội viên được giữ đồng thời (>= 0).
@@ -14,7 +14,7 @@ export const CreatePlanSchema = z.object({
 export const UpdatePlanSchema = z.object({
   name: z.string().min(2).optional(),
   description: z.string().optional(),
-  price: z.number().positive().optional(),
+  price: z.number().int().positive().optional(),
   durationDays: z.number().int().positive().optional(),
   tier: z.enum(["MEMBERSHIP", "PREMIUM"]).optional(),
   maxConcurrentClasses: z.number().int().min(0).optional(),

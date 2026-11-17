@@ -14,7 +14,7 @@ import { Register } from "./Register";
 import { ForgotPassword } from "./ForgotPassword";
 
 export function Session() {
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
   const navigate = useNavigate();
   const cache = useQueryClient();
   const [session, setSession] = useState(hasSession());
@@ -141,7 +141,7 @@ export function Session() {
           cache.clear();
           setError(undefined);
           setSession(false);
-          navigate("/login", { replace: true });
+          navigate("/login", { replace: true, state: { passwordReset: true } });
         }}
       />
     );
@@ -152,6 +152,7 @@ export function Session() {
         onGoogleLogin={loginGoogle}
         busy={loginBusy}
         error={error}
+        passwordReset={state?.passwordReset === true}
       />
     );
   if (q.isPending)

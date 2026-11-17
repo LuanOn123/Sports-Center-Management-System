@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Bot, Send } from "lucide-react";
+import { ArrowUpRight, Bot, LoaderCircle, Send } from "lucide-react";
 import { Modal } from "../../shared/ui";
 import { AIMarkdown } from "./AIMarkdown";
 import { sendAIMessage, type AIMessage } from "./api";
@@ -9,21 +9,36 @@ export function AIChatConversation({
   initialHistory = [],
   onHistoryChange,
   personal = false,
+  compact = false,
 }: {
   initialHistory?: AIMessage[];
   onHistoryChange?: (history: AIMessage[]) => void;
   personal?: boolean;
+  compact?: boolean;
 }) {
   const [history, setHistory] = useState<AIMessage[]>(initialHistory);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState("");
   const [error, setError] = useState("");
   const controller = useRef<AbortController | null>(null);
-  const bottom = useRef<HTMLDivElement>(null);
+  const messages = useRef<HTMLDivElement>(null);
+  const composer = useRef<HTMLTextAreaElement>(null);
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "nearest" });
+    const viewport = messages.current;
+    if (viewport) viewport.scrollTop = viewport.scrollHeight;
   }, [history, pending, error]);
+  const suggestions = personal
+    ? [
+        "Lịch tập sắp tới của tôi?",
+        "Tiến độ khóa học của tôi?",
+        "Tôi có giáo án nào?",
+      ]
+    : [
+        "Trung tâm có những lớp nào?",
+        "Các gói tập hiện có?",
+        "Tìm cơ sở gần tôi",
+      ];
   async function send() {
     const message = input.trim();
     if (!message || controller.current) return;
@@ -33,7 +48,12 @@ export function AIChatConversation({
     setInput("");
     setError("");
     try {
-      const reply = await sendAIMessage(message, history, request.signal, personal);
+      const reply = await sendAIMessage(
+        message,
+        history,
+        request.signal,
+        personal,
+      );
       if (!request.signal.aborted) {
         const next: AIMessage[] = [
           ...history,
@@ -54,37 +74,78 @@ export function AIChatConversation({
     }
   }
   return (
-    <div className="ai-chat">
+    <div className={`ai-chat${compact ? " ai-chat-compact" : ""}`}>
       <div
         className="ai-chat-messages"
+        ref={messages}
         role="log"
         aria-label="Cuộc trò chuyện với AI"
         aria-live="polite"
       >
-        <div className="ai-message">
-          <AIMarkdown>
-            {personal ? "Bạn có thể hỏi về lịch tập sắp tới, tiến độ khóa học hoặc các dịch vụ của trung tâm." : "Chào bạn, mình là Trợ lý Sports Center. Mình có thể giúp gì cho bạn?"}
-          </AIMarkdown>
-        </div>
+        {history.length === 0 && !pending && (
+          <div className="ai-welcome">
+            <span className="ai-avatar">
+              <Bot size={25} aria-hidden="true" />
+            </span>
+            <h2>Bạn muốn tìm hiểu gì?</h2>
+            <p>
+              {personal
+                ? "Hỏi về lịch tập, tiến độ hoặc giáo án của bạn."
+                : "Hỏi về lớp học, cơ sở hoặc gói tập tại Pulse."}
+            </p>
+            <div className="ai-suggestions">
+              {suggestions.map((suggestion) => (
+                <button
+                  type="button"
+                  key={suggestion}
+                  onClick={() => {
+                    setInput(suggestion);
+                    composer.current?.focus();
+                  }}
+                >
+                  {suggestion}
+                  <ArrowUpRight size={15} aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {history.map((message, index) => (
           <div
             key={index}
-            className={`ai-message ${message.role === "user" ? "ai-message-user" : ""}`}
+            className={`ai-message-row${message.role === "user" ? " ai-message-row-user" : ""}`}
           >
-            {message.role === "assistant" ? (
-              <AIMarkdown>{message.content}</AIMarkdown>
-            ) : (
-              message.content
+            {message.role === "assistant" && (
+              <span className="ai-avatar">
+                <Bot size={17} aria-hidden="true" />
+              </span>
             )}
+            <div
+              className={`ai-message${message.role === "user" ? " ai-message-user" : ""}`}
+            >
+              {message.role === "assistant" ? (
+                <AIMarkdown>{message.content}</AIMarkdown>
+              ) : (
+                message.content
+              )}
+            </div>
           </div>
         ))}
         {pending && (
           <>
-            <div className="ai-message ai-message-user">{pending}</div>
-            <p role="status">AI đang gõ...</p>
+            <div className="ai-message-row ai-message-row-user">
+              <div className="ai-message ai-message-user">{pending}</div>
+            </div>
+            <p className="ai-pending" role="status">
+              <LoaderCircle
+                className="ai-spinner"
+                size={16}
+                aria-hidden="true"
+              />{" "}
+              Đang soạn câu trả lời…
+            </p>
           </>
         )}
-        <div ref={bottom} />
       </div>
       {error && (
         <p role="alert" className="error-state">
@@ -100,13 +161,25 @@ export function AIChatConversation({
       >
         <label className="ai-input-label">
           Câu hỏi cho AI
-          <input
-            autoFocus
+          <textarea
+            ref={composer}
+            autoFocus={compact}
+            rows={1}
             maxLength={2000}
             value={input}
             disabled={Boolean(pending)}
             onChange={(event) => setInput(event.target.value)}
-            placeholder="Nhập câu hỏi..."
+            placeholder="Nhập câu hỏi…"
+            onKeyDown={(event) => {
+              if (
+                event.key === "Enter" &&
+                !event.shiftKey &&
+                !event.nativeEvent.isComposing
+              ) {
+                event.preventDefault();
+                void send();
+              }
+            }}
           />
         </label>
         <button
@@ -114,7 +187,7 @@ export function AIChatConversation({
           disabled={Boolean(pending) || !input.trim()}
           type="submit"
         >
-          <Send size={18} /> Gửi
+          <Send size={18} aria-hidden="true" /> Gửi
         </button>
       </form>
     </div>
@@ -148,10 +221,11 @@ export function AIChatBubble({
         <Modal
           title="Trợ Lý Sports Center"
           eyebrow="PULSE / AI ASSISTANT"
-          maxWidth={520}
+          maxWidth={600}
           onClose={() => setOpen(false)}
         >
           <AIChatConversation
+            compact
             personal={personal}
             initialHistory={history}
             onHistoryChange={setHistory}

@@ -586,6 +586,8 @@ model Payment {
   status          PaymentStatus           @default(PENDING)
   /// Mã đơn/mã thanh toán duy nhất — với giao dịch SePay đây là mã SePay bóc tách từ nội dung CK.
   transactionCode String?                 @unique
+  counterRequestKey String?               @unique
+  counterRequestFingerprint String?
   /// Cổng thanh toán online (VD "SEPAY"). NULL cho giao dịch tại quầy (CASH/BANK_TRANSFER).
   gateway         String?
   /// Mã giao dịch phía ngân hàng/SePay (referenceCode) để đối soát.

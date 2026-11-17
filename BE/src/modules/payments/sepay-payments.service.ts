@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { MembershipPlan, Payment, Prisma, SepayWebhookStatus } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
+import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import {
   buildSepayPaymentCode,
@@ -15,9 +16,11 @@ import {
   verifySepayHmacSignature,
 } from "../../config/sepay.js";
 import { fetchSepayTransactionsByCode } from "./sepay-api.client.js";
-import { lockPaymentWebhook } from "../../utils/dbLocks.js";
+import { lockMemberSubscription, lockPaymentWebhook } from "../../utils/dbLocks.js";
 import { createNotification } from "../notifications/notifications.service.js";
 import { flushNotificationOutbox } from "../notifications/outbox.service.js";
+import { activateMemberDue } from "../subscriptions/entitlement.service.js";
+import { checkFacilityMemberLimit } from "../facilities/facility-limits.service.js";
 import {
   activateSubscriptionForPayment,
   inspectPlanPurchase,
@@ -42,6 +45,21 @@ function isUniqueViolation(err: unknown): boolean {
 /** Số tiền VND (số nguyên) — Decimal của Prisma trả về string. */
 function money(value: unknown): number {
   return Math.round(Number(value));
+}
+
+function matchesTransferAmount(received: unknown, expected: Payment["amount"]): boolean {
+  const amount = Number(received);
+  return Number.isSafeInteger(amount) && amount > 0 && amount === Number(expected);
+}
+
+function checkoutDetails(payment: Payment) {
+  return payment.gatewayPayload as {
+    startDate?: string;
+    accountNo?: string;
+    accountHolder?: string;
+    bankId?: string;
+    qrUrl?: string;
+  } | null;
 }
 
 /**
@@ -145,6 +163,7 @@ export interface SepayCheckoutView {
 
 function buildSepayCheckoutView(payment: Payment, plan: MembershipPlan | null): SepayCheckoutView {
   const cfg = sepayConfig();
+  const checkout = checkoutDetails(payment);
   const orderCode = payment.transactionCode ?? "";
   const amount = money(payment.amount);
   // A07: ưu tiên snapshot của đơn (điều khoản đã bán) — plan live chỉ là fallback cho dữ liệu cũ.
@@ -166,12 +185,12 @@ function buildSepayCheckoutView(payment: Payment, plan: MembershipPlan | null): 
     status: payment.status,
     gateway: SEPAY_GATEWAY,
     expiresAt: sepayExpiresAt(payment, cfg.ttlMinutes),
-    qrUrl: buildVietQrUrl({ amount, content: orderCode }),
+    qrUrl: checkout?.qrUrl ?? buildVietQrUrl({ amount, content: orderCode }),
     transferContent: orderCode,
     bank: {
-      id: cfg.bankId,
-      accountNumber: cfg.accountNo,
-      accountHolder: cfg.accountHolder,
+      id: checkout?.bankId ?? cfg.bankId,
+      accountNumber: checkout?.accountNo ?? cfg.accountNo,
+      accountHolder: checkout?.accountHolder ?? cfg.accountHolder,
     },
     ...(planView ? { plan: planView } : {}),
     ...(payment.activationStatus ? { activationStatus: payment.activationStatus } : {}),
@@ -197,7 +216,9 @@ function buildSepayCheckoutView(payment: Payment, plan: MembershipPlan | null): 
 export async function createSepayCheckout(userId: string, planId: string, startDate?: string) {
   const cfg = sepayConfig();
 
-  if (!isSepayConfigured()) {
+  const canSettle = isSepayWebhookConfigured() || isSepayApiConfigured() ||
+    (cfg.mockMode && process.env.NODE_ENV !== "production");
+  if (!isSepayConfigured() || !canSettle) {
     throw new AppError(
       "Cổng thanh toán SePay chưa được cấu hình. Vui lòng thanh toán tại quầy hoặc liên hệ quản lý.",
       503,
@@ -215,34 +236,51 @@ export async function createSepayCheckout(userId: string, planId: string, startD
 
   const plan = await prisma.membershipPlan.findUnique({ where: { id: planId } });
   if (!plan || !plan.isActive) throw new AppError("Membership plan not found or inactive", 404);
-  if (plan.tier === "FREE" || planAmount(plan) <= 0) {
+  if (plan.tier === "FREE") {
     throw new AppError(
       "Gói FREE không cần thanh toán. Vui lòng chọn gói MEMBERSHIP hoặc PREMIUM.",
       400
     );
   }
 
-  // Fail fast: chặn hạ hạng / ngoài 60 ngày TRƯỚC khi tạo giao dịch.
-  await inspectPlanPurchase(
-    prisma,
-    memberProfile.id,
-    plan,
-    startDate ? new Date(startDate) : undefined,
-  );
-
-  const now = new Date();
-
-  // Mỗi (member, gói) chỉ có 1 giao dịch SePay đang chờ → tránh chuyển tiền 2 lần cho cùng mục đích.
-  const pending = await prisma.payment.findFirst({
-    where: {
-      memberId: memberProfile.id,
-      planId: plan.id,
-      method: "SEPAY",
-      gateway: SEPAY_GATEWAY,
-      status: "PENDING",
-    },
-    orderBy: { createdAt: "desc" },
+  // Retry a collision in a new transaction because PostgreSQL aborts the failed one.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      return await prisma.$transaction(async (tx) => {
+        await lockMemberSubscription(tx, memberProfile.id);
+        return createPendingSepayOrder(tx, memberProfile.id, plan, cfg, startDate);
+      });
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+    }
+  }
+  throw new AppError("Không tạo được mã thanh toán (trùng mã). Vui lòng thử lại.", 500, {
+    code: "SEPAY_CODE_COLLISION",
+    gateway: SEPAY_GATEWAY,
   });
+}
+
+async function createPendingSepayOrder(
+  tx: Prisma.TransactionClient,
+  memberId: string,
+  plan: MembershipPlan,
+  cfg: ReturnType<typeof sepayConfig>,
+  startDate?: string,
+) {
+  const now = new Date();
+  // Mỗi (member, gói) chỉ có 1 giao dịch SePay đang chờ → tránh chuyển tiền 2 lần cho cùng mục đích.
+  const pendingOrder = {
+    memberId,
+    planId: plan.id,
+    method: "SEPAY" as const,
+    gateway: SEPAY_GATEWAY,
+    status: "PENDING" as const,
+  };
+  const allFacilities = { ...requestContext.getStore(), facilityId: undefined };
+  const pending = await requestContext.run(allFacilities, () => tx.payment.findFirst({
+    where: pendingOrder,
+    orderBy: { createdAt: "desc" },
+  }));
   if (pending) {
     const expiresAt = sepayExpiresAt(pending, cfg.ttlMinutes);
     if (expiresAt.getTime() > now.getTime()) {
@@ -257,59 +295,48 @@ export async function createSepayCheckout(userId: string, planId: string, startD
       );
     }
     // Quá TTL: đóng giao dịch cũ để mở giao dịch mới (tiền về muộn sẽ được ghi nhận đối soát).
-    await prisma.payment.update({
-      where: { id: pending.id },
+    await requestContext.run(allFacilities, () => tx.payment.updateMany({
+      where: pendingOrder,
       data: {
         status: "FAILED",
         note: "Hết hạn chờ thanh toán chuyển khoản — giao dịch bị đóng để tạo giao dịch mới.",
       },
-    });
+    }));
   }
 
+  await activateMemberDue(tx, memberId, now);
+  await inspectPlanPurchase(tx, memberId, plan, startDate, now);
+  const facilityId = requestContext.getStore()?.facilityId;
+  if (facilityId) await checkFacilityMemberLimit(facilityId, memberId, tx);
   const amount = planAmount(plan);
-
-  // Mã thanh toán riêng: UNIQUE transactionCode bảo đảm không trùng; retry khi va chạm cực hiếm.
-  let payment: Payment | null = null;
-  for (let attempt = 0; attempt < 5 && !payment; attempt++) {
-    const orderCode = buildSepayPaymentCode(cfg);
-    const qrUrl = buildVietQrUrl({ amount, content: orderCode });
-    try {
-      payment = await prisma.payment.create({
-        data: {
-          memberId: memberProfile.id,
-          planId: plan.id,
-          amount,
-          method: "SEPAY",
-          status: "PENDING",
-          transactionCode: orderCode,
-          gateway: SEPAY_GATEWAY,
-          note: `Thanh toán online gói ${plan.name} (chuyển khoản VietQR qua SePay)`,
-          // A07: chốt offer ngay lúc tạo QR — giá/duration/tier/quota không bị đổi khi plan sửa sau.
-          planNameSnapshot: plan.name,
-          planTierSnapshot: plan.tier,
-          durationDaysSnapshot: plan.durationDays,
-          maxConcurrentClassesSnapshot: plan.maxConcurrentClasses,
-          gatewayPayload: asJson({
-            provider: SEPAY_GATEWAY,
-            orderCode,
-            qrUrl,
-            transferContent: orderCode,
-            bankId: cfg.bankId,
-            accountNo: cfg.accountNo,
-            startDate,
-          }),
-        },
-      });
-    } catch (err) {
-      if (!isUniqueViolation(err)) throw err;
-    }
-  }
-  if (!payment) {
-    throw new AppError("Không tạo được mã thanh toán (trùng mã). Vui lòng thử lại.", 500, {
-      code: "SEPAY_CODE_COLLISION",
+  const orderCode = buildSepayPaymentCode(cfg);
+  const qrUrl = buildVietQrUrl({ amount, content: orderCode });
+  const payment = await tx.payment.create({
+    data: {
+      memberId,
+      planId: plan.id,
+      amount,
+      method: "SEPAY",
+      status: "PENDING",
+      transactionCode: orderCode,
       gateway: SEPAY_GATEWAY,
-    });
-  }
+      note: `Thanh toán online gói ${plan.name} (chuyển khoản VietQR qua SePay)`,
+      planNameSnapshot: plan.name,
+      planTierSnapshot: plan.tier,
+      durationDaysSnapshot: plan.durationDays,
+      maxConcurrentClassesSnapshot: plan.maxConcurrentClasses,
+      gatewayPayload: asJson({
+        provider: SEPAY_GATEWAY,
+        orderCode,
+        qrUrl,
+        transferContent: orderCode,
+        bankId: cfg.bankId,
+        accountNo: cfg.accountNo,
+        accountHolder: cfg.accountHolder,
+        startDate,
+      }),
+    },
+  });
 
   return buildSepayCheckoutView(payment, plan);
 }
@@ -324,6 +351,16 @@ export async function createSepayCheckout(userId: string, planId: string, startD
  * chuyển SUCCESS ngay trong lần polling này — lỗi đối soát KHÔNG làm hỏng response.
  */
 export async function getSepayCheckout(userId: string, role: string, paymentId: string) {
+  if (role === "MEMBER") {
+    return requestContext.run(
+      { ...requestContext.getStore(), facilityId: undefined },
+      () => loadSepayCheckout(userId, role, paymentId),
+    );
+  }
+  return loadSepayCheckout(userId, role, paymentId);
+}
+
+async function loadSepayCheckout(userId: string, role: string, paymentId: string) {
   let payment = await prisma.payment.findUnique({ where: { id: paymentId } });
   if (!payment || payment.gateway !== SEPAY_GATEWAY) {
     throw new AppError("SePay payment not found", 404);
@@ -602,17 +639,20 @@ export async function retrySepayActivation(managerUserId: string, paymentId: str
       if (!fresh || fresh.subscriptionId) {
         throw new AppError("Giao dịch đã được kích hoạt bởi thao tác khác.", 409);
       }
-        if (fresh.status !== "SUCCESS" || fresh.refundRequestedAt)
-          throw new AppError("Giao dịch đã đổi trạng thái hoặc được duyệt hoàn tiền, không thể cấp gói.", 409);
+      if (fresh.status !== "SUCCESS" || fresh.refundRequestedAt ||
+          fresh.activationStatus !== "REQUIRES_REVIEW" || fresh.reviewReason === "LATE_PAYMENT")
+        throw new AppError("Giao dịch không còn đủ điều kiện kích hoạt lại.", 409);
+      await lockMemberSubscription(tx, fresh.memberId);
 
       const member = await tx.memberProfile.findUnique({
         where: { id: fresh.memberId },
-        include: { user: { select: { id: true, fullName: true } } },
+        include: { user: { select: { fullName: true, isActive: true, role: true } } },
       });
-      if (!member) throw new AppError("Member not found", 500);
+      if (!member?.user.isActive || member.user.role !== "MEMBER") {
+        throw new AppError("Tài khoản hội viên hiện không đủ điều kiện nhận gói.", 409);
+      }
 
-      const payloadObj = (fresh.gatewayPayload as any) || {};
-      const requestedStartDate = payloadObj.startDate ? new Date(payloadObj.startDate) : undefined;
+      const requestedStartDate = checkoutDetails(fresh)?.startDate;
 
       const { subscription } = await activateSubscriptionForPayment(tx, {
         memberProfileId: member.id,
@@ -641,8 +681,9 @@ export async function retrySepayActivation(managerUserId: string, paymentId: str
   } catch (err) {
     if (err instanceof AppError) {
       // Vẫn bị chặn ⇒ giữ nguyên REQUIRES_REVIEW, ghi lý do mới nhất để lần xử lý sau biết.
-      await prisma.payment.update({
-        where: { id: payment.id },
+      await prisma.payment.updateMany({
+        where: { id: payment.id, status: "SUCCESS", activationStatus: "REQUIRES_REVIEW",
+          reviewReason: { not: "LATE_PAYMENT" }, subscriptionId: null, refundRequestedAt: null },
         data: { reviewReason: err.message },
       });
       throw new AppError(`Không kích hoạt được gói: ${err.message}`, 409, {
@@ -720,14 +761,13 @@ async function runSepayReconcile(paymentId: string): Promise<SepayWebhookOutcome
     toVnDateTime: formatVnDateTime(new Date(Date.now() + 10 * 60 * 1000)),
   });
 
-  const expectedAccount = normalizeBankAccount(cfg.accountNo);
+  const expectedAccount = normalizeBankAccount(checkoutDetails(payment)?.accountNo ?? cfg.accountNo);
   const orderCode = payment.transactionCode.toUpperCase();
   const match = transactions.find((tx) => {
     if (tx.transfer_type && tx.transfer_type !== "in") return false;
-    const searchable =
-      `${tx.code ?? ""} ${tx.transaction_content ?? ""} ${tx.reference_number ?? ""}`.toUpperCase();
-    if (!searchable.includes(orderCode)) return false;
-    if (money(tx.amount_in) !== money(payment.amount)) return false;
+    const codes = extractAllPaymentCodes(tx.transaction_content ?? "", cfg.codePrefix);
+    if (tx.code?.trim().toUpperCase() !== orderCode && !codes.includes(orderCode)) return false;
+    if (!matchesTransferAmount(tx.amount_in, payment.amount)) return false;
     return [tx.account_number, tx.va].some(
       (account) => normalizeBankAccount(account) === expectedAccount
     );
@@ -749,7 +789,7 @@ async function runSepayReconcile(paymentId: string): Promise<SepayWebhookOutcome
       content: match.transaction_content ?? "",
       transferType: "in",
       description: match.transaction_content ?? "",
-      transferAmount: money(match.amount_in),
+      transferAmount: Number(match.amount_in),
       accumulated: money(match.accumulated ?? 0),
       referenceCode: match.reference_number ?? "",
       apiTransactionId: match.id,
@@ -867,13 +907,14 @@ async function settleSepayTransfer(
 
     // Serialize theo payment: nhiều webhook cho cùng một đơn phải xếp hàng.
     await lockPaymentWebhook(tx, drafted.id);
+    await lockMemberSubscription(tx, drafted.memberId);
     const payment = await tx.payment.findUnique({ where: { id: drafted.id } });
     if (!payment) {
       return finish({ status: "IGNORED", reason: "ORDER_NOT_FOUND" });
     }
 
     // (4) Số tài khoản nhận tiền (hoặc VA) phải khớp cấu hình của trung tâm.
-    const expectedAccount = normalizeBankAccount(cfg.accountNo);
+    const expectedAccount = normalizeBankAccount(checkoutDetails(payment)?.accountNo ?? cfg.accountNo);
     const receivedAccounts = [
       normalizeBankAccount(body.accountNumber),
       normalizeBankAccount(body.subAccount),
@@ -893,7 +934,7 @@ async function settleSepayTransfer(
     await recordBankTransaction(tx, body, externalId, code ?? null);
 
     // (4c) A14 — Movement chứa NHIỀU mã đơn đã biết ⇒ không đoán: chuyển đối soát thủ công.
-    const codesInContent = extractAllPaymentCodes(body.content ?? "", cfg.codePrefix);
+    const codesInContent = [...new Set([payment.transactionCode ?? "", ...extractAllPaymentCodes(body.content ?? "", cfg.codePrefix)])];
     if (codesInContent.length > 1) {
       const knownOrders = await tx.payment.findMany({
         where: { transactionCode: { in: codesInContent }, gateway: SEPAY_GATEWAY },
@@ -911,11 +952,11 @@ async function settleSepayTransfer(
     }
 
     // (5) Số tiền phải khớp CHÍNH XÁC (chuyển thiếu/thừa đều cần đối soát thủ công).
-    if (money(body.transferAmount) !== money(payment.amount)) {
-      await tx.payment.update({
-        where: { id: payment.id },
+    if (!matchesTransferAmount(body.transferAmount, payment.amount)) {
+      await tx.payment.updateMany({
+        where: { id: payment.id, status: "PENDING" },
         data: {
-          note: `Chuyển khoản lệch số tiền (nhận ${money(body.transferAmount)} / cần ${money(payment.amount)}) — cần đối soát.`,
+          note: `Chuyển khoản lệch số tiền (nhận ${body.transferAmount} / cần ${Number(payment.amount)}) — cần đối soát.`,
         },
       });
       return finish({
@@ -928,43 +969,24 @@ async function settleSepayTransfer(
     }
 
     // (6) Giao dịch đã chốt trước đó (webhook khác sepayId) → không xử lý lại.
-    if (payment.status === "SUCCESS") {
+    if (payment.status === "SUCCESS" || payment.status === "REFUNDED") {
       return finish({
         status: "DUPLICATE",
         reason: "PAYMENT_ALREADY_PAID",
         paymentId: payment.id,
         memberId: payment.memberId,
-        paymentStatus: "SUCCESS",
+        paymentStatus: payment.status,
       });
     }
 
     const gatewayTransId = body.referenceCode?.trim() || String(body.id);
     const now = new Date();
-
-    // (7) Tiền về khi giao dịch đã đóng (hết hạn/thất bại) → ghi nhận đối soát, KHÔNG kích hoạt.
-    if (payment.status !== "PENDING") {
-      await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          gatewayTransId,
-          gatewayPayload: asJson({
-            ...((payment.gatewayPayload ?? {}) as Record<string, unknown>),
-            lateResult: body,
-          }),
-          // A06: tiền THỰC TẾ đã về nhưng đơn đã đóng ⇒ cần người xử lý (hoàn tiền/đối soát).
-          activationStatus: "REQUIRES_REVIEW",
-          reviewReason: "LATE_PAYMENT",
-          note: `SePay báo có tiền cho giao dịch đã ở trạng thái ${payment.status} — cần đối soát/hoàn tiền (REQUIRES_REVIEW).`,
-        },
-      });
-      return finish({
-        status: "LATE",
-        reason: "LATE_RESULT",
-        paymentId: payment.id,
-        memberId: payment.memberId,
-        paymentStatus: payment.status,
-      });
-    }
+    const transferTime = body.transactionDate && /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(body.transactionDate)
+      ? new Date(body.transactionDate.replace(" ", "T") + "+07:00").getTime()
+      : NaN;
+    const paidAt = transferTime >= payment.createdAt.getTime() - 999 && transferTime <= now.getTime()
+      ? new Date(transferTime) : now;
+    const late = payment.status !== "PENDING" || paidAt >= sepayExpiresAt(payment, cfg.ttlMinutes);
 
     // (7b) A14 — Một movement chỉ được phân bổ MỘT LẦN: CAS trên cột `paymentId` (UNIQUE).
     const allocated = await allocateBankTransaction(
@@ -972,7 +994,7 @@ async function settleSepayTransfer(
       externalId,
       payment.id,
       code ?? null,
-      money(body.transferAmount)
+      body.transferAmount
     );
     if (!allocated) {
       return finish({
@@ -984,12 +1006,37 @@ async function settleSepayTransfer(
       });
     }
 
+    const settlementDetails = {
+      gatewayTransId,
+      gatewayPayload: asJson({ ...checkoutDetails(payment), settlement: body }),
+      paidAt,
+    };
+    if (late) {
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          ...settlementDetails,
+          status: "SUCCESS",
+          activationStatus: "REQUIRES_REVIEW",
+          reviewReason: "LATE_PAYMENT",
+          note: "Đã nhận chuyển khoản sau khi đơn hết hạn hoặc đóng — cần đối soát và hoàn tiền.",
+        },
+      });
+      return finish({
+        status: "LATE",
+        reason: "LATE_RESULT",
+        paymentId: payment.id,
+        memberId: payment.memberId,
+        paymentStatus: "SUCCESS",
+        processed: true,
+      });
+    }
+
     // (8) Đã thu tiền: lưu dấu vết cổng rồi kích hoạt gói qua luồng chung (sub + invoice + notification).
     await tx.payment.update({
       where: { id: payment.id },
       data: {
-        gatewayTransId,
-        gatewayPayload: asJson(body),
+        ...settlementDetails,
         // Đối soát chủ động: ghi rõ nguồn chốt để đối chiếu khi webhook thật về sau (sẽ là DUPLICATE).
         ...(source === "RECONCILE"
           ? {
@@ -1009,7 +1056,6 @@ async function settleSepayTransfer(
         where: { id: payment.id },
         data: {
           status: "SUCCESS",
-          paidAt: now,
           // A06: tiền ĐÃ thu (SUCCESS) nhưng KHÔNG có gói để cấp ⇒ tách riêng trạng thái cấp quyền.
           activationStatus: "REQUIRES_REVIEW",
           reviewReason: "PLAN_MISSING",
@@ -1028,14 +1074,16 @@ async function settleSepayTransfer(
 
     const member = await tx.memberProfile.findUnique({
       where: { id: payment.memberId },
-      include: { user: { select: { id: true, fullName: true } } },
+      include: { user: { select: { fullName: true, isActive: true, role: true } } },
     });
     if (!member) throw new AppError("Member not found", 500);
 
     let subscriptionId: string;
+    await tx.$executeRaw`SAVEPOINT sepay_activation`;
     try {
-      const payloadObj = (payment.gatewayPayload as any) || {};
-      const requestedStartDate = payloadObj.startDate ? new Date(payloadObj.startDate) : undefined;
+      if (!member.user.isActive || member.user.role !== "MEMBER") {
+        throw new AppError("Tài khoản hội viên hiện không đủ điều kiện nhận gói.", 409);
+      }
 
       const { subscription } = await activateSubscriptionForPayment(tx, {
         memberProfileId: member.id,
@@ -1043,7 +1091,7 @@ async function settleSepayTransfer(
         memberName: member.user.fullName,
         plan,
         paymentId: payment.id,
-        startDate: requestedStartDate,
+        startDate: checkoutDetails(payment)?.startDate,
         now,
         // A07: cấp đúng điều khoản đã bán lúc tạo QR (không đọc plan live).
         optionSnapshot: {
@@ -1054,15 +1102,17 @@ async function settleSepayTransfer(
         },
       });
       subscriptionId = subscription.id;
+      await tx.$executeRaw`RELEASE SAVEPOINT sepay_activation`;
     } catch (err) {
       // VD: gói khác đã được kích hoạt trong lúc chờ chuyển khoản ⇒ hạ hạng. Tiền ĐÃ về:
       // trạng thái TIỀN = SUCCESS, trạng thái CẤP QUYỀN = REQUIRES_REVIEW để quản lý xử lý.
       if (err instanceof AppError) {
+        await tx.$executeRaw`ROLLBACK TO SAVEPOINT sepay_activation`;
+        await tx.$executeRaw`RELEASE SAVEPOINT sepay_activation`;
         await tx.payment.update({
           where: { id: payment.id },
           data: {
             status: "SUCCESS",
-            paidAt: payment.paidAt ?? now,
             activationStatus: "REQUIRES_REVIEW",
             reviewReason: err.message,
             note: `Đã thu tiền nhưng KHÔNG kích hoạt được gói: ${err.message} — cần đối soát thủ công (REQUIRES_REVIEW).`,

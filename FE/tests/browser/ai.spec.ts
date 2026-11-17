@@ -77,7 +77,7 @@ for (const width of [320, 375, 430, 768, 1024, 1280, 1440, 1920]) {
         .evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
     ).toBe(true);
     if (width === 375 || width === 1440) {
-      await expect(page.locator(".ai-markdown")).toHaveCount(2);
+      await expect(page.locator(".ai-markdown")).toHaveCount(1);
       const result = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
         .analyze();

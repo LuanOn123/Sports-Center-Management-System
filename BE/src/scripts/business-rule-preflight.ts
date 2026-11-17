@@ -22,6 +22,22 @@ async function main() {
   const refundedRights = await prisma.$queryRaw<
     any[]
   >`SELECT DISTINCT s.id FROM "MembershipSubscription" s JOIN "Payment" p ON p."subscriptionId" = s.id WHERE p.status = 'REFUNDED' AND s.status IN ('ACTIVE', 'SCHEDULED')`;
+  const paymentsToReconcile = await prisma.$queryRaw<Array<{ issue: string; id: string }>>`
+    SELECT 'legacy_late_transfer' AS issue, id FROM "Payment"
+      WHERE gateway = 'SEPAY' AND status = 'FAILED' AND "reviewReason" = 'LATE_PAYMENT'
+    UNION ALL
+    SELECT 'unallocated_bank_transfer', id FROM "SepayBankTransaction"
+      WHERE "transferType" = 'in' AND "paymentId" IS NULL
+    UNION ALL
+    SELECT 'refund_amount_or_receipt', id FROM "Payment"
+      WHERE status = 'REFUNDED' AND (
+        "refundedAt" IS NULL OR NULLIF(BTRIM("refundReference"), '') IS NULL
+        OR "refundedAmount" <= 0 OR "refundedAmount" > amount
+      )
+    UNION ALL
+    SELECT 'invoice_total_mismatch', p.id FROM "Payment" p JOIN "Invoice" i ON i."paymentId" = p.id
+      WHERE i.status = 'ISSUED' AND i.total <> p.amount
+    ORDER BY issue, id`;
   const unassignedSessions = await prisma.classSchedule.findMany({
     where: { status: "SCHEDULED", endTime: { gt: new Date() }, termId: null },
     select: { id: true },
@@ -61,6 +77,7 @@ async function main() {
         invalidTerms,
         missingPrimary,
         refundedRights,
+        paymentsToReconcile,
         missingProfiles,
         incompleteAccounts,
         legacyBookings,
@@ -76,6 +93,7 @@ async function main() {
     invalidTerms.length ||
     missingPrimary.length ||
     refundedRights.length ||
+    paymentsToReconcile.length ||
     missingProfiles.length ||
     incompleteAccounts
   )

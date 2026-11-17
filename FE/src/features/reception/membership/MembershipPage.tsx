@@ -24,7 +24,7 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
   );
   const [selected, setSelected] = useState<RecordData | null>(null);
   const member = selected || linked.data?.data || null;
-  const [action, setAction] = useState<{ id?: string } | null>(null);
+  const [action, setAction] = useState<{ requestId: string; id?: string } | null>(null);
   const id = String(member?.id || "");
   const status = useReceptionDetail(
     "GET /members/{id}/membership-status",
@@ -102,7 +102,7 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
                 subscriptions.isPending ||
                 subscriptions.isError
               }
-              onClick={() => setAction({})}
+              onClick={() => setAction({ requestId: crypto.randomUUID() })}
             >
               Đăng ký gói
             </button>
@@ -133,7 +133,7 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
                           !row.id ||
                           row.status !== "ACTIVE"
                         }
-                        onClick={() => setAction({ id: String(row.id) })}
+                        onClick={() => setAction({ id: String(row.id), requestId: crypto.randomUUID() })}
                       >
                         Gia hạn
                       </button>
@@ -179,7 +179,7 @@ export function MembershipPage({ role = "RECEPTIONIST" }: { role?: string }) {
             action.id ? "POST /subscriptions/{id}/renew" : "POST /subscriptions"
           }
           params={action.id ? { id: action.id } : undefined}
-          fixed={action.id ? {} : { memberId: id }}
+          fixed={action.id ? { requestId: action.requestId } : { memberId: id, requestId: action.requestId }}
           choices={{ planId: choices }}
           onClose={() => setAction(null)}
         />

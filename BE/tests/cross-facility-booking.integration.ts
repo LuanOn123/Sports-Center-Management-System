@@ -225,6 +225,15 @@ async function main() {
     console.log(
       "PASS cross-facility back-to-back is rejected by travel buffer (gap 0 < 30)",
     );
+    await prisma.classSchedule.update({ where: { id: sessions[1].id }, data: { status: "CANCELLED" } });
+    await assert.rejects(
+      scope(1, () => enrollWholeCourse(sessions[1].classId, memberId)),
+      (error: any) => error.statusCode === 409 &&
+        error.errors?.details?.some((blocker: any) =>
+          blocker.sessionId === other.id && blocker.details?.travelBufferMinutes === 30),
+    );
+    assert.equal(await prisma.enrollment.count({ where: { memberId, scheduleId: other.id } }), 0);
+    await prisma.classSchedule.update({ where: { id: sessions[1].id }, data: { status: "SCHEDULED" } });
     // Transfer SANG facility/class khác BỊ CHẶN theo FINAL rules: BR-08 chỉ cho đổi
     // buổi TRONG cùng Class, DAL facility-scope không cho đọc Enrollment thuộc facility A
     // khi đang chọn B (403 FORBIDDEN_SCOPE). Dù bị từ chối bằng mã nào (400/403/409),
@@ -375,6 +384,44 @@ async function main() {
     console.log(
       "PASS simultaneous cross-facility requests create exactly one overlapping booking",
     );
+    await prisma.enrollment.updateMany({ where: { memberId }, data: { status: "CANCELLED" } });
+    const receptionist = await prisma.user.create({
+      data: { email: run + "+reception@test.invalid", fullName: "Receptionist", password: "fixture-only", role: "RECEPTIONIST" },
+    });
+    users.push(receptionist.id);
+    const report = await prisma.issue.create({
+      data: {
+        facilityId: facilities[0], requesterId: receptionist.id, requesterRole: "RECEPTIONIST", status: "RESOLVED",
+        title: "Approved attendance removal",
+        description: JSON.stringify({
+          type: "ATTENDANCE_VIOLATION", memberId, classId: classes[0], memberUserId: user.id,
+          memberName: "Member", className: "Class", reason: "Repeated unexcused absences",
+          attendedCount: 0, absentCount: 2, totalSessions: 2, absenceRate: 100,
+        }),
+      },
+    });
+    try {
+      await assert.rejects(scope(0, () => enrollWholeCourse(classes[0], memberId)), (error: any) =>
+        error.statusCode === 409 && error.errors?.details?.some((reason: any) => reason.code === "ATTENDANCE_REMOVAL"));
+      assert.equal(await prisma.enrollment.count({ where: { memberId, status: "BOOKED" } }), 0);
+    } finally {
+      await prisma.issue.delete({ where: { id: report.id } });
+    }
+    console.log("PASS whole-course booking respects travel buffer and approved attendance removal");
+    const original = await prisma.classSchedule.findUniqueOrThrow({ where: { id: sessions[0].id } });
+    const overlap = await createFixtureSchedule(prisma, {
+      data: {
+        classId: classes[0], roomId: original.roomId,
+        startTime: new Date(+original.startTime + 15 * 60_000),
+        endTime: new Date(+original.endTime + 15 * 60_000),
+      },
+    });
+    await assert.rejects(scope(0, () => enrollWholeCourse(classes[0], memberId)), (error: any) =>
+      error.statusCode === 409 && error.errors?.details?.some((reason: any) =>
+        reason.code === "TIME_CONFLICT" && reason.sessionId === overlap.id &&
+        reason.details?.scheduleId === original.id));
+    assert.equal(await prisma.enrollment.count({ where: { memberId, status: "BOOKED" } }), 0);
+    console.log("PASS whole-course booking rolls back when two sessions of the course overlap");
   } finally {
     const memberIds = [memberId, freeMemberId].filter(Boolean);
     if (memberIds.length) {

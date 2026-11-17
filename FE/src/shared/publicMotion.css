@@ -121,7 +121,7 @@
 .auth-brand,
 .auth-story-copy > *,
 .auth-form-wrap
-  > :is(.auth-eyebrow, h1, .auth-intro, form, .auth-switch, .auth-note),
+  > :is(.auth-eyebrow, h1, .auth-intro, form, .auth-switch),
 .lp-hero-copy > * {
   animation: public-fade-up 0.65s both cubic-bezier(0.2, 0.65, 0.3, 1);
 }
@@ -143,9 +143,6 @@
 .lp-hero-small {
   animation-delay: 0.32s;
 }
-.auth-form-wrap > .auth-note {
-  animation-delay: 0.4s;
-}
 .auth-story-photo,
 .lp-hero-photo {
   animation: public-image-reveal 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) both;
@@ -162,12 +159,9 @@
     box-shadow 0.2s,
     background 0.2s;
 }
-.pulse-auth input:focus {
-  border-color: #f59a62;
-  box-shadow:
-    0 0 0 3px #ef8c4c18,
-    0 0 20px #e7833410;
-  outline-color: #f59a62;
+.pulse-auth input:focus:not([aria-invalid="true"]) {
+  border-color: var(--lime);
+  box-shadow: 0 0 0 3px #d4ff0018;
 }
 .auth-floating {
   position: relative;
@@ -205,7 +199,7 @@
   color: #bdc8d8;
 }
 .pulse-auth .auth-floating:focus-within > label {
-  color: #f5b68d;
+  color: var(--lime);
 }
 .auth-floating .auth-password button {
   top: 8px;

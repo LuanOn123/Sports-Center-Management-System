@@ -5,6 +5,8 @@ import { display } from "../../shared/config";
 import { getFacilityId } from "../../shared/facility";
 import { Empty, ErrorState, Loading, Modal } from "../../shared/ui";
 import { useDebouncedValue } from "../../shared/useDebouncedValue";
+import { ArrowUpRight, ClipboardCheck } from "lucide-react";
+import "../../shared/operation-surfaces.css";
 
 type Pair = { memberId: string; classId: string };
 type AttendanceRow = Pair & {
@@ -50,9 +52,14 @@ export function ReceptionAttendance() {
   });
   return (
     <div className="workflow-page">
-      <h1>Chuyên cần hội viên</h1>
+      <div className="page-heading">
+        <div>
+          <h1>Chuyên cần hội viên</h1>
+          <p>Xem số buổi có mặt, vắng và lịch sử điểm danh theo lớp.</p>
+        </div>
+      </div>
       <section className="panel">
-        <div className="filters">
+        <div className="operation-filter-bar">
           <label>
             Tìm hội viên
             <input
@@ -92,21 +99,32 @@ export function ReceptionAttendance() {
           />
         ) : monitoring.data.data.length ? (
           <>
-            <div className="detail-list">
+            <div className="operation-list">
               {monitoring.data.data.map((row) => (
                 <article
                   key={`${row.memberId}-${row.classId}`}
-                  className="workflow-card"
+                  className="operation-card operation-row"
                 >
-                  <h2>
-                    {row.memberName} · {row.className}
-                  </h2>
-                  <p>
-                    {labels[row.status]} · Có mặt {row.attendedCount} · Vắng{" "}
-                    {row.absentCount} ({row.absenceRate}%)
-                  </p>
+                  <div>
+                    <h3>{row.memberName}</h3>
+                    <p>{row.className}</p>
+                    <div className="operation-data">
+                      <span className="operation-tag" data-tone={row.status}>
+                        {labels[row.status]}
+                      </span>
+                      <span>
+                        Có mặt <strong>{row.attendedCount}</strong>
+                      </span>
+                      <span>
+                        Vắng{" "}
+                        <strong>
+                          {row.absentCount} ({row.absenceRate}%)
+                        </strong>
+                      </span>
+                    </div>
+                  </div>
                   <button className="button" onClick={() => setSelected(row)}>
-                    Xem chuyên cần
+                    Xem chuyên cần <ArrowUpRight size={15} aria-hidden="true" />
                   </button>
                 </article>
               ))}
@@ -192,81 +210,96 @@ function AttendanceDetail({
       title={`${row.memberName} · ${row.className}`}
       onClose={onClose}
       dismissible={!submit.isPending}
+      eyebrow="PULSE / LỄ TÂN"
       scrollBody
     >
-      {detail.isPending ? (
-        <Loading />
-      ) : detail.error ? (
-        <ErrorState error={detail.error} retry={() => detail.refetch()} />
-      ) : (
-        data && (
-          <>
-            <h3>Lịch sử theo buổi</h3>
-            {data.sessions.length ? (
-              <ul>
-                {data.sessions.map((session) => (
-                  <li key={session.scheduleId}>
-                    {display(session.startTime)} · {session.roomName} ·{" "}
-                    {display(session.state)}
-                    {session.note && ` · ${session.note}`}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <Empty text="Chưa có buổi học để theo dõi." />
-            )}
-            {data.summary.warningSent && <p>Đã gửi cảnh báo.</p>}
-            {data.summary.status !== "NORMAL" && !data.summary.warningSent && (
-              <button
-                className="button"
-                disabled={submit.isPending}
-                onClick={() => submit.mutate("warning")}
-              >
-                Gửi cảnh báo
-              </button>
-            )}
-            {data.summary.reportStatus && (
-              <p>Báo cáo vi phạm · {display(data.summary.reportStatus)}</p>
-            )}
-            {data.summary.status === "VIOLATION" &&
-              data.summary.reportStatus !== "PENDING" &&
-              data.summary.reportStatus !== "APPROVED" && (
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    if (!submit.isPending && reason.trim().length >= 5)
-                      submit.mutate("report");
-                  }}
-                >
-                  <label>
-                    Lý do báo cáo
-                    <textarea
-                      required
-                      minLength={5}
-                      maxLength={1000}
-                      value={reason}
-                      onChange={(event) => setReason(event.target.value)}
-                    />
-                  </label>
-                  <button
-                    className="button primary"
-                    type="submit"
-                    disabled={submit.isPending || reason.trim().length < 5}
-                  >
-                    Gửi báo cáo cho quản lý
-                  </button>
-                </form>
+      <div className="operation-modal-content">
+        {detail.isPending ? (
+          <Loading />
+        ) : detail.error ? (
+          <ErrorState error={detail.error} retry={() => detail.refetch()} />
+        ) : (
+          data && (
+            <>
+              <div className="operation-heading">
+                <div className="operation-heading-title">
+                  <span className="operation-icon">
+                    <ClipboardCheck size={18} aria-hidden="true" />
+                  </span>
+                  <h3>Lịch sử theo buổi</h3>
+                </div>
+                <span className="operation-tag" data-tone={data.summary.status}>
+                  {labels[data.summary.status]}
+                </span>
+              </div>
+              {data.sessions.length ? (
+                <ul className="operation-history">
+                  {data.sessions.map((session) => (
+                    <li key={session.scheduleId}>
+                      {display(session.startTime)} · {session.roomName} ·{" "}
+                      {display(session.state)}
+                      {session.note && ` · ${session.note}`}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <Empty text="Chưa có buổi học để theo dõi." />
               )}
-            {submit.error && <ErrorState error={submit.error} />}
-            {submit.isSuccess && (
-              <p role="status">
-                Đã gửi {submit.variables === "warning" ? "cảnh báo" : "báo cáo"}
-                .
-              </p>
-            )}
-          </>
-        )
-      )}
+              {data.summary.warningSent && <p>Đã gửi cảnh báo.</p>}
+              {data.summary.status !== "NORMAL" &&
+                !data.summary.warningSent && (
+                  <button
+                    className="button"
+                    disabled={submit.isPending}
+                    onClick={() => submit.mutate("warning")}
+                  >
+                    Gửi cảnh báo
+                  </button>
+                )}
+              {data.summary.reportStatus && (
+                <p>Báo cáo vi phạm · {display(data.summary.reportStatus)}</p>
+              )}
+              {data.summary.status === "VIOLATION" &&
+                data.summary.reportStatus !== "PENDING" &&
+                data.summary.reportStatus !== "APPROVED" && (
+                  <form
+                    className="operation-callout"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      if (!submit.isPending && reason.trim().length >= 5)
+                        submit.mutate("report");
+                    }}
+                  >
+                    <label>
+                      Lý do báo cáo
+                      <textarea
+                        required
+                        minLength={5}
+                        maxLength={1000}
+                        value={reason}
+                        onChange={(event) => setReason(event.target.value)}
+                      />
+                    </label>
+                    <button
+                      className="button primary"
+                      type="submit"
+                      disabled={submit.isPending || reason.trim().length < 5}
+                    >
+                      Gửi báo cáo cho quản lý
+                    </button>
+                  </form>
+                )}
+              {submit.error && <ErrorState error={submit.error} />}
+              {submit.isSuccess && (
+                <p role="status">
+                  Đã gửi{" "}
+                  {submit.variables === "warning" ? "cảnh báo" : "báo cáo"}.
+                </p>
+              )}
+            </>
+          )
+        )}
+      </div>
     </Modal>
   );
 }

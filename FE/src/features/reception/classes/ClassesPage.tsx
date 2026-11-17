@@ -19,6 +19,7 @@ import { useReceptionList } from "../api";
 import { Heading, ListState, MemberPicker } from "../components";
 import { StatusBadge } from "../../../shared/StatusBadge";
 import { ErrorState, Loading, Modal } from "../../../shared/ui";
+import "../../../shared/operation-surfaces.css";
 import { useQueryClient } from "@tanstack/react-query";
 
 
@@ -670,9 +671,13 @@ export function ClassesPage() {
             trong buổi học{" "}
             <strong>{display(at(schedule, "class.name"))}</strong>?
           </p>
-          <p className="field-note">
-            Bạn có thể hủy buổi đã chọn hoặc tất cả buổi còn lại trong kỳ của lớp này.
-          </p>
+          <div className="operation-callout operation-cancel">
+            <strong>Phạm vi hủy</strong>
+            <p>
+              Hủy một buổi chỉ áp dụng cho buổi đã chọn. Hủy toàn khóa áp
+              dụng cho tất cả buổi còn lại trong kỳ của lớp này.
+            </p>
+          </div>
 
           {cancelError != null && <ErrorState error={cancelError} />}
 
@@ -691,7 +696,11 @@ export function ClassesPage() {
             >
               {isCancelling ? "Đang hủy…" : "Xác nhận hủy đăng ký"}
             </button>
-            <button className="button danger" disabled={isCancelling} onClick={() => handleConfirmCancel(true)}>
+            <button
+              className="button danger"
+              disabled={isCancelling}
+              onClick={() => handleConfirmCancel(true)}
+            >
               Hủy toàn khóa
             </button>
           </div>

@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import type { Prisma } from "@prisma/client";
 import { activateDueSubscription } from "./entitlement.service.js";
 import { requestRefund } from "../payments/refunds.service.js";
 import { revokeSubscriptionBookings } from "./entitlement.service.js";
@@ -7,12 +9,50 @@ import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
 import { createNotification, notifyReceptionistsAboutRefund } from "../notifications/notifications.service.js";
 import { enqueueNotification, flushNotificationOutbox } from "../notifications/outbox.service.js";
-import { activateSubscriptionForPayment, applyPlanSwitchRules } from "./subscription-purchase.service.js";
+import { activateSubscriptionForPayment, planAmount } from "./subscription-purchase.service.js";
 import { lockMemberSubscription } from "../../utils/dbLocks.js";
 import type {
   CreateSubscriptionInput,
   RenewSubscriptionInput,
 } from "./subscriptions.schema.js";
+
+function counterPurchaseRequest(
+  actorId: string,
+  memberId: string,
+  data: CreateSubscriptionInput | RenewSubscriptionInput,
+  sourceSubscriptionId?: string,
+) {
+  if (!data.requestId) return undefined;
+  const fingerprint = [
+    requestContext.getStore()?.facilityId, memberId, sourceSubscriptionId, data.planId,
+    data.paymentMethod, data.startDate, data.note,
+  ];
+  return {
+    counterRequestKey: `${actorId}:${data.requestId.toLowerCase()}`,
+    counterRequestFingerprint: createHash("sha256").update(JSON.stringify(fingerprint)).digest("hex"),
+  };
+}
+
+async function findCounterPurchase(
+  tx: Prisma.TransactionClient,
+  request: ReturnType<typeof counterPurchaseRequest>,
+) {
+  if (!request) return null;
+  const payment = await requestContext.run(
+    { ...requestContext.getStore(), facilityId: undefined },
+    () => tx.payment.findUnique({
+      where: { counterRequestKey: request.counterRequestKey },
+      include: { subscription: { include: { plan: true } }, invoice: true },
+    }),
+  );
+  if (!payment) return null;
+  if (payment.counterRequestFingerprint !== request.counterRequestFingerprint || !payment.subscription || !payment.invoice) {
+    throw new AppError("Mã yêu cầu đã được dùng cho một giao dịch khác. Vui lòng kiểm tra lịch sử thanh toán.", 409,
+      { code: "COUNTER_REQUEST_CONFLICT" });
+  }
+  const { subscription, invoice, ...receipt } = payment;
+  return { subscription, payment: receipt, invoice };
+}
 
 async function autoCreateInvoice(
   memberId: string,
@@ -52,16 +92,16 @@ export async function createSubscription(
     );
   }
 
-  const plan = await prisma.membershipPlan.findUnique({
-    where: { id: data.planId },
-  });
-  if (!plan || !plan.isActive)
-    throw new AppError("Membership plan not found or inactive", 404);
-
-  const now = new Date();
   const startDate = data.startDate ? new Date(data.startDate) : undefined;
+  const request = counterPurchaseRequest(createdById, memberProfile.id, data);
 
   const result = await prisma.$transaction(async (tx) => {
+    await lockMemberSubscription(tx, memberProfile.id);
+    const existing = await findCounterPurchase(tx, request);
+    if (existing) return existing;
+    const plan = await tx.membershipPlan.findUnique({ where: { id: data.planId } });
+    if (!plan?.isActive) throw new AppError("Membership plan not found or inactive", 404);
+    const now = new Date();
     // BR-25: tên hội viên cho snapshot trên Invoice.
     const memberUser = await tx.user.findUnique({
       where: { id: memberProfile.userId },
@@ -76,11 +116,12 @@ export async function createSubscription(
       data: {
         memberId: memberProfile.id,
         planId: plan.id,
-        amount: plan.price,
+        amount: planAmount(plan),
         method: data.paymentMethod,
         status: "PENDING",
         note: data.note,
         createdById,
+        ...request,
       },
     });
 
@@ -140,31 +181,17 @@ export async function renewSubscription(
     );
   }
 
-  const plan = await prisma.membershipPlan.findUnique({
-    where: { id: data.planId },
-  });
-  if (!plan || !plan.isActive)
-    throw new AppError("Membership plan not found or inactive", 404);
-
-  const now = new Date();
   const requestedStartDate = data.startDate ? new Date(data.startDate) : undefined;
+  const request = counterPurchaseRequest(createdById, existing.memberId, data, subscriptionId);
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // Policy A: serialize theo member TRƯỚC mọi đọc/ghi — purchase/renew/webhook-settlement
     // đồng thời cho cùng member chỉ một thắng (cùng key membership:member:<id>).
     await lockMemberSubscription(tx, existing.memberId);
-
-    const context = await applyPlanSwitchRules(
-      tx,
-      existing.memberId,
-      plan,
-      requestedStartDate,
-      now,
-    );
-
-    const startDate = context.calculatedStartDate;
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + plan.durationDays);
+    const previous = await findCounterPurchase(tx, request);
+    if (previous) return previous;
+    const plan = await tx.membershipPlan.findUnique({ where: { id: data.planId } });
+    if (!plan?.isActive) throw new AppError("Membership plan not found or inactive", 404);
 
     // BR-25: Get member's name for snapshot
     const memberUser = await tx.user.findFirst({
@@ -172,62 +199,33 @@ export async function renewSubscription(
       select: { fullName: true },
     });
 
-    const subscription = await tx.membershipSubscription.create({
+    const pending = await tx.payment.create({
       data: {
         memberId: existing.memberId,
         planId: plan.id,
-        // ORIGIN facility (báo cáo/audit) — KHÔNG giới hạn phạm vi hiệu lực của gói.
-        // Kỳ gia hạn phát hành tại cơ sở đang thao tác; fallback về origin của kỳ trước.
-        facilityId: requestContext.getStore()?.facilityId ?? existing.facilityId,
-        priceSnapshot: plan.price,
-        tier: plan.tier,
-        startDate,
-        endDate,
-        status: context.targetStatus,
-        // A07: kỳ mới giữ quota đã bán tại thời điểm gia hạn.
-        maxConcurrentClassesSnapshot: plan.maxConcurrentClasses,
-      },
-      include: { plan: true },
-    });
-
-    const payment = await tx.payment.create({
-      data: {
-        memberId: existing.memberId,
-        planId: plan.id,
-        subscriptionId: subscription.id,
-        amount: plan.price,
+        facilityId: requestContext.getStore()?.facilityId ?? existing.facilityId ?? undefined,
+        amount: planAmount(plan),
         method: data.paymentMethod,
-        status: "SUCCESS",
-        paidAt: new Date(),
+        status: "PENDING",
         note: data.note,
         createdById,
-        // A06/A07: giao dịch tại quầy đã thu tiền + cấp gói ngay, kèm snapshot điều khoản.
-        activationStatus: "ACTIVATED",
-        planNameSnapshot: plan.name,
-        planTierSnapshot: plan.tier,
-        durationDaysSnapshot: plan.durationDays,
-        maxConcurrentClassesSnapshot: plan.maxConcurrentClasses,
+        ...request,
       },
     });
 
-    const invoice = await tx.invoice.create({
-      data: {
-        invoiceNumber: `INV-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-        memberId: existing.memberId,
-        paymentId: payment.id,
-        subtotal: Number(plan.price),
-        discount: 0,
-        total: Number(plan.price),
-        status: "ISSUED",
-        issuedAt: new Date(),
-        memberName: memberUser?.fullName ?? null,
-        planName: plan.name,
-        planTier: plan.tier,
-      },
+    const { subscription, payment, invoice } = await activateSubscriptionForPayment(tx, {
+      memberProfileId: existing.memberId,
+      memberUserId: existing.member.userId,
+      memberName: memberUser?.fullName ?? null,
+      plan,
+      paymentId: pending.id,
+      startDate: requestedStartDate,
     });
 
     return { subscription, payment, invoice };
   });
+  await flushNotificationOutbox().catch(() => {});
+  return result;
 }
 
 export async function getMemberSubscriptions(

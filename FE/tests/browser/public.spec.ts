@@ -95,6 +95,7 @@ test("registration validates confirmation and submits the exact API body once", 
   await page.locator("#password").fill("test-password");
   await page.locator("#confirmPassword").fill("different-password");
   await page.getByRole("button", { name: "Tạo tài khoản miễn phí" }).click();
+  await expect(page.locator("#confirmPassword")).toHaveCSS("border-top-color", "rgb(255, 141, 154)");
   await expect(page.getByText("Mật khẩu xác nhận chưa khớp.")).toBeVisible();
   expect(requests).toBe(0);
   await page.getByRole("button", { name: "Hiện mật khẩu" }).click();
@@ -136,6 +137,7 @@ test("registration shows conflict, server validation and connection errors with 
   await page.goto("/register");
   await page.locator("#fullName").fill("Test Member");
   await page.locator("#email").fill("member@example.test");
+  await page.locator("#phone").fill("0901234567");
   await page.locator("#password").fill("test-password");
   await page.locator("#confirmPassword").fill("test-password");
   const submit = page.getByRole("button", { name: "Tạo tài khoản miễn phí" });

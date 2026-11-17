@@ -2,11 +2,13 @@ import { ManagerAnalytics } from "./ManagerAnalytics";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { ChartNoAxesCombined } from "lucide-react";
 import { api, type RecordData } from "../../shared/api";
 import { getFacilityId } from "../../shared/facility";
 import { money } from "../../shared/config";
 import { Empty, ErrorState, Loading } from "../../shared/ui";
 import { Table } from "../../shared/Table";
+import "../../shared/operation-surfaces.css";
 
 type Revenue = {
   totalRevenue: number;
@@ -42,11 +44,17 @@ function ManagerRevenue() {
   });
   const activity = useQuery({
     queryKey: ["facility-activity", getFacilityId(), from, to],
-    queryFn: ({ signal }) => api<{
-      activeMembers: number;
-      newMembers: number;
-      bookingsByStatus: Partial<Record<"BOOKED" | "COMPLETED" | "CANCELLED", number>>;
-    }>("GET /reports/facility-activity", { query: { startDate: from, endDate: to }, signal }),
+    queryFn: ({ signal }) =>
+      api<{
+        activeMembers: number;
+        newMembers: number;
+        bookingsByStatus: Partial<
+          Record<"BOOKED" | "COMPLETED" | "CANCELLED", number>
+        >;
+      }>("GET /reports/facility-activity", {
+        query: { startDate: from, endDate: to },
+        signal,
+      }),
     enabled: valid,
   });
   const data = revenue.data?.data;
@@ -154,20 +162,54 @@ function ManagerRevenue() {
       </section>
       {valid && (
         <section className="panel">
-          <h2>Hội viên và đăng ký lớp</h2>
-          {activity.isPending ? <Loading /> : activity.error ? <ErrorState error={activity.error} retry={() => activity.refetch()} /> : facilityActivity && (
-            <>
-              <div className="stats-grid">
-                {[
-                  ["Hội viên có hoạt động", facilityActivity.activeMembers],
-                  ["Hội viên mới có hoạt động", facilityActivity.newMembers],
-                  ["Lượt đang giữ chỗ", facilityActivity.bookingsByStatus.BOOKED ?? 0],
-                  ["Lượt đã hoàn thành", facilityActivity.bookingsByStatus.COMPLETED ?? 0],
-                  ["Lượt đã hủy", facilityActivity.bookingsByStatus.CANCELLED ?? 0],
-                ].map(([title, value]) => <div className="stat-card" key={title}><p>{title}</p><strong className="stat-value">{value}</strong></div>)}
-              </div>
-              <p className="field-note">Hội viên được đếm một lần nếu có check-in hoặc đăng ký hợp lệ tại cơ sở trong kỳ. Lượt đăng ký tính theo ngày đặt từng buổi và trạng thái hiện tại.</p>
-            </>
+          <div className="operation-heading">
+            <div className="operation-heading-title">
+              <span className="operation-icon">
+                <ChartNoAxesCombined size={18} aria-hidden="true" />
+              </span>
+              <h2>Hội viên và đăng ký lớp</h2>
+            </div>
+          </div>
+          {activity.isPending ? (
+            <Loading />
+          ) : activity.error ? (
+            <ErrorState
+              error={activity.error}
+              retry={() => activity.refetch()}
+            />
+          ) : (
+            facilityActivity && (
+              <>
+                <dl className="operation-stats">
+                  {[
+                    ["Hội viên có hoạt động", facilityActivity.activeMembers],
+                    ["Hội viên mới có hoạt động", facilityActivity.newMembers],
+                    [
+                      "Lượt đang giữ chỗ",
+                      facilityActivity.bookingsByStatus.BOOKED ?? 0,
+                    ],
+                    [
+                      "Lượt đã hoàn thành",
+                      facilityActivity.bookingsByStatus.COMPLETED ?? 0,
+                    ],
+                    [
+                      "Lượt đã hủy",
+                      facilityActivity.bookingsByStatus.CANCELLED ?? 0,
+                    ],
+                  ].map(([title, value]) => (
+                    <div key={title}>
+                      <dt>{title}</dt>
+                      <dd>{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="field-note">
+                  Hội viên được đếm một lần nếu có check-in hoặc đăng ký hợp lệ
+                  tại cơ sở trong kỳ. Lượt đăng ký tính theo ngày đặt từng buổi
+                  và trạng thái hiện tại.
+                </p>
+              </>
+            )
           )}
         </section>
       )}

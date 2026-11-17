@@ -52,6 +52,15 @@ test("membership registration and renewal use the selected profile and subscript
   page,
 }) => {
   await setup(page);
+  let firstAttempt = true;
+  await page.route("**/api/v1/subscriptions", (route) => {
+    if (route.request().method() !== "POST" || !firstAttempt) return route.fallback();
+    firstAttempt = false;
+    return route.fulfill({
+      status: 503,
+      json: { success: false, message: "Chưa nhận được phản hồi giao dịch." },
+    });
+  });
   await page.goto("/receptionist/membership");
   await chooseMember(page);
   await page.getByRole("button", { name: "Đăng ký gói", exact: true }).click();
@@ -67,18 +76,24 @@ test("membership registration and renewal use the selected profile and subscript
     (r) => r.method() === "POST" && r.url().endsWith("/subscriptions"),
   );
   await page.getByRole("button", { name: "Lưu thay đổi" }).click();
-  expect((await sent).postDataJSON()).toMatchObject({
+  const initialSale = (await sent).postDataJSON();
+  expect(initialSale).toMatchObject({
     memberId,
     paymentMethod: "CASH",
+    requestId: expect.stringMatching(/^[\da-f-]{36}$/i),
   });
-  await expect(page.getByRole("dialog").getByRole("status")).toContainText(
+  await expect(page.getByRole("dialog").locator(".error-state")).toContainText(
+    "Chưa nhận được phản hồi giao dịch.",
+  );
+  const retry = page.waitForRequest(
+    (r) => r.method() === "POST" && r.url().endsWith("/subscriptions"),
+  );
+  await page.getByRole("button", { name: "Lưu thay đổi" }).click();
+  expect((await retry).postDataJSON().requestId).toBe(initialSale.requestId);
+  await expect(page.getByRole("region", { name: "Thông báo thao tác" }).getByRole("status")).toContainText(
     "thành công",
   );
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Đóng", exact: true })
-    .last()
-    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await page
     .getByRole("button", { name: "Gia hạn", exact: true })
     .first()
@@ -97,7 +112,9 @@ test("membership registration and renewal use the selected profile and subscript
   await page.getByRole("button", { name: "Lưu thay đổi" }).click();
   expect((await renewal).postDataJSON()).toMatchObject({
     paymentMethod: "BANK_TRANSFER",
+    requestId: expect.stringMatching(/^[\da-f-]{36}$/i),
   });
+  expect((await renewal).postDataJSON().requestId).not.toBe(initialSale.requestId);
 });
 test("booking uses member profile and schedule; cancellation requires confirmation", async ({
   page,

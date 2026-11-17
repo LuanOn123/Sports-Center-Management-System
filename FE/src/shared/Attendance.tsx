@@ -7,6 +7,7 @@ import { Empty, ErrorState, Loading } from "./ui";
 import { enrollmentsApi, type SlotEvaluationItem } from "../api/enrollments.api";
 import { Target, TrendingUp, MessageSquareQuote } from "lucide-react";
 import "./workflow.css";
+import "./operation-surfaces.css";
 
 const statuses: Record<string, string> = {
   PRESENT: "Có mặt",
@@ -411,7 +412,7 @@ function AttendanceRow({
                   </div>
                 </div>
 
-                <label>
+                <label className="operation-callout">
                   Kết quả từng bài tập trong buổi
                   <textarea rows={3} maxLength={3000} value={results} onChange={(event) => setResults(event.target.value)}
                     placeholder="Ví dụ: Squat 3 hiệp × 10 lần, chạy 15 phút" />

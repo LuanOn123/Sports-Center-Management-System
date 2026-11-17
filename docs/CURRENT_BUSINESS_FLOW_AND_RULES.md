@@ -119,29 +119,30 @@ flushNotificationOutbox() sau commit
 
 `[CODE-VERIFIED]` toàn luồng; `[VERIFIED]` qua sepay-payment (145/0: checkout→webhook, snapshot A07, outbox F01), policy-a, cross-facility-cancel.
 
-**Kênh quầy (CASH/BANK_TRANSFER):** `POST /subscriptions` — `authorize("MANAGER", "RECEPTIONIST")`, body `{memberId, planId, paymentMethod: CASH|BANK_TRANSFER, startDate?, note?}` (Zod `CreateSubscriptionSchema`). Service tạo Payment `PENDING` rồi chốt SUCCESS ngay trong cùng transaction. Validate: member phải là user MEMBER active (404/400 BR-16), plan tồn tại & active (404). `[CODE-VERIFIED]` + `[VERIFIED]` (sepay quầy flow; cross-facility-cancel Case5b gọi service)
+**Kênh quầy (CASH/BANK_TRANSFER).** Lễ tân hoặc Admin xác nhận thu tiền bằng `POST /subscriptions` hoặc gia hạn qua `POST /subscriptions/:id/renew`. Cấp gói, ghi thu và xuất hóa đơn trong cùng transaction. Trình duyệt giữ nguyên `requestId` khi gửi lại cùng biểu mẫu, và server trả lại cùng biên nhận cho yêu cầu trùng. Thay đổi nội dung khi dùng lại ID đã chốt trả `409`.
 
-**Kênh SePay online:** `POST /payments/sepay/checkout` (`MEMBER`): (1) fail-fast `inspectPlanPurchase` TRƯỚC khi tạo đơn (chặn hạ hạng/gói ít ngày — không tạo Payment rác); (2) chặn 1 đơn PENDING cho (member × plan) trong TTL, quá TTL → đóng FAILED để mở đơn mới; (3) tạo Payment `PENDING`, `method = SEPAY`, `gateway = "SEPAY"`, `transactionCode` UNIQUE (mã VietQR), **snapshot A07 ngay lúc tạo QR**. `[VERIFIED]` sepay sections B/E.
+**Kênh SePay online.** `POST /payments/sepay/checkout` kiểm tra điều kiện mua và khóa theo hội viên. Trong TTL, mỗi hội viên có tối đa một đơn chờ cho cùng gói, kể cả khi đổi cơ sở. Mã, số tiền, điều khoản gói và tài khoản nhận được cố định khi tạo QR.
 
 **Webhook SePay** `POST /payments/sepay/webhook` (KHÔNG qua authenticate/facility-scope — exempt tại `app.ts:120`; xác thực HMAC-SHA256 trên rawBody + timestamp, hoặc API Key). `settleSepayTransfer()` trong transaction:
 
 ```text
 (1) claim SepayWebhookEvent.sepayId UNIQUE → trùng = DUPLICATE
 (2) tiền RA → IGNORED            (3) mã đơn không khớp hệ thống → IGNORED
-(4) lockPaymentWebhook(paymentId)
+(4) khóa payment, sau đó khóa membership của hội viên
 (5) sai tài khoản nhận → MISMATCH/ACCOUNT_MISMATCH
 (6) nội dung chứa NHIỀU mã đơn lạ → MISMATCH/CONTENT_AMBIGUOUS
 (7) lệch số tiền → MISMATCH/AMOUNT_MISMATCH  (KHÔNG kích hoạt, ghi note)
-(8) đơn đã SUCCESS → DUPLICATE
-(9) đơn đã đóng (FAILED/REFUNDED) → LATE + activationStatus = REQUIRES_REVIEW (KHÔNG kích hoạt)
-(10) ledger SepayBankTransaction phân bổ MỘT LẦN (CAS theo externalId)
-(11) PENDING → activateSubscriptionForPayment với snapshot A07
+(8) đơn đã SUCCESS hoặc REFUNDED → DUPLICATE, giữ nguyên trạng thái
+(9) ledger SepayBankTransaction phân bổ khoản chuyển đúng đơn MỘT LẦN
+(10) đơn đã đóng hoặc tiền đến quá TTL → ghi đã thu (SUCCESS), cần đối soát
+     (REQUIRES_REVIEW/LATE_PAYMENT), không cấp gói; Admin duyệt hoàn, quầy xác nhận biên nhận
+(11) đơn hợp lệ trong TTL → activateSubscriptionForPayment với điều khoản gốc
      - thiếu plan → SUCCESS + REQUIRES_REVIEW (PLAN_MISSING)
      - lỗi nghiệp vụ (vd hạ hạng) → SUCCESS + REQUIRES_REVIEW + reviewReason
-       → MANAGER dùng POST /payments/:id/retry-activation để kích hoạt lại sau khi xử lý việc chặn
+       → Admin có thể kích hoạt lại sau khi xử lý việc chặn, hoặc duyệt hoàn ngoại lệ
 ```
 
-`[VERIFIED]` sepay sections B/D/G/H/K (145/0).
+Các ca tài chính trong `BE/tests/strict-business-flows.live.cjs` kiểm tra đồng thời, ghi thu muộn, xác nhận hoàn và kích hoạt bù trên cơ sở dữ liệu cô lập. `npm run audit:preflight` chỉ đọc dữ liệu và liệt kê các khoản đến muộn từ phiên bản cũ, chuyển khoản chưa phân bổ, dữ liệu hoàn thiếu chứng từ và hóa đơn lệch tổng tiền để đối soát.
 
 **Đối soát chủ động:** khi FE poll `GET /payments/sepay/:id`, nếu đơn còn PENDING và có `SEPAY_API_TOKEN`, BE gọi SePay API chốt ngay trong lần poll (`reconcileSepayPayment`, nguồn `RECONCILE` không cần sepayId). `[CODE-VERIFIED]` + `[VERIFIED]` sepay section H.
 

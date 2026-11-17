@@ -487,6 +487,10 @@
         "paymentMethod"
       ],
       "properties": {
+        "requestId": {
+          "type": "string",
+          "format": "uuid"
+        },
         "memberId": {
           "type": "string"
         },
@@ -553,6 +557,10 @@
         "paymentMethod"
       ],
       "properties": {
+        "requestId": {
+          "type": "string",
+          "format": "uuid"
+        },
         "planId": {
           "type": "string"
         },

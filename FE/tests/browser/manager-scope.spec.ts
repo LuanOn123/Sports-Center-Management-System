@@ -43,6 +43,10 @@ async function manager(page: Page) {
         unreconciledRefunds: 1,
         recentPayments: [],
       };
+    else if (path === "/reports/facility-activity")
+      data = { activeMembers: 4, newMembers: 1, bookingsByStatus: { BOOKED: 2 } };
+    else if (path === "/audit-logs")
+      data = [];
     else if (path === "/rooms")
       data = [
         {
@@ -125,7 +129,6 @@ test("Manager navigation and obsolete URLs match the current operational scope",
     sports: "classes",
     bookings: "classes",
     checkin: "dashboard",
-    "audit-logs": "dashboard",
     requirements: "rooms",
     slots: "schedules",
     patterns: "schedules",
@@ -140,6 +143,8 @@ test("Manager navigation and obsolete URLs match the current operational scope",
     await expect(page).toHaveURL(new RegExp(`/manager/${next}$`));
     await expect(page.locator("main h1")).toBeVisible();
   }
+  await page.goto("/manager/audit-logs");
+  await expect(page.getByRole("heading", { name: "Nhật ký hoạt động" })).toBeVisible();
 });
 
 test("Coach assignment confirms own facility and refreshes both pools", async ({
@@ -224,11 +229,10 @@ test("revenue is read-only and surfaces incomplete reconciliation", async ({
   await page.goto("/manager/reports");
   await expect(page.getByText(/khoản hoàn chưa đối soát/)).toBeVisible();
   await expect(page.getByText("Chưa có giao dịch trong kỳ")).toBeVisible();
-  expect(
-    calls
-      .filter((path) => path.startsWith("/reports/"))
-      .every((path) => path === "/reports/revenue"),
-  ).toBe(true);
+  await expect(page.getByRole("heading", { name: "Hội viên và đăng ký lớp" })).toBeVisible();
+  await expect.poll(() => [...new Set(calls.filter((path) => path.startsWith("/reports/")))].sort()).toEqual(
+    ["/reports/facility-activity", "/reports/revenue"],
+  );
   expect(calls).not.toContain("/payments");
   await page.getByLabel("Từ ngày").fill("2099-01-01");
   await expect(page.getByText("Chọn khoảng ngày hợp lệ.")).toBeVisible();

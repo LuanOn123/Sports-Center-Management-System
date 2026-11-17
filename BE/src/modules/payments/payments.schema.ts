@@ -32,18 +32,22 @@ export const SepayMockConfirmSchema = z.object({
  * Payload webhook do SePay gửi (xem docs: Tích hợp webhook → Payload).
  * `passthrough()` giữ nguyên các field chưa biết để lưu vết đối soát đầy đủ.
  */
+const webhookId = z.union([z.number(), z.string().trim().regex(/^\d+$/)])
+  .pipe(z.coerce.number().int().min(0).max(2_147_483_647));
+const webhookAmount = z.union([z.number(), z.string().trim().regex(/^\d+(?:\.\d+)?$/)])
+  .pipe(z.coerce.number().finite().positive());
 export const SepayWebhookSchema = z
   .object({
-    id: z.coerce.number().int().nonnegative(),
+    id: webhookId,
     gateway: z.string().optional(),
     transactionDate: z.string().optional(),
     accountNumber: z.string().optional().default(""),
     subAccount: z.string().optional().default(""),
     code: z.string().nullish(),
     content: z.string().optional().default(""),
-    transferType: z.string().optional().default("in"),
+    transferType: z.enum(["in", "out"]),
     description: z.string().optional().default(""),
-    transferAmount: z.coerce.number().optional().default(0),
+    transferAmount: webhookAmount,
     accumulated: z.coerce.number().optional().default(0),
     referenceCode: z.string().optional().default(""),
   })

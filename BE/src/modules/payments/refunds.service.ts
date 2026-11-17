@@ -3,13 +3,16 @@ import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { prisma } from "../../config/prisma.js";
 import { lockMemberSubscription, lockPaymentWebhook } from "../../utils/dbLocks.js";
-import { revokeSubscriptionBookings } from "../subscriptions/entitlement.service.js";
+import { activateMemberDue, revokeSubscriptionBookings } from "../subscriptions/entitlement.service.js";
 import { notifyReceptionistsAboutRefund } from "../notifications/notifications.service.js";
 
 /** Yêu cầu hoàn tiền từ Member hoặc Admin, hỗ trợ kiểm tra điều kiện gói tập, ghi AuditLog và báo cho Lễ tân cơ sở. */
 export async function requestPaymentRefund(id: string, reason: string, user: { id: string; role: string }) {
-  return prisma.$transaction(async tx => {
+  const result = await prisma.$transaction(async tx => {
     await lockPaymentWebhook(tx, id);
+    const order = await tx.payment.findUnique({ where: { id }, select: { memberId: true } });
+    if (!order) throw new AppError("Payment not found", 404);
+    await lockMemberSubscription(tx, order.memberId);
     const payment = await tx.payment.findUnique({
       where: { id },
       include: {
@@ -18,19 +21,25 @@ export async function requestPaymentRefund(id: string, reason: string, user: { i
       },
     });
     if (!payment) throw new AppError("Payment not found", 404);
-    await lockMemberSubscription(tx, payment.memberId);
 
     if (user.role === "MEMBER" && payment.member?.userId !== user.id) {
       throw new AppError("Forbidden: Bạn chỉ có thể yêu cầu hoàn tiền cho giao dịch của chính mình.", 403);
     }
-
     if (payment.status !== "SUCCESS") {
       throw new AppError("Chỉ có thể yêu cầu hoàn tiền cho giao dịch đã thanh toán thành công.", 409);
+    }
+    if (!payment.subscription) {
+      if (payment.gateway !== "SEPAY" || payment.activationStatus !== "REQUIRES_REVIEW") {
+        throw new AppError("Giao dịch chưa cấp gói không đủ điều kiện duyệt hoàn ngoại lệ.", 409);
+      }
+      if (user.role !== "ADMIN") {
+        throw new AppError("Giao dịch chưa cấp gói cần quản trị viên đối soát và duyệt hoàn.", 403);
+      }
     }
 
     if (payment.refundRequestedAt) {
       if (user.role === "ADMIN") {
-        return payment;
+        return { payment, notification: null };
       }
       throw new AppError("Giao dịch đã có yêu cầu hoàn tiền đang chờ xử lý.", 409, { code: "REFUND_ALREADY_REQUESTED" });
     }
@@ -38,8 +47,11 @@ export async function requestPaymentRefund(id: string, reason: string, user: { i
     let refundAmount = Number(payment.amount);
 
     if (payment.subscription) {
-      const sub = payment.subscription;
       const now = new Date();
+      if (payment.subscription.status === "SCHEDULED" && payment.subscription.startDate <= now) {
+        await activateMemberDue(tx, payment.memberId, now);
+      }
+      const sub = await tx.membershipSubscription.findUniqueOrThrow({ where: { id: payment.subscription.id } });
       if (sub.status === "SCHEDULED") {
         refundAmount = Number(payment.amount);
         await tx.membershipSubscription.update({
@@ -90,44 +102,24 @@ export async function requestPaymentRefund(id: string, reason: string, user: { i
       },
     });
 
-    setImmediate(async () => {
-      try {
-        await notifyReceptionistsAboutRefund({
-          facilityId: payment.facilityId,
-          paymentId: payment.id,
-          memberUserId: payment.member?.user?.id,
-          memberName: payment.member?.user?.fullName,
-          refundAmount,
-          reason,
-        });
-      } catch (e) {
-        console.error("Failed to notify receptionists about refund:", e);
-      }
+    return {
+      payment: updated,
+      notification: {
+        facilityId: payment.facilityId,
+        paymentId: payment.id,
+        memberUserId: payment.member?.user?.id,
+        memberName: payment.member?.user?.fullName,
+        refundAmount,
+        reason,
+      },
+    };
+  });
+  if (result.notification) {
+    void notifyReceptionistsAboutRefund(result.notification).catch((error) => {
+      console.error("Failed to notify receptionists about refund:", error);
     });
-
-    return updated;
-  });
-}
-
-/** Admin-only route: full refund approval for collected online funds with no issued rights. */
-export async function requestUnactivatedRefund(id: string, reason: string, actorId: string) {
-  return prisma.$transaction(async tx => {
-    await lockPaymentWebhook(tx, id);
-    const payment = await tx.payment.findUnique({ where: { id } });
-    if (!payment) throw new AppError("Payment not found", 404);
-    await lockMemberSubscription(tx, payment.memberId);
-    if (payment.status !== "SUCCESS" || payment.gateway !== "SEPAY" || payment.subscriptionId ||
-      payment.activationStatus !== "REQUIRES_REVIEW")
-      throw new AppError("Chỉ duyệt hoàn ngoại lệ cho giao dịch SePay đã thu nhưng chưa cấp gói và đang cần đối soát.", 409);
-    if (payment.refundRequestedAt) return payment;
-    await requestRefund(tx, payment, Number(payment.amount), reason);
-    const updated = await tx.payment.update({ where: { id }, data: { reviewedAt: new Date(), reviewedById: actorId } });
-    await tx.auditLog.create({ data: { facilityId: payment.facilityId, actorId, entity: "Payment", entityId: id,
-      action: "approveUnactivatedRefund", reason,
-      before: { status: payment.status, refundRequestedAt: null },
-      after: { status: updated.status, refundRequestedAmount: Number(updated.refundRequestedAmount) } } });
-    return updated;
-  });
+  }
+  return result.payment;
 }
 
 /** Request is not evidence that money has actually been returned. */
@@ -149,6 +141,7 @@ export async function requestRefund(
       if (
         !original ||
         original.status !== "SUCCESS" ||
+        !Number.isSafeInteger(amount) ||
         amount <= 0 ||
         amount > Number(original.amount)
       )

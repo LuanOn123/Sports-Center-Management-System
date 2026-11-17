@@ -25,7 +25,11 @@ export const TIER_VALUE: Record<string, number> = {
 
 /** Số tiền phải thu của một gói (VND, số nguyên) — nguồn duy nhất cho mọi kênh thanh toán. */
 export function planAmount(plan: MembershipPlan): number {
-  return Math.round(Number(plan.price));
+  const amount = Number(plan.price);
+  if (!Number.isSafeInteger(amount) || amount <= 0) {
+    throw new AppError("Giá gói thanh toán phải là số nguyên VND dương.", 409, { code: "INVALID_PLAN_PRICE" });
+  }
+  return amount;
 }
 
 export interface PlanPurchaseContext {
@@ -339,6 +343,10 @@ export async function activateSubscriptionForPayment(
   const purchasedQuota =
     snapshot?.maxConcurrentClasses ?? plan.maxConcurrentClasses;
 
+  if (soldPayment.facilityId) {
+    await checkFacilityMemberLimit(soldPayment.facilityId, params.memberProfileId, tx);
+  }
+
   const context = await applyPlanSwitchRules(
     tx,
     params.memberProfileId,
@@ -352,10 +360,6 @@ export async function activateSubscriptionForPayment(
   // Gói mới CHỈ tính theo durationDays của plan mới — KHÔNG cộng dồn ngày dư từ gói cũ.
   // Ngày dư gói cũ (nếu có) đã được xử lý bởi chính sách hoàn tiền khi hủy.
   endDate.setDate(endDate.getDate() + purchasedPlan.durationDays);
-
-  if (soldPayment.facilityId) {
-    await checkFacilityMemberLimit(soldPayment.facilityId, params.memberProfileId, tx);
-  }
 
   const subscription = await tx.membershipSubscription.create({
     data: {
@@ -379,7 +383,7 @@ export async function activateSubscriptionForPayment(
     where: { id: params.paymentId },
     data: {
       status: "SUCCESS",
-      paidAt: now,
+      paidAt: soldPayment.paidAt ?? now,
       subscriptionId: subscription.id,
       // A06: tiền đã thu VÀ quyền đã cấp (kể cả đã lên lịch SCHEDULED).
       activationStatus: "ACTIVATED",

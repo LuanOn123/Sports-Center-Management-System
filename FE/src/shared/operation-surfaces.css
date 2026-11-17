@@ -1,0 +1,247 @@
+.portal-theme .operation-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.portal-theme .operation-heading h2 {
+  margin: 0;
+}
+.operation-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  color: var(--member-accent);
+  background: var(--member-accent-soft);
+  border: 1px solid var(--member-accent-border);
+  border-radius: 10px;
+}
+.operation-heading-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.portal-theme .operation-list {
+  display: grid;
+  gap: 10px;
+}
+.portal-theme .operation-card {
+  padding: 15px 16px;
+  border: 1px solid var(--member-border);
+  background: var(--member-surface-alt);
+  border-radius: 10px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.portal-theme .operation-card h3 {
+  font-size: 16px;
+  margin: 0;
+}
+.portal-theme .operation-card p {
+  margin: 0;
+}
+.operation-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.portal-theme .operation-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border: 1px solid var(--member-border);
+  border-radius: 999px;
+  background: var(--member-surface);
+  color: var(--member-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+.portal-theme .operation-tag[data-tone="NORMAL"] {
+  color: var(--member-success);
+  background: var(--member-success-soft);
+  border-color: var(--member-success-border);
+}
+.portal-theme .operation-tag[data-tone="WARNING"] {
+  color: var(--member-warning);
+  background: var(--member-warning-soft);
+  border-color: var(--member-warning-border);
+}
+.portal-theme .operation-tag[data-tone="VIOLATION"] {
+  color: var(--member-danger);
+  background: var(--member-danger-soft);
+  border-color: var(--member-danger-border);
+}
+.portal-theme .operation-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.portal-theme .operation-card .operation-text {
+  margin-top: 10px;
+  color: var(--member-text);
+}
+.portal-theme .operation-callout {
+  padding: 12px 14px;
+  margin-top: 12px;
+  border: 1px solid var(--member-border);
+  border-inline-start: 3px solid var(--member-info);
+  border-radius: 8px;
+  background: var(--member-surface-alt);
+}
+.portal-theme .operation-callout p {
+  margin: 4px 0 0;
+}
+.portal-theme .training-editor {
+  margin-top: 14px;
+  padding: clamp(12px, 3vw, 20px);
+  border: 1px solid var(--member-border);
+  border-radius: 10px;
+  background: var(--member-surface-alt);
+}
+.portal-theme .training-editor .form-grid {
+  gap: 14px;
+}
+.portal-theme .training-ai {
+  grid-column: 1 / -1;
+  display: grid;
+  align-items: end;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  background: var(--member-accent-soft);
+  border: 1px solid var(--member-accent-border);
+  border-radius: 8px;
+  padding: 12px;
+}
+.portal-theme .training-ai :is(.error-state, [role="status"]) {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.portal-theme .training-ai svg {
+  color: var(--member-accent);
+}
+.portal-theme .training-editor .modal-footer {
+  margin: 14px 0 0;
+  padding: 12px 0 0;
+  background: transparent;
+}
+.portal-theme .operation-filter-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 230px);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.portal-theme .operation-filter-bar label {
+  display: grid;
+  gap: 5px;
+}
+.portal-theme .operation-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 16px;
+}
+.portal-theme .operation-row .operation-data {
+  display: flex;
+  gap: 8px 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  color: var(--member-muted);
+  font-size: 13px;
+}
+.portal-theme .operation-data strong {
+  color: var(--member-text);
+  font-variant-numeric: tabular-nums;
+}
+.portal-theme .operation-history {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+}
+.portal-theme .operation-history li {
+  padding: 10px 12px;
+  background: var(--member-surface-alt);
+  border-radius: 8px;
+  border: 1px solid var(--member-border);
+}
+.portal-theme .operation-visit-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.portal-theme .operation-visit-card .operation-tag {
+  margin-inline-start: auto;
+}
+.portal-theme .operation-visit-form {
+  display: grid;
+  gap: 12px;
+}
+.portal-theme .operation-visit-form > p {
+  margin: 0;
+}
+.portal-theme .operation-visit-form > button {
+  justify-self: start;
+}
+.portal-theme .operation-feedback {
+  color: var(--member-success);
+}
+.portal-theme .operation-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 135px), 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+.portal-theme .operation-stats > div {
+  padding: 12px;
+  border: 1px solid var(--member-border);
+  background: var(--member-surface-alt);
+  border-radius: 9px;
+}
+.portal-theme .operation-stats dt {
+  color: var(--member-muted);
+  font-size: 13px;
+}
+.portal-theme .operation-stats dd {
+  font-size: 27px;
+  font-weight: 750;
+  margin: 4px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.portal-theme .operation-stats > div:first-child dd {
+  color: var(--member-accent);
+}
+.portal-theme .operation-cancel {
+  border-inline-start-color: var(--member-danger);
+}
+.portal-theme .operation-issue-form {
+  display: grid;
+  gap: 16px;
+}
+.portal-theme .operation-modal-content,
+.modal-scroll-body > .operation-issue-form {
+  padding: clamp(14px, 4vw, 24px);
+}
+.portal-theme .operation-issue-form .form-grid {
+  gap: 14px;
+}
+@media (max-width: 560px) {
+  .portal-theme :is(.operation-row, .operation-filter-bar, .training-ai) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .portal-theme .operation-row > button {
+    justify-self: start;
+  }
+  .portal-theme .operation-visit-card {
+    flex-wrap: wrap;
+  }
+  .portal-theme .operation-visit-card .operation-tag {
+    margin-inline-start: 0;
+  }
+}

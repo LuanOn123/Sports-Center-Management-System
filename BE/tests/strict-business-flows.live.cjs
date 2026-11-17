@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const { randomUUID } = require('node:crypto');
 const { createRequire } = require('node:module');
 const { spawn } = require('node:child_process');
 const root = require('node:path').resolve(process.cwd(), '..');
@@ -22,9 +23,9 @@ const check = async (name, fn) => {
   catch (error) { results.push({ name, status: 'FAIL', error: error.message }); }
   console.log(JSON.stringify(results.at(-1)));
 };
-async function http(actor, method, path, data) {
+async function http(actor, method, path, data, facility = 'seed-fac-q1') {
   const response = await fetch(apiBase + path, { method, headers: {
-    'Content-Type': 'application/json', Authorization: 'Bearer ' + tokens[actor], 'X-Facility-Id': 'seed-fac-q1',
+    'Content-Type': 'application/json', Authorization: 'Bearer ' + tokens[actor], 'X-Facility-Id': facility,
   }, ...(data === undefined ? {} : { body: JSON.stringify(data) }) });
   return { status: response.status, body: await response.json() };
 }
@@ -62,11 +63,124 @@ async function main() {
   apiBase = 'http://127.0.0.1:' + server.address().port + '/api/v1';
   sockets = new (reqBE('socket.io').Server)(server, { cors: { origin: '*' } });
   require(root + '/BE/src/modules/chat/chat.socket.ts').setupSocket(sockets);
-  for (const [actor, email] of Object.entries({ admin: 'admin', reception: 'reception.q1', manager: 'manager.q1', coach: 'coach.yoga', free: 'member.free', member: 'member.membership' })) {
+  for (const [actor, email] of Object.entries({ admin: 'admin', reception: 'reception.q1', receptionOther: 'reception.q7', manager: 'manager.q1', coach: 'coach.yoga', free: 'member.free', member: 'member.membership' })) {
     const user = await User.findOne({ email: email + '@seed.scms.test' });
     assert.ok(user, actor); tokens[actor] = signAccessToken({ id: user.id, role: user.role });
   }
   const plan = await prisma.membershipPlan.create({ data: { name: 'AUDIT Gói 30 ngày', price: 300000, durationDays: 30, tier: 'MEMBERSHIP', maxConcurrentClasses: 3 } });
+  await check('Gửi lại yêu cầu bán và gia hạn tại quầy giữ nguyên biên nhận', async () => {
+    await fresh('counter-retry');
+    const retryPlan = await prisma.membershipPlan.create({ data: {
+      name: 'AUDIT Counter repeat', price: 300000, durationDays: 30, tier: 'MEMBERSHIP', maxConcurrentClasses: 3,
+    } });
+    const sale = { memberId: profiles['counter-retry'], planId: retryPlan.id, paymentMethod: 'CASH', requestId: randomUUID() };
+    const results = await Promise.all([1, 2, 3].map(() => http('reception', 'POST', '/subscriptions', sale)));
+    assert.ok(results.every(result => result.status === 201), JSON.stringify(results));
+    const { subscription, payment, invoice } = results[0].body.data;
+    assert.ok(results.every(({ body }) => body.data.payment.id === payment.id && body.data.invoice.id === invoice.id));
+    const altered = await http('reception', 'POST', '/subscriptions', { ...sale, paymentMethod: 'BANK_TRANSFER' });
+    assert.equal(altered.status, 409, JSON.stringify(altered));
+    const renew = { planId: retryPlan.id, paymentMethod: 'CASH', requestId: randomUUID() };
+    const renewals = await Promise.all([1, 2].map(() => http('reception', 'POST', `/subscriptions/${subscription.id}/renew`, renew)));
+    assert.ok(renewals.every(result => result.status === 201), JSON.stringify(renewals));
+    assert.equal(renewals[0].body.data.payment.id, renewals[1].body.data.payment.id);
+    assert.equal(await prisma.payment.count({ where: { memberId: sale.memberId, status: 'SUCCESS' } }), 2);
+  });
+  await check('SePay tạo đồng thời khác cơ sở, từ chối tiền lẻ và hoàn tiền đến muộn', async () => {
+    await fresh('late-sepay');
+    const actor = 'late-sepay';
+    const onlinePlan = await prisma.membershipPlan.create({ data: {
+      name: 'AUDIT Late checkout', price: 300000, durationDays: 30, tier: 'MEMBERSHIP', maxConcurrentClasses: 3,
+    } });
+    const requests = await Promise.all(['seed-fac-q1', 'seed-fac-q7', 'seed-fac-q1'].map(facility =>
+      http(actor, 'POST', '/payments/sepay/checkout', { planId: onlinePlan.id }, facility)));
+    assert.deepEqual(requests.map(row => row.status).sort(), [201, 409, 409], JSON.stringify(requests));
+    const order = requests.find(row => row.status === 201).body.data;
+    assert.ok(requests.filter(row => row.status === 409).every(row => row.body.errors.paymentId === order.paymentId));
+    const stored = await prisma.payment.findUniqueOrThrow({ where: { id: order.paymentId } });
+    const other = stored.facilityId === 'seed-fac-q1' ? 'seed-fac-q7' : 'seed-fac-q1';
+    assert.equal((await http(actor, 'GET', `/payments/sepay/${stored.id}`, undefined, other)).status, 200);
+    process.env.SEPAY_WEBHOOK_API_KEY = 'local-sepay-audit-key';
+    let sepayId = Date.now() % 1000000000;
+    const webhook = async (amount, referenceCode) => {
+      const response = await fetch(apiBase + '/payments/sepay/webhook', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Apikey local-sepay-audit-key' },
+        body: JSON.stringify({ id: ++sepayId, code: order.orderCode, content: order.orderCode,
+          accountNumber: order.bank.accountNumber, transferType: 'in', transferAmount: amount, referenceCode }),
+      });
+      assert.ok(response.ok, await response.text());
+    };
+    await webhook(order.amount - 0.25, 'AUDIT-FRACTIONAL-TRANSFER');
+    assert.equal((await prisma.payment.findUniqueOrThrow({ where: { id: stored.id } })).status, 'PENDING');
+    await prisma.payment.update({ where: { id: stored.id }, data: { createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000) } });
+    await Promise.all([webhook(order.amount, 'AUDIT-LATE-TRANSFER'), webhook(order.amount, 'AUDIT-LATE-TRANSFER')]);
+    let payment = await prisma.payment.findUniqueOrThrow({ where: { id: stored.id } });
+    assert.equal(payment.status, 'SUCCESS');
+    assert.equal(payment.reviewReason, 'LATE_PAYMENT');
+    assert.equal(payment.subscriptionId, null);
+    assert.equal(await prisma.sepayBankTransaction.count({ where: { paymentId: stored.id } }), 1);
+    const retry = await http('admin', 'POST', `/payments/${stored.id}/retry-activation`, {}, stored.facilityId);
+    assert.equal(retry.status, 409, JSON.stringify(retry));
+    const approval = await http('admin', 'POST', `/payments/${stored.id}/refund/request`, { reason: 'Refund verified late transfer' }, stored.facilityId);
+    assert.equal(approval.status, 200, JSON.stringify(approval));
+    const confirm = await http('admin', 'POST', `/payments/${stored.id}/refund/confirm`, {
+      reason: 'Verified bank return', reference: 'AUDIT-LATE-REFUND',
+    }, stored.facilityId);
+    assert.equal(confirm.status, 200, JSON.stringify(confirm));
+    await webhook(order.amount, 'AUDIT-LATE-TRANSFER');
+    payment = await prisma.payment.findUniqueOrThrow({ where: { id: stored.id } });
+    assert.equal(payment.status, 'REFUNDED');
+    assert.equal(payment.refundReference, 'AUDIT-LATE-REFUND');
+    assert.equal(Number(payment.refundedAmount), order.amount);
+  });
+  await check('SePay thu tiền thất bại cấp gói giữ quyền cũ và kích hoạt bù đúng số tiền gốc', async () => {
+    await fresh('activation-retry');
+    const actor = 'activation-retry';
+    const facilityId = 'seed-fac-q1';
+    const old = await http('receptionOther', 'POST', '/subscriptions', {
+      memberId: profiles[actor], planId: plan.id, paymentMethod: 'CASH',
+    }, 'seed-fac-q7');
+    assert.equal(old.status, 201, JSON.stringify(old));
+    const upgrade = await prisma.membershipPlan.create({ data: {
+      name: 'AUDIT Premium snapshot', price: 530000, durationDays: 90, tier: 'PREMIUM', maxConcurrentClasses: 6,
+    } });
+    const startDate = new Date(Date.now() - 2000).toISOString();
+    const checkout = await http(actor, 'POST', '/payments/sepay/checkout', { planId: upgrade.id, startDate });
+    assert.equal(checkout.status, 201, JSON.stringify(checkout));
+    const { orderCode, paymentId, amount, bank } = checkout.body.data;
+    const originalFacility = await prisma.facility.findUniqueOrThrow({ where: { id: facilityId } });
+    try {
+      await prisma.facility.update({ where: { id: facilityId }, data: { maxMembers: 1 } });
+      await prisma.membershipPlan.update({ where: { id: upgrade.id }, data: { price: 990000, durationDays: 120, maxConcurrentClasses: 1 } });
+      const settled = await fetch(apiBase + '/payments/sepay/webhook', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Apikey local-sepay-audit-key' },
+        body: JSON.stringify({ id: 1_200_000_000 + (Date.now() % 100000000), code: orderCode, content: orderCode,
+          accountNumber: bank.accountNumber, transferType: 'in', transferAmount: amount, referenceCode: 'AUDIT-ACTIVATION-RETRY' }),
+      });
+      assert.ok(settled.ok, await settled.text());
+      assert.equal((await prisma.membershipSubscription.findUniqueOrThrow({ where: { id: old.body.data.subscription.id } })).status, 'ACTIVE');
+      const review = await prisma.payment.findUniqueOrThrow({ where: { id: paymentId }, include: { invoice: true } });
+      assert.equal(review.status, 'SUCCESS');
+      assert.equal(review.activationStatus, 'REQUIRES_REVIEW');
+      assert.equal(review.subscriptionId, null);
+      assert.equal(review.invoice, null);
+      assert.equal(review.gatewayPayload.startDate, startDate);
+      assert.ok(review.paidAt);
+      await prisma.facility.update({ where: { id: facilityId }, data: { maxMembers: originalFacility.maxMembers } });
+      const retry = await http('admin', 'POST', `/payments/${paymentId}/retry-activation`, {});
+      assert.equal(retry.status, 200, JSON.stringify(retry));
+      const final = await prisma.payment.findUniqueOrThrow({ where: { id: paymentId }, include: { invoice: true, subscription: true } });
+      assert.equal(final.activationStatus, 'ACTIVATED');
+      assert.equal(+final.paidAt, +review.paidAt);
+      assert.equal(Number(final.invoice.total), 530000);
+      assert.equal(final.durationDaysSnapshot, 90);
+      assert.equal(final.subscription.maxConcurrentClassesSnapshot, 6);
+    } finally {
+      await prisma.facility.update({ where: { id: facilityId }, data: { maxMembers: originalFacility.maxMembers } });
+    }
+  });
   await fresh('renewal');
   let purchase, renewal;
   await check('HTTP mua gói tại quầy', async () => {
@@ -108,11 +222,19 @@ async function main() {
     assert.equal(payment.status, 'SUCCESS'); assert.equal(Number(payment.refundRequestedAmount), 300000);
     const confirm = await http('reception', 'POST', `/payments/${payment.id}/refund/confirm`, { reason: 'Audit actual cash return', reference: 'AUDIT-ONE' });
     assert.equal(confirm.status, 200, JSON.stringify(confirm));
-    const repeat = await http('reception', 'POST', `/payments/${payment.id}/refund/confirm`, { reason: 'Audit duplicate', reference: 'AUDIT-TWO' });
+    const repeat = await http('reception', 'POST', `/payments/${payment.id}/refund/confirm`, { reason: 'Audit duplicate', reference: 'AUDIT-ONE' });
     assert.equal(repeat.status, 200, JSON.stringify(repeat));
+    const differentReceipt = await http('reception', 'POST', `/payments/${payment.id}/refund/confirm`, { reason: 'Conflicting receipt', reference: 'AUDIT-TWO' });
+    assert.equal(differentReceipt.status, 409, JSON.stringify(differentReceipt));
     payment = await prisma.payment.findUnique({ where: { id: payment.id } });
     assert.equal(payment.refundReference, 'AUDIT-ONE');
     assert.equal((await prisma.membershipSubscription.findUnique({ where: { id: purchase.body.data.subscription.id } })).status, 'ACTIVE');
+    const date = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const report = await http('manager', 'GET', `/reports/revenue?startDate=${date}&endDate=${date}`);
+    assert.equal(report.status, 200, JSON.stringify(report));
+    const revenue = report.body.data;
+    assert.equal(Object.values(revenue.revenueByMethod).reduce((sum, amount) => sum + amount, 0), revenue.totalRevenue);
+    assert.equal(revenue.netRevenue, revenue.totalRevenue - revenue.refundedAmount);
     return { refund: payment.status, receipt: payment.refundReference, activeRetained: true };
   });
   // Start the actual frontend against the disposable backend; no API route mocks.
@@ -125,7 +247,7 @@ async function main() {
     cwd: root + '/FE', env: { ...process.env, VITE_API_BASE_URL: apiBase }, windowsHide: true, stdio: ['ignore', log, log],
   });
   for (let i = 0; i < 60; i++) { try { if ((await fetch(webBase)).ok) break; } catch {} await sleep(300); }
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: true, executablePath: process.env.SCMS_CHROMIUM_EXECUTABLE || undefined });
   await check('UI lễ tân có thao tác hủy gói ACTIVE đã được cấp quyền', async () => {
     const page = await pageFor('reception', '/receptionist/membership?memberId=' + profiles.renewal);
     await page.screenshot({ path: out + '/ui-reception-membership.png', fullPage: true });
@@ -242,6 +364,16 @@ async function main() {
     const schedule = await prisma.classSchedule.findFirstOrThrow({ where: { classId: 'seed-class-demo-qr', startTime: { lte: new Date() }, endTime: { gt: new Date() } } });
     const result = await http('manager', 'POST', '/attendance/generate-qr', { scheduleId: schedule.id });
     assert.equal(result.status, 200, JSON.stringify({ scheduleId: schedule.id, response: result }));
+  });
+  await check('Lần nhập sai mã điểm danh lưu lại dù API từ chối', async () => {
+    await fresh('invalid-attendance');
+    const memberId = profiles['invalid-attendance'];
+    const code = 'ZZZZZZ';
+    assert.equal(await prisma.attendanceManualCode.count({ where: { code } }), 0);
+    const invalid = await http('invalid-attendance', 'POST', '/attendance/scan-qr', { code });
+    assert.equal(invalid.status, 400, JSON.stringify(invalid));
+    assert.equal(await prisma.attendanceManualCodeAttempt.count({ where: { memberId, success: false } }), 1);
+    assert.equal(await prisma.attendance.count({ where: { memberId } }), 0);
   });
   let qrSchedule, qrData;
   await check('QR buổi học UUID: hội viên trả phí quét lặp không tạo trùng', async () => {

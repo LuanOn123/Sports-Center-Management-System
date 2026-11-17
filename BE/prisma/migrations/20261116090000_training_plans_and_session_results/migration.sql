@@ -1,15 +1,23 @@
--- AlterTable
-ALTER TABLE "SlotEvaluation" ADD COLUMN IF NOT EXISTS "results" TEXT;
+BEGIN;
 
--- AlterTable
+ALTER TABLE "SlotEvaluation" ADD COLUMN IF NOT EXISTS "results" TEXT;
 ALTER TABLE "Issue" ADD COLUMN IF NOT EXISTS "submittedOnBehalf" BOOLEAN NOT NULL DEFAULT false;
 
--- Drop legacy TrainingResult and TrainingPlan if existing
-DROP TABLE IF EXISTS "TrainingResult" CASCADE;
-DROP TABLE IF EXISTS "TrainingPlan" CASCADE;
+-- Legacy plans have no class association. Preserve them and the TrainingResult
+-- foreign key without guessing a class for existing member/coach records.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_attribute
+        WHERE attrelid = to_regclass('"TrainingPlan"')
+          AND attname = 'startDate' AND NOT attisdropped
+    ) THEN
+        ALTER TABLE "TrainingPlan" RENAME TO "LegacyTrainingPlan";
+        ALTER TABLE "LegacyTrainingPlan" RENAME CONSTRAINT "TrainingPlan_pkey" TO "LegacyTrainingPlan_pkey";
+    END IF;
+END $$;
 
--- CreateTable
-CREATE TABLE "TrainingPlan" (
+CREATE TABLE IF NOT EXISTS "TrainingPlan" (
     "id" TEXT NOT NULL,
     "classId" TEXT NOT NULL,
     "memberId" TEXT,
@@ -19,18 +27,12 @@ CREATE TABLE "TrainingPlan" (
     "homework" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "TrainingPlan_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "TrainingPlan_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "TrainingPlan_classId_fkey" FOREIGN KEY ("classId") REFERENCES "Class"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "TrainingPlan_memberId_fkey" FOREIGN KEY ("memberId") REFERENCES "MemberProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "TrainingPlan_coachId_fkey" FOREIGN KEY ("coachId") REFERENCES "CoachProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- CreateIndex
-CREATE INDEX "TrainingPlan_classId_memberId_idx" ON "TrainingPlan"("classId", "memberId");
+CREATE INDEX IF NOT EXISTS "TrainingPlan_classId_memberId_idx" ON "TrainingPlan"("classId", "memberId");
 
--- AddForeignKey
-ALTER TABLE "TrainingPlan" ADD CONSTRAINT "TrainingPlan_classId_fkey" FOREIGN KEY ("classId") REFERENCES "Class"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "TrainingPlan" ADD CONSTRAINT "TrainingPlan_memberId_fkey" FOREIGN KEY ("memberId") REFERENCES "MemberProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "TrainingPlan" ADD CONSTRAINT "TrainingPlan_coachId_fkey" FOREIGN KEY ("coachId") REFERENCES "CoachProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+COMMIT;

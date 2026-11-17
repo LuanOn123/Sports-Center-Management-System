@@ -11,7 +11,10 @@ import { validate } from "../../middlewares/validate.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { sendSuccess } from "../../utils/response.js";
 import { expandPattern } from "./rules.js";
-import { activateSubscriptionForPayment } from "../subscriptions/subscription-purchase.service.js";
+import { activateSubscriptionForPayment, inspectPlanPurchase, planAmount } from "../subscriptions/subscription-purchase.service.js";
+import { lockMemberSubscription, lockPaymentWebhook } from "../../utils/dbLocks.js";
+import { activateMemberDue } from "../subscriptions/entitlement.service.js";
+import { checkFacilityMemberLimit } from "../facilities/facility-limits.service.js";
 import { validateResources } from "./scheduling.js";
 import { getAuditFeed } from "./audit-feed.service.js";
 import {
@@ -824,20 +827,27 @@ route(
       plan.tier === "FREE"
     )
       throw new AppError("Invalid member or paid plan", 400);
-    return prisma.payment.create({
-      data: {
-        memberId: member.id,
-        planId: plan.id,
-        amount: plan.price,
-        method: req.body.method,
-        status: "PENDING",
-        note: req.body.note,
-        createdById: actor(),
-        planNameSnapshot: plan.name,
-        planTierSnapshot: plan.tier,
-        durationDaysSnapshot: plan.durationDays,
-        maxConcurrentClassesSnapshot: plan.maxConcurrentClasses,
-      },
+    return prisma.$transaction(async (tx) => {
+      await lockMemberSubscription(tx, member.id);
+      await activateMemberDue(tx, member.id);
+      await inspectPlanPurchase(tx, member.id, plan);
+      const facilityId = requestContext.getStore()?.facilityId;
+      if (facilityId) await checkFacilityMemberLimit(facilityId, member.id, tx);
+      return tx.payment.create({
+        data: {
+          memberId: member.id,
+          planId: plan.id,
+          amount: planAmount(plan),
+          method: req.body.method,
+          status: "PENDING",
+          note: req.body.note,
+          createdById: actor(),
+          planNameSnapshot: plan.name,
+          planTierSnapshot: plan.tier,
+          durationDaysSnapshot: plan.durationDays,
+          maxConcurrentClassesSnapshot: plan.maxConcurrentClasses,
+        },
+      });
     });
   },
 );
@@ -847,7 +857,7 @@ route(
   [cashier, validate(z.object({ reason: z.string().min(3).max(1000) }))],
   (req) =>
     prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"payment:" + id(req)}))`;
+      await lockPaymentWebhook(tx, id(req));
       const payment = await tx.payment.findUnique({
         where: { id: id(req) },
         include: { member: { include: { user: true } }, plan: true },
@@ -856,9 +866,9 @@ route(
         throw new AppError("Counter order not found", 404);
       if (payment.status === "SUCCESS" && payment.subscriptionId)
         return payment;
-      if (payment.status !== "PENDING" || !payment.member.user.isActive)
+      if (payment.status !== "PENDING" || !payment.member.user.isActive || payment.member.user.role !== "MEMBER")
         throw new AppError("Order cannot be confirmed", 409);
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"member-subscription:" + payment.memberId}))`;
+      await lockMemberSubscription(tx, payment.memberId);
       return activateSubscriptionForPayment(tx, {
         memberProfileId: payment.memberId,
         memberUserId: payment.member.userId,
