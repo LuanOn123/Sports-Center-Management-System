@@ -1,78 +1,55 @@
 // hooks/coach/useCoachAttendance.ts
-// Logic màn Điểm danh của HLV — theo FE web (FE/src/shared/Attendance.tsx):
+// Logic màn Điểm danh MỘT buổi của HLV (danh sách học viên) — theo FE web (FE/src/shared/Attendance.tsx):
 // chỉ ghi khi đang trong cửa sổ điểm danh, bản ghi đã có thì chỉ xem (quản lý mới sửa),
-// HLV không chọn "Vắng có phép".
+// HLV không chọn "Vắng có phép". Danh sách buổi để chọn: hooks/coach/useCoachAttendanceList.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCoachSchedules } from './useCoachSchedules';
 import { useSaveEvaluation, useScheduleEvaluations } from './useScheduleEvaluations';
 import { getScheduleEnrollments } from '../../services/coachService';
 import { createAttendance, getScheduleAttendance } from '../../services/attendanceService';
 import { getScheduleById } from '../../services/scheduleService';
-import {
-  COACH_ATTENDANCE_FUTURE_DAYS, COACH_ATTENDANCE_PAST_DAYS,
-} from '../../constants/schedule';
 import { ATTENDANCE_ROSTER_STATUSES } from '../../constants/attendance';
 import { attendanceNoteForSave } from '../../lib/attendanceNote';
 import { canGenerateAttendanceQr, canTakeAttendance } from '../../lib/businessRules';
 import { filterRoster } from '../../lib/coachRoster';
-import { daysFromNow, endOfDay, startOfDay } from '../../lib/date';
 import type { Attendance, AttendanceStatus, Enrollment } from '../../lib/types';
 
-export function useCoachAttendance(coachId: string | undefined, initialScheduleId?: string) {
+export function useCoachAttendance(scheduleId: string | undefined) {
   const queryClient = useQueryClient();
-  const [selectedId, setSelectedId] = useState<string | null>(initialScheduleId ?? null);
   const [markingMemberId, setMarkingMemberId] = useState<string | null>(null);
   const [evaluatingMemberId, setEvaluatingMemberId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  // Mở thẳng một buổi khi được điều hướng tới kèm scheduleId (từ Lịch dạy / chi tiết buổi)
-  useEffect(() => {
-    if (initialScheduleId) setSelectedId(initialScheduleId);
-  }, [initialScheduleId]);
-
-  const todayKey = startOfDay(new Date()).toISOString();
-  const range = useMemo(
-    () => ({
-      startAfter: startOfDay(daysFromNow(-COACH_ATTENDANCE_PAST_DAYS)).toISOString(),
-      startBefore: endOfDay(daysFromNow(COACH_ATTENDANCE_FUTURE_DAYS)).toISOString(),
-    }),
-    [todayKey]
-  );
-  const { schedules: allSchedules, isLoading: schedulesLoading, refetch: refetchSchedules, error: schedulesError } = useCoachSchedules(coachId, range);
-  const schedules = allSchedules.filter((s) => s.status !== 'CANCELLED');
-
-  // Buổi được chọn có thể nằm ngoài khoảng đã tải (mở từ Lịch dạy tuần khác) → tải riêng
-  const fromList = schedules.find((s) => s.id === selectedId);
-  const detailQuery = useQuery({
-    queryKey: ['schedule', selectedId],
-    queryFn: () => getScheduleById(selectedId!),
-    enabled: Boolean(selectedId) && !fromList,
+  // Buổi có thể nằm ngoài khoảng ngày của tab Điểm danh (mở từ Lịch dạy tuần khác hoặc chi tiết lớp) nên luôn tải theo id
+  const scheduleQuery = useQuery({
+    queryKey: ['schedule', scheduleId],
+    queryFn: () => getScheduleById(scheduleId!),
+    enabled: Boolean(scheduleId),
   });
-  const selectedSchedule = fromList ?? detailQuery.data?.data ?? null;
+  const selectedSchedule = scheduleQuery.data?.data ?? null;
 
   const enrollmentsQuery = useQuery({
-    queryKey: ['schedule-enrollments', selectedId],
-    queryFn: () => getScheduleEnrollments(selectedId!),
-    enabled: Boolean(selectedId),
+    queryKey: ['schedule-enrollments', scheduleId],
+    queryFn: () => getScheduleEnrollments(scheduleId!),
+    enabled: Boolean(scheduleId),
   });
 
   const attendanceQuery = useQuery({
-    queryKey: ['attendance', selectedId],
-    queryFn: () => getScheduleAttendance(selectedId!),
-    enabled: Boolean(selectedId),
+    queryKey: ['attendance', scheduleId],
+    queryFn: () => getScheduleAttendance(scheduleId!),
+    enabled: Boolean(scheduleId),
   });
 
   const markMutation = useMutation({
     mutationFn: (payload: { memberId: string; status: AttendanceStatus; note?: string }) =>
-      createAttendance({ scheduleId: selectedId!, ...payload }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['attendance', selectedId] }),
+      createAttendance({ scheduleId: scheduleId!, ...payload }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['attendance', scheduleId] }),
   });
 
   // Mục tiêu + tiến độ của từng học viên và đánh giá của HLV — độc lập với điểm danh (web: Attendance.tsx)
-  const evaluations = useScheduleEvaluations(selectedId);
-  const saveEvaluation = useSaveEvaluation(selectedId);
+  const evaluations = useScheduleEvaluations(scheduleId);
+  const saveEvaluation = useSaveEvaluation(scheduleId);
 
   const roster: Enrollment[] = (enrollmentsQuery.data?.data ?? []).filter((e) =>
     ATTENDANCE_ROSTER_STATUSES.includes(e.status)
@@ -85,22 +62,14 @@ export function useCoachAttendance(coachId: string | undefined, initialScheduleI
   const canShowQr = selectedSchedule ? canGenerateAttendanceQr(selectedSchedule) : false;
 
   return {
-    schedules,
-    schedulesLoading,
-    error: schedulesError ?? enrollmentsQuery.error ?? attendanceQuery.error ?? detailQuery.error,
+    error: enrollmentsQuery.error ?? attendanceQuery.error ?? scheduleQuery.error,
     selectedSchedule,
-    /** Đang ở chế độ xem một buổi (kể cả khi buổi còn đang tải) */
-    hasSelection: Boolean(selectedId),
-    selectSchedule: (id: string | null) => {
-      setSelectedId(id);
-      setSearch('');
-    },
     roster,
     /** Học viên sau khi lọc theo ô tìm kiếm (tên hoặc email) */
     visibleRoster,
     search,
     setSearch,
-    rosterLoading: enrollmentsQuery.isLoading || attendanceQuery.isLoading || detailQuery.isLoading,
+    rosterLoading: enrollmentsQuery.isLoading || attendanceQuery.isLoading || scheduleQuery.isLoading,
     recordFor,
     canWrite,
     canShowQr,
@@ -137,8 +106,7 @@ export function useCoachAttendance(coachId: string | undefined, initialScheduleI
       },
     },
     onRefresh: async () => {
-      await refetchSchedules();
-      if (selectedId) await Promise.all([enrollmentsQuery.refetch(), attendanceQuery.refetch(), evaluations.refetch()]);
+      await Promise.all([scheduleQuery.refetch(), enrollmentsQuery.refetch(), attendanceQuery.refetch(), evaluations.refetch()]);
     },
   };
 }

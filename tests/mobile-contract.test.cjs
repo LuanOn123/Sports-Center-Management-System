@@ -1004,7 +1004,7 @@ test('coach learner screen only shows what BE gives a coach: no email/phone/pref
   assert.ok(!/learner\??\.user\??\.(email|phone)/.test(view), 'email/điện thoại lấy từ danh sách học viên của buổi, không phải hồ sơ rút gọn');
   assert.match(hook, /rosterHealthNotes|enrollment\?\.healthNotes/); assert.match(hook, /\['schedule-enrollments', scheduleId\]/);
   assert.match(route, /LearnerProfileView/); assert.ok(!/useQuery|apiRequest/.test(route), 'route chỉ render một View');
-  const attendance = readSource('components/coach/CoachAttendanceView.tsx');
+  const attendance = readSource('components/coach/CoachRosterView.tsx');
   assert.match(attendance, /ROUTES\.coachMember\(item\.memberId, selected\.id\)/); assert.match(attendance, /EvaluationSheet/);
 });
 
@@ -1798,7 +1798,7 @@ test('help guide: topics per role follow the web HelpPanel, the steps match the 
   assert.equal(attendance.ATTENDANCE_OPEN_BEFORE_MS, 30 * 60_000);
   assert.match(JSON.stringify(c.MEMBER_GUIDES), /Từ 30 phút trước giờ học/); assert.match(JSON.stringify(c.COACH_GUIDES), /từ 30 phút trước giờ bắt đầu/);
   assert.ok(c.MEMBER_GUIDES[3].steps[1].includes(attendance.MY_ATTENDANCE_TEXT.scan), 'tên nút quét mã khớp màn Chuyên cần');
-  assert.match(readSource('components/coach/CoachAttendanceView.tsx'), /Tạo mã QR/);
+  assert.match(readSource('components/coach/CoachRosterView.tsx'), /Tạo mã QR/);
   assert.deepEqual(attendance.COACH_ATTENDANCE_STATUSES.map((s) => attendance.ATTENDANCE_STATUS_LABEL[s]), ['Có mặt', 'Đi muộn', 'Vắng mặt']);
   const memberLabels = menus.getAccountMenuForRole('MEMBER').flatMap((group) => group.items).map((item) => item.label);
   for (const label of ['Gói thành viên', 'Thông tin cá nhân & bảo mật', 'Điểm danh & chuyên cần']) assert.ok(memberLabels.includes(label), `menu hội viên có "${label}"`);
@@ -2309,4 +2309,48 @@ test('a pressable card never wraps another pressable, and the member attendance 
   const note = loadApp('http://localhost/api/v1').load('lib/attendanceNote');
   assert.equal(note.displayAttendanceNote('SYSTEM_NO_SHOW'), 'Hệ thống tự ghi vắng vì chưa điểm danh');
   assert.equal(note.displayAttendanceNote('  Đến muộn 5 phút '), 'Đến muộn 5 phút'); assert.equal(note.displayAttendanceNote('   '), null);
+});
+
+// ─── Vuốt từ trái sang phải ở phía HLV: danh sách học viên / điểm danh của một buổi là màn con, không phải nội dung đổi ngay trong tab ──────
+
+test('the coach roster (students + attendance of one session) is a stack screen over the tabs, so every way into it swipes back to where it came from', () => {
+  const { ROUTES, canAccessRoute } = loadApp('http://localhost/api/v1').load('navigation/routes');
+  // Đích là màn con của khu vực coach (Stack có vuốt quay lại), không phải tab: chuyển giữa các tab không "đẩy" màn hình nên không có trang trước để vuốt về
+  // (Lịch dạy → Điểm danh, Trang chủ → Điểm danh…). Tab Điểm danh vẫn là danh sách buổi để chọn.
+  assert.deepEqual(ROUTES.coachAttendanceFor('s1'), { pathname: '/coach/attendance/[scheduleId]', params: { scheduleId: 's1' } });
+  assert.equal(ROUTES.coachAttendance, '/(tabs)/coach-attendance');
+  assert.ok(fs.existsSync(path.resolve(__dirname, '../app/coach/attendance/[scheduleId].tsx')));
+  assert.equal(canAccessRoute('COACH', ['coach', 'attendance', '[scheduleId]']), true); assert.equal(canAccessRoute('MEMBER', ['coach', 'attendance', '[scheduleId]']), false);
+  const route = stripComments(readSource('app/coach/attendance/[scheduleId].tsx'));
+  assert.match(route, /<CoachRosterView scheduleId=\{scheduleId\} \/>/); assert.ok(!/useQuery|apiRequest/.test(route), 'route chỉ render một View');
+  // Tab Điểm danh: chỉ chọn buổi — chọn là ĐẨY màn danh sách học viên, không đổi nội dung ngay trong tab (không có nút quay lại giả trong tab)
+  const list = stripComments(readSource('components/coach/CoachAttendanceView.tsx'));
+  assert.match(list, /router\.push\(ROUTES\.coachAttendanceFor\(item\.id\)\)/); assert.match(list, /variant="tab"/); assert.doesNotMatch(list, /onBackPress|setParams|hasSelection|selectSchedule/);
+  // Màn danh sách học viên: nút quay lại là quay lại thật; mở thẳng bằng đường dẫn (không có màn trước) thì về tab Điểm danh; không còn chọn buổi bằng state
+  const roster = stripComments(readSource('components/coach/CoachRosterView.tsx'));
+  assert.match(roster, /if \(router\.canGoBack\(\)\) router\.back\(\);\s*else router\.replace\(ROUTES\.coachAttendance\);/); assert.match(roster, /onBackPress=\{goBack\}/); assert.doesNotMatch(roster, /variant="tab"|setParams/);
+  const hook = stripComments(readSource('hooks/coach/useCoachAttendance.ts'));
+  assert.match(hook, /export function useCoachAttendance\(scheduleId: string \| undefined\)/); assert.doesNotMatch(hook, /selectedId|setSelectedId|initialScheduleId|selectSchedule/);
+  assert.match(stripComments(readSource('hooks/coach/useCoachAttendanceList.ts')), /s\.status !== 'CANCELLED'/);
+  // Mọi lối vào danh sách học viên của một buổi đều đi qua route này: Lịch dạy, Trang chủ, chi tiết buổi, chi tiết lớp
+  for (const file of ['components/coach/CoachScheduleView.tsx', 'components/coach/CoachHomeView.tsx', 'components/coach/CoachScheduleActions.tsx', 'components/classes/ClassDetailView.tsx']) assert.match(readSource(file), /router\.push\(ROUTES\.coachAttendanceFor\(/, file);
+  // Màn này nằm dưới app/coach, mà layout coach (test vuốt quay lại ở trên đã quét) rải SWIPE_BACK_OPTIONS
+  assert.match(readSource('app/coach/_layout.tsx'), /\.\.\.SWIPE_BACK_OPTIONS/);
+});
+
+test('a tab never hosts a sub-page: views rendered by the tab routes have no in-screen back handler (a back arrow there needs a stack screen to swipe back)', () => {
+  const tabsDir = path.resolve(__dirname, '../app/(tabs)');
+  const files = fs.readdirSync(tabsDir, { withFileTypes: true }).filter((e) => e.isFile() && e.name.endsWith('.tsx')).map((e) => e.name);
+  assert.ok(files.includes('coach-attendance.tsx') && files.includes('schedule.tsx') && files.length >= 6, 'quét đủ các tab: ' + files.join(', '));
+  // Nút quay lại tự xử lý (onBackPress) trong một màn của tab nghĩa là màn con đang giả lập bằng state: vuốt từ trái sang phải sẽ không làm gì.
+  // Màn con phải là màn của Stack (app/coach, app/chat, app/(tabs)/account/…), mở bằng router.push.
+  const offenders = [];
+  for (const name of files) {
+    const code = stripComments(fs.readFileSync(path.join(tabsDir, name), 'utf8'));
+    for (const [, spec] of code.matchAll(/from '(\.\.\/\.\.\/components\/[^']+)'/g)) {
+      const view = path.resolve(tabsDir, `${spec}.tsx`);
+      if (fs.existsSync(view) && /onBackPress=/.test(stripComments(fs.readFileSync(view, 'utf8')))) offenders.push(`${name} → ${path.relative(path.resolve(__dirname, '..'), view).replaceAll('\\', '/')}`);
+    }
+  }
+  assert.deepEqual(offenders, []);
 });

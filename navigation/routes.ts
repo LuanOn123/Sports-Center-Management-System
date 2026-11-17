@@ -25,6 +25,7 @@ export const ROUTES = {
   enrollments: '/(tabs)/enrollments',
   /** Tab Lịch, mở sẵn phần "Lớp của tôi" */
   myClasses: { pathname: '/(tabs)/schedule', params: { view: 'classes' } } as Href,
+  /** Tab Điểm danh của HLV: danh sách buổi để chọn (danh sách học viên của một buổi là coachAttendanceFor) */
   coachAttendance: '/(tabs)/coach-attendance',
 
   // Màn ngoài tabs
@@ -55,7 +56,11 @@ export const ROUTES = {
   invoice: (id: string): Href => ({ pathname: '/invoice/[id]', params: { id } }),
   paymentDetail: (id: string): Href => ({ pathname: '/member/payment-detail/[id]', params: { id } }),
   chatThread: (userId: string, name?: string): Href => ({ pathname: '/chat/[userId]', params: { userId, ...(name ? { name } : {}) } }),
-  coachAttendanceFor: (scheduleId: string): Href => ({ pathname: '/(tabs)/coach-attendance', params: { scheduleId } }),
+  /**
+   * Điểm danh MỘT buổi (danh sách học viên): màn con của khu vực coach, đẩy lên trên tabs. KHÔNG trỏ vào tab Điểm danh: chuyển giữa các tab không
+   * phải là "đẩy" màn hình nên không có trang trước để vuốt từ trái sang phải quay lại (Lịch dạy → Điểm danh, Trang chủ → Điểm danh…).
+   */
+  coachAttendanceFor: (scheduleId: string): Href => ({ pathname: '/coach/attendance/[scheduleId]', params: { scheduleId } }),
   /** Tab Lịch dạy của HLV, mở sẵn bộ lọc một lớp (web: nút "Xem lịch dạy" ở thẻ lớp phụ trách) */
   coachScheduleFor: (classId: string): Href => ({ pathname: '/(tabs)/schedule', params: { classId } }),
 } as const;
