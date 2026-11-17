@@ -1,11 +1,22 @@
 // lib/payment.ts
 // Quy tắc thuần của đơn SePay (VietQR) — màn thanh toán (hooks/member/usePayment) và Trang chủ dùng chung
 
+import { SEPAY_LATE_PAYMENT_REASON, SEPAY_REVIEW_TEXT } from '../constants/sepayReview';
 import type { SepayCheckout } from './types';
 
 /** Tiền đã về nhưng gói chưa kích hoạt được — chờ trung tâm đối soát */
 export function requiresReview(checkout: SepayCheckout) {
   return Boolean(checkout.requiresReview || checkout.activationStatus === 'REQUIRES_REVIEW');
+}
+
+/**
+ * Lời nhắn cho đơn đang chờ đối soát (web: SepayCheckout): tiền về sau khi đơn hết hạn/đã đóng (LATE_PAYMENT) có câu riêng
+ * về hoàn tiền; lý do khác thì kèm ghi chú của BE. Không bao giờ hiện mã lý do thô như "LATE_PAYMENT" cho người dùng.
+ */
+export function reviewMessage(checkout: SepayCheckout) {
+  if (checkout.reviewReason === SEPAY_LATE_PAYMENT_REASON) return SEPAY_REVIEW_TEXT.late(checkout.orderCode);
+  const note = checkout.reviewReason ? SEPAY_REVIEW_TEXT.note(checkout.reviewReason) : '';
+  return `${SEPAY_REVIEW_TEXT.notActivated(checkout.orderCode)}${note}`;
 }
 
 /** Thanh toán xong và gói đã kích hoạt (web: onConfirmed) */

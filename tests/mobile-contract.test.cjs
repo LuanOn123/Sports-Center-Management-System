@@ -2255,3 +2255,58 @@ test('EAS builds load their own EAS environment, and the README lists every EXPO
   // .env.example nhắc rằng bản build trên EAS không đọc file này
   assert.match(readSource('.env.example'), /Bản build trên EAS không đọc \.env/);
 });
+
+// ─── Sửa lỗi sau khi đồng bộ code mới nhất của web/BE (2026-11-17) ────────────────────────────────────────────────
+
+test('refund estimate follows the collected payment and treats a started SCHEDULED plan as active, like the web and the BE', () => {
+  const rules = loadApp('http://localhost/api/v1').load('lib/businessRules');
+  const DAY = 86_400_000; const now = Date.parse('2026-11-17T00:00:00Z'); const iso = (ms) => new Date(ms).toISOString();
+  const active = { status: 'ACTIVE', startDate: iso(now - 10 * DAY), endDate: iso(now + 40 * DAY), priceSnapshot: '300000', plan: { price: '300000' } };
+  // Khoản gốc là khoản ĐÃ THU (giao dịch SUCCESS), không phải giá gói: hội viên trả 250.000 thì 30% là 75.000
+  assert.equal(rules.cancelRefundBase({ ...active, payments: [{ amount: '250000', status: 'SUCCESS' }] }), 250000);
+  assert.deepEqual(rules.cancelRefundEstimate({ ...active, payments: [{ amount: '250000', status: 'SUCCESS' }] }, now), { daysLeft: 40, refundAmount: 75000, willRefund: true });
+  // Có danh sách giao dịch nhưng chưa thu khoản nào thì không có gì để hoàn; không có danh sách thì lấy giá lúc mua rồi giá gói
+  assert.equal(rules.cancelRefundBase({ ...active, payments: [{ amount: '300000', status: 'PENDING' }] }), 0);
+  assert.equal(rules.cancelRefundBase({ ...active, payments: [] }), 0);
+  assert.equal(rules.cancelRefundBase(active), 300000);
+  assert.equal(rules.cancelRefundBase({ endDate: active.endDate, plan: { price: '120000' } }), 120000);
+  // Gói chờ kích hoạt còn ở tương lai: hoàn 100% khoản đã thu; ngày bắt đầu đã qua thì hệ thống sắp kích hoạt nên tính như gói đang dùng
+  const future = { status: 'SCHEDULED', startDate: iso(now + 5 * DAY), endDate: iso(now + 200 * DAY), payments: [{ amount: '1500000', status: 'SUCCESS' }] };
+  assert.equal(rules.cancelKindOf(future, now), 'SCHEDULED');
+  assert.deepEqual(rules.cancelRefundEstimate(future, now), { daysLeft: 0, refundAmount: 1500000, willRefund: true });
+  const started = { ...future, startDate: iso(now - DAY) };
+  assert.equal(rules.cancelKindOf(started, now), 'ACTIVE');
+  assert.deepEqual(rules.cancelRefundEstimate(started, now), { daysLeft: 200, refundAmount: 450000, willRefund: true });
+  assert.equal(rules.cancelKindOf({ status: 'SCHEDULED' }, now), 'SCHEDULED', 'thiếu ngày bắt đầu thì coi là chờ kích hoạt');
+  // BE trả sẵn `payments` ở GET /subscriptions/member/:id nên kiểu của gói phải có trường này
+  assert.match(readSource('lib/types.ts'), /payments\?: Array<\{ amount: string \| number; status: string \}>/);
+});
+
+test('a payment that arrives late shows the late-payment wording like the web, never the raw reason code', () => {
+  const app = loadApp('http://localhost/api/v1'); const pay = app.load('lib/payment'); const text = app.load('constants/sepayReview');
+  const checkout = { orderCode: 'SC123', activationStatus: 'REQUIRES_REVIEW' };
+  const late = pay.reviewMessage({ ...checkout, reviewReason: 'LATE_PAYMENT' });
+  assert.match(late, /sau khi đơn hết hạn hoặc đã đóng/); assert.match(late, /đối soát hoàn tiền/); assert.ok(late.includes('SC123')); assert.ok(!late.includes('LATE_PAYMENT'));
+  // Lý do khác: câu chung kèm ghi chú của BE; không có lý do: chỉ câu chung
+  assert.equal(pay.reviewMessage({ ...checkout, reviewReason: 'MANUAL_CHECK' }), 'Trung tâm đã nhận tiền cho đơn SC123. Gói chưa được kích hoạt; vui lòng giữ biên lai và liên hệ trung tâm. Ghi chú: MANUAL_CHECK');
+  assert.equal(pay.reviewMessage({ ...checkout, reviewReason: null }), text.SEPAY_REVIEW_TEXT.notActivated('SC123'));
+  assert.equal(text.SEPAY_LATE_PAYMENT_REASON, 'LATE_PAYMENT');
+  // Bảng đối soát dùng hàm này thay vì tự ghép chữ
+  const panel = stripComments(readSource('components/member/payment/SepayReviewPanel.tsx'));
+  assert.match(panel, /reviewMessage\(checkout\)/); assert.ok(!/Ghi chú: \$\{/.test(panel));
+});
+
+test('a pressable card never wraps another pressable, and the member attendance history never prints the raw system marker', () => {
+  // Nút chỉ để nhìn (asLabel) khi nằm trong thẻ bấm được: nút lồng nút là HTML không hợp lệ trên web
+  const button = stripComments(readSource('components/ui/Button.tsx'));
+  assert.match(button, /asLabel: true; onPress\?: never/); assert.match(button, /if \(mode\.asLabel\) return <View className=\{classes\}>/);
+  const next = stripComments(readSource('components/member/home/NextSessionCard.tsx'));
+  assert.match(next, /<Card accent=\{Colors\.primary\} className="mb-lg" onPress=\{open\}/); assert.match(next, /<Button\s+asLabel\b/);
+  assert.ok(!/<Button[^>]*onPress=\{open\}/.test(next), 'thẻ đã bấm được nên nút bên trong không tự bấm');
+  // Lịch sử điểm danh: ghi chú do hệ thống tự đặt hiện bằng câu dễ hiểu
+  const view = stripComments(readSource('components/member/attendance/MyAttendanceView.tsx'));
+  assert.match(view, /displayAttendanceNote\(r\.note\)/); assert.ok(!/\{r\.note\}/.test(view), 'không in ghi chú thô');
+  const note = loadApp('http://localhost/api/v1').load('lib/attendanceNote');
+  assert.equal(note.displayAttendanceNote('SYSTEM_NO_SHOW'), 'Hệ thống tự ghi vắng vì chưa điểm danh');
+  assert.equal(note.displayAttendanceNote('  Đến muộn 5 phút '), 'Đến muộn 5 phút'); assert.equal(note.displayAttendanceNote('   '), null);
+});

@@ -5,6 +5,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { InfoBanner } from '../../shared/InfoBanner';
 import { Colors } from '../../../constants/theme';
+import { SEPAY_REVIEW_TEXT as TEXT } from '../../../constants/sepayReview';
+import { reviewMessage } from '../../../lib/payment';
 import type { SepayCheckout } from '../../../lib/types';
 
 interface SepayReviewPanelProps {
@@ -15,14 +17,9 @@ interface SepayReviewPanelProps {
 }
 
 export function SepayReviewPanel({ checkout, isChecking, onCheckAgain, onClose }: SepayReviewPanelProps) {
-  const note = checkout.reviewReason ? ` Ghi chú: ${checkout.reviewReason}` : '';
   return (
     <View>
-      <InfoBanner
-        tone="warning"
-        title="Đã nhận thanh toán — đang đối soát"
-        message={`Trung tâm đã nhận tiền cho đơn ${checkout.orderCode}. Gói chưa được kích hoạt; vui lòng giữ biên lai và liên hệ trung tâm.${note}`}
-      />
+      <InfoBanner tone="warning" title={TEXT.title} message={reviewMessage(checkout)} />
       <View className="flex-row gap-md">
         <TouchableOpacity
           className="flex-1 flex-row justify-center items-center gap-1.5 rounded-md p-md border border-border"
@@ -30,10 +27,10 @@ export function SepayReviewPanel({ checkout, isChecking, onCheckAgain, onClose }
           disabled={isChecking}
         >
           {isChecking && <ActivityIndicator color={Colors.text.secondary} size="small" />}
-          <Text className="text-text-secondary font-bevn-semibold text-sm">Kiểm tra lại</Text>
+          <Text className="text-text-secondary font-bevn-semibold text-sm">{TEXT.checkAgain}</Text>
         </TouchableOpacity>
         <TouchableOpacity className="flex-1 bg-primary rounded-md p-md items-center" onPress={onClose}>
-          <Text className="text-text-inverse font-bevn-bold text-sm">Đóng</Text>
+          <Text className="text-text-inverse font-bevn-bold text-sm">{TEXT.close}</Text>
         </TouchableOpacity>
       </View>
     </View>

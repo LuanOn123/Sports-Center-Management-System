@@ -34,7 +34,7 @@ export function NextSessionCard({ enrollment }: { enrollment: Enrollment | undef
   const open = () => router.push(ROUTES.scheduleDetail(schedule.id));
   const checkInOpen = canTakeAttendance(schedule);
   return (
-    <Card accent={Colors.primary} className="mb-lg" onPress={open} accessibilityLabel="Xem buổi tập tiếp theo">
+    <Card accent={Colors.primary} className="mb-lg" onPress={open} accessibilityLabel={checkInOpen ? 'Điểm danh buổi tập tiếp theo' : 'Xem buổi tập tiếp theo'}>
       <View className="flex-row items-center justify-between">
         <Text className="text-xs text-text-muted font-bevn-semibold uppercase tracking-wide">Buổi tập tiếp theo</Text>
         <Text className="text-xs text-primary font-bevn-semibold">{formatStartsIn(schedule.startTime, schedule.endTime)}</Text>
@@ -52,11 +52,12 @@ export function NextSessionCard({ enrollment }: { enrollment: Enrollment | undef
           </View>
         )}
       </View>
+      {/* Nút chỉ để nhìn: cả thẻ đã bấm được (open), nút bấm lồng trong thẻ bấm được là HTML không hợp lệ trên web */}
       <Button
+        asLabel
         title={checkInOpen ? 'Điểm danh' : 'Xem buổi học'}
         icon={checkInOpen ? 'qr-code-scanner' : undefined}
         variant={checkInOpen ? 'primary' : 'secondary'}
-        onPress={open}
       />
     </Card>
   );

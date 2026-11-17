@@ -94,20 +94,42 @@ export function selfCancelRefundEstimate(endDate: string, amount: number, now = 
 
 /** Hội viên tự hủy được gói đang dùng (ACTIVE) và gói chờ kích hoạt (SCHEDULED) — web: CancelSubscription */
 export type CancelKind = 'ACTIVE' | 'SCHEDULED';
-export function cancelKindOf(sub: { status?: string } | null | undefined): CancelKind {
-  return sub?.status === 'SCHEDULED' ? 'SCHEDULED' : 'ACTIVE';
+/**
+ * Gói SCHEDULED mà ngày bắt đầu đã qua chỉ còn chờ hệ thống kích hoạt nên tính như gói đang dùng (web: CancelSubscription;
+ * BE kích hoạt gói đến hạn trước khi tính hoàn). Chỉ gói còn ở tương lai mới được hoàn 100%; thiếu ngày bắt đầu thì coi là chờ kích hoạt.
+ */
+export function cancelKindOf(sub: { status?: string; startDate?: string } | null | undefined, now = Date.now()): CancelKind {
+  if (sub?.status !== 'SCHEDULED') return 'ACTIVE';
+  const start = sub.startDate ? Date.parse(sub.startDate) : Number.NaN;
+  return Number.isNaN(start) || start > now ? 'SCHEDULED' : 'ACTIVE';
+}
+
+/** Gói kèm các giao dịch và giá lúc mua — đầu vào để tính khoản gốc hoàn tiền */
+type RefundBaseInput = {
+  priceSnapshot?: string | number;
+  plan?: { price: string | number } | null;
+  payments?: Array<{ amount: string | number; status: string }>;
+};
+
+/**
+ * Khoản gốc để tính hoàn tiền: khoản ĐÃ THU của gói (BE tính theo giao dịch SUCCESS, không theo giá gói hiện tại). Gói có danh sách
+ * giao dịch mà chưa thu khoản nào thì 0; không có danh sách (dữ liệu cũ) thì lấy giá lúc mua rồi giá gói (web: CancelSubscription).
+ */
+export function cancelRefundBase(sub: RefundBaseInput) {
+  const collected = sub.payments?.find((payment) => payment.status === 'SUCCESS');
+  return Number(collected?.amount ?? (sub.payments ? 0 : sub.priceSnapshot ?? sub.plan?.price ?? 0));
 }
 
 /**
- * Ước tính hoàn tiền khi hội viên tự hủy: gói đang dùng theo chính sách (30% khi còn trên 15 ngày), gói chờ kích hoạt
- * hoàn 100% khoản gốc và giữ nguyên gói đang dùng. Chỉ là YÊU CẦU hoàn — số tiền chính thức do BE/quầy xác nhận.
+ * Ước tính hoàn tiền khi hội viên tự hủy: gói đang dùng theo chính sách (30% khoản đã thu khi còn trên 15 ngày), gói chờ kích hoạt
+ * hoàn 100% khoản đã thu và giữ nguyên gói đang dùng. Chỉ là YÊU CẦU hoàn — số tiền chính thức do BE/quầy xác nhận.
  */
 export function cancelRefundEstimate(
-  sub: { status?: string; endDate: string; priceSnapshot?: string | number; plan?: { price: string | number } | null },
+  sub: RefundBaseInput & { status?: string; startDate?: string; endDate: string },
   now = Date.now(),
 ) {
-  const amount = Number(sub.priceSnapshot ?? sub.plan?.price ?? 0);
-  if (cancelKindOf(sub) === 'SCHEDULED') {
+  const amount = cancelRefundBase(sub);
+  if (cancelKindOf(sub, now) === 'SCHEDULED') {
     const refundAmount = Math.round(amount);
     return { daysLeft: 0, refundAmount, willRefund: refundAmount > 0 };
   }
