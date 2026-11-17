@@ -21,40 +21,18 @@ test("Member assistant sends authenticated personal questions", async ({ page })
   expect(request).toEqual({ auth: "Bearer fixture-token", message: "Lịch tập của tôi hôm nay?" });
 });
 
-test("Receptionist checks a member in and opens a support ticket on their behalf", async ({ page }) => {
+test("Retired reception check-in redirects and reception support has no create button", async ({ page }) => {
   await setup(page, "RECEPTIONIST");
-  const writes: unknown[] = [];
-  const member = { id: "member-1", user: { fullName: "Nguyễn An", email: "an@example.test" } };
-  await page.route(/\/api\/v1\/members(?:\?.*)?$/, (route) =>
-    route.fulfill({ json: { success: true, data: [member] } }),
-  );
-  await page.route(/\/api\/v1\/facility-visits(?:\?.*)?$/, (route) =>
+  await page.route("**/api/v1/issues", (route) =>
     route.fulfill({ json: { success: true, data: [] } }),
   );
-  await page.route("**/api/v1/facility-visits/reception-check-in", (route) => {
-    writes.push(route.request().postDataJSON());
-    return route.fulfill({ json: { success: true, data: { id: "visit-1", checkInAt: "2026-11-16T09:00:00Z" } } });
-  });
-  await page.route("**/api/v1/issues", (route) => {
-    if (route.request().method() === "POST") writes.push(route.request().postDataJSON());
-    return route.fulfill({ json: { success: true, data: [] } });
-  });
   await page.goto("/receptionist/checkin");
-  await page.getByRole("combobox", { name: "Hội viên", exact: true }).selectOption(member.id);
-  await page.getByRole("button", { name: "Check-in vào cơ sở" }).click();
-  await expect(page.getByText(/Đã ghi nhận lượt vào cửa/)).toBeVisible();
+  await expect(page).toHaveURL(/\/receptionist\/dashboard$/);
+  await expect(page.getByRole("link", { name: "Check-in cơ sở", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Chuyên cần", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Yêu cầu hỗ trợ", exact: true }).click();
-  await page.getByRole("button", { name: "Thêm mới", exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByRole("button", { name: "Chọn", exact: true }).click();
-  await dialog.getByLabel("Tiêu đề").fill("Đổi giờ học");
-  await dialog.getByLabel("Mô tả").fill("Hội viên cần hỗ trợ đổi sang buổi chiều.");
-  await dialog.getByRole("button", { name: "Gửi yêu cầu" }).click();
-  await expect(dialog).toHaveCount(0);
-  expect(writes).toEqual([
-    { memberId: member.id, method: "RECEPTION" },
-    { memberId: member.id, title: "Đổi giờ học", description: "Hội viên cần hỗ trợ đổi sang buổi chiều." },
-  ]);
+  await expect(page.getByRole("heading", { name: "Yêu cầu hỗ trợ", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Thêm mới", exact: true })).toHaveCount(0);
 });
 
 test("Manager filters facility activity and can open the scoped audit log", async ({ page }) => {

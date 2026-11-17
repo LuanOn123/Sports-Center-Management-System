@@ -130,6 +130,12 @@
     "parameters": [
       {
         "in": "query",
+        "name": "refundPending",
+        "description": "When true, returns successful payments with a refund request awaiting processing.",
+        "schema": { "type": "string", "enum": ["true", "false"] }
+      },
+      {
+        "in": "query",
         "name": "memberId",
         "schema": {
           "type": "string"

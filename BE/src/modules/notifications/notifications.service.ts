@@ -142,11 +142,29 @@ export async function broadcastNotification(
   });
 }
 
-/**
- * Gửi thông báo & Socket.io đến các Lễ tân khi có yêu cầu hoàn tiền mới (từ member hủy gói hoặc yêu cầu hoàn tiền).
- * Nếu có facilityId, ưu tiên gửi cho Lễ tân của đúng cơ sở đó; nếu chưa phân cơ sở thì gửi cho tất cả Lễ tân đang active.
- * Đồng thời gửi thông báo ngược lại cho Member biết lễ tân nào sẽ phụ trách và CTA nhắn tin.
- */
+export const NO_REFUND_RECEPTIONIST =
+  "Không có lễ tân phụ trách hoàn tiền. Vui lòng liên hệ với quản trị viên của cơ sở.";
+
+export async function findRefundReceptionist(
+  facilityId: string | null | undefined,
+  db: Pick<typeof prisma, "facilityStaff"> = prisma,
+) {
+  if (!facilityId) return null;
+  const assignment = await db.facilityStaff.findFirst({
+    where: {
+      facilityId,
+      role: "RECEPTIONIST",
+      isActive: true,
+      facility: { isActive: true },
+      user: { role: "RECEPTIONIST", isActive: true },
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: { user: { select: { id: true, fullName: true } } },
+  });
+  return assignment?.user ?? null;
+}
+
+/** Gửi yêu cầu hoàn tiền tới lễ tân phụ trách tại cơ sở của giao dịch. */
 export async function notifyReceptionistsAboutRefund(params: {
   facilityId?: string | null;
   paymentId: string;
@@ -154,72 +172,41 @@ export async function notifyReceptionistsAboutRefund(params: {
   memberName?: string;
   refundAmount: number;
   reason: string;
+  receptionist?: Awaited<ReturnType<typeof findRefundReceptionist>>;
 }) {
   return requestContext.run(
-    { ...requestContext.getStore(), transaction: undefined },
+    { ...requestContext.getStore(), facilityId: params.facilityId ?? undefined, transaction: undefined },
     async () => {
       const { facilityId, paymentId, memberUserId, memberName, refundAmount, reason } = params;
 
-      // ── 1. Tìm danh sách Lễ tân phụ trách cơ sở ──────────────────────────────
-      let receptionistUserIds: string[] = [];
-      if (facilityId) {
-        const staff = await prisma.facilityStaff.findMany({
-          where: {
-            facilityId,
-            role: "RECEPTIONIST",
-            isActive: true,
-          },
-          select: { userId: true },
-        });
-        receptionistUserIds = staff.map((s) => s.userId);
+      const receptionist = params.receptionist === undefined
+        ? await findRefundReceptionist(facilityId)
+        : params.receptionist;
+      if (!receptionist) {
+        if (memberUserId) {
+          await createNotification(memberUserId, "PAYMENT_REFUNDED", "Yêu cầu hoàn tiền đã được ghi nhận", NO_REFUND_RECEPTIONIST, {
+            metadata: { paymentId, facilityId, action: "REFUND_NO_RECEPTIONIST" },
+          });
+        }
+        return;
       }
-
-      if (receptionistUserIds.length === 0) {
-        const all = await prisma.user.findMany({
-          where: { role: "RECEPTIONIST", isActive: true },
-          select: { id: true },
-        });
-        receptionistUserIds = all.map((u) => u.id);
-      }
-
-      if (receptionistUserIds.length === 0) return;
-
-      // ── 2. Notify Lễ tân ──────────────────────────────────────────────────────
       const title = "Yêu cầu hoàn tiền mới";
       const body = `Hội viên ${memberName || "Hội viên"} vừa yêu cầu hoàn tiền ${Number(refundAmount).toLocaleString("vi-VN")}đ (Giao dịch #${paymentId.slice(0, 8)}). Lý do: ${reason}`;
 
-      await prisma.notification.createMany({
-        data: receptionistUserIds.map((userId) => ({
-          userId,
-          type: "PAYMENT_REFUNDED",
-          title,
-          body,
-          reason,
-          metadata: {
-            paymentId,
-            facilityId,
-            memberUserId,
-            memberName,
-            refundAmount: Number(refundAmount),
-            action: "REFUND_REQUEST",
-          },
-        })),
+      await createNotification(receptionist.id, "PAYMENT_REFUNDED", title, body, {
+        reason,
+        metadata: {
+          paymentId,
+          facilityId,
+          memberUserId,
+          memberName,
+          refundAmount: Number(refundAmount),
+          action: "REFUND_REQUEST",
+        },
       });
 
-      // ── 3. Notify Member: lễ tân nào đang phụ trách, CTA nhắn tin ────────────
       if (memberUserId) {
-        // Dùng lễ tân đầu tiên làm người phụ trách đại diện
-        const primaryReceptionistId = receptionistUserIds[0];
-        let receptionistFullName = "Lễ tân trung tâm";
-        try {
-          const rec = await prisma.user.findUnique({
-            where: { id: primaryReceptionistId },
-            select: { fullName: true },
-          });
-          if (rec?.fullName) receptionistFullName = rec.fullName;
-        } catch {
-          // keep default name
-        }
+        const { id: primaryReceptionistId, fullName: receptionistFullName } = receptionist;
 
         const memberTitle = "Yêu cầu hoàn tiền đã được tiếp nhận";
         const memberBody = `Lễ tân ${receptionistFullName} đang phụ trách yêu cầu hoàn tiền ${Number(refundAmount).toLocaleString("vi-VN")}đ (Giao dịch #${paymentId.slice(0, 8)}) của bạn. Nhấn vào thông báo để nhắn tin trao đổi trực tiếp.`;
@@ -258,24 +245,21 @@ export async function notifyReceptionistsAboutRefund(params: {
         }
       }
 
-      // ── 4. Socket emit đến Lễ tân ─────────────────────────────────────────────
       try {
         const { getIo } = await import("../chat/chat.socket.js");
         const io = getIo();
-        for (const uId of receptionistUserIds) {
-          io.to(uId).emit("newNotification", {
-            title,
-            body,
-            paymentId,
-            refundAmount,
-          });
-          io.to(uId).emit("refundRequestCreated", {
-            paymentId,
-            facilityId,
-            refundAmount,
-            memberName,
-          });
-        }
+        io.to(receptionist.id).emit("newNotification", {
+          title,
+          body,
+          paymentId,
+          refundAmount,
+        });
+        io.to(receptionist.id).emit("refundRequestCreated", {
+          paymentId,
+          facilityId,
+          refundAmount,
+          memberName,
+        });
       } catch {
         // Socket.io might not be running in tests
       }

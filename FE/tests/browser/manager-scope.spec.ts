@@ -5,17 +5,25 @@ import { setup } from "./fixtures";
 async function manager(page: Page) {
   await setup(page, "MANAGER");
   let assigned = false;
+  let receptionistAssigned = false;
   const coach = {
     id: "coach-user",
     fullName: "Coach An",
     email: "an@test.invalid",
     role: "COACH",
   };
+  const receptionist = {
+    id: "receptionist-user",
+    fullName: "Lễ tân Mai",
+    email: "mai@test.invalid",
+    role: "RECEPTIONIST",
+  };
   const writes: { path: string; body: unknown }[] = [];
   const calls: string[] = [];
   await page.route("**/api/v1/**", async (route) => {
     const req = route.request();
-    const path = new URL(req.url()).pathname.replace("/api/v1", "");
+    const url = new URL(req.url());
+    const path = url.pathname.replace("/api/v1", "");
     calls.push(path);
     let data: unknown;
     if (path === "/facilities")
@@ -23,15 +31,27 @@ async function manager(page: Page) {
     else if (path === "/facilities/facility-a")
       data = {
         name: "Cơ sở A",
-        staffs: assigned
-          ? [{ userId: coach.id, user: coach, role: "COACH", isActive: true }]
-          : [],
+        staffs: [
+          ...(assigned ? [coach] : []),
+          ...(receptionistAssigned ? [receptionist] : []),
+        ].map((user) => ({ userId: user.id, user, role: user.role, isActive: true })),
       };
-    else if (path === "/staff-candidates") data = assigned ? [] : [coach];
-    else if (path === "/facilities/facility-a/staff") {
-      writes.push({ path, body: req.postDataJSON() });
-      assigned = true;
+    else if (path === "/staff-candidates")
+      data =
+        url.searchParams.get("role") === "RECEPTIONIST"
+          ? receptionistAssigned ? [] : [receptionist]
+          : assigned ? [] : [coach];
+    else if (path === "/facilities/facility-a/staff/coach-user/COACH" && req.method() === "DELETE") {
+      writes.push({ path, body: null });
+      assigned = false;
       data = { userId: coach.id };
+    }
+    else if (path === "/facilities/facility-a/staff") {
+      const body = req.postDataJSON();
+      writes.push({ path, body });
+      if (body.role === "RECEPTIONIST") receptionistAssigned = true;
+      else assigned = true;
+      data = { userId: body.userId };
     } else if (path === "/reports/revenue")
       data = {
         totalRevenue: 900000,
@@ -153,7 +173,7 @@ test("Coach assignment confirms own facility and refreshes both pools", async ({
   const { writes } = await manager(page);
   await page.goto("/manager/users");
   await page
-    .getByRole("button", { name: "Huấn luyện viên chưa phân công (Admin)", exact: true })
+    .getByRole("button", { name: "Huấn luyện viên chưa phân công", exact: true })
     .click();
   await page.getByRole("button", { name: "Phân công vào cơ sở" }).click();
   await expect(page.getByRole("dialog")).toContainText("Cơ sở A");
@@ -194,6 +214,44 @@ test("Coach assignment confirms own facility and refreshes both pools", async ({
     path: "/coaches/coach-profile/specializations",
     body: { sportIds: ["yoga"] },
   });
+});
+
+test("Manager assigns an existing receptionist to their own facility", async ({ page }) => {
+  const { writes } = await manager(page);
+  await page.goto("/manager/users");
+  await page.getByRole("button", { name: "+ Thêm lễ tân từ hệ thống" }).click();
+  const candidate = page.getByRole("row", { name: /Lễ tân Mai/ });
+  await candidate.getByRole("button", { name: "Phân công vào cơ sở" }).click();
+  const dialog = page.getByRole("dialog", { name: "Xác nhận phân công" });
+  await expect(dialog).toContainText("Cơ sở A");
+  await dialog.getByRole("button", { name: "Xác nhận phân công" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText("Không có lễ tân nào chưa phân công.")).toBeVisible();
+  expect(writes).toEqual([
+    {
+      path: "/facilities/facility-a/staff",
+      body: { userId: "receptionist-user", role: "RECEPTIONIST" },
+    },
+  ]);
+  await page.getByRole("button", { name: "Nhân sự cơ sở", exact: true }).click();
+  await expect(candidate).toContainText("Đã phân công");
+});
+
+test("manager can remove a staff assignment at their own facility", async ({ page }) => {
+  const { writes } = await manager(page);
+  await page.goto("/manager/users");
+  await page.getByRole("button", { name: "Huấn luyện viên chưa phân công", exact: true }).click();
+  await page.getByRole("button", { name: "Phân công vào cơ sở" }).click();
+  await page.getByRole("button", { name: "Xác nhận phân công", exact: true }).click();
+  await page.getByRole("button", { name: "Nhân sự cơ sở", exact: true }).click();
+  const row = page.getByRole("row", { name: /Coach An/ });
+  await row.getByRole("button", { name: "Gỡ phân công" }).click();
+  const confirmation = page.getByRole("dialog", { name: "Gỡ phân công khỏi cơ sở" });
+  await expect(confirmation).toContainText("Cơ sở A");
+  expect(writes).toHaveLength(1);
+  await confirmation.getByRole("button", { name: "Xác nhận gỡ" }).click();
+  await expect(row).toHaveCount(0);
+  expect(writes[1]?.path).toBe("/facilities/facility-a/staff/coach-user/COACH");
 });
 
 test("room coordination and activity calendar use the same sessions", async ({

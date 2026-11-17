@@ -70,16 +70,39 @@ for (const result of ["SUCCESS", "FAILED"] as const) {
   }) => {
     await setup(page, "MEMBER");
     const payment = checkout(result);
+    let activated = false;
+    await page.route("**/api/v1/subscriptions/member/**", (route) =>
+      route.fulfill({
+        json: {
+          success: true,
+          data: activated
+            ? [
+                {
+                  id: "paid-sub",
+                  planNameSnapshot: "Membership Monthly",
+                  tier: "MEMBERSHIP",
+                  status: "ACTIVE",
+                  startDate: "2020-01-01T00:00:00Z",
+                  endDate: "2099-01-01T00:00:00Z",
+                },
+              ]
+            : [],
+        },
+      }),
+    );
     await page.route("**/api/v1/payments/sepay/checkout", (route) =>
       route.fulfill({ status: 201, json: { success: true, data: payment } }),
     );
-    await page.route(`**/api/v1/payments/sepay/${payment.paymentId}`, (route) =>
-      route.fulfill({
+    await page.route(`**/api/v1/payments/sepay/${payment.paymentId}`, (route) => {
+      activated = result === "SUCCESS";
+      return route.fulfill({
         json: { success: true, data: { ...payment, status: result } },
-      }),
-    );
+      });
+    });
 
     await page.goto("/member/membership");
+    const profile = page.getByRole("button", { name: /Menu hồ sơ của/ });
+    await expect(profile).toContainText("Chưa có gói hiệu lực");
     await page
       .locator('button:has-text("Chuyển khoản VietQR"):not([disabled])')
       .first()
@@ -91,6 +114,11 @@ for (const result of ["SUCCESS", "FAILED"] as const) {
         { exact: true },
       ),
     ).toBeVisible();
+    await expect(profile).toContainText(
+      result === "SUCCESS"
+        ? "Membership Monthly"
+        : "Chưa có gói hiệu lực",
+    );
   });
 }
 

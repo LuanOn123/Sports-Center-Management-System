@@ -6,6 +6,26 @@ import { normalizeBankAccount, verifySepayApiKey, verifySepayHmacSignature } fro
 import { SepayWebhookSchema, UpdatePaymentStatusSchema } from "../../src/modules/payments/payments.schema.js";
 import { updatePaymentStatus } from "../../src/modules/payments/payments.service.js";
 import { getRevenueReport } from "../../src/modules/reports/reports.service.js";
+import { findRefundReceptionist } from "../../src/modules/notifications/notifications.service.js";
+
+cases("BR-PAY-REFUND-RECEPTION", [
+  ["chọn lễ tân được phân công đúng cơ sở", "facility-a", { id: "reception-a", fullName: "Lễ tân A" }],
+  ["không tìm ở cơ sở khác khi cơ sở giao dịch thiếu lễ tân", "facility-b", null],
+  ["không tìm lễ tân toàn hệ thống khi thiếu cơ sở giao dịch", null, null],
+] as const, async ([, facilityId, expected]) => {
+  let calls = 0;
+  await withFixture([[prisma.facilityStaff, "findFirst", ({ where }) => {
+    calls++;
+    assert.deepEqual(where, {
+      facilityId, role: "RECEPTIONIST", isActive: true, facility: { isActive: true },
+      user: { role: "RECEPTIONIST", isActive: true },
+    });
+    return expected ? { user: expected } : null;
+  }]], async () => {
+    assert.deepEqual(await findRefundReceptionist(facilityId), expected);
+    assert.equal(calls, facilityId ? 1 : 0);
+  });
+});
 
 const transfer = {
   id: 123,

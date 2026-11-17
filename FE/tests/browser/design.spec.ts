@@ -69,7 +69,7 @@ test("collection view keeps room details accessible in both modes", async ({
   await expect(page.getByRole("dialog")).toBeVisible();
 });
 
-test("booking date filter uses documented query and preserves member selection", async ({
+test("course search uses the class catalog and preserves member selection", async ({
   page,
 }) => {
   await setup(page);
@@ -77,17 +77,17 @@ test("booking date filter uses documented query and preserves member selection",
   await page.getByRole("button", { name: "Chọn", exact: true }).first().click();
   const request = page.waitForRequest(
     (r) =>
-      r.url().includes("/class-schedules?") &&
-      new URL(r.url()).searchParams.get("date") === "2099-09-15",
+      r.url().includes("/classes?") &&
+      new URL(r.url()).searchParams.get("search") === "Yoga",
   );
-  await page.getByLabel("Ngày học", { exact: true }).fill("2099-09-15");
+  await page.getByLabel("Tìm khóa học", { exact: true }).fill("Yoga");
   await request;
   await expect(
     page.getByRole("button", { name: "Đổi hội viên" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Xem đăng ký" }).first().click();
   await expect(
-    page.getByRole("button", { name: "Đăng ký cho John Doe", exact: true }),
+    page.getByRole("button", { name: "Đăng ký trọn khóa cho John Doe", exact: true }),
   ).toBeEnabled();
   await page.screenshot({
     path: "artifacts/redesign/booking.png",

@@ -116,7 +116,7 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
           ? "POST /slots"
           : kind === "leave" && role === "RECEPTIONIST"
             ? "POST /leave-requests"
-            : kind === "issues" && (member || role === "RECEPTIONIST")
+            : kind === "issues" && member
               ? "POST /issues"
               : kind === "orders"
                 ? "POST /counter-orders"

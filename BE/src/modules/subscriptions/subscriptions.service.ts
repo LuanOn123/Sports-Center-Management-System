@@ -526,7 +526,15 @@ export async function updateSubscriptionStatus(id: string, status: string) {
     });
     await flushNotificationOutbox().catch(() => {});
 
-    // Trả về kết quả có thêm thông tin refund
+    if (willRefund && originalPayment) {
+      void notifyReceptionistsAboutRefund({
+        facilityId: originalPayment.facilityId,
+        paymentId: originalPayment.id,
+        memberUserId: sub.member.userId,
+        refundAmount,
+        reason: "Nhân viên hủy gói tập theo chính sách hoàn tiền",
+      }).catch((error) => console.error("Failed to notify receptionist about refund:", error));
+    }
     const result = await prisma.membershipSubscription.findUnique({
       where: { id },
       include: {

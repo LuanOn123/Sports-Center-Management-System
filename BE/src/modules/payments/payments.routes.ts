@@ -62,6 +62,10 @@ router.post(
  *     tags: [Payments]
  *     parameters:
  *       - in: query
+ *         name: refundPending
+ *         description: When true, returns successful payments with a refund request awaiting processing.
+ *         schema: { type: string, enum: ["true", "false"] }
+ *       - in: query
  *         name: memberId
  *         schema: { type: string }
  *       - in: query
@@ -205,7 +209,7 @@ router.post("/:id/refund/request", authenticate, authorizeExact("ADMIN", "MEMBER
   validate(z.object({ reason: z.string().trim().min(3).max(1000) }).strict()),
   async (req, res) => sendSuccess(res,
     await requestPaymentRefund(String(req.params.id), req.body.reason, req.user!),
-    "Đã gửi yêu cầu hoàn tiền thành công; lễ tân sẽ liên hệ và xử lý hoàn tiền cho bạn."));
+    "Đã ghi nhận yêu cầu hoàn tiền."));
 router.patch(
   "/:id/status",
   authenticate, authorize("RECEPTIONIST"),

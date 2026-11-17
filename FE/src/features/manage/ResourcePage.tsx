@@ -89,6 +89,7 @@ export function ResourcePage({
     useState<ScheduleCalendarView>("week");
   const [calendarCursor, setCalendarCursor] = useState(() => new Date());
   const listKey = "GET " + r.path;
+  const requireAuth = r.slug === "membership-plans" && role === "ADMIN";
   const params = contract[listKey].parameters.filter((p) => p.in === "query");
   const paginated = params.some((p) => p.name === "page");
   const filters = params.filter((p) => {
@@ -128,7 +129,7 @@ export function ResourcePage({
     queryFn: ({ signal }) =>
       r.slug === "schedules"
         ? allPages<RecordData>(listKey, { query: requestQuery, signal })
-        : api<RecordData[]>(listKey, { query: requestQuery, signal }),
+        : api<RecordData[]>(listKey, { query: requestQuery, signal, requireAuth }),
   });
   const scheduleCoachNames = useQuery({
     queryKey: ["schedule-coach-names", getFacilityId()],
@@ -176,7 +177,7 @@ export function ResourcePage({
   const detail = useQuery({
     queryKey: ["detail", r.path, modal?.row?.id],
     queryFn: ({ signal }) =>
-      api(detailKey, { params: { id: String(modal!.row!.id) }, signal }),
+      api(detailKey, { params: { id: String(modal!.row!.id) }, signal, requireAuth }),
     enabled: Boolean(modal?.kind === "detail" && modal.row?.id),
   });
   function done() {

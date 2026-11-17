@@ -25,6 +25,17 @@
 .member-profile-name small {
   color: var(--member-accent, #d3f879);
 }
+.member-profile-name .member-profile-plan {
+  max-width: clamp(16ch, 17vw, 30ch);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--member-text, #edf2f8);
+}
+.member-profile-plan-link {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .member-profile-dropdown {
   position: absolute;
   top: calc(100% + 12px);

@@ -105,7 +105,10 @@ route("get", "/staff-candidates", [staff], (req) =>
                   role: "MANAGER",
                   facilityStaffs: { none: { role: "MANAGER", isActive: true } },
                 }
-            : { role: "COACH", facilityStaffs: { none: { isActive: true } } }),
+            : {
+                role: req.query.role === "RECEPTIONIST" ? "RECEPTIONIST" : "COACH",
+                facilityStaffs: { none: { isActive: true } },
+              }),
         },
         select: {
           id: true,

@@ -87,9 +87,7 @@ test("hover opens a radial menu and facility check-in works in place", async ({
   });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Check-in vào cơ sở" }).click();
-  await expect(dialog.getByRole("status")).toContainText(
-    "Đã ghi nhận lượt vào cửa",
-  );
+  await expect(dialog.getByText(/^Đã ghi nhận lượt vào cửa lúc /)).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page).toHaveURL(/\/member\/membership$/);
   await trigger.hover();

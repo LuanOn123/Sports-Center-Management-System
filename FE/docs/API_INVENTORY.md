@@ -5123,6 +5123,12 @@ Parameters:
 [
   {
     "in": "query",
+    "name": "refundPending",
+    "description": "When true, returns successful payments with a refund request awaiting processing.",
+    "schema": { "type": "string", "enum": ["true", "false"] }
+  },
+  {
+    "in": "query",
     "name": "memberId",
     "schema": {
       "type": "string"
@@ -17604,13 +17610,23 @@ Responses/status codes:
 ```
 
 ## GET /staff-candidates
-Ứng viên chưa phân công: Coach cho MANAGER, Manager cho ADMIN
+Ứng viên chưa phân công: HLV hoặc Lễ tân cho MANAGER, Quản lý cho ADMIN
 
 Authentication: [{"BearerAuth":[]}]
 
 Parameters:
 ```json
 [
+  {
+    "name": "role",
+    "in": "query",
+    "required": false,
+    "description": "MANAGER mặc định lấy COACH; dùng RECEPTIONIST để lấy lễ tân. ADMIN mặc định lấy MANAGER; có thể chọn COACH.",
+    "schema": {
+      "type": "string",
+      "enum": ["MANAGER", "COACH", "RECEPTIONIST"]
+    }
+  },
   {
     "name": "X-Facility-Id",
     "in": "header",

@@ -1920,6 +1920,12 @@
     "parameters": [
       {
         "in": "query",
+        "name": "refundPending",
+        "description": "When true, returns successful payments with a refund request awaiting processing.",
+        "schema": { "type": "string", "enum": ["true", "false"] }
+      },
+      {
+        "in": "query",
         "name": "memberId",
         "schema": {
           "type": "string"
@@ -6472,7 +6478,7 @@
   "GET /staff-candidates": {
     "path": "/staff-candidates",
     "method": "GET",
-    "summary": "Ứng viên chưa phân công: Coach cho MANAGER, Manager cho ADMIN",
+    "summary": "Ứng viên chưa phân công: HLV hoặc Lễ tân cho MANAGER, Quản lý cho ADMIN",
     "security": [
       {
         "BearerAuth": []
@@ -6492,12 +6498,13 @@
         "name": "role",
         "in": "query",
         "required": false,
-        "description": "Lọc ứng viên theo role. Admin truyền COACH để lấy HLV chưa phân công.",
+        "description": "MANAGER mặc định lấy COACH; dùng RECEPTIONIST để lấy lễ tân. ADMIN mặc định lấy MANAGER; có thể chọn COACH.",
         "schema": {
           "type": "string",
           "enum": [
             "MANAGER",
-            "COACH"
+            "COACH",
+            "RECEPTIONIST"
           ]
         }
       }

@@ -97,7 +97,7 @@ export function SepayCheckoutModal({
           : current.status === "REFUNDED"
             ? "Giao dịch đã được ghi nhận hoàn tiền."
             : "Thanh toán thất bại. Vui lòng tạo đơn mới.",
-      state,
+      { key: state },
     );
   }, [current?.paymentId, current?.status, requiresReview]);
   const mockConfirm = useMutation({

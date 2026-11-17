@@ -33,3 +33,11 @@ export const membershipApi = {
     };
   },
 };
+
+export function currentMembershipQuery(memberId?: string) {
+  return {
+    queryKey: ["current-membership", memberId] as const,
+    queryFn: () => (memberId ? membershipApi.getMySubscriptions(memberId) : null),
+    enabled: Boolean(memberId),
+  };
+}
