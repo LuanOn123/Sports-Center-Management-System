@@ -466,6 +466,10 @@ async function scenarioCheckoutAndWebhookCore(
   const wrongAmount = await sepayWebhook(wrongAmountBody);
   check("webhook lệch số tiền → 200 ack", wrongAmount.status === 200 && wrongAmount.body?.success === true, wrongAmount.body);
   const amountEvent = await sepayEvent(wrongAmountBody.id as number);
+  const fractionalBody = webhookBody(dbPending!, { transferAmount: Number(dbPending!.amount) - 0.25 });
+  await sepayWebhook(fractionalBody);
+  check("Số tiền lẻ không được làm tròn để khớp đơn",
+    (await sepayEvent(fractionalBody.id as number))?.reason === "AMOUNT_MISMATCH");
   check(
     "SepayWebhookEvent: MISMATCH / AMOUNT_MISMATCH",
     amountEvent?.status === "MISMATCH" && amountEvent?.reason === "AMOUNT_MISMATCH",
@@ -717,8 +721,9 @@ async function scenarioExpiredPendingAndLate(member: FixtureUser, plan: any): Pr
   );
   const afterLate = await prisma.payment.findUnique({ where: { id: firstId } });
   check(
-    "Đơn cũ vẫn FAILED + note 'cần đối soát'",
-    afterLate?.status === "FAILED" && String(afterLate?.note ?? "").includes("cần đối soát"),
+    "Đã thu tiền đơn cũ, cần đối soát, chưa cấp gói",
+    afterLate?.status === "SUCCESS" && afterLate.reviewReason === "LATE_PAYMENT" &&
+      afterLate.activationStatus === "REQUIRES_REVIEW" && Boolean(afterLate.paidAt),
     afterLate?.note
   );
   check(

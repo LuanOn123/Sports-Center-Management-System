@@ -36,6 +36,30 @@ export type ScheduleConflictNeighbor = {
   scheduleId?: string;
 };
 
+export async function wasRemovedForAttendance(
+  db: Prisma.TransactionClient,
+  facilityId: string,
+  memberId: string,
+  classId: string,
+) {
+  const removals = await db.issue.findMany({
+    where: {
+      facilityId,
+      requesterRole: "RECEPTIONIST",
+      status: "RESOLVED",
+      description: { contains: "ATTENDANCE_VIOLATION" },
+    },
+    select: { description: true },
+  });
+  return removals.some(({ description }) => {
+    const report = readAttendanceReport(description);
+    return report?.memberId === memberId && report.classId === classId;
+  });
+}
+
+export const ATTENDANCE_REMOVAL_MESSAGE =
+  "Đăng ký lớp đã bị quản lý hủy do chuyên cần. Vui lòng liên hệ quản lý cơ sở.";
+
 /**
  * FINAL: Travel Buffer là luật giữa các SCHEDULE, không phải thuộc tính của Class.
  * - Cùng facility: giữ nguyên time-conflict (chạm biên cho phép), KHÔNG áp buffer.
@@ -136,11 +160,10 @@ export async function assertCanBook(
 
   if (classFacilityId) {
     await checkFacilityMemberLimit(classFacilityId, memberProfileId, tx);
+    if (await wasRemovedForAttendance(tx, classFacilityId, memberProfileId, schedule.class.id)) {
+      throw new AppError(ATTENDANCE_REMOVAL_MESSAGE, 403, { code: "ATTENDANCE_REMOVAL" });
+    }
   }
-
-  const removals = await tx.issue.findMany({ where: { facilityId: schedule.class.facilityId, requesterRole: "RECEPTIONIST", status: "RESOLVED", description: { contains: '"type":"ATTENDANCE_VIOLATION"' } }, select: { description: true } });
-  if (removals.some(issue => { const report = readAttendanceReport(issue.description); return report?.memberId === memberProfileId && report.classId === schedule.class.id; }))
-    throw new AppError("Đăng ký lớp đã bị quản lý hủy do chuyên cần. Vui lòng liên hệ quản lý cơ sở.", 403);
 
   // §12: hình phạt chuyên cần đang hiệu lực chỉ chặn đúng Class đó (không chặn Class khác).
   const penalty = await findActivePenalty(tx, memberProfileId, schedule.class.id);

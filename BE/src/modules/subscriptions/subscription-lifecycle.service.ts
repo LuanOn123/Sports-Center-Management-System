@@ -3,6 +3,7 @@ import { prisma } from "../../config/prisma.js";
 import { SUBSCRIPTION_LIFECYCLE } from "../../config/membership.js";
 import { sepayConfig } from "../../config/sepay.js";
 import { enqueueNotification, flushNotificationOutbox } from "../notifications/outbox.service.js";
+import { lockPaymentWebhook } from "../../utils/dbLocks.js";
 
 
 /** B07 — nhịp chạy job vòng đời gói (15 phút). */
@@ -133,9 +134,12 @@ export async function closeStaleSepayPendingPayments(
   let closed = 0;
   for (const payment of stale) {
     const note = `${payment.note ?? ""} | Hết hạn chờ thanh toán — tự đóng bởi job vòng đời.`.trim();
-    const updated = await prisma.payment.updateMany({
-      where: { id: payment.id, status: "PENDING" },
-      data: { status: "FAILED", note },
+    const updated = await prisma.$transaction(async (tx) => {
+      await lockPaymentWebhook(tx, payment.id);
+      return tx.payment.updateMany({
+        where: { id: payment.id, status: "PENDING" },
+        data: { status: "FAILED", note },
+      });
     });
     if (updated.count > 0) closed += 1;
   }

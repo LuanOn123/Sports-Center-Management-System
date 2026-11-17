@@ -7,20 +7,33 @@ const read = p => fs.readFileSync(path.join(root, p), "utf8");
 const files = dir => fs.readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap(e => e.isDirectory() ? files(`${dir}/${e.name}`) : [`${dir}/${e.name}`]);
 const parse = p => ts.createSourceFile(p, read(p), ts.ScriptTarget.Latest, true, p.endsWith("tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
 const walk = (node, fn) => { fn(node); ts.forEachChild(node, child => walk(child, fn)); };
-const app = parse("BE/src/app.ts");
-const imports = {};
-const mounts = new Map();
+const appFile = "BE/src/app.ts";
+const app = parse(appFile);
+const routerImports = (ast, source) => {
+  const imports = new Map();
+  for (const statement of ast.statements) {
+    if (!ts.isImportDeclaration(statement) || !statement.importClause?.name ||
+        !ts.isStringLiteral(statement.moduleSpecifier)) continue;
+    const specifier = statement.moduleSpecifier.text;
+    if (!specifier.startsWith(".")) continue;
+    imports.set(statement.importClause.name.text, path.posix.join(path.posix.dirname(source), specifier.replace(/\.js$/, ".ts")));
+  }
+  return imports;
+};
+const imports = routerImports(app, appFile);
+const mounts = [];
 walk(app, n => {
-  if (ts.isImportDeclaration(n) && n.importClause?.name && ts.isStringLiteral(n.moduleSpecifier)) imports[n.importClause.name.text] = "BE/src/" + n.moduleSpecifier.text.replace(/^\.\//, "").replace(/\.js$/, ".ts");
   if (!ts.isCallExpression(n) || n.expression.getText(app) !== "app.use") return;
   const [mount, router] = n.arguments;
-  if (!mount || !router || !imports[router.getText(app)]) return;
+  const source = router && imports.get(router.getText(app));
+  if (!mount || !source) return;
   const prefix = ts.isTemplateExpression(mount) ? mount.templateSpans.at(-1).literal.text : mount.getText(app) === "v1" ? "" : null;
-  if (prefix !== null && prefix !== "/subjects") mounts.set(imports[router.getText(app)], prefix);
+  if (prefix !== null && prefix !== "/subjects") mounts.push({ source, prefix, roles: [], ancestors: [] });
 });
 const backend = new Map();
-for (const [source, prefix] of mounts) {
+for (const { source, prefix, roles: parentRoles, ancestors } of mounts) {
   const ast = parse(source);
+  const imports = routerImports(ast, source);
   const variables = {};
   const roleNames = n => {
     const roles = [];
@@ -35,11 +48,27 @@ for (const [source, prefix] of mounts) {
     return [...new Set(roles)];
   };
   walk(ast, n => { if (ts.isVariableDeclaration(n) && n.initializer) variables[n.name.getText(ast)] = roleNames(n.initializer); });
-  const inherited = [];
-  walk(ast, n => { if (ts.isCallExpression(n) && n.expression.getText(ast) === "router.use") inherited.push(...roleNames(n)); });
+  const inherited = [...parentRoles];
+  walk(ast, n => {
+    if (!ts.isCallExpression(n) || n.expression.getText(ast) !== "router.use") return;
+    if (!ts.isStringLiteral(n.arguments[0] ?? {})) inherited.push(...roleNames(n));
+  });
   walk(ast, n => {
     if (!ts.isCallExpression(n)) return;
     const expression = n.expression.getText(ast);
+    const [first, ...rest] = n.arguments;
+    if (expression === "router.use" && first && ts.isStringLiteral(first)) {
+      const child = imports.get(rest.at(-1)?.getText(ast));
+      if (child && ![source, ...ancestors].includes(child)) {
+        mounts.push({
+          source: child,
+          prefix: prefix + (first.text === "/" ? "" : first.text),
+          roles: [...inherited, ...rest.flatMap(roleNames)],
+          ancestors: [...ancestors, source],
+        });
+      }
+      return;
+    }
     let method, route, middleware;
     if (/^router\.(get|post|patch|put|delete)$/.test(expression)) {
       method = expression.split(".")[1]; route = n.arguments[0]; middleware = n.arguments.slice(1);
@@ -72,7 +101,9 @@ let markdown = "# FE / BE API contract map — 2026-10-06\n\nGenerated from live
 for (const r of rows) markdown += `| ${r.feature} | ${r.roles} | ${r.consumers.map(p => p.replace("FE/src/", "")).join("<br>") || "UNUSED_API (no direct consumer found)"} | ${r.path} | ${r.method} | ${r.backend} | ${r.status} |\n`;
 const unused = [...backend.keys()].filter(k => !fe[k] && k !== "GET /health");
 markdown += `\nBackend operations absent from FE catalog: ${unused.join(", ") || "none"}.\n\nRequest/response examples may be incomplete in Swagger. Handwritten workflow overrides retain stricter verified body constraints and extra parameters. Successful integration tests and their coverage are recorded separately in INTEGRATION_AUDIT_2026-10-06.md.\n`;
-fs.writeFileSync(path.join(root, "docs/API_CONTRACT_MAP.md"), markdown);
-fs.writeFileSync(path.join(root, "docs/API_CONTRACT_MAP.json"), JSON.stringify(rows, null, 2));
+if (process.argv.includes("--write")) {
+  fs.writeFileSync(path.join(root, "docs/API_CONTRACT_MAP.md"), markdown);
+  fs.writeFileSync(path.join(root, "docs/API_CONTRACT_MAP.json"), JSON.stringify(rows, null, 2));
+}
 console.log(JSON.stringify({ frontend: rows.length, backend: backend.size, missing: rows.filter(r => r.status !== "MATCH").map(r => r.key), backendOnly: unused }, null, 2));
 if (rows.some(r => r.status !== "MATCH")) process.exitCode = 1;

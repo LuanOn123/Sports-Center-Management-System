@@ -11,6 +11,8 @@ import { ensureMemberCourseGoal } from "../attendance/goal-evaluation.service.js
 import { ATTENDANCE } from "../../config/attendance.js";
 import { promoteNextEligible, flushWaitlistNotifications } from "../waitlist/waitlist.promotion.js";
 import { termRegistrationBlocker } from "../terms/term-status.js";
+import { crossFacilityTravelBufferMinutes } from "../../config/membership.js";
+import { checkFacilityMemberLimit } from "../facilities/facility-limits.service.js";
 import {
   CONCURRENT_CLASS_LIMIT_CODE,
   concurrentClassLimitMessage,
@@ -161,7 +163,7 @@ const vnDateTime = (d: Date) => d.toLocaleString("vi-VN", { timeZone: "Asia/Ho_C
 export async function evaluateCourseEligibility(
   db: DbClient,
   memberProfileId: string,
-  cls: { id: string; classType: string; capacity: number; facilityId?: string },
+  cls: { id: string; name: string; classType: string; capacity: number; facilityId?: string },
   sessions: CourseSessionRef[],
   options: { now?: Date } = {}
 ): Promise<CourseEligibility> {
@@ -182,7 +184,9 @@ export async function evaluateCourseEligibility(
     };
   }
 
-  const lastSession = sessions[sessions.length - 1];
+  const lastSession = sessions.reduce((last, session) => session.endTime > last.endTime ? session : last);
+  const bufferMinutes = crossFacilityTravelBufferMinutes();
+  const bufferMs = bufferMinutes * 60_000;
   const sessionIds = sessions.map((s) => s.id);
 
   const [activeSub, quotaUsage, penalty, bookedCounts, myEnrollments, conflicts, courseFacilityId, schedulesWithTerms] = await Promise.all([
@@ -206,8 +210,8 @@ export async function evaluateCourseEligibility(
         status: { in: ["BOOKED", "COMPLETED"] },
         schedule: {
           status: "SCHEDULED",
-          startTime: { lt: lastSession.endTime },
-          endTime: { gt: sessions[0].startTime },
+          startTime: { lt: new Date(lastSession.endTime.getTime() + bufferMs) },
+          endTime: { gt: new Date(sessions[0].startTime.getTime() - bufferMs) },
         },
       },
       select: {
@@ -321,11 +325,25 @@ export async function evaluateCourseEligibility(
   // ── Cấp BUỔI: sức chứa + trùng giờ + travel buffer ─────────────────────────
   // FINAL: bulk đánh giá TẤT CẢ buổi candidate atomic — mỗi buổi so với booking
   // hiện có của member (khác Class) + các buổi candidate khác trong khóa.
-  const { crossFacilityTravelBufferMinutes } = await import("../../config/membership.js");
-  const { getScheduleTravelConflictReason } = await import("./enrollments.service.js");
-  const bufferMinutes = crossFacilityTravelBufferMinutes();
+  const { ATTENDANCE_REMOVAL_MESSAGE, getScheduleTravelConflictReason, wasRemovedForAttendance } =
+    await import("./enrollments.service.js");
   const bookedBySchedule = new Map(bookedCounts.map((row) => [row.scheduleId, row._count._all]));
   const myBySchedule = new Map(myEnrollments.map((row) => [row.scheduleId, row]));
+  if (courseFacilityId && sessions.some(({ id }) => {
+    const status = myBySchedule.get(id)?.status;
+    return status !== "BOOKED" && status !== "COMPLETED";
+  })) {
+    if (await wasRemovedForAttendance(db, courseFacilityId, memberProfileId, cls.id)) {
+      blockers.push({ code: "ATTENDANCE_REMOVAL", message: ATTENDANCE_REMOVAL_MESSAGE });
+    }
+    try {
+      await checkFacilityMemberLimit(courseFacilityId, memberProfileId, db);
+    } catch (error) {
+      const details = error instanceof AppError ? error.errors as Record<string, unknown> | undefined : undefined;
+      if (!(error instanceof AppError) || details?.code !== "FACILITY_MEMBER_LIMIT_EXCEEDED") throw error;
+      blockers.push({ code: "FACILITY_MEMBER_LIMIT_EXCEEDED", message: error.message, details });
+    }
+  }
 
   const eligibilitySessions: CourseEligibilitySession[] = sessions.map((session) => {
     const bookedCount = bookedBySchedule.get(session.id) ?? 0;
@@ -333,6 +351,9 @@ export async function evaluateCourseEligibility(
     const mine = myBySchedule.get(session.id) ?? null;
     const conflict = conflicts.find(
       (row) => row.schedule.startTime < session.endTime && row.schedule.endTime > session.startTime
+    );
+    const courseConflict = sessions.find((other) =>
+      other.id !== session.id && other.startTime < session.endTime && other.endTime > session.startTime
     );
 
     return {
@@ -355,7 +376,15 @@ export async function evaluateCourseEligibility(
               endTime: conflict.schedule.endTime,
             },
           }
-        : {}),
+        : courseConflict ? {
+            conflictWith: {
+              classId: cls.id,
+              className: cls.name,
+              scheduleId: courseConflict.id,
+              startTime: courseConflict.startTime,
+              endTime: courseConflict.endTime,
+            },
+          } : {}),
     };
   });
 
@@ -382,9 +411,9 @@ export async function evaluateCourseEligibility(
     if (state.conflictWith) {
       blockers.push({
         code: "TIME_CONFLICT",
-        message:
-          `Buổi ${vnDateTime(state.startTime)} trùng giờ với lớp "${state.conflictWith.className}" ` +
-          `(${vnDateTime(state.conflictWith.startTime)}).`,
+        message: state.conflictWith.classId === cls.id
+          ? `Buổi ${vnDateTime(state.startTime)} trùng giờ với buổi ${vnDateTime(state.conflictWith.startTime)} trong cùng khóa.`
+          : `Buổi ${vnDateTime(state.startTime)} trùng giờ với lớp "${state.conflictWith.className}" (${vnDateTime(state.conflictWith.startTime)}).`,
         sessionId: state.scheduleId,
         startTime: state.startTime,
         endTime: state.endTime,
@@ -493,7 +522,7 @@ export async function enrollWholeCourse(
 
   const cls = await prisma.class.findUnique({
     where: { id: classId },
-    select: { id: true, name: true, classType: true, capacity: true, isActive: true },
+    select: { id: true, name: true, classType: true, capacity: true, isActive: true, facilityId: true },
   });
   if (!cls) throw new AppError("Class not found", 404);
   if (!cls.isActive) throw new AppError("Class is inactive", 400);
@@ -530,17 +559,23 @@ export async function enrollWholeCourse(
 
       // A12: đọc LẠI các buổi SAU lock — buổi có thể vừa bị hủy/hoàn tất hoặc dời giờ.
       const freshSessions = await tx.classSchedule.findMany({
-        where: { id: { in: sessions.map((s) => s.id) } },
-        select: { id: true, status: true, startTime: true },
+        where: {
+          classId, status: "SCHEDULED", startTime: { gt: new Date() },
+          ...(targetTermId ? { termId: targetTermId } : {}),
+        },
+        select: { id: true, status: true, startTime: true, endTime: true, roomId: true, termId: true },
       });
       const freshById = new Map(freshSessions.map((s) => [s.id, s]));
       const staleNow = new Date();
-      const stale = sessions.some((s) => {
+      const stale = freshSessions.length !== sessions.length || sessions.some((s) => {
         const f = freshById.get(s.id);
         return (
           !f ||
           f.status !== "SCHEDULED" ||
           f.startTime.getTime() !== new Date(s.startTime).getTime() ||
+          f.endTime.getTime() !== s.endTime.getTime() ||
+          f.roomId !== s.roomId ||
+          f.termId !== s.termId ||
           f.startTime <= staleNow
         );
       });
@@ -553,7 +588,12 @@ export async function enrollWholeCourse(
       }
 
       // Đọc lại sức chứa / điều kiện SAU lock (chống overbooking & vượt quota khi concurrent).
-      const eligibility = await evaluateCourseEligibility(tx, memberProfileId, cls, sessions);
+      const currentClass = await tx.class.findUnique({
+        where: { id: classId },
+        select: { id: true, name: true, classType: true, capacity: true, isActive: true, facilityId: true },
+      });
+      if (!currentClass?.isActive) throw new AppError("Lớp không còn mở đăng ký.", 409);
+      const eligibility = await evaluateCourseEligibility(tx, memberProfileId, currentClass, sessions);
 
       if (eligibility.blockers.length > 0) {
         throw new AppError(

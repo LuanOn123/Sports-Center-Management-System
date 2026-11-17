@@ -11,10 +11,12 @@ export function CancelSubscription({
 }: {
   subscription: {
     id: string;
+    startDate?: string;
     endDate: string;
     status: string;
+    priceSnapshot?: string | number | null;
     durationDaysSnapshot?: number | null;
-    payments?: Array<{ amount: string | number; status: string }>;
+    payments?: Array<{ amount: string | number; status: string; durationDaysSnapshot?: number | null }>;
     plan?: { price: string | number; durationDays: number };
   };
   role: "MEMBER" | "RECEPTIONIST" | "ADMIN";
@@ -37,15 +39,18 @@ export function CancelSubscription({
         },
       ),
   });
-  const scheduled = subscription.status === "SCHEDULED";
+  const scheduled = subscription.status === "SCHEDULED" &&
+    (!subscription.startDate || new Date(subscription.startDate).getTime() > Date.now());
+  const collected = subscription.payments?.find((payment) => payment.status === "SUCCESS");
+  const originalAmount = collected?.amount ??
+    (subscription.payments ? 0 : subscription.priceSnapshot);
+  const originalDuration = subscription.startDate
+    ? Math.max(1, Math.round((Date.parse(subscription.endDate) - Date.parse(subscription.startDate)) / 86_400_000))
+    : 0;
   const estimate = refundEstimate(
     subscription.endDate,
-    Number(
-      subscription.payments?.find((p) => p.status === "SUCCESS")?.amount ??
-        subscription.plan?.price ??
-        0,
-    ),
-    subscription.durationDaysSnapshot ?? subscription.plan?.durationDays ?? 0,
+    Number(originalAmount ?? 0),
+    collected?.durationDaysSnapshot ?? subscription.durationDaysSnapshot ?? originalDuration,
     role,
   );
   const close = () => {
@@ -111,26 +116,13 @@ export function CancelSubscription({
                     : "Hoàn tiền theo tỷ lệ số ngày còn lại trên thời hạn gói gốc."}
               </p>
               <p>
-                Dự kiến còn {estimate.daysLeft} ngày · Hoàn khoảng{" "}
-                <strong>
-                  {money(
-                    scheduled
-                      ? Number(
-                          subscription.payments?.find(
-                            (p) => p.status === "SUCCESS",
-                          )?.amount ??
-                            subscription.plan?.price ??
-                            0,
-                        )
-                      : estimate.refundAmount,
-                  )}
-                </strong>
-                .
+                Dự kiến còn {estimate.daysLeft} ngày.
+                {originalAmount != null && (
+                  <> Hoàn khoảng <strong>{money(scheduled ? Number(originalAmount) : estimate.refundAmount)}</strong>.</>
+                )}
               </p>
               <p className="field-note">
-                Ước tính theo khoản đã thu nếu có, hoặc giá gói hiện tại. Số
-                tiền chính thức được xác định theo khoản thanh toán gốc và thời
-                điểm xác nhận.
+                Số tiền chính thức được xác định theo khoản thanh toán gốc và thời điểm xác nhận.
               </p>
               {role === "MEMBER" && (
                 <label>

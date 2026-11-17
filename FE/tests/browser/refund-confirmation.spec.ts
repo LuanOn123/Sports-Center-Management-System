@@ -160,7 +160,8 @@ test("Admin retains the local subscriptions navigation with the main cancellatio
     ] } });
     if (path === "/subscriptions/member/member-1") return route.fulfill({ json: { success: true, data: [
       { id: "sub-1", status: "ACTIVE", tier: "MEMBERSHIP", startDate: "2026-01-01T00:00:00Z", endDate: "2099-12-31T00:00:00Z",
-        plan: { name: "Gói demo", price: 300000, durationDays: 30 } },
+        payments: [{ status: "SUCCESS", amount: 300000, durationDaysSnapshot: 30 }],
+        plan: { name: "Gói demo", price: 800000, durationDays: 30 } },
     ] } });
     if (path === "/membership-plans") return route.fulfill({ json: { success: true, data: [] } });
     return route.fallback();
@@ -172,4 +173,6 @@ test("Admin retains the local subscriptions navigation with the main cancellatio
   await page.getByRole("button", { name: "Hủy gói", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Xác nhận hủy gói tập", exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog")).toContainText("300.000");
+  await expect(page.getByRole("dialog")).not.toContainText("800.000");
 });

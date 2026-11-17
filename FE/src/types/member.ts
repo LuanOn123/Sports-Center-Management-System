@@ -320,10 +320,11 @@ export interface MembershipPlan {
 
 export interface MembershipSubscription {
   facilityId?: string | null;
+  priceSnapshot?: string | number | null;
   planNameSnapshot?: string | null;
   durationDaysSnapshot?: number | null;
   maxConcurrentClassesSnapshot?: number | null;
-  payments?: Array<{ amount: string | number; status: PaymentStatus }>;
+  payments?: Array<{ amount: string | number; status: PaymentStatus; durationDaysSnapshot?: number | null }>;
   id: string;
   memberId: string;
   planId: string;

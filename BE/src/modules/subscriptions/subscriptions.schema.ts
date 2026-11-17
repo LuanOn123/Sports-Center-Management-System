@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const CreateSubscriptionSchema = z.object({
+  requestId: z.string().uuid().optional(),
   memberId: z.string().min(1),
   planId: z.string().min(1),
   startDate: z.string().optional(),
@@ -9,6 +10,7 @@ export const CreateSubscriptionSchema = z.object({
 });
 
 export const RenewSubscriptionSchema = z.object({
+  requestId: z.string().uuid().optional(),
   planId: z.string().min(1),
   startDate: z.string().optional(),
   paymentMethod: z.enum(["CASH", "BANK_TRANSFER"]),

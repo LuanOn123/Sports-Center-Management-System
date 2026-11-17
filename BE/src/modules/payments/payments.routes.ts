@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { sendSuccess } from "../../utils/response.js";
 import { updatePaymentStatus } from "./payments.service.js";
-import { requestPaymentRefund, requestUnactivatedRefund } from "./refunds.service.js";
+import { requestPaymentRefund } from "./refunds.service.js";
 import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate.js";
 import { authorize, authorizeExact } from "../../middlewares/authorize.js";
@@ -198,7 +198,7 @@ router.post("/:id/refund/confirm", authenticate, authorizeExact("ADMIN", "RECEPT
  *               reason: { type: string, minLength: 3, maxLength: 1000 }
  *     responses:
  *       200: { description: Refund approved; actual return still requires confirmation }
- *       403: { description: Admin only }
+ *       403: { description: Members may request refunds for their own linked subscriptions only. Unactivated SePay funds require Admin approval. }
  *       409: { description: Payment has no eligible unactivated funds }
  */
 router.post("/:id/refund/request", authenticate, authorizeExact("ADMIN", "MEMBER"),

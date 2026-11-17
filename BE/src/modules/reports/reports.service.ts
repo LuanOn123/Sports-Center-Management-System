@@ -35,7 +35,7 @@ export async function getRevenueReport(startDate: string, endDate: string) {
       prisma.payment.count({ where: orderFilter }),
       prisma.payment.groupBy({
         by: ["method"],
-        where: { ...cashFilter, status: "SUCCESS" },
+        where: { ...cashFilter, status: { in: ["SUCCESS", "REFUNDED"] } },
         _sum: { amount: true },
         _count: true,
       }),
@@ -59,11 +59,11 @@ export async function getRevenueReport(startDate: string, endDate: string) {
   const unreconciledRefunds = await prisma.payment.count({ where: { status: "REFUNDED", refundedAt: null } });
 
   return {
-    /** Tiền THỰC THU trong kỳ (tổng payment SUCCESS theo `paidAt`). */
+    /** Tiền thực thu trong kỳ theo `paidAt`, kể cả giao dịch đã hoàn sau đó. */
     totalRevenue,
-    /** Tiền ĐÃ HOÀN trong kỳ (tổng payment REFUNDED theo `paidAt`). */
+    /** Tiền đã hoàn trong kỳ theo `refundedAt`. */
     refundedAmount,
-    /** Thực nhận = totalRevenue − refundedAmount (không âm). */
+    /** Thực nhận có thể âm khi hoàn giao dịch thu từ kỳ trước. */
     netRevenue: totalRevenue - refundedAmount,
     unreconciledRefunds,
     netRevenueVerified: unreconciledRefunds === 0,
@@ -71,7 +71,7 @@ export async function getRevenueReport(startDate: string, endDate: string) {
     totalPayments: ordersCreated,
     /** Số giao dịch THU ĐƯỢC trong kỳ (cùng cohort paidAt với totalRevenue). */
     successPayments: collectedAgg._count,
-    /** Số giao dịch ĐÃ HOÀN trong kỳ (cùng cohort paidAt với refundedAmount). */
+    /** Số giao dịch đã hoàn trong kỳ theo `refundedAt`. */
     refundedPayments: refundedAgg._count,
     /** Đơn tạo trong kỳ còn chờ thanh toán (cohort createdAt). */
     pendingPayments: pendingCount,

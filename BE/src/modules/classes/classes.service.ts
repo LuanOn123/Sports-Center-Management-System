@@ -644,7 +644,7 @@ export async function getClassCoursePlan(
     ? await evaluateCourseEligibility(
         prisma,
         memberProfile.id,
-        { id: cls.id, classType: cls.classType, capacity: cls.capacity },
+        { id: cls.id, name: cls.name, classType: cls.classType, capacity: cls.capacity },
         schedules.map((s) => ({
           id: s.id,
           startTime: s.startTime,

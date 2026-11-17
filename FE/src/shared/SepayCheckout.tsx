@@ -145,7 +145,9 @@ export function SepayCheckoutModal({
             <AlertBanner
               type="warning"
               title="Đã nhận thanh toán — đang đối soát"
-              message={`Trung tâm đã nhận tiền cho đơn ${current.orderCode}. Gói chưa được kích hoạt; vui lòng giữ biên lai và liên hệ trung tâm.${current.reviewReason ? ` Ghi chú: ${current.reviewReason}` : ""}`}
+              message={current.reviewReason === "LATE_PAYMENT"
+                ? `Trung tâm đã nhận tiền cho đơn ${current.orderCode} sau khi đơn hết hạn hoặc đã đóng. Vui lòng giữ biên lai và liên hệ trung tâm để đối soát hoàn tiền.`
+                : `Trung tâm đã nhận tiền cho đơn ${current.orderCode}. Gói chưa được kích hoạt; vui lòng giữ biên lai và liên hệ trung tâm.${current.reviewReason ? ` Ghi chú: ${current.reviewReason}` : ""}`}
             />
             <button
               type="button"

@@ -234,7 +234,7 @@ async function assertManualCodeAttemptsAllowed(memberId: string): Promise<void> 
  * - theo code: mã bị dùng hỏng đủ `MANUAL_CODE_MAX_ATTEMPTS` lần → thu hồi mã.
  * Sai/hết hạn/thu hồi/không tồn tại dùng CÙNG một message để không lộ thông tin.
  */
-async function resolveManualCode(rawCode: string, memberId: string): Promise<AttendanceCredential> {
+async function resolveManualCode(rawCode: string, memberId: string): Promise<AttendanceCredential | { error: AppError }> {
   await assertManualCodeAttemptsAllowed(memberId);
 
   const now = new Date();
@@ -243,19 +243,16 @@ async function resolveManualCode(rawCode: string, memberId: string): Promise<Att
   });
 
   if (record && !record.revokedAt && record.expiresAt > now) {
-    await prisma.attendanceManualCodeAttempt.create({
-      data: { memberId, codeId: record.id, success: true },
-    });
     return { scheduleId: record.scheduleId, manualCodeId: record.id };
   }
 
   await prisma.attendanceManualCodeAttempt.create({
     data: { memberId, codeId: record?.id ?? null, success: false },
   });
-  if (record && (await registerManualCodeMisuse(record.id))) {
-    throw new AppError(MANUAL_CODE_REVOKED_MESSAGE, 429);
+  if (record && !record.revokedAt && await registerManualCodeMisuse(record.id)) {
+    return { error: new AppError(MANUAL_CODE_REVOKED_MESSAGE, 429) };
   }
-  throw new AppError(MANUAL_CODE_INVALID_MESSAGE, 400);
+  return { error: new AppError(MANUAL_CODE_INVALID_MESSAGE, 400) };
 }
 
 export const generateQrToken = async (scheduleId: string, user: any) => {
@@ -298,42 +295,40 @@ export const generateQrToken = async (scheduleId: string, user: any) => {
  * Member KHÔNG gửi `scheduleId` — buổi học chỉ được suy ra từ credential (schema .strict()).
  * Enrollment phải BOOKED/COMPLETED và có gói ACTIVE hoặc quyền học trọn kỳ đã được duyệt cho đúng buổi.
  */
-const scanQrInternal = async (input: { qrToken?: string; code?: string }, user: any) => {
-  if (user.role !== "MEMBER") {
-    throw new AppError("Only members can scan attendance QR codes", 403);
-  }
-
-  // 1. Find Member Profile
-  const memberProfile = await prisma.memberProfile.findUnique({ where: { userId: user.id } });
-  if (!memberProfile) throw new AppError("Không tìm thấy hồ sơ hội viên.", 404);
-
+const scanQrInternal = async (input: { qrToken?: string; code?: string }, memberId: string) => {
   // 2. Resolve buổi học từ bằng chứng member gửi lên: QR token hoặc mã dự phòng.
-  const resolved: AttendanceCredential = input.code
-    ? await resolveManualCode(input.code, memberProfile.id)
+  const resolved = input.code
+    ? await resolveManualCode(input.code, memberId)
     : { scheduleId: resolveScheduleIdFromQrToken(input.qrToken as string) };
+  if ("error" in resolved) return resolved;
   const { scheduleId } = resolved;
 
   // 3. Check Enrollment
   const enrollment = await prisma.enrollment.findUnique({
-    where: { memberId_scheduleId: { memberId: memberProfile.id, scheduleId } }
+    where: { memberId_scheduleId: { memberId, scheduleId } }
   });
 
   if (!enrollment || (enrollment.status !== "BOOKED" && enrollment.status !== "COMPLETED")) {
     // Mã dự phòng bị người KHÔNG đặt chỗ dùng → coi là lạm dụng mã; đủ ngưỡng thì thu hồi mã.
-    if (resolved.manualCodeId && (await registerManualCodeMisuse(resolved.manualCodeId))) {
-      throw new AppError(MANUAL_CODE_REVOKED_MESSAGE, 429);
+    const error = new AppError("Bạn chưa đặt chỗ cho lớp học này nên không thể điểm danh.", 403);
+    if (resolved.manualCodeId) {
+      await prisma.attendanceManualCodeAttempt.create({
+        data: { memberId, codeId: resolved.manualCodeId, success: false },
+      });
+      return { error: await registerManualCodeMisuse(resolved.manualCodeId)
+        ? new AppError(MANUAL_CODE_REVOKED_MESSAGE, 429) : error };
     }
-    throw new AppError("Bạn chưa đặt chỗ cho lớp học này nên không thể điểm danh.", 403);
+    throw error;
   }
 
   // 3. Chốt chặn 2: gói còn hạn hoặc snapshot quyền học trọn kỳ của buổi đã đăng ký.
   const now = new Date();
-  const activeSub = await readEffectiveSubscription(prisma, memberProfile.id, now);
+  const activeSub = await readEffectiveSubscription(prisma, memberId, now);
 
   const schedule = await prisma.classSchedule.findUnique({ where: { id: scheduleId } });
   if (!schedule) throw new AppError("Buổi học không tồn tại.", 404);
   const approvedTerm = await isGrantSourceValid(prisma, enrollment.termMembershipGrant) && termMembershipCovers(enrollment.termMembershipGrant, {
-    memberId: memberProfile.id, classId: schedule.classId, termId: schedule.termId,
+    memberId, classId: schedule.classId, termId: schedule.termId,
     startTime: schedule.startTime, endTime: schedule.endTime,
   });
   if ((!activeSub || activeSub.tier === "FREE") && !approvedTerm) {
@@ -345,13 +340,18 @@ const scanQrInternal = async (input: { qrToken?: string; code?: string }, user: 
 
   // Chốt chặn 3: SERVER quyết định cửa sổ điểm danh + trạng thái buổi học (A09).
   assertAttendanceWindow(schedule, now);
+  if (resolved.manualCodeId) {
+    await prisma.attendanceManualCodeAttempt.create({
+      data: { memberId, codeId: resolved.manualCodeId, success: true },
+    });
+  }
 
   // 4. Ghi nhận điểm danh — idempotent & KHÔNG ghi đè kết quả đã chốt.
   //    - Đã PRESENT: giữ nguyên, chỉ cập nhật nguồn (QR ↔ mã dự phòng).
   //    - ABSENT/LATE/EXCUSED (do HLV/quản lý chốt): trả 409, sửa phải qua kênh correction.
   const note = resolved.manualCodeId ? ATTENDANCE.MANUAL_CODE_NOTE : ATTENDANCE.QR_NOTE;
   const existing = await prisma.attendance.findUnique({
-    where: { scheduleId_memberId: { memberId: memberProfile.id, scheduleId } },
+    where: { scheduleId_memberId: { memberId, scheduleId } },
   });
 
   if (existing) {
@@ -367,7 +367,7 @@ const scanQrInternal = async (input: { qrToken?: string; code?: string }, user: 
   return prisma.attendance.create({
     data: {
       scheduleId,
-      memberId: memberProfile.id,
+      memberId,
       status: "PRESENT",
       note,
     },
@@ -560,9 +560,12 @@ export const scanQr = async (input: { qrToken?: string; code?: string }, user: a
   if (user.role !== "MEMBER") throw new AppError("Only members can scan attendance QR codes", 403);
   const member = await prisma.memberProfile.findUnique({ where: { userId: user.id }, select: { id: true } });
   if (!member) throw new AppError("Không tìm thấy hồ sơ hội viên.", 404);
-  return prisma.$transaction(async tx => {
+  const result = await prisma.$transaction(async tx => {
     await lockMemberSubscription(tx, member.id);
     await activateMemberDue(tx, member.id);
-    return scanQrInternal(input, user);
+    return scanQrInternal(input, member.id);
   });
+  // Commit the failed-attempt counters before turning the rejection into HTTP.
+  if ("error" in result) throw result.error;
+  return result;
 };

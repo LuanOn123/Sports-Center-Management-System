@@ -262,7 +262,9 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
                                     !row.refundRequestedAt &&
                                     !row.subscriptionId && (
                                       <>
-                                        <RetryActivation id={String(row.id)} />
+                                        {row.reviewReason !== "LATE_PAYMENT" && (
+                                          <RetryActivation id={String(row.id)} />
+                                        )}
                                         <button
                                           className="button small"
                                           onClick={() => setException(row)}

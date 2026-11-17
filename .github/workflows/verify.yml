@@ -21,6 +21,8 @@ jobs:
         working-directory: FE
       - run: npm run build && npm run test:hardening && npm run test:captcha
         working-directory: BE
+      - run: npm run test:business
+        working-directory: BE
       - run: npm run verify
         working-directory: FE
       - run: npx playwright install --with-deps chromium

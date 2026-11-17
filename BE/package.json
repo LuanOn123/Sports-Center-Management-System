@@ -5,6 +5,7 @@
   "description": "Sports Center Management System Backend",
   "main": "dist/server.js",
   "scripts": {
+    "test:business": "tsx --test tests/business-acceptance/access.test.ts tests/business-acceptance/attendance.test.ts tests/business-acceptance/enrollment.test.ts tests/business-acceptance/operations.test.ts tests/business-acceptance/payments.test.ts tests/business-acceptance/purchase.test.ts",
     "test:membership-usage": "tsx --test tests/membership-attribution.test.ts",
     "test:scheduling": "tsx --test tests/schedule-batch.test.ts tests/coach-changes.test.ts",
     "test:term-membership": "tsx --test tests/term-membership.test.ts",

@@ -1,5 +1,5 @@
 import { revokeSubscriptionBookings } from "../subscriptions/entitlement.service.js";
-import { lockMemberSubscription } from "../../utils/dbLocks.js";
+import { lockMemberSubscription, lockPaymentWebhook } from "../../utils/dbLocks.js";
 import { prisma } from "../../config/prisma.js";
 import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
@@ -102,7 +102,11 @@ export async function updatePaymentStatus(
   if (status === "REFUNDED" && !payment.refundRequestedAt && payment.status !== "REFUNDED")
     throw new AppError("Chưa có yêu cầu hoàn tiền theo chính sách được duyệt.", 409);
   // BR-14: Strict state machine
-  if (payment.status === status) return payment;
+  if (payment.status === status) {
+    if (status === "REFUNDED" && payment.refundReference !== confirmation?.reference)
+      throw new AppError("Giao dịch đã được xác nhận hoàn với mã biên nhận khác.", 409);
+    return payment;
+  }
 
   if (payment.status === "SUCCESS" && status !== "REFUNDED") {
     throw new AppError("A successful payment can only be refunded", 400);
@@ -121,10 +125,16 @@ export async function updatePaymentStatus(
   }
   if (status === "SUCCESS") updateData.paidAt = new Date();
 
-  await prisma.$transaction(async (tx) => {
+  const applied = await prisma.$transaction(async (tx) => {
+    await lockPaymentWebhook(tx, id);
     await lockMemberSubscription(tx, payment.memberId);
     const changed = await tx.payment.updateMany({ where: { id, status: payment.status }, data: updateData });
-    if (changed.count !== 1) throw new AppError("Payment state changed; reload before confirming", 409);
+    if (changed.count !== 1) {
+      const current = await tx.payment.findUnique({ where: { id }, select: { status: true, refundReference: true } });
+      if (current?.status === status && (status !== "REFUNDED" || current.refundReference === confirmation?.reference))
+        return false;
+      throw new AppError("Payment state changed; reload before confirming", 409);
+    }
     if (status === "REFUNDED" && payment.subscriptionId) {
       const subscription = await tx.membershipSubscription.findUnique({ where: { id: payment.subscriptionId } });
       if (subscription && ["ACTIVE", "SCHEDULED", "SUSPENDED", "EXPIRED"].includes(subscription.status)) {
@@ -177,10 +187,11 @@ export async function updatePaymentStatus(
         },
       });
     }
+    return true;
   });
 
   // Notify member if refund completed
-  if (status === "REFUNDED") {
+  if (applied && status === "REFUNDED") {
     setImmediate(async () => {
       try {
         await requestContext.run(
