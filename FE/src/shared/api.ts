@@ -366,8 +366,17 @@ export async function api<T = RecordData>(
   key: string,
   options: Parameters<typeof apiRequest>[1] = {},
 ): Promise<Envelope<T>> {
-  // Queries and AI chat show contextual feedback; avoid repeated background toasts.
-  const inlineFeedback = key.startsWith("GET ") || key === "POST /ai/chat";
+  const inlineFeedback =
+    key.startsWith("GET ") ||
+    key === "POST /auth/forgot-password" ||
+    key === "POST /auth/reset-password" ||
+    key === "POST /ai/chat" ||
+    key === "POST /ai/member-chat" ||
+    key === "POST /classes/{id}/training-plans/suggest";
+  const inlineAuthErrors =
+    /^POST \/auth\/(login|register|google-login|google-register)$/.test(
+      key,
+    );
   const mutation = !key.startsWith("GET ");
   if (mutation) trackMutation(1);
   try {
@@ -406,7 +415,7 @@ export async function api<T = RecordData>(
     ) {
       window.dispatchEvent(new Event("schedule-state-changed"));
     }
-    if (inlineFeedback) throw error;
+    if (inlineFeedback || inlineAuthErrors) throw error;
     if (
       error instanceof ApiError &&
       error.status === 409 &&

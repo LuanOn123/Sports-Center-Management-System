@@ -2,6 +2,8 @@
   --auth-muted: #9baac0;
   --auth-border: #263143;
   --lime: #d4ff00;
+  --auth-danger: #ff8d9a;
+  --auth-danger-bg: #241a26;
   --color-text: #f1f4f9;
   --color-text-muted: #9baac0;
   --color-surface: #131a26;
@@ -138,6 +140,7 @@
   flex-direction: column;
   padding: 38px 48px 24px;
   min-width: 0;
+  background: radial-gradient(ellipse at 88% 0%, #162132 0%, transparent 48%);
 }
 .auth-top {
   display: flex;
@@ -211,12 +214,13 @@
 .auth-label-row {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 20px;
+  margin: 12px 0 18px;
 }
 .auth-label-row a {
   color: #d4ff00;
-  font-size: 11px;
+  font-size: 13px;
 }
 .auth-password {
   position: relative;
@@ -274,22 +278,6 @@
   gap: 4px;
   color: #d4ff00;
   margin-left: 3px;
-}
-.auth-note {
-  margin-top: 38px;
-  border-top: 1px solid #263143;
-  padding-top: 24px;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-.auth-note .auth-dot {
-  margin-top: 6px;
-}
-.auth-note p {
-  font-size: 11px;
-  color: #9baac0;
-  line-height: 1.8;
 }
 .auth-footer {
   display: flex;
@@ -371,9 +359,6 @@
   .pulse-auth h1 {
     font-size: 32px;
   }
-  .auth-note {
-    margin-top: 30px;
-  }
   .auth-footer {
     padding-bottom: 5px;
   }
@@ -418,8 +403,17 @@
   font-size: 11px;
   margin-top: 8px;
 }
-.pulse-auth input[aria-invalid="true"] {
-  border-color: #ff8d9a;
+.pulse-auth :is(input, select)[aria-invalid="true"] {
+  border-color: var(--auth-danger);
+  background: var(--auth-danger-bg);
+  box-shadow: 0 0 0 1px #ff8d9a33;
+}
+.pulse-auth :is(input, select)[aria-invalid="true"]:focus-visible {
+  outline-color: var(--auth-danger);
+  outline-offset: 2px;
+}
+.pulse-auth .auth-floating:has(input[aria-invalid="true"]) > label {
+  color: var(--auth-danger);
 }
 .pulse-auth .p-form-error {
   margin-top: 18px;
@@ -459,11 +453,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 20px 0;
-  color: #627289;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 1.2px;
+  margin: 20px 0 18px;
+  color: var(--auth-muted);
+  font-size: 12px;
+  white-space: nowrap;
 }
 .auth-oauth-divider::before,
 .auth-oauth-divider::after {
@@ -475,7 +468,11 @@
 .auth-google-btn-row {
   display: flex;
   justify-content: center;
-  margin: 10px 0 16px;
+  min-height: 44px;
+  min-width: 0;
+}
+.auth-google-btn-row[inert] {
+  opacity: 0.55;
 }
 .auth-google-preview {
   display: flex;
@@ -487,14 +484,25 @@
   border-radius: 9px;
   margin-bottom: 20px;
 }
-.auth-google-preview img {
+.auth-google-preview :is(img, .auth-google-avatar) {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  border: 2px solid #d4ff00;
+  border: 1px solid #526222;
+  flex: 0 0 44px;
   object-fit: cover;
 }
-.auth-google-preview-info h4 {
+.auth-google-avatar {
+  display: grid;
+  place-items: center;
+  color: var(--lime);
+  background: #222d1d;
+}
+.auth-google-preview-info {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.auth-google-preview-info strong {
   margin: 0;
   font-size: 14px;
   color: #f1f4f9;
@@ -536,4 +544,50 @@ select.auth-select {
 }
 select.auth-select:focus {
   border-color: #d4ff00;
+}
+
+.auth-field-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.auth-field-pair label { margin-top: 0; }
+.auth-field-pair input { min-width: 0; }
+.auth-recovery-icon {
+  color: var(--lime);
+  background: #202b15;
+  border: 1px solid #526222;
+  border-radius: 12px;
+  width: 50px;
+  height: 50px;
+  padding: 11px;
+}
+.pulse-auth .auth-otp {
+  font-variant-numeric: tabular-nums;
+  font-size: 19px;
+  letter-spacing: .35em;
+}
+.pulse-auth :is(.auth-otp-timer, .auth-success) {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #526222;
+  background: #202b15;
+  color: #e1fba6;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.pulse-auth :is(.auth-otp-timer, .auth-success) svg { flex-shrink: 0; }
+.pulse-auth .auth-otp-timer[data-expired="true"] {
+  background: var(--auth-danger-bg);
+  border-color: #65303f;
+  color: var(--auth-danger);
+}
+.auth-recovery-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 380px) {
+  .auth-field-pair { grid-template-columns: 1fr; }
 }

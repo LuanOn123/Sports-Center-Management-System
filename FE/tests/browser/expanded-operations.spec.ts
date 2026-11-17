@@ -12,8 +12,11 @@ test("Member assistant sends authenticated personal questions", async ({ page })
     return route.fulfill({ json: { success: true, data: { reply: "Bạn có lớp Yoga vào 18:00." } } });
   });
   await page.goto("/member/ai-assistant");
-  await page.getByLabel("Câu hỏi cho AI").fill("Lịch tập của tôi hôm nay?");
-  await page.getByRole("button", { name: "Gửi", exact: true }).click();
+  const composer = page.getByLabel("Câu hỏi cho AI");
+  await page.getByRole("button", { name: "Lịch tập sắp tới của tôi?" }).click();
+  await expect(composer).toHaveValue("Lịch tập sắp tới của tôi?");
+  await composer.fill("Lịch tập của tôi hôm nay?");
+  await composer.press("Enter");
   await expect(page.getByText("Bạn có lớp Yoga vào 18:00.")).toBeVisible();
   expect(request).toEqual({ auth: "Bearer fixture-token", message: "Lịch tập của tôi hôm nay?" });
 });

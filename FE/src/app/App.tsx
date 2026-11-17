@@ -39,6 +39,7 @@ function SessionChat() {
     queryFn: authService.me,
     enabled: false,
   });
+  if (["/login", "/register", "/forgot-password"].includes(location.pathname)) return null;
   if (
     hasSession() &&
     /^\/(member|admin|manager|coach|receptionist)(\/|$)/.test(location.pathname)

@@ -15,6 +15,7 @@ import { Empty, ErrorState, Loading, Modal, SchemaForm } from "../../shared/ui";
 import { at, display } from "../../shared/config";
 import { MemberPicker } from "../reception/components";
 import "./operations.css";
+import "../../shared/operation-surfaces.css";
 import {
   attendanceReportData,
   AttendanceReportReview,
@@ -410,7 +411,7 @@ export function OperationsPage({ kind, role }: { kind: Kind; role: string }) {
         </div>
       )}
       {modal && (
-        <Modal title={title} onClose={() => setModal(undefined)}>
+        <Modal title={modal.operation === "POST /issues" ? "Ghi nhận yêu cầu hỗ trợ" : title} onClose={() => setModal(undefined)} scrollBody={modal.operation === "POST /issues"}>
           {modal.operation === "POST /leave-requests" ? (
             <LeaveRequestForm
               onSuccess={done}
@@ -451,7 +452,7 @@ function IssueCreateForm({ receptionist, onSuccess, onCancel }: { receptionist: 
   });
   const valid = title.trim().length >= 3 && description.trim().length >= 5 && (!receptionist || !!member?.id);
   return (
-    <>
+    <div className="operation-issue-form">
       {receptionist && <MemberPicker value={member} onChange={setMember} />}
       <form onSubmit={(event) => { event.preventDefault(); if (valid && !create.isPending) create.mutate(); }}>
         <fieldset className="form-grid" disabled={create.isPending}>
@@ -464,7 +465,7 @@ function IssueCreateForm({ receptionist, onSuccess, onCancel }: { receptionist: 
           <button className="button primary" type="submit" disabled={!valid || create.isPending}>{create.isPending ? "Đang gửi…" : "Gửi yêu cầu"}</button>
         </div>
       </form>
-    </>
+    </div>
   );
 }
 function clock(minute: number) {

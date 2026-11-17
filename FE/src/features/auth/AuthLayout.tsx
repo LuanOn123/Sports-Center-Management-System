@@ -8,9 +8,11 @@ import { AmbientMotion, usePublicMotion } from "../../shared/PublicMotion";
 export function AuthLayout({
   children,
   registration = false,
+  recovery = false,
 }: {
   children: ReactNode;
   registration?: boolean;
+  recovery?: boolean;
 }) {
   const motionRoot = usePublicMotion<HTMLElement>();
   return (
@@ -61,7 +63,7 @@ export function AuthLayout({
           <Link to="/">
             <ArrowLeft size={16} /> Trang chủ
           </Link>
-          <span>PULSE / {registration ? "THAM GIA" : "CHÀO MỪNG"}</span>
+          <span>PULSE / {recovery ? "KHÔI PHỤC TÀI KHOẢN" : registration ? "THAM GIA" : "CHÀO MỪNG"}</span>
         </header>
         <div className="auth-form-wrap">{children}</div>
         <footer className="auth-footer">

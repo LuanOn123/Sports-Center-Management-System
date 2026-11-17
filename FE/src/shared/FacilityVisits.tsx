@@ -5,6 +5,8 @@ import { allPages } from "./pagedApi";
 import { display } from "./config";
 import { getFacilityId } from "./facility";
 import { Empty, ErrorState, Loading } from "./ui";
+import { Clock3, DoorOpen, MapPin } from "lucide-react";
+import "./operation-surfaces.css";
 
 type Visit = {
   id: string;
@@ -45,8 +47,18 @@ export function FacilityVisits({ staff = false }: { staff?: boolean }) {
   });
   return (
     <div className="workflow-page">
-      <h1>Check-in cơ sở</h1>
-      <section className="panel">
+      <div className="page-heading">
+        <div>
+          <h1>Check-in cơ sở</h1>
+        </div>
+      </div>
+      <section className="panel operation-visit-form">
+        <div className="operation-heading-title">
+          <span className="operation-icon">
+            <DoorOpen size={18} aria-hidden="true" />
+          </span>
+          <strong>Ghi nhận lượt vào cửa</strong>
+        </div>
         <p>
           Ghi nhận vào cửa tại cơ sở đang chọn. Cần gói còn hiệu lực; gói FREE
           cũng được vào cửa. Check-in lặp trong 5 phút sẽ trả lại lượt vừa ghi
@@ -86,17 +98,24 @@ export function FacilityVisits({ staff = false }: { staff?: boolean }) {
         </button>
         {checkIn.error && <ErrorState error={checkIn.error} />}
         {checkIn.isSuccess && (
-          <p role="status" className="success">
+          <p role="status" className="operation-feedback">
             Đã ghi nhận lượt vào cửa lúc {display(checkIn.data.data.checkInAt)}.
           </p>
         )}
       </section>
       <section className="panel">
-        <h2>
-          {staff
-            ? "Lượt vào cửa tại cơ sở đang chọn"
-            : "Lịch sử vào cửa trên mọi cơ sở"}
-        </h2>
+        <div className="operation-heading">
+          <div className="operation-heading-title">
+            <span className="operation-icon">
+              <Clock3 size={18} aria-hidden="true" />
+            </span>
+            <h2>
+              {staff
+                ? "Lượt vào cửa tại cơ sở đang chọn"
+                : "Lịch sử vào cửa trên mọi cơ sở"}
+            </h2>
+          </div>
+        </div>
         {visits.isPending ? (
           <Loading />
         ) : visits.isError ? (
@@ -104,16 +123,29 @@ export function FacilityVisits({ staff = false }: { staff?: boolean }) {
         ) : !visits.data.data.length ? (
           <Empty text="Chưa có lượt vào cửa." />
         ) : (
-          <div className="detail-list">
+          <div className="operation-list">
             {visits.data.data.map((visit) => (
-              <article className="workflow-card" key={visit.id}>
-                <strong>
-                  {visit.member?.user?.fullName ?? visit.facility?.name}
-                </strong>
-                <p>
-                  {visit.facility?.name} · {display(visit.checkInAt)} ·{" "}
+              <article
+                className="operation-card operation-visit-card"
+                key={visit.id}
+              >
+                <span className="operation-icon">
+                  <MapPin size={17} aria-hidden="true" />
+                </span>
+                <div>
+                  <strong>
+                    {visit.member?.user?.fullName ?? visit.facility?.name}
+                  </strong>
+                  <p>
+                    {visit.member?.user?.fullName &&
+                      visit.facility?.name &&
+                      `${visit.facility.name} · `}
+                    {display(visit.checkInAt)}
+                  </p>
+                </div>
+                <span className="operation-tag">
                   {visit.method === "RECEPTION" ? "Tại quầy" : "Tự check-in"}
-                </p>
+                </span>
               </article>
             ))}
           </div>

@@ -1,10 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { KeyRound } from "lucide-react";
-import { Brand } from "../../shared/Brand";
-import { authService } from "../../shared/api";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Clock3,
+  KeyRound,
+  LoaderCircle,
+} from "lucide-react";
+import { ApiError, authService } from "../../shared/api";
 import { ErrorState } from "../../shared/ui";
+import { AuthLayout } from "./AuthLayout";
+import {
+  apiFieldErrors,
+  emailError,
+  fieldErrorProps,
+  focusFirstError,
+  type AuthFieldErrors,
+} from "./authFields";
 
 export function ForgotPassword({
   onComplete,
@@ -20,6 +33,7 @@ export function ForgotPassword({
   const [remaining, setRemaining] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
+  const [fields, setFields] = useState<AuthFieldErrors>({});
   const submitting = useRef(false);
   const otpInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -42,6 +56,7 @@ export function ForgotPassword({
     submitting.current = true;
     setBusy(true);
     setError(undefined);
+    setFields({});
     try {
       const normalized = email.trim().toLowerCase();
       await authService.forgotPassword(normalized);
@@ -51,7 +66,9 @@ export function ForgotPassword({
       setSent(true);
       otpInput.current?.focus();
     } catch (e) {
-      setError(e);
+      const invalid = apiFieldErrors(e);
+      if (!sent && invalid.email) setFields(invalid);
+      else setError(e);
     } finally {
       submitting.current = false;
       setBusy(false);
@@ -60,155 +77,219 @@ export function ForgotPassword({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting.current) return;
-    if (!sent) return sendOtp();
     setError(undefined);
-    if (password !== confirm) {
-      setError(new Error("Mật khẩu xác nhận chưa khớp."));
+    const form = event.currentTarget;
+    const next: AuthFieldErrors = sent
+      ? {
+          otp: !/^\d{6}$/.test(otp)
+            ? "Vui lòng nhập mã OTP gồm 6 chữ số."
+            : undefined,
+          password:
+            password.length < 6 ? "Mật khẩu cần ít nhất 6 ký tự." : undefined,
+          confirm: !confirm
+            ? "Vui lòng nhập lại mật khẩu."
+            : password !== confirm
+              ? "Mật khẩu xác nhận chưa khớp."
+              : undefined,
+        }
+      : {
+          email: emailError(
+            email,
+            form.elements.namedItem("email") as HTMLInputElement,
+          ),
+        };
+    setFields(next);
+    if (Object.values(next).some(Boolean)) {
+      focusFirstError(form, next);
       return;
     }
+    if (!sent) return sendOtp();
     submitting.current = true;
     setBusy(true);
     try {
       await authService.resetPassword({ email, otp, newPassword: password });
       await onComplete();
     } catch (e) {
-      setError(e);
+      const invalid = apiFieldErrors(e);
+      const otpError =
+        invalid.otp ||
+        (e instanceof ApiError && e.status === 400 && /OTP/i.test(e.message)
+          ? e.message
+          : undefined);
+      if (otpError || invalid.newPassword)
+        setFields({ otp: otpError, password: invalid.newPassword });
+      else setError(e);
     } finally {
       submitting.current = false;
       setBusy(false);
     }
   }
   return (
-    <main className="login-layout">
-      <section className="login-story">
-        <Link to="/" aria-label="Về trang chủ">
-          <Brand />
-        </Link>
-        <div className="login-story-copy">
-          <h1>
-            Trở lại.
-            <br />
-            <em>Tiếp nhịp đam mê.</em>
-          </h1>
-          <p>Khôi phục mật khẩu để tiếp tục hành trình tập luyện của bạn.</p>
-        </div>
-      </section>
-      <section className="login-form-side">
-        <div className="login-form-wrap">
-          <span className="login-icon">
-            <KeyRound size={26} />
-          </span>
-          <h2>{sent ? "Đặt lại mật khẩu" : "Quên mật khẩu?"}</h2>
-          <p>
-            {sent
-              ? `Nếu email ${email} tồn tại trong hệ thống, mã OTP đã được gửi. Vui lòng kiểm tra hộp thư và thư rác.`
-              : "Nhập email tài khoản để nhận mã OTP đặt lại mật khẩu."}
-          </p>
-          <form onSubmit={submit} aria-busy={busy}>
-            {!sent ? (
-              <label>
-                Email
-                <input
-                  type="email"
-                  autoComplete="email"
-                  autoFocus
-                  required
-                  value={email}
-                  disabled={busy}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </label>
-            ) : (
-              <>
-                <label>
-                  Mã OTP
-                  <input
-                    ref={otpInput}
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    pattern="[0-9]{6}"
-                    minLength={6}
-                    maxLength={6}
-                    required
-                    value={otp}
-                    disabled={busy}
-                    aria-describedby="otp-help"
-                    onChange={(e) => setOtp(e.target.value)}
-                  />
-                </label>
-                <p id="otp-help">
-                  Nhập mã gồm 6 chữ số. Mã chỉ dùng được một lần.
-                </p>
-                <p role="timer" aria-label="Thời gian còn lại của OTP">
-                  {remaining > 0
-                    ? `Mã OTP còn khoảng ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`
-                    : "Mã OTP đã hết hạn. Vui lòng gửi lại OTP."}
-                </p>
-                <label>
-                  Mật khẩu mới
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    minLength={6}
-                    required
-                    placeholder="Ít nhất 6 ký tự"
-                    value={password}
-                    disabled={busy}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </label>
-                <label>
-                  Xác nhận mật khẩu mới
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    minLength={6}
-                    required
-                    value={confirm}
-                    disabled={busy}
-                    onChange={(e) => setConfirm(e.target.value)}
-                  />
-                </label>
-              </>
+    <AuthLayout recovery>
+      <KeyRound className="auth-recovery-icon" size={25} aria-hidden="true" />
+      <h1>{sent ? "Đặt lại mật khẩu" : "Quên mật khẩu?"}</h1>
+      <p className="auth-intro">
+        {sent
+          ? `Nếu ${email} đã đăng ký, mã OTP sẽ được gửi đến email này. Hãy kiểm tra cả thư rác.`
+          : "Nhập email tài khoản để nhận mã OTP đặt lại mật khẩu."}
+      </p>
+      <form
+        onSubmit={submit}
+        onChange={(event) => {
+          if (event.target instanceof HTMLInputElement) {
+            const name = event.target.name;
+            setFields((current) => ({ ...current, [name]: undefined }));
+          }
+        }}
+        noValidate
+        aria-busy={busy}
+      >
+        {!sent ? (
+          <>
+            <label htmlFor="reset-email">Email</label>
+            <input
+              id="reset-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              autoFocus
+              required
+              value={email}
+              disabled={busy}
+              onChange={(e) => setEmail(e.target.value)}
+              {...fieldErrorProps(fields.email, "reset-email-error")}
+            />
+            {fields.email && (
+              <small className="p-field-error" id="reset-email-error">
+                {fields.email}
+              </small>
             )}
-            {error != null && <ErrorState error={error} />}
-            <button className="button primary login-submit" disabled={busy}>
-              {busy ? "Đang xử lý…" : sent ? "Đặt lại mật khẩu" : "Gửi mã OTP"}
+          </>
+        ) : (
+          <>
+            <label htmlFor="reset-otp">Mã OTP</label>
+            <input
+              id="reset-otp"
+              name="otp"
+              className="auth-otp"
+              ref={otpInput}
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              required
+              value={otp}
+              disabled={busy}
+              {...fieldErrorProps(fields.otp, "reset-otp-error")}
+              aria-describedby={
+                fields.otp ? "reset-otp-error otp-help" : "otp-help"
+              }
+              onChange={(e) => setOtp(e.target.value)}
+            />
+            {fields.otp && (
+              <small className="p-field-error" id="reset-otp-error">
+                {fields.otp}
+              </small>
+            )}
+            <p className="p-field-hint" id="otp-help">
+              Mã gồm 6 chữ số và dùng một lần.
+            </p>
+            <p
+              className="auth-otp-timer"
+              role="timer"
+              aria-label="Thời gian còn lại của OTP"
+              data-expired={remaining === 0}
+            >
+              <Clock3 size={16} aria-hidden="true" />
+              {remaining > 0
+                ? `Mã OTP còn khoảng ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`
+                : "Mã OTP đã hết hạn. Vui lòng gửi lại OTP."}
+            </p>
+            <label htmlFor="reset-password">Mật khẩu mới</label>
+            <input
+              id="reset-password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              minLength={6}
+              required
+              placeholder="Ít nhất 6 ký tự"
+              value={password}
+              disabled={busy}
+              {...fieldErrorProps(fields.password, "reset-password-error")}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            {fields.password && (
+              <small className="p-field-error" id="reset-password-error">
+                {fields.password}
+              </small>
+            )}
+            <label htmlFor="reset-confirm">Xác nhận mật khẩu mới</label>
+            <input
+              id="reset-confirm"
+              name="confirm"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={confirm}
+              disabled={busy}
+              {...fieldErrorProps(fields.confirm, "reset-confirm-error")}
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+            {fields.confirm && (
+              <small className="p-field-error" id="reset-confirm-error">
+                {fields.confirm}
+              </small>
+            )}
+          </>
+        )}
+        {error != null && <ErrorState error={error} />}
+        <button className="auth-submit" disabled={busy}>
+          {busy ? "Đang xử lý…" : sent ? "Đặt lại mật khẩu" : "Gửi mã OTP"}
+          {busy ? (
+            <LoaderCircle
+              className="auth-spinner"
+              size={18}
+              aria-hidden="true"
+            />
+          ) : (
+            <ArrowUpRight size={18} aria-hidden="true" />
+          )}
+        </button>
+        {sent && (
+          <div className="auth-recovery-actions">
+            <button
+              type="button"
+              className="auth-cancel-btn"
+              disabled={busy}
+              onClick={() => void sendOtp()}
+            >
+              Gửi lại OTP
             </button>
-            {sent && (
-              <>
-                <button
-                  type="button"
-                  className="button"
-                  disabled={busy}
-                  onClick={() => void sendOtp()}
-                >
-                  Gửi lại OTP
-                </button>
-                <button
-                  type="button"
-                  className="button"
-                  disabled={busy}
-                  onClick={() => {
-                    setSent(false);
-                    setExpiresAt(0);
-                    setOtp("");
-                    setPassword("");
-                    setConfirm("");
-                    setError(undefined);
-                  }}
-                >
-                  Đổi email
-                </button>
-              </>
-            )}
-          </form>
-          <p>
-            <Link to="/login">← Quay lại đăng nhập</Link>
-          </p>
-        </div>
-      </section>
-    </main>
+            <button
+              type="button"
+              className="auth-cancel-btn"
+              disabled={busy}
+              onClick={() => {
+                setSent(false);
+                setExpiresAt(0);
+                setOtp("");
+                setPassword("");
+                setConfirm("");
+                setError(undefined);
+                setFields({});
+              }}
+            >
+              Đổi email
+            </button>
+          </div>
+        )}
+      </form>
+      <p className="auth-switch">
+        <Link to="/login">
+          <ArrowLeft size={15} aria-hidden="true" /> Quay lại đăng nhập
+        </Link>
+      </p>
+    </AuthLayout>
   );
 }

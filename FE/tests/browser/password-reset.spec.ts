@@ -60,6 +60,8 @@ test("reset flow handles invalid OTP, resend and success on mobile", async ({
   await expect(
     page.getByText("Mật khẩu xác nhận chưa khớp.", { exact: true }),
   ).toBeVisible();
+  await expect(page.getByLabel("Xác nhận mật khẩu mới", { exact: true })).toHaveAttribute("aria-invalid", "true");
+  await expect(page.locator("main.pulse-auth")).toBeVisible();
   expect(resets).toBe(0);
   await page
     .getByLabel("Xác nhận mật khẩu mới", { exact: true })

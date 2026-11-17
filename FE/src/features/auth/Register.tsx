@@ -9,10 +9,17 @@ import {
   EyeOff,
   LoaderCircle,
   ShieldCheck,
-  UserCheck,
+  UserRound,
 } from "lucide-react";
-import { GoogleLogin } from "@react-oauth/google";
 import { AuthLayout } from "./AuthLayout";
+import { AuthGoogle } from "./AuthGoogle";
+import {
+  apiFieldErrors,
+  emailError,
+  fieldErrorProps,
+  focusFirstError,
+  type AuthFieldErrors,
+} from "./authFields";
 import { api, ApiError, authService } from "../../shared/api";
 import type { PostAuthRegisterRequest } from "../../shared/generated";
 
@@ -53,7 +60,7 @@ export function Register({
   const submitting = useRef(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [fields, setFields] = useState<Record<string, string>>({});
+  const [fields, setFields] = useState<AuthFieldErrors>({});
 
   // State cho luồng đăng ký bằng Google
   const [googleUser, setGoogleUser] = useState<GoogleProfile | null>(null);
@@ -63,22 +70,35 @@ export function Register({
     window.scrollTo(0, 0);
   }, []);
 
-  const handleGoogleSuccess = (credentialResponse: any) => {
-    if (!credentialResponse.credential) return;
+  const handleGoogleSuccess = (credential: string) => {
     setError("");
-    const payload = parseGoogleCredential(credentialResponse.credential);
+    setFields({});
+    const payload = parseGoogleCredential(credential);
     if (!payload || !payload.email) {
-      setError("Không thể đọc thông tin từ tài khoản Google. Vui lòng thử lại.");
+      setError(
+        "Không thể đọc thông tin từ tài khoản Google. Vui lòng thử lại.",
+      );
       return;
     }
 
     setGoogleUser({
-      credential: credentialResponse.credential,
+      credential,
       email: payload.email,
       fullName: payload.name || payload.email.split("@")[0],
       picture: payload.picture,
     });
   };
+
+  function clearField(event: FormEvent<HTMLFormElement>) {
+    const field = event.target;
+    if (
+      (field instanceof HTMLInputElement ||
+        field instanceof HTMLSelectElement) &&
+      fields[field.name]
+    ) {
+      setFields((current) => ({ ...current, [field.name]: undefined }));
+    }
+  }
 
   // Submit đăng ký thông thường
   async function submitNormal(event: FormEvent<HTMLFormElement>) {
@@ -88,27 +108,49 @@ export function Register({
     const fullName = String(form.get("fullName") || "").trim();
     const phone = String(form.get("phone") || "").trim();
     const password = String(form.get("password") || "");
-    const next: Record<string, string> = {};
+    const email = String(form.get("email") || "").trim();
+    const next: AuthFieldErrors = {
+      email: emailError(
+        email,
+        event.currentTarget.elements.namedItem("email") as HTMLInputElement,
+      ),
+    };
 
     if (!fullName) next.fullName = "Vui lòng nhập họ và tên.";
+    else if (fullName.length < 2)
+      next.fullName = "Họ và tên cần ít nhất 2 ký tự.";
     if (!phone) next.phone = "Vui lòng nhập số điện thoại.";
     else if (!/^[0-9+]{9,15}$/.test(phone))
       next.phone = "Số điện thoại phải gồm 9-15 chữ số.";
     if (password.length < 6) next.password = "Mật khẩu cần ít nhất 6 ký tự.";
-    if (password !== form.get("confirmPassword"))
+    if (!form.get("confirmPassword"))
+      next.confirmPassword = "Vui lòng nhập lại mật khẩu.";
+    else if (password !== form.get("confirmPassword"))
       next.confirmPassword = "Mật khẩu xác nhận chưa khớp.";
+    if (
+      (
+        event.currentTarget.elements.namedItem(
+          "dateOfBirth",
+        ) as HTMLInputElement
+      ).validity.badInput
+    )
+      next.dateOfBirth = "Vui lòng nhập ngày sinh hợp lệ.";
 
     setFields(next);
     setError("");
-    if (Object.keys(next).length) return;
+    if (Object.values(next).some(Boolean)) {
+      focusFirstError(event.currentTarget, next);
+      return;
+    }
 
-    const gender = String(form.get("gender") || "") as "MALE" | "FEMALE" | "OTHER" | "";
+    const gender = String(form.get("gender") || "") as
+      "MALE" | "FEMALE" | "OTHER" | "";
     const dateOfBirth = String(form.get("dateOfBirth") || "").trim();
     const fitnessGoal = String(form.get("fitnessGoal") || "").trim();
 
     const body: PostAuthRegisterRequest = {
       fullName,
-      email: String(form.get("email") || "").trim(),
+      email,
       password,
       phone,
       ...(gender ? { gender } : {}),
@@ -122,17 +164,17 @@ export function Register({
       await api("POST /auth/register", { body });
       setSuccess(true);
     } catch (e) {
+      const invalid = apiFieldErrors(e);
+      if (e instanceof ApiError && e.status === 409 && /email/i.test(e.message))
+        invalid.email ??= e.message;
+      setFields(invalid);
       setError(
-        e instanceof Error
-          ? e.message
-          : "Đăng ký chưa thành công. Vui lòng thử lại.",
+        Object.keys(invalid).length
+          ? ""
+          : e instanceof Error
+            ? e.message
+            : "Đăng ký chưa thành công. Vui lòng thử lại.",
       );
-      if (e instanceof ApiError)
-        setFields(
-          Object.fromEntries(
-            (e.errors || []).map((item) => [item.field, item.message]),
-          ),
-        );
     } finally {
       submitting.current = false;
       setBusy(false);
@@ -145,21 +187,27 @@ export function Register({
     if (!googleUser || submitting.current) return;
     const form = new FormData(event.currentTarget);
     const phone = String(form.get("phone") || "").trim();
-    const next: Record<string, string> = {};
-
-    if (!phone) {
-      next.phone = "Vui lòng nhập số điện thoại.";
-      setFields(next);
-      setError("Vui lòng nhập số điện thoại.");
-      return;
-    } else if (!/^[0-9+]{9,15}$/.test(phone)) {
+    const next: AuthFieldErrors = {};
+    if (!phone) next.phone = "Vui lòng nhập số điện thoại.";
+    else if (!/^[0-9+]{9,15}$/.test(phone))
       next.phone = "Số điện thoại phải gồm 9-15 chữ số.";
+    if (
+      (
+        event.currentTarget.elements.namedItem(
+          "dateOfBirth",
+        ) as HTMLInputElement
+      ).validity.badInput
+    )
+      next.dateOfBirth = "Vui lòng nhập ngày sinh hợp lệ.";
+    if (Object.keys(next).length) {
       setFields(next);
-      setError("Số điện thoại phải gồm 9-15 chữ số.");
+      setError("");
+      focusFirstError(event.currentTarget, next);
       return;
     }
 
-    const gender = String(form.get("gender") || "") as "MALE" | "FEMALE" | "OTHER" | "";
+    const gender = String(form.get("gender") || "") as
+      "MALE" | "FEMALE" | "OTHER" | "";
     const dateOfBirth = String(form.get("dateOfBirth") || "").trim();
     const fitnessGoal = String(form.get("fitnessGoal") || "").trim();
 
@@ -182,17 +230,18 @@ export function Register({
         setSuccess(true);
       }
     } catch (e) {
+      const invalid = apiFieldErrors(e);
+      setFields(invalid);
       setError(
-        e instanceof Error
-          ? e.message
-          : "Đăng ký bằng Google chưa thành công. Vui lòng thử lại.",
+        invalid.phone ||
+          invalid.gender ||
+          invalid.dateOfBirth ||
+          invalid.fitnessGoal
+          ? ""
+          : e instanceof Error
+            ? e.message
+            : "Đăng ký bằng Google chưa thành công. Vui lòng thử lại.",
       );
-      if (e instanceof ApiError)
-        setFields(
-          Object.fromEntries(
-            (e.errors || []).map((item) => [item.field, item.message]),
-          ),
-        );
     } finally {
       submitting.current = false;
       setBusy(false);
@@ -217,42 +266,36 @@ export function Register({
       ) : googleUser ? (
         /* MÀN HÌNH HOÀN TẤT ĐĂNG KÝ VỚI GOOGLE */
         <>
-          <span className="p-register-badge">
-            <UserCheck size={20} />
-          </span>
-          <div className="auth-eyebrow">GOOGLE REGISTRATION</div>
-          <h1>Hoàn tất thông tin.</h1>
+          <div className="auth-eyebrow">ĐĂNG KÝ VỚI GOOGLE</div>
+          <h1>Hoàn tất hồ sơ hội viên</h1>
           <p className="auth-intro">
-            Tài khoản Google đã liên kết. Hãy điền thêm số điện thoại và
-            mục tiêu luyện tập của bạn để bắt đầu.
+            Bổ sung số điện thoại để tạo tài khoản Pulse.
           </p>
 
           <div className="auth-google-preview">
             {googleUser.picture ? (
-              <img src={googleUser.picture} alt={googleUser.fullName} />
+              <img
+                src={googleUser.picture}
+                alt=""
+                referrerPolicy="no-referrer"
+              />
             ) : (
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: "50%",
-                  background: "#263143",
-                  display: "grid",
-                  placeItems: "center",
-                  color: "#d4ff00",
-                  fontWeight: 700,
-                }}
-              >
-                {googleUser.fullName.charAt(0).toUpperCase()}
-              </div>
+              <span className="auth-google-avatar">
+                <UserRound size={21} aria-hidden="true" />
+              </span>
             )}
             <div className="auth-google-preview-info">
-              <h4>{googleUser.fullName}</h4>
+              <strong>{googleUser.fullName}</strong>
               <p>{googleUser.email}</p>
             </div>
           </div>
 
-          <form onSubmit={submitGoogleRegister} aria-busy={busy}>
+          <form
+            onSubmit={submitGoogleRegister}
+            onChange={clearField}
+            noValidate
+            aria-busy={busy}
+          >
             <fieldset disabled={busy}>
               <div className="auth-floating">
                 <input
@@ -263,34 +306,58 @@ export function Register({
                   placeholder="090 123 4567"
                   required
                   aria-invalid={!!fields.phone}
-                  aria-describedby={fields.phone ? "google-phone-error" : undefined}
+                  aria-describedby={
+                    fields.phone ? "google-phone-error" : undefined
+                  }
                 />
                 <label htmlFor="google-phone">
                   Số điện thoại <span>*</span>
                 </label>
               </div>
               {fields.phone && (
-                <small className="p-field-error" id="google-phone-error">
+                <small
+                  className="p-field-error"
+                  id="google-phone-error"
+                  role="alert"
+                >
                   {fields.phone}
                 </small>
               )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+              <div className="auth-field-pair">
                 <div>
-                  <label htmlFor="google-gender" style={{ marginTop: 0, marginBottom: 8 }}>
-                    Giới tính
-                  </label>
-                  <select id="google-gender" name="gender" className="auth-select" defaultValue="MALE">
+                  <label htmlFor="google-gender">Giới tính</label>
+                  <select
+                    id="google-gender"
+                    name="gender"
+                    className="auth-select"
+                    defaultValue=""
+                    {...fieldErrorProps(fields.gender, "google-gender-error")}
+                  >
+                    <option value="">Chưa chọn</option>
                     <option value="MALE">Nam</option>
                     <option value="FEMALE">Nữ</option>
                     <option value="OTHER">Khác</option>
                   </select>
+                  {fields.gender && (
+                    <small className="p-field-error" id="google-gender-error">
+                      {fields.gender}
+                    </small>
+                  )}
                 </div>
                 <div>
-                  <label htmlFor="google-dob" style={{ marginTop: 0, marginBottom: 8 }}>
-                    Ngày sinh
-                  </label>
-                  <input id="google-dob" name="dateOfBirth" type="date" />
+                  <label htmlFor="google-dob">Ngày sinh</label>
+                  <input
+                    id="google-dob"
+                    name="dateOfBirth"
+                    type="date"
+                    {...fieldErrorProps(fields.dateOfBirth, "google-dob-error")}
+                  />
+                  {fields.dateOfBirth && (
+                    <small className="p-field-error" id="google-dob-error">
+                      {fields.dateOfBirth}
+                    </small>
+                  )}
                 </div>
               </div>
 
@@ -299,14 +366,15 @@ export function Register({
                 <input
                   id="google-fitnessGoal"
                   name="fitnessGoal"
+                  maxLength={500}
                   type="text"
                   placeholder="Ví dụ: Giảm mỡ, tăng cơ, cải thiện sức bền..."
                   aria-invalid={!!fields.fitnessGoal}
-                  aria-describedby={fields.fitnessGoal ? "google-goal-error" : undefined}
+                  aria-describedby={
+                    fields.fitnessGoal ? "google-goal-error" : undefined
+                  }
                 />
-                <label htmlFor="google-fitnessGoal">
-                  Mục tiêu của bạn <small>(tập luyện & thể lực)</small>
-                </label>
+                <label htmlFor="google-fitnessGoal">Mục tiêu tập luyện</label>
               </div>
               {fields.fitnessGoal && (
                 <small className="p-field-error" id="google-goal-error">
@@ -324,11 +392,12 @@ export function Register({
             <button className="auth-submit" disabled={busy}>
               {busy ? (
                 <>
-                  <LoaderCircle className="auth-spinner" size={18} /> Đang hoàn tất…
+                  <LoaderCircle className="auth-spinner" size={18} /> Đang hoàn
+                  tất…
                 </>
               ) : (
                 <>
-                  Hoàn tất đăng ký & Bắt đầu <ArrowUpRight size={18} />
+                  Hoàn tất đăng ký <ArrowUpRight size={18} />
                 </>
               )}
             </button>
@@ -361,13 +430,24 @@ export function Register({
             Tìm lớp tập và nhịp sống phù hợp với bạn.
           </p>
 
-          <form onSubmit={submitNormal} aria-busy={busy}>
+          <AuthGoogle
+            mode="register"
+            busy={busy}
+            onCredential={handleGoogleSuccess}
+          />
+          <form
+            onSubmit={submitNormal}
+            onChange={clearField}
+            noValidate
+            aria-busy={busy}
+          >
             <fieldset disabled={busy}>
               <div className="auth-floating">
                 <input
                   id="fullName"
                   name="fullName"
                   autoComplete="name"
+                  maxLength={100}
                   placeholder="Nguyễn Minh Anh"
                   required
                   aria-invalid={!!fields.fullName}
@@ -401,7 +481,7 @@ export function Register({
                 </label>
               </div>
               {fields.email && (
-                <small className="p-field-error" id="email-error">
+                <small className="p-field-error" id="email-error" role="alert">
                   {fields.email}
                 </small>
               )}
@@ -422,27 +502,48 @@ export function Register({
                 </label>
               </div>
               {fields.phone && (
-                <small className="p-field-error" id="phone-error">
+                <small className="p-field-error" id="phone-error" role="alert">
                   {fields.phone}
                 </small>
               )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+              <div className="auth-field-pair">
                 <div>
-                  <label htmlFor="gender" style={{ marginTop: 0, marginBottom: 8 }}>
-                    Giới tính
-                  </label>
-                  <select id="gender" name="gender" className="auth-select" defaultValue="MALE">
+                  <label htmlFor="gender">Giới tính</label>
+                  <select
+                    id="gender"
+                    name="gender"
+                    className="auth-select"
+                    defaultValue=""
+                    {...fieldErrorProps(fields.gender, "gender-error")}
+                  >
+                    <option value="">Chưa chọn</option>
                     <option value="MALE">Nam</option>
                     <option value="FEMALE">Nữ</option>
                     <option value="OTHER">Khác</option>
                   </select>
+                  {fields.gender && (
+                    <small className="p-field-error" id="gender-error">
+                      {fields.gender}
+                    </small>
+                  )}
                 </div>
                 <div>
-                  <label htmlFor="dateOfBirth" style={{ marginTop: 0, marginBottom: 8 }}>
-                    Ngày sinh
-                  </label>
-                  <input id="dateOfBirth" name="dateOfBirth" type="date" />
+                  <label htmlFor="dateOfBirth">Ngày sinh</label>
+                  <input
+                    id="dateOfBirth"
+                    name="dateOfBirth"
+                    type="date"
+                    {...fieldErrorProps(
+                      fields.dateOfBirth,
+                      "dateOfBirth-error",
+                    )}
+                  />
+                  {fields.dateOfBirth && (
+                    <small className="p-field-error" id="dateOfBirth-error">
+                      {fields.dateOfBirth}
+                    </small>
+                  )}
                 </div>
               </div>
 
@@ -451,14 +552,15 @@ export function Register({
                 <input
                   id="fitnessGoal"
                   name="fitnessGoal"
+                  maxLength={500}
                   type="text"
                   placeholder="Ví dụ: Giảm cân, tăng cơ, cải thiện vóc dáng..."
                   aria-invalid={!!fields.fitnessGoal}
-                  aria-describedby={fields.fitnessGoal ? "goal-error" : undefined}
+                  aria-describedby={
+                    fields.fitnessGoal ? "goal-error" : undefined
+                  }
                 />
-                <label htmlFor="fitnessGoal">
-                  Mục tiêu của bạn <small>(tập luyện & thể lực)</small>
-                </label>
+                <label htmlFor="fitnessGoal">Mục tiêu tập luyện</label>
               </div>
               {fields.fitnessGoal && (
                 <small className="p-field-error" id="goal-error">
@@ -552,22 +654,6 @@ export function Register({
               chọn gói tập sau.
             </p>
           </form>
-
-          {/* Đăng ký bằng Google đặt ở DƯỚI button Tạo tài khoản miễn phí */}
-          <div style={{ marginTop: 24, marginBottom: 8 }}>
-            <div className="auth-oauth-divider">HOẶC ĐĂNG KÝ NHANH VỚI</div>
-            <div className="auth-google-btn-row">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => setError("Đăng ký Google không thành công. Vui lòng thử lại.")}
-                theme="outline"
-                size="large"
-                shape="pill"
-                text="signup_with"
-                width="360"
-              />
-            </div>
-          </div>
         </>
       )}
       {!success && (

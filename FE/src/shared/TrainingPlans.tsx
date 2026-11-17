@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import { Empty, ErrorState, Loading } from "./ui";
+import { ClipboardList, Plus, Sparkles } from "lucide-react";
+import "./operation-surfaces.css";
 
 type Plan = {
   id: string;
@@ -85,7 +87,19 @@ export function TrainingPlans({
 
   return (
     <section className="panel">
-      <h2>Giáo án tập luyện</h2>
+      <div className="operation-heading">
+        <div className="operation-heading-title">
+          <span className="operation-icon">
+            <ClipboardList size={18} aria-hidden="true" />
+          </span>
+          <h2>Giáo án tập luyện</h2>
+        </div>
+        {coach && plans.isSuccess && !showForm && (
+          <button className="button primary" onClick={() => openForm()}>
+            <Plus size={16} aria-hidden="true" /> Tạo giáo án
+          </button>
+        )}
+      </div>
       {plans.isPending ? (
         <Loading />
       ) : plans.error ? (
@@ -95,21 +109,25 @@ export function TrainingPlans({
           {plans.data.data.plans.length === 0 && (
             <Empty text="Chưa có giáo án được giao." />
           )}
-          <div className="detail-list">
+          <div className="operation-list">
             {plans.data.data.plans.map((plan) => (
-              <article className="workflow-card" key={plan.id}>
-                <h3>{plan.title}</h3>
-                <p className="field-note">
-                  {plan.memberId
-                    ? plan.member?.user.fullName || "Giáo án cá nhân"
-                    : "Giáo án cả lớp"}
-                  {plan.coach && ` · HLV ${plan.coach.user.fullName}`}
-                </p>
-                <p style={{ whiteSpace: "pre-wrap" }}>{plan.instructions}</p>
+              <article className="operation-card" key={plan.id}>
+                <div className="operation-card-top">
+                  <h3>{plan.title}</h3>
+                  <span className="operation-tag">
+                    {plan.memberId
+                      ? plan.member?.user.fullName || "Giáo án cá nhân"
+                      : "Giáo án cả lớp"}
+                  </span>
+                </div>
+                {plan.coach && (
+                  <p className="field-note">HLV {plan.coach.user.fullName}</p>
+                )}
+                <p className="operation-text">{plan.instructions}</p>
                 {plan.homework && (
-                  <div>
+                  <div className="operation-callout">
                     <strong>Bài tập về nhà</strong>
-                    <p style={{ whiteSpace: "pre-wrap" }}>{plan.homework}</p>
+                    <p className="operation-text">{plan.homework}</p>
                   </div>
                 )}
                 {plan.editable && !showForm && (
@@ -120,13 +138,9 @@ export function TrainingPlans({
               </article>
             ))}
           </div>
-          {coach && !showForm && (
-            <button className="button primary" onClick={() => openForm()}>
-              Tạo giáo án
-            </button>
-          )}
           {coach && showForm && (
             <form
+              className="training-editor"
               onSubmit={(event) => {
                 event.preventDefault();
                 if (!busy) save.mutate();
@@ -162,20 +176,21 @@ export function TrainingPlans({
                     }
                   />
                 </label>
-                <label>
-                  Mục tiêu để AI gợi ý (tùy chọn)
-                  <input
-                    maxLength={300}
-                    value={objective}
-                    onChange={(event) => setObjective(event.target.value)}
-                  />
-                </label>
-                <div>
+                <div className="training-ai">
+                  <label>
+                    Mục tiêu để AI gợi ý (tùy chọn)
+                    <input
+                      maxLength={300}
+                      value={objective}
+                      onChange={(event) => setObjective(event.target.value)}
+                    />
+                  </label>
                   <button
                     type="button"
                     className="button"
                     onClick={() => suggest.mutate()}
                   >
+                    <Sparkles size={16} aria-hidden="true" />
                     {suggest.isPending
                       ? "Đang tạo bản nháp…"
                       : "Tạo bản nháp bằng AI"}
