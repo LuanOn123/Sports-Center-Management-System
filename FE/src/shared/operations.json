@@ -1951,6 +1951,14 @@
       },
       {
         "in": "query",
+        "name": "refundPending",
+        "schema": {
+          "type": "string",
+          "enum": ["true", "false"]
+        }
+      },
+      {
+        "in": "query",
         "name": "startDate",
         "schema": {
           "type": "string"
@@ -4043,6 +4051,13 @@
           "type": "string"
         },
         "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+      },
+      {
+        "in": "query",
+        "name": "termId",
+        "schema": {
+          "type": "string"
+        }
       }
     ],
     "body": null,

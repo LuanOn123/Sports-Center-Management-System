@@ -37,6 +37,12 @@ for (const width of [375, 1440])
       await page.goto(path);
       await expect(page.locator("main h1")).toBeVisible();
       await expect(page.locator(".loading, .skeleton")).toHaveCount(0);
+      if (path === "/receptionist/payments") {
+        await page.getByRole("button", {
+          name: "Tra cứu thanh toán & hóa đơn theo hội viên",
+          exact: true,
+        }).click();
+      }
       if (
         role === "RECEPTIONIST" &&
         [

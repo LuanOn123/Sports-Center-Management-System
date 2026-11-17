@@ -14,6 +14,8 @@ for (const [role, path] of [
       await page
         .getByRole("button", { name: "Chỉnh sửa hồ sơ", exact: true })
         .click();
+    if (role === "RECEPTIONIST")
+      await page.getByRole("button", { name: "Chỉnh sửa thông tin" }).click();
     const editor = page.getByRole("region", { name: "Cập nhật ảnh đại diện" });
     await expect(editor).toBeVisible();
     await editor.locator('input[type="file"]').setInputFiles({
@@ -31,12 +33,9 @@ for (const [role, path] of [
 test("multipart upload updates navbar", async ({ page }) => {
   await setup(page, "RECEPTIONIST");
   await page.goto("/receptionist/profile");
+  await page.getByRole("button", { name: "Chỉnh sửa thông tin" }).click();
   const profile = await page.evaluate(async () =>
-    (
-      await fetch(
-        "https://sports-center-management-system.onrender.com/api/v1/auth/me",
-      )
-    ).json(),
+    (await fetch("/api/v1/auth/me")).json(),
   );
   profile.data.avatarUrl = "/uploads/avatars/test.png";
   const png = Buffer.from(
@@ -87,21 +86,17 @@ test("multipart upload updates navbar", async ({ page }) => {
   await expect(zoom).toHaveValue("1");
   await editor.getByRole("button", { name: "Lưu ảnh" }).click();
   await expect(editor.getByRole("status")).toContainText("Đã cập nhật");
-  await expect(page.locator(".profile-link img")).toHaveAttribute(
+  await expect(page.getByRole("button", { name: /^Menu hồ sơ của/ }).locator("img")).toHaveAttribute(
     "src",
     /uploads/,
   );
 });
 
 test("avatar viewer supports zoom and Escape", async ({ page }) => {
-  await setup(page, "RECEPTIONIST");
-  await page.goto("/receptionist/profile");
+  await setup(page, "MANAGER");
+  await page.goto("/manager/profile");
   const profile = await page.evaluate(async () =>
-    (
-      await fetch(
-        "https://sports-center-management-system.onrender.com/api/v1/auth/me",
-      )
-    ).json(),
+    (await fetch("/api/v1/auth/me")).json(),
   );
   profile.data.avatarUrl = "/uploads/avatars/view.png";
   await page.route("**/auth/me", (route) => route.fulfill({ json: profile }));

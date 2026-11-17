@@ -6,7 +6,7 @@ const doc = JSON.parse(fs.readFileSync("docs/openapi.json", "utf8"));
 async function fixtureApi(page: any, role = "MANAGER") {
   await mockTurnstile(page, true);
   await page.route(
-    "https://sports-center-management-system.onrender.com/api/v1/**",
+    "**/api/v1/**",
     async (route: any) => {
       const url = new URL(route.request().url());
       const path = url.pathname.replace("/api/v1", "");
@@ -84,6 +84,7 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
   page,
 }) => {
   test.setTimeout(120000);
+  page.setDefaultTimeout(10_000);
   await fixtureApi(page);
   await page.goto("/login");
   await page.getByPlaceholder("Email của bạn").fill("manager@example.test");
@@ -100,7 +101,11 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
     page.getByRole("region", { name: "Thông báo gần đây" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Thông báo", exact: true }).click();
-  await page.getByRole("button", { name: "Mở tin nhắn" }).click();
+  await page.getByRole("button", { name: "Mở tiện ích nhanh" }).click();
+  await page
+    .getByRole("group", { name: "Tiện ích nhanh" })
+    .getByRole("button", { name: "Tin nhắn", exact: true })
+    .click();
   await expect(
     page.getByRole("region", { name: "Cửa sổ tin nhắn" }),
   ).toBeVisible();
@@ -146,10 +151,9 @@ test("manager routes, real-schema forms and mobile navigation render", async ({
     name: "Test Room",
     capacity: 12,
     areaType: "INDOOR",
+    capabilities: {},
   });
-  await expect(page.getByRole("main").getByRole("status")).toContainText(
-    "Đã lưu thay đổi",
-  );
+  await expect(page.getByRole("dialog")).toBeHidden();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Mở menu" }).click();
   await page.getByRole("link", { name: "Lịch hoạt động", exact: true }).click();

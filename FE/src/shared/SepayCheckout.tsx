@@ -71,7 +71,8 @@ export function SepayCheckoutModal({
   });
   const current = checkout ? (statusQuery.data ?? checkout) : null;
   const requiresReview = Boolean(
-    current?.requiresReview || current?.activationStatus === "REQUIRES_REVIEW",
+    current?.status !== "REFUNDED" &&
+      (current?.requiresReview || current?.activationStatus === "REQUIRES_REVIEW"),
   );
   const announced = useRef("");
   useEffect(() => {

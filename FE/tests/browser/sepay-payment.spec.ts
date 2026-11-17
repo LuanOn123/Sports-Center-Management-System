@@ -203,3 +203,38 @@ test("received funds require review until activation succeeds", async ({
     dialog.getByText("Thanh toán thành công!", { exact: true }),
   ).toBeVisible();
 });
+
+test("late SePay transfer tells the member to retain proof for a refund", async ({
+  page,
+}) => {
+  await setup(page, "MEMBER");
+  const payment = checkout("LATE");
+  await page.route("**/api/v1/payments/sepay/checkout", (route) =>
+    route.fulfill({ status: 201, json: { success: true, data: payment } }),
+  );
+  await page.route(`**/api/v1/payments/sepay/${payment.paymentId}`, (route) =>
+    route.fulfill({
+      json: {
+        success: true,
+        data: {
+          ...payment,
+          status: "SUCCESS",
+          activationStatus: "REQUIRES_REVIEW",
+          reviewReason: "LATE_PAYMENT",
+        },
+      },
+    }),
+  );
+
+  await page.goto("/member/membership");
+  await page
+    .getByRole("button", { name: "Chuyển khoản VietQR", exact: true })
+    .first()
+    .click();
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByText("Đã nhận thanh toán — đang đối soát", { exact: true }),
+  ).toBeVisible();
+  await expect(dialog.getByText(/giữ biên lai.*đối soát hoàn tiền/)).toBeVisible();
+  await expect(dialog.getByText("Thanh toán thành công!", { exact: true })).toHaveCount(0);
+});

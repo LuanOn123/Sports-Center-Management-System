@@ -27,7 +27,20 @@ jobs:
         working-directory: FE
       - run: npx playwright install --with-deps chromium
         working-directory: FE
-      - run: npx playwright test refund-confirmation.spec.ts membership-quick-actions.spec.ts manager-scope.spec.ts --workers=2
+      - name: Test critical frontend flows
+        run: npm run test:ui:smoke
+        working-directory: FE
+      - name: Test additional frontend business scenarios
+        run: npm run test:core:ui
+        working-directory: FE
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: frontend-playwright-report
+          path: FE/playwright-report/
+          if-no-files-found: ignore
+      - name: Test frontend Turnstile flows
+        run: npm run test:captcha
         working-directory: FE
       - run: npm run test:qa:isolation -- --live
         working-directory: BE
