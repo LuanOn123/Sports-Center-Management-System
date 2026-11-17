@@ -15,6 +15,7 @@ import {
   APPEAL_REASON_MAX, ATTENDANCE_STATUS_LABEL, BUCKET_STATUS_COLOR, BUCKET_STATUS_LABEL, MY_ATTENDANCE_TEXT as TEXT, PENALTY_STATUS_LABEL,
 } from '../../../constants/attendance';
 import { Colors } from '../../../constants/theme';
+import { displayAttendanceNote } from '../../../lib/attendanceNote';
 import { formatDate, formatDateTime } from '../../../lib/format';
 import { ROUTES } from '../../../navigation/routes';
 
@@ -170,7 +171,8 @@ export function MyAttendanceView() {
                     <Text className="text-xs font-semibold font-bevn-semibold text-text-secondary">{ATTENDANCE_STATUS_LABEL[r.status]}</Text>
                   </View>
                 </View>
-                {Boolean(r.note) && <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular">{r.note}</Text>}
+                {/* Ghi chú do hệ thống tự đặt (SYSTEM_NO_SHOW) đổi thành câu dễ hiểu thay vì hiện mã thô */}
+                {displayAttendanceNote(r.note) !== null && <Text className="text-xs text-text-secondary mt-0.5 font-bevn-regular">{displayAttendanceNote(r.note)}</Text>}
               </View>
             ))
           )}

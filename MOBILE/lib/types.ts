@@ -121,6 +121,8 @@ export interface Subscription {
   priceSnapshot?: string | number;
   maxConcurrentClassesSnapshot?: number;
   planNameSnapshot?: string;
+  /** Giao dịch của gói (BE trả kèm ở GET /subscriptions/member/:id) — khoản đã thu (SUCCESS) là cơ sở tính hoàn tiền */
+  payments?: Array<{ amount: string | number; status: string }>;
 }
 
 export interface MembershipStatus {
