@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { api, ApiError, type RecordData } from "./api";
 import { ErrorState, Loading } from "./ui";
+import { QrCameraScanner } from "./QrCameraScanner";
 
 export function AttendanceQr({
   scheduleId,
@@ -137,7 +138,6 @@ export function ScanAttendanceQr() {
   const [token, setToken] = useState("");
   const [camera, setCamera] = useState(false);
   const [cameraError, setCameraError] = useState("");
-  const video = useRef<HTMLVideoElement>(null);
   const locked = useRef(false);
   const cache = useQueryClient();
   const scan = useMutation({
@@ -151,53 +151,13 @@ export function ScanAttendanceQr() {
       locked.current = false;
     },
   });
-  const submit = useRef((value: string) => {
-    scan.mutate({ qrToken: value });
-  });
-  submit.current = (value) => {
+  const submit = (value: string) => {
     if (!locked.current) {
       locked.current = true;
       setCamera(false);
       scan.mutate({ qrToken: value });
     }
   };
-  useEffect(() => {
-    if (!camera || !video.current) return;
-    let disposed = false;
-    let controls: { stop(): void } | undefined;
-    const element = video.current;
-    import("@zxing/browser")
-      .then(async ({ BrowserQRCodeReader }) => {
-        if (disposed) return;
-        controls = await new BrowserQRCodeReader().decodeFromConstraints(
-          { video: { facingMode: "environment" }, audio: false },
-          element,
-          (result, _error, control) => {
-            if (result && !disposed && !locked.current) {
-              control.stop();
-              submit.current(result.getText());
-            }
-          },
-        );
-        if (disposed) controls.stop();
-      })
-      .catch(() => {
-        if (!disposed) {
-          setCameraError(
-            "Không mở được camera. Hãy cấp quyền camera, dùng HTTPS hoặc nhập mã bên dưới.",
-          );
-          setCamera(false);
-        }
-      });
-    return () => {
-      disposed = true;
-      controls?.stop();
-      const stream = element.srcObject;
-      if (stream instanceof MediaStream)
-        stream.getTracks().forEach((track) => track.stop());
-      element.srcObject = null;
-    };
-  }, [camera]);
   return (
     <section className="qr-panel">
       <h2>Quét QR điểm danh</h2>
@@ -217,7 +177,13 @@ export function ScanAttendanceQr() {
         {camera ? "Dừng camera" : "Mở camera quét QR"}
       </button>
       {camera && (
-        <video ref={video} muted playsInline aria-label="Camera quét QR" />
+        <QrCameraScanner
+          onResult={submit}
+          onError={(message) => {
+            setCameraError(message);
+            setCamera(false);
+          }}
+        />
       )}
       {cameraError && <p role="alert">{cameraError}</p>}
       <details>
