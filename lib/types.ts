@@ -313,6 +313,8 @@ export interface GoalEvaluationEntry {
   newProgress: number;
   diff: number;
   description?: string | null;
+  /** Kết quả từng bài tập trong buổi do HLV ghi (web: "Kết quả buổi tập") */
+  results?: string | null;
   createdAt: string;
 }
 
@@ -337,6 +339,7 @@ export interface ScheduleEvaluationItem {
     previousProgress: number;
     newProgress: number;
     description?: string | null;
+    results?: string | null;
     createdAt: string;
     updatedAt: string;
   } | null;
@@ -347,11 +350,17 @@ export interface SaveEvaluationPayload {
   memberId: string;
   /** 0–100 */
   progress: number;
+  /** Lời dặn / ghi chú cho học viên (≤ 1000 ký tự) */
   description?: string | null;
+  /** Kết quả từng bài tập trong buổi (≤ 3000 ký tự); null = xóa */
+  results?: string | null;
 }
 
+/** Những gì HLV nhập trong sheet đánh giá (chưa gắn học viên) */
+export type EvaluationValues = Omit<SaveEvaluationPayload, 'memberId'>;
+
 export interface SaveEvaluationResult {
-  evaluation: { id: string; previousProgress: number; newProgress: number; description?: string | null };
+  evaluation: { id: string; previousProgress: number; newProgress: number; description?: string | null; results?: string | null };
   goal: { id: string; progress: number; status: GoalStatus };
 }
 
@@ -635,6 +644,44 @@ export interface CoursePlan {
     myEnrollmentStatus: EnrollmentStatus | null;
     conflictWith?: { className: string; startTime: string; endTime: string } | null;
   }>;
+}
+
+// ─── Giáo án tập luyện ────────────────────────────────────────────────────────
+
+/** Giáo án của HLV cho một lớp — giao cả lớp (memberId null) hoặc riêng một hội viên (GET /classes/:id/training-plans) */
+export interface TrainingPlan {
+  id: string;
+  memberId: string | null;
+  title: string;
+  instructions: string;
+  homework: string | null;
+  /** Chỉ có khi HLV xem: giáo án do chính HLV này viết thì sửa được */
+  editable?: boolean;
+  member?: { user: { fullName: string } };
+  coach?: { user: { fullName: string } };
+}
+
+/** Hội viên của lớp để HLV chọn người nhận giáo án (chỉ HLV nhận được danh sách này) */
+export interface TrainingPlanMember {
+  id: string;
+  name: string;
+}
+
+export interface TrainingPlanList {
+  plans: TrainingPlan[];
+  members?: TrainingPlanMember[];
+}
+
+/** Nội dung giáo án khi tạo / sửa */
+export interface TrainingPlanBody {
+  title: string;
+  instructions: string;
+  homework: string | null;
+}
+
+/** Tạo mới: kèm người nhận (null = cả lớp); sửa thì không đổi được người nhận nên không gửi memberId */
+export interface CreateTrainingPlanBody extends TrainingPlanBody {
+  memberId: string | null;
 }
 
 // ─── Pagination ───────────────────────────────────────────────────────────────

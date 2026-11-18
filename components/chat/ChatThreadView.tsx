@@ -26,7 +26,8 @@ import { ROUTES } from '../../navigation/routes';
 /** Chờ bàn phím / danh sách dựng xong rồi mới cuộn xuống tin mới nhất */
 const SCROLL_DELAY_MS = 100;
 
-export function ChatThreadView({ userId, name }: { userId: string; name?: string }) {
+/** `draft`: tin soạn sẵn điền vào ô soạn khi mở (web: tham số `message` của trang Tin nhắn) — người dùng xem lại rồi mới gửi */
+export function ChatThreadView({ userId, name, draft }: { userId: string; name?: string; draft?: string }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -36,7 +37,7 @@ export function ChatThreadView({ userId, name }: { userId: string; name?: string
   const { messages, isLoading, handleSend, isGeneral, error, refetch } = useChatMessages(userId, user?.id);
   const partner = usePartner(userId, name);
   const partnerName = partner.name;
-  const composer = useChatComposer(handleSend, user);
+  const composer = useChatComposer(handleSend, user, draft);
   const headerTitle = isGeneral ? GENERAL_CHAT_TITLE : partnerName;
   // Trực tuyến + "đang nhập…" chỉ có ở trò chuyện 1-1 (web: Conversation)
   const online = usePresence();

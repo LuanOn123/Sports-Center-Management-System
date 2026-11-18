@@ -78,8 +78,8 @@ export function useEnrollWholeCourse() {
       queryClient.invalidateQueries({ queryKey: ['my-enrollments-upcoming'] });
       queryClient.invalidateQueries({ queryKey: ['enrollment-quota'] });
       const d = res.data;
-      // BE vừa khởi tạo mục tiêu của hội viên cho lớp này → thẻ "Mục tiêu & tiến độ" phải tải lại
-      for (const key of ['course-plan', 'class-schedules', 'member-schedule', 'classes', 'my-class-goal']) void queryClient.invalidateQueries({ queryKey: [key] });
+      // BE vừa khởi tạo mục tiêu của hội viên cho lớp này → thẻ "Mục tiêu & tiến độ" và giáo án của lớp phải tải lại
+      for (const key of ['course-plan', 'class-schedules', 'member-schedule', 'classes', 'my-class-goal', 'training-plans']) void queryClient.invalidateQueries({ queryKey: [key] });
       // "Lưu vào hồ sơ" đã đổi ghi chú sức khỏe ở BE → tải lại user để lần đăng ký sau điền sẵn đúng
       if (options.saveToProfile && options.healthNotes) void refreshUser().catch(() => undefined);
       showAlert('Đăng ký trọn khóa thành công', wholeCourseEnrollmentMessage(d));

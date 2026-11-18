@@ -5,6 +5,12 @@
 /** Lý do đối soát do BE đặt khi tiền về sau lúc đơn đã hết hạn hoặc đã đóng (reviewReason của đơn SePay) */
 export const SEPAY_LATE_PAYMENT_REASON = 'LATE_PAYMENT';
 
+/** Đơn đã được ghi nhận hoàn tiền (web: toast "Giao dịch đã được ghi nhận hoàn tiền.") — không phải thanh toán thất bại */
+export const SEPAY_REFUNDED_TEXT = {
+  title: 'Giao dịch đã được hoàn tiền',
+  message: 'Giao dịch đã được ghi nhận hoàn tiền.',
+} as const;
+
 export const SEPAY_REVIEW_TEXT = {
   title: 'Đã nhận thanh toán — đang đối soát',
   late: (orderCode: string) =>

@@ -33,6 +33,15 @@ export function EvaluationRow({ entry }: { entry: GoalEvaluationEntry }) {
           <Text className="text-xs font-bevn-bold" style={{ color: level.color }}>{TEXT.evaluationProgress(entry.newProgress)}</Text>
         </View>
       </View>
+      {Boolean(entry.results) && (
+        <View
+          className="rounded-md p-sm mt-xs gap-xs"
+          style={{ backgroundColor: Colors.status.pending + '14', borderLeftWidth: 3, borderLeftColor: Colors.status.pending }}
+        >
+          <Text className="text-sm font-bevn-bold text-text-primary">{TEXT.sessionResults}</Text>
+          <Text selectable className="text-sm text-text-primary font-bevn-regular">{entry.results}</Text>
+        </View>
+      )}
       {Boolean(entry.description) && (
         <View
           className="flex-row gap-sm rounded-md p-sm mt-xs"

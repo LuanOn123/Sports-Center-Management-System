@@ -110,7 +110,7 @@ export const ATTENDANCE_REPORT_MARKER = '"ATTENDANCE_VIOLATION"';
 /** Thanh toán & hóa đơn của hội viên (web: MemberPaymentsPage) */
 export const PAYMENTS_TEXT = {
   title: 'Thanh toán & hóa đơn',
-  intro: 'Các khoản thu của bạn được ghi nhận tại trung tâm. Liên hệ trung tâm nếu cần đối chiếu hoặc hoàn tiền.',
+  intro: 'Các khoản thu được ghi nhận tại quầy hoặc thanh toán online. Bạn có thể gửi yêu cầu hoàn tiền nếu đủ điều kiện theo chính sách của trung tâm.',
   empty: 'Chưa có hóa đơn.',
   viewInvoice: 'Xem / Lưu hóa đơn',
   paymentDetail: 'Chi tiết thanh toán',

@@ -4,9 +4,12 @@
 import { SEPAY_LATE_PAYMENT_REASON, SEPAY_REVIEW_TEXT } from '../constants/sepayReview';
 import type { SepayCheckout } from './types';
 
-/** Tiền đã về nhưng gói chưa kích hoạt được — chờ trung tâm đối soát */
+/**
+ * Tiền đã về nhưng gói chưa kích hoạt được — chờ trung tâm đối soát. Đơn đã được ghi nhận hoàn tiền (REFUNDED) thì hết chờ dù
+ * BE còn giữ cờ đối soát — web: SepayCheckout `status !== "REFUNDED" && (…)`.
+ */
 export function requiresReview(checkout: SepayCheckout) {
-  return Boolean(checkout.requiresReview || checkout.activationStatus === 'REQUIRES_REVIEW');
+  return checkout.status !== 'REFUNDED' && Boolean(checkout.requiresReview || checkout.activationStatus === 'REQUIRES_REVIEW');
 }
 
 /**

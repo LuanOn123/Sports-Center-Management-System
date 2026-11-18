@@ -16,6 +16,7 @@ import { MembershipCoverageNotice } from './MembershipCoverageNotice';
 import { EnrollmentBlockers } from './EnrollmentBlockers';
 import { ClassGoalCard } from './ClassGoalCard';
 import { CourseSessionList } from './CourseSessionList';
+import { TrainingPlansSection } from './TrainingPlansSection';
 import { CoachCard } from './CoachCard';
 import { CoachProfileSheet } from './CoachProfileSheet';
 import { WrongFacilityCard } from '../shared/WrongFacilityCard';
@@ -124,6 +125,9 @@ export function ClassDetailView({ id }: { id: string }) {
         {/* Mục tiêu & tiến độ của hội viên — chỉ có khi đã đăng ký lớp (web: ngay sau thẻ thông tin lớp) */}
         {d.isMember && d.goal.data && <ClassGoalCard goal={d.goal.data} />}
 
+        {/* Giáo án tập luyện của HLV giao cho lớp / riêng mình — chỉ khi đã đăng ký lớp (web: ngay sau mục tiêu & tiến độ) */}
+        {d.isMember && d.trainingPlansVisible && <TrainingPlansSection classId={id} coach={false} />}
+
         {/* 2. Lịch học & địa điểm (hội viên) */}
         {d.isMember && <>
           <SectionTitle icon="calendar-today">Lịch học & địa điểm</SectionTitle>
@@ -188,6 +192,8 @@ export function ClassDetailView({ id }: { id: string }) {
               <WorkflowButton title="Xem học viên & điểm danh" onPress={() => router.push(ROUTES.coachAttendanceFor(session.id))} />
             </WorkflowCard>
           ))}
+          {/* Giáo án tập luyện: HLV được phân công tạo, sửa giáo án của mình (web: cửa sổ lớp phụ trách) */}
+          {d.trainingPlansVisible && <TrainingPlansSection classId={id} coach />}
         </>}
 
         {/* 4. Huấn luyện viên — bấm thẻ để xem hồ sơ & đánh giá (web: CoachCard → CoachProfileDialog) */}

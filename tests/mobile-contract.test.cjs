@@ -956,10 +956,10 @@ test('goal progress levels, stepping and evaluation drafts follow the web (level
   assert.equal(g.progressDiff(45, 60), 15);
   assert.equal(g.evaluationNoteOrNull('   '), null); assert.equal(g.evaluationNoteOrNull(' Giữ nhịp thở '), 'Giữ nhịp thở');
   // Chưa đánh giá buổi này: bắt đầu từ tiến độ hiện tại; đã đánh giá: lấy kết quả buổi đó và mốc trước của nó
-  assert.deepEqual(g.evaluationDraft({ currentProgress: 30, evaluation: null }), { progress: 30, previousProgress: 30, note: '' });
-  const done = { id: 'e', previousProgress: 40, newProgress: 60, description: 'Tốt', createdAt: '', updatedAt: '' };
-  assert.deepEqual(g.evaluationDraft({ currentProgress: 60, evaluation: done }), { progress: 60, previousProgress: 40, note: 'Tốt' });
-  assert.deepEqual(g.evaluationDraft(undefined), { progress: 0, previousProgress: 0, note: '' });
+  assert.deepEqual(g.evaluationDraft({ currentProgress: 30, evaluation: null }), { progress: 30, previousProgress: 30, note: '', results: '' });
+  const done = { id: 'e', previousProgress: 40, newProgress: 60, description: 'Tốt', results: 'Squat 3 hiệp × 10 lần', createdAt: '', updatedAt: '' };
+  assert.deepEqual(g.evaluationDraft({ currentProgress: 60, evaluation: done }), { progress: 60, previousProgress: 40, note: 'Tốt', results: 'Squat 3 hiệp × 10 lần' });
+  assert.deepEqual(g.evaluationDraft(undefined), { progress: 0, previousProgress: 0, note: '', results: '' });
   // Giới hạn độ dài khớp BE (enrollments.schema, attendance.schema)
   assert.deepEqual([c.GOAL_MAX_LENGTH, c.EVALUATION_NOTE_MAX_LENGTH, c.HEALTH_NOTES_MAX_LENGTH, c.PROGRESS_STEP], [500, 1000, 1000, 5]);
 });
@@ -2354,3 +2354,170 @@ test('a tab never hosts a sub-page: views rendered by the tab routes have no in-
   }
   assert.deepEqual(offenders, []);
 });
+
+// ─── Hoàn tiền giao dịch, giáo án tập luyện, mốc hết hạn của gói (đối chiếu web sau c072dec / 25643ca) ──────────────────
+
+test('refund request: the web payload and result, who may ask, the reason rule, and the greeting for the receptionist is the web sentence', async () => fixture(async ({ load, requests, handle }) => {
+  const api = load('lib/api'); await api.saveTokens('member-token', 'refresh'); await api.setFacilityId('facility-a');
+  handle(() => ({ message: 'Đã ghi nhận yêu cầu hoàn tiền.', data: { id: 'payment-1', status: 'SUCCESS', refundRequestedAt: '2027-01-01T00:00:00Z', refundRequestedAmount: '90000', refundReceptionist: { id: 'rec-1', fullName: 'Lễ tân A' } } }));
+  const res = await load('services/workflowService').requestPaymentRefund('payment-1', 'Không còn nhu cầu');
+  assert.deepEqual([requests[0].method, requests[0].path, requests[0].body], ['POST', '/api/v1/payments/payment-1/refund/request', { reason: 'Không còn nhu cầu' }]);
+  assert.equal(requests[0].headers['x-facility-id'], 'facility-a');
+  assert.equal(res.message, 'Đã ghi nhận yêu cầu hoàn tiền.'); assert.deepEqual(res.data.refundReceptionist, { id: 'rec-1', fullName: 'Lễ tân A' });
+
+  const refund = load('lib/refund'); const c = load('constants/refund');
+  const invoice = (payment, paymentId = 'payment-1') => ({ paymentId, payment });
+  const asked = { status: 'SUCCESS', refundRequestedAt: '2027-01-01T00:00:00Z' };
+  assert.equal(refund.canRequestRefund(invoice({ status: 'SUCCESS' })), true);
+  assert.equal(refund.canRequestRefund(invoice(asked)), false, 'đã gửi yêu cầu thì không gửi lại');
+  assert.equal(refund.canRequestRefund(invoice({ status: 'PENDING' })), false); assert.equal(refund.canRequestRefund(invoice({ status: 'REFUNDED' })), false);
+  assert.equal(refund.canRequestRefund(invoice({ status: 'SUCCESS' }, null)), false, 'hóa đơn không gắn giao dịch'); assert.equal(refund.canRequestRefund({ paymentId: 'payment-1' }), false);
+  assert.equal(refund.hasRefundRequest(invoice(asked)), true); assert.equal(refund.hasRefundRequest(invoice({ status: 'SUCCESS' })), false);
+  // Lý do: sau khi cắt khoảng trắng còn ít nhất 3 ký tự, tối đa 1000 (BE)
+  assert.deepEqual([c.REFUND_REASON_MIN_LENGTH, c.REFUND_REASON_MAX_LENGTH], [3, 1000]);
+  assert.deepEqual(['  ab  ', '   ', '  abc '].map(refund.isRefundReasonValid), [false, false, true]);
+  // Câu chào soạn sẵn đúng từng chữ như web (refundChatPath); thiếu tên thì gọi chung là "lễ tân"
+  assert.equal(refund.refundChatDraft('Lễ tân A', '1234567890abcdef'), 'Chào Lễ tân A, tôi muốn trao đổi về yêu cầu hoàn tiền mã giao dịch #12345678. Nhờ bạn hỗ trợ.');
+  assert.match(refund.refundChatDraft(undefined, 'abcdefgh1'), /^Chào lễ tân, /);
+  // BE hủy gói gắn với giao dịch ngay khi nhận yêu cầu → gói, lớp, lịch và thông báo cũng phải tải lại
+  for (const key of ['member-invoices', 'payment-record', 'subscriptions', 'my-enrollments', 'course-plan', 'member-schedule', 'notifications']) assert.ok(c.REFUND_REFRESH_KEYS.includes(key), key);
+  assert.match(c.REFUND_TEXT.policy(c.REFUND_POLICY_DAYS), /trên 15 ngày sử dụng/);
+
+  const payments = stripComments(readSource('components/member/PaymentsView.tsx'));
+  assert.match(payments, /canRequestRefund\(invoice\)/); assert.match(payments, /<RefundRequestSheet refund=\{refund\} onChat=\{chatWithReceptionist\} \/>/);
+  assert.match(payments, /ROUTES\.chatThread\(receptionist\.id, receptionist\.fullName, refundChatDraft\(/);
+  const hook = stripComments(readSource('hooks/member/useRefundRequest.ts'));
+  assert.match(hook, /requestPaymentRefund\(input\.paymentId, input\.reason\)/); assert.match(hook, /REFUND_REFRESH_KEYS/); assert.match(hook, /if \(!mutation\.isPending\) setTarget\(null\)/);
+  assert.match(readSource('components/member/PaymentDetailView.tsx'), /payment\?\.refundRequestedAt/);
+}));
+
+test('a refund notification for the member opens the chat with the receptionist and the greeting filled in; training plan notifications open the class', () => {
+  const app = loadApp('http://localhost/api/v1'); const nav = app.load('navigation/notificationRoute'); const { ROUTES } = app.load('navigation/routes');
+  const note = (type, metadata) => ({ id: 'n', userId: 'u', type, title: '', body: '', isRead: false, createdAt: '', metadata });
+  const assigned = note('PAYMENT_REFUNDED', { action: 'REFUND_ASSIGNED', receptionistUserId: 'rec-1', receptionistName: 'Lễ tân A', paymentId: '1234567890abcdef' });
+  const target = nav.resolveNotificationTarget(assigned, 'MEMBER');
+  assert.deepEqual([target.kind, nav.notificationActionLabel(target.kind, 'MEMBER')], ['refundChat', 'Nhắn tin với lễ tân']);
+  assert.deepEqual(target.route, { pathname: '/chat/[userId]', params: { userId: 'rec-1', name: 'Lễ tân A', message: 'Chào Lễ tân A, tôi muốn trao đổi về yêu cầu hoàn tiền mã giao dịch #12345678. Nhờ bạn hỗ trợ.' } });
+  // Thiếu lễ tân, thông báo hoàn tiền khác hoặc không phải hội viên: về màn Thanh toán như trước
+  for (const [item, role] of [[note('PAYMENT_REFUNDED', { action: 'REFUND_ASSIGNED', paymentId: 'p' }), 'MEMBER'], [note('PAYMENT_REFUNDED', { action: 'REFUND_NO_RECEPTIONIST' }), 'MEMBER'], [note('PAYMENT_REFUNDED'), 'MEMBER'], [assigned, 'COACH']]) {
+    assert.deepEqual([nav.resolveNotificationTarget(item, role).kind, nav.resolveNotificationRoute(item, role)], ['payments', ROUTES.payments]);
+  }
+  // Giáo án mới: thẻ "Giáo án tập luyện" nằm ở chi tiết lớp
+  const plan = nav.resolveNotificationTarget(note('TRAINING_PLAN_ASSIGNED', { classId: 'class-1', trainingPlanId: 'plan-1' }), 'MEMBER');
+  assert.deepEqual([plan.kind, nav.notificationActionLabel(plan.kind, 'MEMBER'), plan.route], ['class', 'Xem lớp học', ROUTES.classDetail('class-1')]);
+  assert.equal(nav.resolveNotificationTarget(note('TRAINING_PLAN_ASSIGNED'), 'MEMBER'), null);
+  // Tin soạn sẵn đi theo đường dẫn chat và nằm sẵn trong ô soạn (web: ?userId=…&message=…)
+  assert.deepEqual(ROUTES.chatThread('u2'), { pathname: '/chat/[userId]', params: { userId: 'u2' } });
+  assert.deepEqual(ROUTES.chatThread('u2', 'An', 'Xin chào'), { pathname: '/chat/[userId]', params: { userId: 'u2', name: 'An', message: 'Xin chào' } });
+  assert.match(readSource('app/chat/[userId].tsx'), /draft=\{message\}/);
+  assert.match(readSource('components/chat/ChatThreadView.tsx'), /useChatComposer\(handleSend, user, draft\)/);
+  assert.match(readSource('hooks/shared/useChatComposer.ts'), /useState\(initialText\)/); assert.match(readSource('hooks/shared/useChatComposer.ts'), /useRef\(initialText\)/);
+});
+
+test('training plans: the web endpoints and payloads, the form follows the BE limits, and only enrolled members / assigned coaches see them', async () => fixture(async ({ load, requests, handle }) => {
+  const api = load('lib/api'); await api.saveTokens('coach-token', 'refresh'); await api.setFacilityId('facility-a');
+  const svc = load('services/trainingPlanService'); const lib = load('lib/trainingPlans'); const c = load('constants/trainingPlans');
+  handle(() => ({ data: { plans: [], members: [{ id: 'm1', name: 'An' }] } }));
+  const list = await svc.getTrainingPlans('class-1');
+  assert.deepEqual([requests[0].method, requests[0].path], ['GET', '/api/v1/classes/class-1/training-plans']); assert.equal(list.data.members[0].name, 'An');
+
+  const form = { memberId: '', title: '  Khởi động  ', instructions: ' Chạy nhẹ 10 phút ', homework: '   ' };
+  handle(() => ({ data: { id: 'plan-1' } }));
+  await svc.createTrainingPlan('class-1', lib.createPlanBody(form));
+  assert.deepEqual([requests.at(-1).method, requests.at(-1).path, requests.at(-1).body], ['POST', '/api/v1/classes/class-1/training-plans', { title: 'Khởi động', instructions: 'Chạy nhẹ 10 phút', homework: null, memberId: null }]);
+  await svc.createTrainingPlan('class-1', lib.createPlanBody({ ...form, memberId: 'm1', homework: ' Giãn cơ ' }));
+  assert.deepEqual(requests.at(-1).body, { title: 'Khởi động', instructions: 'Chạy nhẹ 10 phút', homework: 'Giãn cơ', memberId: 'm1' });
+  await svc.updateTrainingPlan('class-1', 'plan-1', lib.updatePlanBody({ ...form, memberId: 'm1' }));
+  assert.deepEqual([requests.at(-1).method, requests.at(-1).path], ['PATCH', '/api/v1/classes/class-1/training-plans/plan-1']);
+  assert.ok(!('memberId' in requests.at(-1).body), 'sửa giáo án không đổi người nhận');
+  handle(() => ({ data: { draft: 'Bản nháp' } }));
+  const draft = await svc.suggestTrainingPlan('class-1', { memberId: null, objective: 'Tăng sức bền' });
+  assert.deepEqual([requests.at(-1).method, requests.at(-1).path, requests.at(-1).body], ['POST', '/api/v1/classes/class-1/training-plans/suggest', { memberId: null, objective: 'Tăng sức bền' }]);
+  assert.equal(draft.data.draft, 'Bản nháp');
+  assert.ok(requests.every((r) => r.headers['x-facility-id'] === 'facility-a'));
+
+  // Giới hạn như BE; ô trống chưa báo đỏ nhưng chưa cho giao
+  assert.deepEqual(c.TRAINING_PLAN_LIMITS, { titleMin: 2, titleMax: 120, instructionsMin: 3, instructionsMax: 6000, homeworkMax: 3000, objectiveMax: 300 });
+  const filled = { memberId: '', title: 'ab', instructions: 'abc', homework: '' };
+  assert.equal(lib.canSubmitTrainingPlan(filled), true);
+  assert.equal(lib.canSubmitTrainingPlan({ ...filled, title: ' a ' }), false, 'tiêu đề cần ≥ 2 ký tự sau khi cắt khoảng trắng');
+  assert.equal(lib.canSubmitTrainingPlan({ ...filled, instructions: ' ab ' }), false, 'nội dung cần ≥ 3 ký tự sau khi cắt khoảng trắng');
+  assert.deepEqual(lib.trainingPlanErrors(lib.EMPTY_TRAINING_PLAN_FORM), {}); assert.equal(lib.canSubmitTrainingPlan(lib.EMPTY_TRAINING_PLAN_FORM), false);
+  assert.deepEqual(Object.keys(lib.trainingPlanErrors({ ...filled, title: 'a', instructions: 'ab' })), ['title', 'instructions']);
+  // Nhãn người nhận; sửa giáo án điền lại đúng form cũ
+  assert.equal(lib.planTargetLabel({ memberId: null }), 'Giáo án cả lớp'); assert.equal(lib.planTargetLabel({ memberId: 'm1', member: { user: { fullName: 'An' } } }), 'An'); assert.equal(lib.planTargetLabel({ memberId: 'm1' }), 'Giáo án cá nhân');
+  assert.deepEqual([lib.recipientLabel('', list.data.members), lib.recipientLabel('m1', list.data.members)], ['cả lớp', 'An']);
+  assert.deepEqual(lib.planToForm({ id: 'p', memberId: null, title: 'T', instructions: 'I', homework: null }), { memberId: '', title: 'T', instructions: 'I', homework: '' });
+
+  // Ai thấy: HLV chỉ khi được phân công lớp; hội viên khi đã có mục tiêu của khóa hoặc còn buổi sắp tới đã đặt (web: classGoalQuery.data || upcomingBooking)
+  assert.deepEqual([lib.isAssignedCoach('coach-1', { coaches: [{ coachId: 'coach-1' }] }), lib.isAssignedCoach('coach-2', { coaches: [{ coachId: 'coach-1' }] }), lib.isAssignedCoach(undefined, { coaches: [{ coachId: 'coach-1' }] })], [true, false, false]);
+  const now = Date.parse('2027-01-01T00:00:00Z'); const session = (myEnrollmentStatus, startTime) => ({ myEnrollmentStatus, startTime });
+  assert.equal(lib.memberSeesTrainingPlans(true, undefined, now), true);
+  assert.equal(lib.memberSeesTrainingPlans(false, [session('BOOKED', '2027-01-02T00:00:00Z')], now), true);
+  assert.equal(lib.memberSeesTrainingPlans(false, [session('BOOKED', '2026-12-31T00:00:00Z')], now), false, 'buổi đã qua không tính');
+  assert.equal(lib.memberSeesTrainingPlans(false, [session(null, '2027-01-02T00:00:00Z')], now), false, 'chưa đăng ký');
+  assert.equal(lib.memberSeesTrainingPlans(false, undefined, now), false);
+
+  // Gắn vào chi tiết lớp: hội viên ngay sau mục tiêu & tiến độ (như web), HLV dưới các buổi dạy sắp tới
+  const detail = stripComments(readSource('components/classes/ClassDetailView.tsx'));
+  assert.match(detail, /d\.isMember && d\.trainingPlansVisible && <TrainingPlansSection classId=\{id\} coach=\{false\} \/>/);
+  assert.match(detail, /d\.trainingPlansVisible && <TrainingPlansSection classId=\{id\} coach \/>/);
+  assert.ok(detail.indexOf('<ClassGoalCard') < detail.indexOf('<TrainingPlansSection'), 'giáo án nằm sau mục tiêu & tiến độ');
+  const section = stripComments(readSource('components/classes/TrainingPlansSection.tsx'));
+  assert.match(section, /plan\.editable && onEdit/); assert.match(section, /coach \? <TrainingPlanSheet/); assert.match(section, /onEdit=\{coach \? editor\.openEdit : undefined\}/);
+  assert.match(stripComments(readSource('hooks/shared/useClassDetail.ts')), /isAssignedCoach\(user\?\.coachProfile\?\.id, cls\.data\?\.data\)/);
+  // Đăng ký lớp xong thì giáo án của lớp được tải lại (web: invalidate ["training-plans", classId])
+  assert.match(readSource('hooks/member/useEnrollments.ts'), /'my-class-goal', 'training-plans'/);
+  const editor = stripComments(readSource('hooks/shared/useTrainingPlans.ts'));
+  assert.match(editor, /updateTrainingPlan\(classId, editingId, updatePlanBody\(form\)\)/); assert.match(editor, /createTrainingPlan\(classId, createPlanBody\(form\)\)/);
+  assert.match(editor, /invalidateQueries\(\{ queryKey: \[KEY, classId\] \}\)/);
+}));
+
+test('a plan stops giving access at the exact end instant, like the web (the last millisecond still counts)', () => {
+  const rules = loadApp('http://localhost/api/v1').load('lib/businessRules');
+  const now = Date.parse('2027-01-01T00:00:00Z'); const iso = (offset) => new Date(now + offset).toISOString();
+  const sub = (change) => ({ status: 'ACTIVE', startDate: iso(-86_400_000), endDate: iso(86_400_000), ...change });
+  assert.equal(rules.isEffectiveSubscription(sub({ startDate: iso(0) }), now), true, 'bắt đầu đúng lúc kích hoạt');
+  assert.equal(rules.isEffectiveSubscription(sub({ startDate: iso(1) }), now), false, 'chưa tới giờ kích hoạt');
+  assert.equal(rules.isEffectiveSubscription(sub({ endDate: iso(1) }), now), true, 'còn 1 ms thì vẫn còn quyền');
+  assert.equal(rules.isEffectiveSubscription(sub({ endDate: iso(0) }), now), false, 'hết quyền đúng thời điểm hết hạn');
+  assert.equal(rules.isEffectiveSubscription(sub({ status: 'SCHEDULED' }), now), false); assert.equal(rules.isEffectiveSubscription(sub({ status: 'CANCELLED' }), now), false);
+  assert.equal(rules.isEffectiveSubscription(sub({ endDate: 'unknown' }), now), false, 'hạn không đọc được thì coi như hết');
+  assert.equal(rules.effectiveSubscription([sub({ endDate: iso(0) })], now), undefined);
+});
+
+test('a late payment that was refunded stops waiting for review and says so, like the web (REFUNDED wins over REQUIRES_REVIEW)', () => {
+  const app = loadApp('http://localhost/api/v1'); const pay = app.load('lib/payment'); const text = app.load('constants/sepayReview');
+  const late = { status: 'SUCCESS', activationStatus: 'REQUIRES_REVIEW', reviewReason: 'LATE_PAYMENT', orderCode: 'SC1', expiresAt: '2027-01-01T00:00:00Z' };
+  assert.equal(pay.requiresReview(late), true); assert.equal(pay.isConfirmed(late), false);
+  const refunded = { ...late, status: 'REFUNDED' };
+  assert.equal(pay.requiresReview(refunded), false, 'đã hoàn tiền thì hết chờ đối soát');
+  assert.equal(pay.requiresReview({ ...refunded, requiresReview: true }), false);
+  assert.equal(pay.isPaymentStatusShownOnHome(refunded, Date.parse('2027-06-01T00:00:00Z')), false, 'Trang chủ không còn thẻ đối soát');
+  assert.equal(text.SEPAY_REFUNDED_TEXT.message, 'Giao dịch đã được ghi nhận hoàn tiền.');
+  // Màn thanh toán: đã hoàn tiền thuộc nhánh "failed" nhưng có câu riêng, không phải "Thanh toán thất bại"
+  assert.match(stripComments(readSource('hooks/member/usePayment.ts')), /else if \(requiresReview\(checkout\)\) phase = 'review';[\s\S]*checkout\.status === 'REFUNDED'\) phase = 'failed'/);
+  const panel = stripComments(readSource('components/member/payment/SepayCheckoutPanel.tsx'));
+  assert.match(panel, /phase === 'failed' && checkout\.status === 'REFUNDED'/); assert.match(panel, /phase === 'failed' && checkout\.status !== 'REFUNDED'/);
+});
+
+test('session results ("Kết quả buổi tập"): the coach saves them with the evaluation like the web, the member sees them in the log and on the session', async () => fixture(async ({ load, requests, handle }) => {
+  const api = load('lib/api'); await api.saveTokens('coach-token', 'refresh'); await api.setFacilityId('facility-a');
+  handle(() => ({ data: {} }));
+  const goals = load('services/goalService'); const g = load('lib/goalProgress'); const c = load('constants/goals');
+  // Web (shared/Attendance.tsx): body = { memberId, progress, description: note.trim() || null, results: results.trim() || null }
+  const values = { progress: 60, description: g.evaluationNoteOrNull('  Giữ nhịp thở '), results: g.evaluationNoteOrNull('  Squat 3 hiệp × 10 lần  ') };
+  await goals.saveScheduleEvaluation('session-a', { memberId: 'member-a', ...values });
+  assert.deepEqual([requests[0].method, requests[0].path, requests[0].body], ['POST', '/api/v1/attendance/schedules/session-a/evaluations', { memberId: 'member-a', progress: 60, description: 'Giữ nhịp thở', results: 'Squat 3 hiệp × 10 lần' }]);
+  assert.equal(g.evaluationNoteOrNull('   '), null, 'kết quả để trống thì gửi null (xóa kết quả cũ)');
+  assert.equal(c.EVALUATION_RESULTS_MAX_LENGTH, 3000);
+  assert.deepEqual([c.GOAL_TEXT.evaluateResultsLabel, c.GOAL_TEXT.evaluateResultsPlaceholder, c.GOAL_TEXT.sessionResults], ['Kết quả từng bài tập trong buổi', 'Ví dụ: Squat 3 hiệp × 10 lần, chạy 15 phút', 'Kết quả buổi tập']);
+
+  const sheet = stripComments(readSource('components/coach/EvaluationSheet.tsx'));
+  assert.match(sheet, /onSave\(\{ progress, description: evaluationNoteOrNull\(note\), results: evaluationNoteOrNull\(results\) \}\)/);
+  assert.match(sheet, /setResults\(draft\.results\)/); assert.match(sheet, /maxLength=\{EVALUATION_RESULTS_MAX_LENGTH\}/);
+  assert.match(stripComments(readSource('hooks/coach/useCoachAttendance.ts')), /saveEvaluation\.mutate\(\{ memberId: evaluatingMemberId, \.\.\.values \}/);
+  // Hội viên: cùng một dòng nhật ký ở thẻ "Mục tiêu & tiến độ" của lớp và ở thẻ "Đánh giá của HLV cho buổi này"
+  assert.match(stripComments(readSource('components/classes/ClassGoalCard.tsx')), /Boolean\(entry\.results\)[\s\S]*TEXT\.sessionResults[\s\S]*\{entry\.results\}/);
+  assert.match(readSource('components/member/SessionEvaluationCard.tsx'), /<EvaluationRow entry=\{entry\} \/>/);
+}));
