@@ -2,18 +2,22 @@ import { Table } from "../../shared/Table";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../context/AuthContext";
+import { Link } from "react-router-dom";
+import { refundChatPath } from "../../shared/Communication";
 import { api, type RecordData } from "../../shared/api";
 import { allPages } from "../../shared/pagedApi";
 import { at, money } from "../../shared/config";
 import { Details, Empty, ErrorState, Loading, Modal } from "../../shared/ui";
 import { InvoiceDialog } from "../../features/reception/payments/PaymentsPage";
 
+type RefundPayment = { id: string; amount: unknown };
+
 export function MemberPaymentsPage() {
   const { user } = useAuth();
   const memberId = String(at(user, "memberProfile.id") || "");
   const [invoiceId, setInvoiceId] = useState("");
   const [paymentId, setPaymentId] = useState("");
-  const [refundPayment, setRefundPayment] = useState<RecordData | null>(null);
+  const [refundPayment, setRefundPayment] = useState<RefundPayment | null>(null);
 
   const list = useQuery({
     queryKey: ["member-invoices", memberId],
@@ -71,6 +75,22 @@ export function MemberPaymentsPage() {
                   Chi tiết thanh toán
                 </button>
               )}
+              {typeof r.paymentId === "string" &&
+                r.paymentId &&
+                at(r, "payment.status") === "SUCCESS" &&
+                !at(r, "payment.refundRequestedAt") && (
+                  <button
+                    className="button small danger"
+                    onClick={() =>
+                      setRefundPayment({
+                        id: String(r.paymentId),
+                        amount: at(r, "payment.amount"),
+                      })
+                    }
+                  >
+                    Yêu cầu hoàn tiền
+                  </button>
+                )}
             </>
           )}
         />
@@ -87,26 +107,6 @@ export function MemberPaymentsPage() {
           ) : (
             <>
               <Details value={payment.data.data} />
-              {payment.data.data.status === "SUCCESS" &&
-                !payment.data.data.refundRequestedAt && (
-                  <div
-                    style={{
-                      marginTop: "16px",
-                      paddingTop: "16px",
-                      borderTop: "1px solid var(--border, #e2e8f0)",
-                    }}
-                  >
-                    <button
-                      className="button small danger"
-                      onClick={() => {
-                        setRefundPayment(payment.data.data);
-                        setPaymentId("");
-                      }}
-                    >
-                      Yêu cầu hoàn tiền giao dịch này
-                    </button>
-                  </div>
-                )}
               {payment.data.data.refundRequestedAt && (
                 <div
                   role="status"
@@ -141,21 +141,23 @@ function MemberRefundDialog({
   payment,
   onClose,
 }: {
-  payment: RecordData;
+  payment: RefundPayment;
   onClose: () => void;
 }) {
   const [reason, setReason] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [receptionist, setReceptionist] = useState<{ id: string; fullName: string } | null>(null);
   const cache = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: () =>
-      api("POST /payments/{id}/refund/request", {
-        params: { id: String(payment.id) },
+      api<{ refundReceptionist?: { id: string; fullName: string } | null }>("POST /payments/{id}/refund/request", {
+        params: { id: payment.id },
         body: { reason: reason.trim() },
       }),
-    onSuccess: (res: any) => {
-      setSuccessMsg(res?.message || "Đã gửi yêu cầu hoàn tiền thành công!");
+    onSuccess: (res) => {
+      setSuccessMsg(res.message || "Đã gửi yêu cầu hoàn tiền thành công!");
+      setReceptionist(res.data.refundReceptionist ?? null);
       void cache.invalidateQueries({ queryKey: ["member-invoices"] });
       void cache.invalidateQueries({ queryKey: ["member-payment"] });
     },
@@ -172,10 +174,14 @@ function MemberRefundDialog({
           <p style={{ color: "#16a34a", fontWeight: 600, fontSize: "16px" }}>
             ✓ {successMsg}
           </p>
-          <p>
-            Lễ tân cơ sở đã nhận được thông báo và sẽ liên hệ qua tin nhắn hoặc số
-            điện thoại để hoàn tiền cho bạn.
-          </p>
+          {receptionist ? (
+            <>
+              <p>Lễ tân phụ trách hoàn tiền: <strong>{receptionist.fullName}</strong></p>
+              <Link className="button" to={refundChatPath(receptionist, payment.id)}>Nhắn tin với lễ tân</Link>
+            </>
+          ) : (
+            <p>Không có lễ tân phụ trách hoàn tiền. Vui lòng liên hệ với quản trị viên của cơ sở.</p>
+          )}
           <div className="modal-footer" style={{ justifyContent: "center" }}>
             <button className="button primary" onClick={onClose}>
               Đóng
@@ -193,7 +199,7 @@ function MemberRefundDialog({
           }}
         >
           <p>
-            Bạn đang yêu cầu hoàn tiền cho giao dịch mã #{String(payment.id).slice(0, 8)} - Số
+            Bạn đang yêu cầu hoàn tiền cho giao dịch mã #{payment.id.slice(0, 8)} - Số
             tiền thanh toán: {money(payment.amount)}.
           </p>
           <p style={{ fontSize: "13px", color: "var(--text-muted, #64748b)" }}>

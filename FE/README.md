@@ -67,18 +67,29 @@ Xem [báo cáo review và các thay đổi](docs/FRONTEND_REVIEW.md). Khung đi�
 
 ## Kiểm thử
 
+Chạy các lệnh trong thư mục `FE`. Cài dependencies và Chromium trước lần chạy đầu tiên.
+
 ```powershell
-npm run build
-npm test
+npm ci
 npx playwright install chromium
-npm run test:ui
+npm run verify
+npm run test:ui:smoke
+npm run test:ui:report
 ```
 
-- TypeScript + Vite production build.
-- Unit test: chặn endpoint/query chưa khai báo, path encoding, refresh đồng thời, hết phiên, 400 validation, 403 và nội dung không hợp lệ.
-- Playwright: trang login desktop/mobile, hiện/ẩn password, 13 route quản lý, form tạo phòng đúng body, menu mobile, chặn MEMBER, error/retry. Test fixtures chỉ tồn tại trong `tests/`, dựa trên ví dụ Swagger; **không có fixture/mock trong runtime**.
-- Kiểm tra Render chỉ đọc: GET /sports và GET /membership-plans trả 200; GET /users không token trả 401; CORS trả `Access-Control-Allow-Origin: *`.
-- Chưa có tài khoản MANAGER để kiểm thử trực tiếp protected endpoints và mutation trên Render. Không khẳng định tích hợp end-to-end production đã hoàn tất.
+- `npm run verify` kiểm tra TypeScript, chạy Vitest và build bản production.
+- `npm run test:ui:smoke` kiểm tra đăng nhập, phạm vi quản lý, mua và gia hạn gói, trạng thái chuyển khoản SePay, duyệt và xác nhận hoàn tiền, đăng ký khóa học và thao tác tại quầy.
+- `npm run test:ui` chạy toàn bộ nhóm Playwright mặc định. Dùng `npm run test:ui -- sepay-payment.spec.ts --headed` để xem một spec trên Chromium hoặc thêm `--ui` để mở giao diện điều khiển test.
+- `npm run test:a11y` quét khả năng tiếp cận bằng axe. `npm run test:captcha` chạy bộ kiểm thử Turnstile riêng.
+- `npm run test:ui:report` mở báo cáo HTML của lần chạy Playwright mặc định gần nhất, kèm ảnh và trace khi ca test lỗi. GitHub Actions lưu cùng báo cáo cho nhóm smoke.
+
+### 100 ca bổ sung cho luồng chính
+
+Chạy `npm run test:core` để chạy 75 ca Vitest và 25 ca Playwright bổ sung. Các ca kiểm tra thời điểm hiệu lực gói, ngày Việt Nam, ước tính hoàn tiền, dữ liệu gửi từ FE qua API client, phục hồi giao dịch chờ, phân trang, đổi cơ sở, phân quyền màn hình, mua/gia hạn/nâng/hạ gói, QR hết hạn và xác nhận hoàn tiền.
+
+Chạy riêng bằng `npm run test:core:unit` hoặc `npm run test:core:ui`. Các ca API thay thế `fetch` trong test. Các ca trình duyệt mô phỏng API bằng Playwright. GitHub Actions chạy cả hai nhóm cùng bộ kiểm tra FE hiện có.
+
+Playwright khởi động Vite riêng trên cổng 5175. Nhóm Turnstile dùng cổng 5174. Các kịch bản mô phỏng phản hồi API và dịch vụ ngoài nên không cần backend đang chạy và không tạo giao dịch thật. Để dùng Chrome đã cài trên Windows, đặt `$env:SCMS_CHROMIUM_EXECUTABLE = "C:/Program Files/Google/Chrome/Application/chrome.exe"` trước khi chạy Playwright.
 
 ## Cập nhật snapshot
 

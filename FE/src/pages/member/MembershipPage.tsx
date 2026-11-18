@@ -13,7 +13,7 @@ import { ErrorState } from "../../shared/feedback";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../context/AuthContext";
-import { membershipApi } from "../../api/membership.api";
+import { currentMembershipQuery, membershipApi } from "../../api/membership.api";
 import { sepayApi } from "../../api/sepay.api";
 import { SepayCheckoutModal } from "../../shared/SepayCheckout";
 import type { MembershipPlan, SepayCheckout } from "../../types/member";
@@ -88,10 +88,7 @@ export function MembershipPage() {
     isLoading: subLoading,
     error: subError,
   } = useQuery({
-    queryKey: ["current-membership", user?.id],
-    queryFn: () =>
-      user?.id ? membershipApi.getMySubscriptions(user.id) : null,
-    enabled: Boolean(user?.id),
+    ...currentMembershipQuery(user?.id),
     refetchOnWindowFocus: "always",
   });
 

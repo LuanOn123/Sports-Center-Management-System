@@ -4,7 +4,13 @@ import { CheckCircle2, CircleAlert, Info, X } from "lucide-react";
 import "./toast.css";
 
 type Kind = "success" | "error" | "info";
-type Notice = { id: number; kind: Kind; message: string; key: string };
+type Notice = {
+  id: number;
+  kind: Kind;
+  message: string;
+  key: string;
+  title?: string;
+};
 let notices: Notice[] = [];
 let sequence = 0;
 const listeners = new Set<() => void>();
@@ -13,10 +19,14 @@ function dismiss(id: number) {
   notices = notices.filter((notice) => notice.id !== id);
   emit();
 }
-export function toast(kind: Kind, message: string, key = `${kind}:${message}`) {
+export function toast(
+  kind: Kind,
+  message: string,
+  { key = `${kind}:${message}`, title }: { key?: string; title?: string } = {},
+) {
   if (notices.some((notice) => notice.key === key)) return;
   const id = ++sequence;
-  notices = [...notices.slice(-3), { id, kind, message, key }];
+  notices = [...notices.slice(-3), { id, kind, message, key, title }];
   emit();
   globalThis.setTimeout(() => dismiss(id), kind === "error" ? 9000 : 5000);
 }
@@ -47,7 +57,7 @@ export function ToastViewport() {
   }, []);
   return createPortal(
     <section className="toast-viewport" aria-label="Thông báo thao tác">
-      {items.map(({ id, kind, message }) => (
+      {items.map(({ id, kind, message, title }) => (
         <div
           key={id}
           className={`toast-notice toast-${kind}`}
@@ -62,11 +72,12 @@ export function ToastViewport() {
           )}
           <div>
             <strong>
-              {kind === "success"
-                ? "Thành công"
-                : kind === "error"
-                  ? "Có lỗi xảy ra"
-                  : "Thông báo"}
+              {title ??
+                (kind === "success"
+                  ? "Thành công"
+                  : kind === "error"
+                    ? "Có lỗi xảy ra"
+                    : "Thông báo")}
             </strong>
             <p>{message}</p>
           </div>

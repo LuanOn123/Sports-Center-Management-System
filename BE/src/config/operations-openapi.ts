@@ -99,7 +99,7 @@ const entries: [string, string, string, any?][] = [
   [
     "get",
     "/staff-candidates",
-    "Ứng viên chưa phân công: Coach cho MANAGER, Manager cho ADMIN",
+    "Ứng viên chưa phân công: HLV hoặc Lễ tân cho MANAGER, Quản lý cho ADMIN",
   ],
   ["get", "/coaches/{id}/specializations", "Chuyên môn huấn luyện viên"],
   ["get", "/leave-requests/{id}/affected", "Buổi học cần xử lý khi nghỉ phép"],
@@ -259,6 +259,18 @@ export function addOperations(spec: any) {
       tags: ["Facility Operations"],
       security: [{ BearerAuth: [] }],
       parameters: [
+        ...(path === "/staff-candidates"
+          ? [
+              {
+                name: "role",
+                in: "query",
+                required: false,
+                description:
+                  "MANAGER mặc định lấy COACH; dùng RECEPTIONIST để lấy lễ tân. ADMIN mặc định lấy MANAGER; có thể chọn COACH.",
+                schema: enumOf("MANAGER", "COACH", "RECEPTIONIST"),
+              },
+            ]
+          : []),
         ...(path === "/attendance/monitoring"
           ? [
               ...["memberId", "classId", "search"].map((name) => ({

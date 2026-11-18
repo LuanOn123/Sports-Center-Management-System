@@ -4,7 +4,7 @@ import { AppError } from "../../middlewares/errorHandler.js";
 import { prisma } from "../../config/prisma.js";
 import { lockMemberSubscription, lockPaymentWebhook } from "../../utils/dbLocks.js";
 import { activateMemberDue, revokeSubscriptionBookings } from "../subscriptions/entitlement.service.js";
-import { notifyReceptionistsAboutRefund } from "../notifications/notifications.service.js";
+import { findRefundReceptionist, notifyReceptionistsAboutRefund } from "../notifications/notifications.service.js";
 
 /** Yêu cầu hoàn tiền từ Member hoặc Admin, hỗ trợ kiểm tra điều kiện gói tập, ghi AuditLog và báo cho Lễ tân cơ sở. */
 export async function requestPaymentRefund(id: string, reason: string, user: { id: string; role: string }) {
@@ -39,7 +39,7 @@ export async function requestPaymentRefund(id: string, reason: string, user: { i
 
     if (payment.refundRequestedAt) {
       if (user.role === "ADMIN") {
-        return { payment, notification: null };
+        return { payment, receptionist: await findRefundReceptionist(payment.facilityId, tx), notification: null };
       }
       throw new AppError("Giao dịch đã có yêu cầu hoàn tiền đang chờ xử lý.", 409, { code: "REFUND_ALREADY_REQUESTED" });
     }
@@ -102,8 +102,10 @@ export async function requestPaymentRefund(id: string, reason: string, user: { i
       },
     });
 
+    const receptionist = await findRefundReceptionist(payment.facilityId, tx);
     return {
       payment: updated,
+      receptionist,
       notification: {
         facilityId: payment.facilityId,
         paymentId: payment.id,
@@ -111,6 +113,7 @@ export async function requestPaymentRefund(id: string, reason: string, user: { i
         memberName: payment.member?.user?.fullName,
         refundAmount,
         reason,
+        receptionist,
       },
     };
   });
@@ -119,7 +122,7 @@ export async function requestPaymentRefund(id: string, reason: string, user: { i
       console.error("Failed to notify receptionists about refund:", error);
     });
   }
-  return result.payment;
+  return { ...result.payment, refundReceptionist: result.receptionist };
 }
 
 /** Request is not evidence that money has actually been returned. */

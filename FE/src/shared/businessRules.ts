@@ -5,7 +5,7 @@ export function isEffectiveSubscription(
   return (
     s.status === "ACTIVE" &&
     Date.parse(s.startDate) <= now &&
-    Date.parse(s.endDate) >= now
+    Date.parse(s.endDate) > now
   );
 }
 

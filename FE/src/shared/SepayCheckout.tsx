@@ -71,7 +71,8 @@ export function SepayCheckoutModal({
   });
   const current = checkout ? (statusQuery.data ?? checkout) : null;
   const requiresReview = Boolean(
-    current?.requiresReview || current?.activationStatus === "REQUIRES_REVIEW",
+    current?.status !== "REFUNDED" &&
+      (current?.requiresReview || current?.activationStatus === "REQUIRES_REVIEW"),
   );
   const announced = useRef("");
   useEffect(() => {
@@ -96,7 +97,7 @@ export function SepayCheckoutModal({
           : current.status === "REFUNDED"
             ? "Giao dịch đã được ghi nhận hoàn tiền."
             : "Thanh toán thất bại. Vui lòng tạo đơn mới.",
-      state,
+      { key: state },
     );
   }, [current?.paymentId, current?.status, requiresReview]);
   const mockConfirm = useMutation({

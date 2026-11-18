@@ -1920,6 +1920,12 @@
     "parameters": [
       {
         "in": "query",
+        "name": "refundPending",
+        "description": "When true, returns successful payments with a refund request awaiting processing.",
+        "schema": { "type": "string", "enum": ["true", "false"] }
+      },
+      {
+        "in": "query",
         "name": "memberId",
         "schema": {
           "type": "string"
@@ -1947,6 +1953,14 @@
             "CASH",
             "BANK_TRANSFER"
           ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "refundPending",
+        "schema": {
+          "type": "string",
+          "enum": ["true", "false"]
         }
       },
       {
@@ -4043,6 +4057,13 @@
           "type": "string"
         },
         "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+      },
+      {
+        "in": "query",
+        "name": "termId",
+        "schema": {
+          "type": "string"
+        }
       }
     ],
     "body": null,
@@ -6457,7 +6478,7 @@
   "GET /staff-candidates": {
     "path": "/staff-candidates",
     "method": "GET",
-    "summary": "Ứng viên chưa phân công: Coach cho MANAGER, Manager cho ADMIN",
+    "summary": "Ứng viên chưa phân công: HLV hoặc Lễ tân cho MANAGER, Quản lý cho ADMIN",
     "security": [
       {
         "BearerAuth": []
@@ -6477,12 +6498,13 @@
         "name": "role",
         "in": "query",
         "required": false,
-        "description": "Lọc ứng viên theo role. Admin truyền COACH để lấy HLV chưa phân công.",
+        "description": "MANAGER mặc định lấy COACH; dùng RECEPTIONIST để lấy lễ tân. ADMIN mặc định lấy MANAGER; có thể chọn COACH.",
         "schema": {
           "type": "string",
           "enum": [
             "MANAGER",
-            "COACH"
+            "COACH",
+            "RECEPTIONIST"
           ]
         }
       }

@@ -4131,6 +4131,12 @@
         "parameters": [
           {
             "in": "query",
+            "name": "refundPending",
+            "description": "When true, returns successful payments with a refund request awaiting processing.",
+            "schema": { "type": "string", "enum": ["true", "false"] }
+          },
+          {
+            "in": "query",
             "name": "memberId",
             "schema": {
               "type": "string"
@@ -10727,7 +10733,7 @@
     },
     "/staff-candidates": {
       "get": {
-        "summary": "Ứng viên chưa phân công: Coach cho MANAGER, Manager cho ADMIN",
+        "summary": "Ứng viên chưa phân công: HLV hoặc Lễ tân cho MANAGER, Quản lý cho ADMIN",
         "description": "MANAGER: cơ sở được xác định từ phân công đang hoạt động trong DB; facilityId/header khác cơ sở đó bị từ chối 403. Phân công Coach đã có cơ sở hoặc thêm Manager thứ hai vào cơ sở trả 409.",
         "tags": [
           "Facility Operations"
@@ -10738,6 +10744,16 @@
           }
         ],
         "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "description": "MANAGER mặc định lấy COACH; dùng RECEPTIONIST để lấy lễ tân. ADMIN mặc định lấy MANAGER; có thể chọn COACH.",
+            "schema": {
+              "type": "string",
+              "enum": ["MANAGER", "COACH", "RECEPTIONIST"]
+            }
+          },
           {
             "name": "X-Facility-Id",
             "in": "header",

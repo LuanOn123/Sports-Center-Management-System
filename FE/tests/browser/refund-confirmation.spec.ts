@@ -1,13 +1,135 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./fixtures";
 
-test("Admin approves an unactivated refund before the cashier records an actual return", async ({ page }) => {
+test("Reception loads the pending refund queue with the documented filter", async ({ page }) => {
+  await setup(page, "RECEPTIONIST");
+  await page.route(/\/api\/v1\/payments\?/, (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("refundPending") !== "true") return route.fallback();
+    return route.fulfill({
+      json: {
+        success: true,
+        data: [{ id: "pending-refund-1", amount: 300000, refundRequestedAmount: 300000 }],
+      },
+    });
+  });
+  await page.goto("/receptionist/payments");
+  await expect(page.getByText("pending-refund-1", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Xác nhận hoàn/ })).toBeEnabled();
+});
+
+for (const hasReceptionist of [true, false]) {
+test(`member requests a refund with receptionist available: ${hasReceptionist}`, async ({ page }) => {
+  await setup(page, "MEMBER");
+  const receptionist = { id: "reception-a", fullName: "Lễ tân Mai", role: "RECEPTIONIST" };
+  const requests: unknown[] = [];
+  const payment = () => ({
+    id: "paid-payment",
+    amount: 300000,
+    status: "SUCCESS",
+    refundRequestedAt: requests.length ? "2026-11-17T08:00:00Z" : null,
+  });
+
+  await page.route("**/api/v1/auth/me", (route) =>
+    route.fulfill({
+      json: {
+        success: true,
+        data: {
+          id: "member-user",
+          role: "MEMBER",
+          fullName: "Nguyễn Lan",
+          isActive: true,
+          memberProfile: { id: "member-1" },
+        },
+      },
+    }),
+  );
+  await page.route("**/api/v1/invoices/member/**", (route) =>
+    route.fulfill({
+      json: {
+        success: true,
+        data: [
+          {
+            id: "invoice-1",
+            invoiceNumber: "INV-PAID",
+            status: "ISSUED",
+            total: 300000,
+            paymentId: "paid-payment",
+            payment: payment(),
+          },
+          {
+            id: "invoice-2",
+            invoiceNumber: "INV-PENDING",
+            paymentId: "pending-payment",
+            payment: { id: "pending-payment", status: "PENDING" },
+          },
+        ],
+      },
+    }),
+  );
+  await page.route("**/api/v1/payments/paid-payment", (route) =>
+    route.fulfill({ json: { success: true, data: payment() } }),
+  );
+  await page.route("**/api/v1/payments/paid-payment/refund/request", (route) => {
+    expect(route.request().method()).toBe("POST");
+    requests.push(route.request().postDataJSON());
+    return route.fulfill({ json: { success: true, data: { refundReceptionist: hasReceptionist ? receptionist : null } } });
+  });
+  await page.route("**/api/v1/chat/contacts", (route) =>
+    route.fulfill({ json: { success: true, data: [receptionist] } }),
+  );
+  await page.route(/\/api\/v1\/chat\/messages(?:\?|$)/, (route) =>
+    route.fulfill({ json: { success: true, data: [] } }),
+  );
+
+  await page.goto("/member/payments");
+  const row = page.getByRole("row", { name: /INV-PAID/ });
+  const refund = row.getByRole("button", { name: "Yêu cầu hoàn tiền" });
+  await expect(refund).toBeVisible();
+  await expect(
+    page.getByRole("row", { name: /INV-PENDING/ }).getByRole("button", {
+      name: "Yêu cầu hoàn tiền",
+    }),
+  ).toHaveCount(0);
+
+  await row.getByRole("button", { name: "Chi tiết thanh toán" }).click();
+  const details = page.getByRole("dialog", { name: "Chi tiết thanh toán" });
+  await expect(details.getByText("300.000", { exact: false })).toBeVisible();
+  await expect(details.getByRole("button", { name: /hoàn tiền/ })).toHaveCount(0);
+  await details.getByRole("button", { name: "Đóng", exact: true }).click();
+
+  await refund.click();
+  const dialog = page.getByRole("dialog", { name: "Yêu cầu hoàn tiền" });
+  await dialog
+    .getByRole("textbox", { name: /Lý do yêu cầu hoàn tiền/ })
+    .fill("Không tiếp tục tập");
+  await dialog.getByRole("button", { name: "Gửi yêu cầu hoàn tiền" }).click();
+  const chat = dialog.getByRole("link", { name: "Nhắn tin với lễ tân" });
+  if (hasReceptionist) {
+    await chat.click();
+    await expect(page).toHaveURL(/\/member\/chat\?userId=reception-a/);
+    await expect(page.getByRole("textbox", { name: "Nội dung", exact: true })).toHaveValue(/Chào Lễ tân Mai/);
+    const send = page.waitForRequest((request) => request.method() === "POST" && request.url().endsWith("/chat/messages"));
+    await page.getByRole("button", { name: "Gửi tin nhắn", exact: true }).click();
+    expect((await send).postData()).toMatch(/name="receiverId"\r\n\r\nreception-a/);
+  } else {
+    await expect(dialog.getByText(/Không có lễ tân phụ trách hoàn tiền/)).toBeVisible();
+    await expect(chat).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Đóng", exact: true }).last().click();
+    await expect(refund).toHaveCount(0);
+  }
+  expect(requests).toEqual([{ reason: "Không tiếp tục tập" }]);
+});
+}
+
+test("Admin can refund a late SePay transfer without being offered activation", async ({ page }) => {
   await setup(page, "ADMIN");
   let approved = false, refunded = false;
   const writes: unknown[] = [];
   await page.route("**/api/v1/**", async route => {
     const request = route.request();
-    const path = new URL(request.url()).pathname.replace("/api/v1", "");
+    const url = new URL(request.url());
+    const path = url.pathname.replace("/api/v1", "");
     if (request.method() === "POST" && path.startsWith("/payments/review-1/refund/")) {
       writes.push({ path, body: request.postDataJSON() });
       if (path.endsWith("/request")) approved = true;
@@ -17,17 +139,25 @@ test("Admin approves an unactivated refund before the cashier records an actual 
     if (path === "/members") return route.fulfill({ json: { success: true, data: [
       { id: "member-1", user: { fullName: "Nguyễn Lan", email: "lan@example.invalid" } },
     ] } });
-    if (path === "/payments") return route.fulfill({ json: { success: true, data: [
+    if (path === "/payments") {
+      const pendingOnly = url.searchParams.get("refundPending") === "true";
+      return route.fulfill({ json: { success: true, data: pendingOnly && (!approved || refunded) ? [] : [
       { id: "review-1", amount: 300000, status: refunded ? "REFUNDED" : "SUCCESS", gateway: "SEPAY",
-        activationStatus: "REQUIRES_REVIEW", subscriptionId: null,
+        activationStatus: "REQUIRES_REVIEW", reviewReason: "LATE_PAYMENT", subscriptionId: null,
         refundRequestedAt: approved ? "2026-11-01T00:00:00Z" : null, refundRequestedAmount: approved ? 300000 : null },
-    ] } });
+      ] } });
+    }
     if (path.startsWith("/invoices/member/")) return route.fulfill({ json: { success: true, data: [] } });
     return route.fallback();
   });
   await page.goto("/admin/payments");
+  await expect(page.getByText("Hiện không có yêu cầu hoàn tiền nào đang chờ xử lý.")).toBeVisible();
   await page.getByRole("button", { name: "Tra cứu thanh toán & hóa đơn theo hội viên", exact: true }).click();
   await page.getByRole("button", { name: "Chọn", exact: true }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Cần đối soát — chưa kích hoạt gói" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Thử kích hoạt lại", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^Xác nhận hoàn/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Duyệt hoàn tiền chưa cấp gói", exact: true }).click();
   const dialog = page.getByRole("dialog");
@@ -36,11 +166,13 @@ test("Admin approves an unactivated refund before the cashier records an actual 
   await dialog.getByRole("button", { name: "Duyệt yêu cầu hoàn tiền", exact: true }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByRole("button", { name: "Thử kích hoạt lại", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: /^Yêu cầu hoàn tiền cần xử lý/ }).click();
   await page.getByRole("button", { name: /^Xác nhận hoàn/ }).click();
   await dialog.getByLabel("Mã biên nhận / chuyển khoản").fill("REFUND-AUDIT-01");
   await dialog.getByLabel("Lý do", { exact: true }).fill("Đã chuyển trả tiền thực tế");
   await dialog.getByRole("button", { name: "Xác nhận đã trả tiền", exact: true }).click();
   await expect(dialog).toBeHidden();
+  await expect(page.getByText("Hiện không có yêu cầu hoàn tiền nào đang chờ xử lý.")).toBeVisible();
   expect(writes).toEqual([
     { path: "/payments/review-1/refund/request", body: { reason: "Không thể cấp gói cho giao dịch này" } },
     { path: "/payments/review-1/refund/confirm", body: { reason: "Đã chuyển trả tiền thực tế", reference: "REFUND-AUDIT-01" } },

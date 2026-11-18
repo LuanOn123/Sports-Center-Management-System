@@ -46,6 +46,15 @@ export async function setup(page: Page, role = "RECEPTIONIST", longText = false)
     if (path === "/facilities") return route.fulfill({ json: { success: true, data: [{ id: "facility-a", code: "A", name: "Cơ sở A", isActive: true }, { id: "facility-b", code: "B", name: "Cơ sở B", isActive: true }] } });
     if (/^\/facilities\/[^/]+$/.test(path)) return route.fulfill({ json: { success: true, data: { id: "facility-a", staffs: [] } } });
     const coursePlanMatch = path.match(/^\/classes\/([^/]+)\/course-plan$/);
+    if (/^\/classes\/[^/]+\/registrations$/.test(path))
+      return route.fulfill({
+        json: {
+          success: true,
+          data: {
+            members: [{ memberId: "roster-member", fullName: "Nguyễn An", email: "an@example.test", bookedSessions: 4, completedSessions: 0 }],
+          },
+        },
+      });
     if (coursePlanMatch && route.request().method() === "GET") {
       const classId = coursePlanMatch[1];
       const starts = [

@@ -130,6 +130,12 @@
     "parameters": [
       {
         "in": "query",
+        "name": "refundPending",
+        "description": "When true, returns successful payments with a refund request awaiting processing.",
+        "schema": { "type": "string", "enum": ["true", "false"] }
+      },
+      {
+        "in": "query",
         "name": "memberId",
         "schema": {
           "type": "string"
@@ -156,6 +162,17 @@
           "enum": [
             "CASH",
             "BANK_TRANSFER"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "refundPending",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
           ]
         }
       },
@@ -1650,6 +1667,129 @@
       "400",
       "401",
       "403",
+      "500"
+    ]
+  },
+  "GET /classes": {
+    "path": "/classes",
+    "method": "GET",
+    "summary": "Get list of classes",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "query",
+        "name": "search",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Search by class name"
+      },
+      {
+        "in": "query",
+        "name": "sportId",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Filter by sport"
+      },
+      {
+        "in": "query",
+        "name": "classType",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "REGULAR",
+            "PREMIUM"
+          ]
+        },
+        "description": "Filter by class tier (REGULAR | PREMIUM)"
+      },
+      {
+        "in": "query",
+        "name": "areaType",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "POOL",
+            "INDOOR",
+            "OUTDOOR"
+          ]
+        },
+        "description": "Filter by area type (POOL | INDOOR | OUTDOOR)"
+      },
+      {
+        "in": "query",
+        "name": "coachId",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Filter by coach (CoachProfile.id)"
+      },
+      {
+        "in": "query",
+        "name": "attendancePolicy",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "FIXED",
+            "RECURRING"
+          ]
+        },
+        "description": "Filter by attendance policy (FIXED | RECURRING)"
+      },
+      {
+        "in": "query",
+        "name": "isActive",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer",
+          "default": 1
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer",
+          "default": 10
+        }
+      },
+      {
+        "name": "X-Facility-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."
+      },
+      {
+        "in": "query",
+        "name": "termId",
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "401",
       "500"
     ]
   }

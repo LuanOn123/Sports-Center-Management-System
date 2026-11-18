@@ -82,6 +82,9 @@ async function fixture(page: Page, initiallyRegistered = false) {
       isFullyRegistered: state.registered && !state.cancelledSession,
     },
   });
+  await page.route("**/api/v1/classes/*/training-plans", (route) =>
+    route.fulfill({ json: { success: true, data: { plans: [] } } }),
+  );
   await page.route("**/api/v1/classes/c1/course-plan", async (route) => {
     if (state.posts) {
       state.refreshes++;
@@ -204,10 +207,9 @@ test("keeps the committed registration visible if refreshing the course fails", 
   await expect(
     page.getByRole("button", { name: "Đã đăng ký trọn khóa", exact: true }),
   ).toBeDisabled();
-  await expect(page.getByRole("alert")).toContainText(
-    "Không thể tải lại khóa học",
-    { timeout: 15000 },
-  );
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Không thể tải lại khóa học" }),
+  ).toBeVisible({ timeout: 15_000 });
   await expect(
     page.getByRole("button", { name: "Đã đăng ký trọn khóa", exact: true }),
   ).toBeDisabled();

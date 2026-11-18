@@ -70,16 +70,39 @@ for (const result of ["SUCCESS", "FAILED"] as const) {
   }) => {
     await setup(page, "MEMBER");
     const payment = checkout(result);
+    let activated = false;
+    await page.route("**/api/v1/subscriptions/member/**", (route) =>
+      route.fulfill({
+        json: {
+          success: true,
+          data: activated
+            ? [
+                {
+                  id: "paid-sub",
+                  planNameSnapshot: "Membership Monthly",
+                  tier: "MEMBERSHIP",
+                  status: "ACTIVE",
+                  startDate: "2020-01-01T00:00:00Z",
+                  endDate: "2099-01-01T00:00:00Z",
+                },
+              ]
+            : [],
+        },
+      }),
+    );
     await page.route("**/api/v1/payments/sepay/checkout", (route) =>
       route.fulfill({ status: 201, json: { success: true, data: payment } }),
     );
-    await page.route(`**/api/v1/payments/sepay/${payment.paymentId}`, (route) =>
-      route.fulfill({
+    await page.route(`**/api/v1/payments/sepay/${payment.paymentId}`, (route) => {
+      activated = result === "SUCCESS";
+      return route.fulfill({
         json: { success: true, data: { ...payment, status: result } },
-      }),
-    );
+      });
+    });
 
     await page.goto("/member/membership");
+    const profile = page.getByRole("button", { name: /Menu hồ sơ của/ });
+    await expect(profile).toContainText("Chưa có gói hiệu lực");
     await page
       .locator('button:has-text("Chuyển khoản VietQR"):not([disabled])')
       .first()
@@ -91,6 +114,11 @@ for (const result of ["SUCCESS", "FAILED"] as const) {
         { exact: true },
       ),
     ).toBeVisible();
+    await expect(profile).toContainText(
+      result === "SUCCESS"
+        ? "Membership Monthly"
+        : "Chưa có gói hiệu lực",
+    );
   });
 }
 
@@ -202,4 +230,39 @@ test("received funds require review until activation succeeds", async ({
   await expect(
     dialog.getByText("Thanh toán thành công!", { exact: true }),
   ).toBeVisible();
+});
+
+test("late SePay transfer tells the member to retain proof for a refund", async ({
+  page,
+}) => {
+  await setup(page, "MEMBER");
+  const payment = checkout("LATE");
+  await page.route("**/api/v1/payments/sepay/checkout", (route) =>
+    route.fulfill({ status: 201, json: { success: true, data: payment } }),
+  );
+  await page.route(`**/api/v1/payments/sepay/${payment.paymentId}`, (route) =>
+    route.fulfill({
+      json: {
+        success: true,
+        data: {
+          ...payment,
+          status: "SUCCESS",
+          activationStatus: "REQUIRES_REVIEW",
+          reviewReason: "LATE_PAYMENT",
+        },
+      },
+    }),
+  );
+
+  await page.goto("/member/membership");
+  await page
+    .getByRole("button", { name: "Chuyển khoản VietQR", exact: true })
+    .first()
+    .click();
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByText("Đã nhận thanh toán — đang đối soát", { exact: true }),
+  ).toBeVisible();
+  await expect(dialog.getByText(/giữ biên lai.*đối soát hoàn tiền/)).toBeVisible();
+  await expect(dialog.getByText("Thanh toán thành công!", { exact: true })).toHaveCount(0);
 });
