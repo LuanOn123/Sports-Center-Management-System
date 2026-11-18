@@ -326,6 +326,7 @@ async function apiRequest<T = RecordData>(
 export function mutationSuccessMessage(key: string): string {
   if (key === "POST /auth/register") return "Đã tạo tài khoản thành công.";
   if (key === "POST /facilities/{facilityId}/staff") return "Đã phân công";
+  if (key === "POST /feedbacks") return "Đã lưu đánh giá";
   if (/coaches\/support/.test(key)) return "Đã phân công HLV phụ.";
   if (/\/coaches$|\/staff$/.test(key) && key.includes("{id}"))
     return "Đã lưu phân công nhân sự.";

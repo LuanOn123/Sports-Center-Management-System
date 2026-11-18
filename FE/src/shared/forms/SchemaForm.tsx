@@ -12,6 +12,7 @@ import { ErrorState, Loading } from "../feedback";
 import { allPages } from "../pagedApi";
 import { AreaTypePicker } from "./AreaTypePicker";
 import { UserFacilityField } from "./UserFacilityField";
+import { MemberSearchSelect } from "./MemberSearchSelect";
 import "./form-design.css";
 const lookupPaths: Record<string, string> = {
   sportId: "/sports",
@@ -504,7 +505,9 @@ export function SchemaForm({
                   {label(k)}
                   {required && <b className="required">{"\u00a0"}*</b>}
                 </span>
-                {choices[k] ? (
+                {choices[k] && k === "memberId" ? (
+                  <MemberSearchSelect options={choices[k]} value={String(value || "")} required={required} onChange={(next) => change(k, next)} />
+                ) : choices[k] ? (
                   <select
                     aria-invalid={
                       (error instanceof ApiError &&

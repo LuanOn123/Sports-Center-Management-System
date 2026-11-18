@@ -7,6 +7,7 @@ import { getFacilityId } from "./facility";
 import { Empty, ErrorState, Loading } from "./ui";
 import { Clock3, DoorOpen, MapPin, ScanLine } from "lucide-react";
 import { QrCameraScanner } from "./QrCameraScanner";
+import { MemberSearchSelect } from "./forms/MemberSearchSelect";
 import "./operation-surfaces.css";
 
 type Visit = {
@@ -19,7 +20,7 @@ type Visit = {
 type Member = {
   id: string;
   userId?: string;
-  user?: { id?: string; fullName: string; email: string };
+  user?: { id?: string; fullName: string; email: string; phone?: string };
 };
 
 /** Mã QR thẻ hội viên (app mobile) chứa userId; lễ tân cũng có thể nhập id hồ sơ — BE nhận cả hai. */
@@ -175,21 +176,15 @@ export function FacilityVisits({ staff = false }: { staff?: boolean }) {
         {staff && (
           <label>
             Hoặc chọn hội viên
-            <select
+            <MemberSearchSelect
+              options={(members.data?.data || []).map((member) => ({ value: member.id, label: `${member.user?.fullName || ""} · ${member.user?.email || ""}`, searchText: member.user?.phone }))}
               value={memberId}
               disabled={checkIn.isPending}
-              onChange={(event) => {
-                setMemberId(event.target.value);
+              onChange={(value) => {
+                setMemberId(value);
                 checkIn.reset();
               }}
-            >
-              <option value="">Chọn hội viên</option>
-              {members.data?.data.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.user?.fullName} · {member.user?.email}
-                </option>
-              ))}
-            </select>
+            />
           </label>
         )}
         {members.error && (

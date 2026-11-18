@@ -9,6 +9,54 @@ import { getRevenueReport } from "../../src/modules/reports/reports.service.js";
 import { findRefundReceptionist } from "../../src/modules/notifications/notifications.service.js";
 import { cancelPaymentRefund } from "../../src/modules/payments/refunds.service.js";
 import { requestContext } from "../../src/config/request-context.js";
+import { completeSchedule } from "../../src/modules/class-schedules/class-schedules.service.js";
+import { feedbackEligibility, createFeedback } from "../../src/modules/feedbacks/feedbacks.service.js";
+
+cases("BR-MEMBER-COURSE-REVIEW", [
+  ["chưa học không được đánh giá", [], 0, false],
+  ["đã học nhưng khóa còn buổi chưa kết thúc không được đánh giá", [{ termId: "term-a" }], 1, false],
+  ["khóa trong kỳ đã kết thúc được đánh giá", [{ termId: "term-a" }], 0, true],
+  ["lớp legacy không có kỳ cũng chờ buổi cuối kết thúc", [{ termId: null }], 1, false],
+] as const, async ([, learned, remaining, eligible]) => {
+  await withFixture([
+    [prisma.memberProfile, "findUnique", () => ({ id: "member-a" })],
+    [prisma.classSchedule, "findMany", ({ where, orderBy, take }) => {
+      assert.equal(where.classId, "class-a"); assert.equal(take, 1);
+      assert.deepEqual(orderBy, { endTime: "desc" });
+      assert.equal(where.AND[0].OR[0].coachId, "coach-a");
+      return learned;
+    }],
+    [prisma.classSchedule, "count", ({ where }) => {
+      assert.equal(where.termId, learned[0]?.termId); assert.equal(where.classId, "class-a");
+      assert.deepEqual(where.status, { not: "CANCELLED" }); return remaining;
+    }],
+  ], async () => {
+    assert.equal((await feedbackEligibility("member-user", "coach-a", "class-a")).eligible, eligible);
+    if (!eligible) await assert.rejects(() => createFeedback({ coachId: "coach-a", classId: "class-a", rating: 5, isAnonymous: false }, "member-user"),
+      (error: any) => error.statusCode === 403 && error.errors.code === "FEEDBACK_COURSE_NOT_FINISHED");
+  });
+});
+
+cases("BR-COACH-COMPLETE", [
+  ["HLV không có hồ sơ không được hoàn tất lịch", false, false, "SCHEDULED", 403],
+  ["HLV không được phân công không được hoàn tất lịch", true, false, "SCHEDULED", 403],
+  ["HLV được phân công vẫn không được hoàn tất trước giờ kết thúc", true, true, "SCHEDULED", 400],
+  ["HLV được phân công đọc lại buổi đã hoàn tất không ghi lặp", true, true, "COMPLETED", 0],
+] as const, async ([, hasProfile, assigned, status, errorStatus]) => {
+  await withFixture([
+    [prisma.coachProfile, "findUnique", () => hasProfile ? { id: "coach-a" } : null],
+    [prisma.classSchedule, "findFirst", ({ where }) => {
+      assert.equal(where.id, "schedule-a"); assert.equal(where.OR[0].coachId, "coach-a");
+      return assigned ? { id: "schedule-a" } : null;
+    }],
+    [prisma.classSchedule, "findUnique", () => ({ id: "schedule-a", status, endTime: new Date(Date.now() + 60000) })],
+    [prisma, "$transaction", () => assert.fail("Blocked or repeated completion must not write")],
+  ], async () => {
+    const run = () => completeSchedule("schedule-a", { id: "coach-user", role: "COACH" });
+    if (errorStatus) await assert.rejects(run, (error: any) => error.statusCode === errorStatus);
+    else assert.equal((await run()).status, "COMPLETED");
+  });
+});
 
 cases("BR-PAY-CANCEL-REFUND", [
   ["hủy yêu cầu đang chờ, giữ trạng thái tiền và lưu lý do", "SUCCESS", true, "facility-a", "RECEPTIONIST", "Hội viên gửi nhầm yêu cầu", 0],

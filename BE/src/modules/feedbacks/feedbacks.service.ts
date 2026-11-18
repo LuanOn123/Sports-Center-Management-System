@@ -11,14 +11,44 @@ const feedbackInclude = {
   class: { select: { id: true, name: true } },
 };
 
+/** A course is the class within the term the member actually attended. */
+export async function feedbackEligibility(userId: string, coachId: string, classId?: string) {
+  if (!classId) return { eligible: false, message: "Vui lòng chọn khóa học đã kết thúc để đánh giá." };
+  return requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, async () => {
+    const member = await prisma.memberProfile.findUnique({ where: { userId }, select: { id: true } });
+    if (!member) throw new AppError("Member profile not found", 404);
+    const learned = await prisma.classSchedule.findMany({
+      where: {
+        classId, status: { not: "CANCELLED" }, endTime: { lte: new Date() },
+        AND: [effectiveCoachWhere(coachId), { OR: [
+          { attendances: { some: { memberId: member.id, status: { in: ["PRESENT", "LATE"] } } } },
+          { enrollments: { some: { memberId: member.id, status: "COMPLETED" } } },
+        ] }],
+      },
+      select: { termId: true },
+      orderBy: { endTime: "desc" },
+      take: 1,
+    });
+    for (const termId of new Set(learned.map((session) => session.termId))) {
+      const remaining = await prisma.classSchedule.count({ where: {
+        classId, termId, status: { not: "CANCELLED" }, endTime: { gt: new Date() },
+      } });
+      if (!remaining) return { eligible: true, message: "Khóa học đã kết thúc. Bạn có thể đánh giá huấn luyện viên." };
+    }
+    return { eligible: false, message: "Bạn chỉ có thể đánh giá khi khóa học đã kết thúc và đã tham gia buổi học do HLV này dạy." };
+  });
+}
+
 /**
  * Member tạo feedback cho Coach.
  * Business rules:
- *  - Member phải đã có mặt / hoàn thành ít nhất 1 buổi ĐÃ DIỄN RA do Coach đó thực dạy (R-06).
+ *  - Member phải đã tham gia buổi do Coach thực dạy và khóa trong kỳ gần nhất đã học phải kết thúc.
  *  - Nếu truyền classId: buổi đó phải thuộc đúng lớp.
  *  - Mỗi (memberId, coachId, classId) và mỗi (memberId, coachId) feedback chung chỉ 1 bản (gửi lại = sửa).
  */
 export async function createFeedback(data: CreateFeedbackInput, userId: string) {
+  const eligibility = await feedbackEligibility(userId, data.coachId, data.classId);
+  if (!eligibility.eligible) throw new AppError(eligibility.message, 403, { code: "FEEDBACK_COURSE_NOT_FINISHED" });
   // Tìm memberProfile từ userId
   const memberProfile = await prisma.memberProfile.findUnique({ where: { userId } });
   if (!memberProfile) throw new AppError("Member profile not found", 404);

@@ -20108,6 +20108,8 @@ Responses/status codes:
 
 ## Refund cancellation
 
+`GET /feedbacks/eligibility?coachId=...&classId=...` returns whether a member can review an ended course. `POST /feedbacks` enforces the same rule. The latest term attended with that coach is used; cancelled sessions do not extend the course. Coach evaluations remain associated with individual schedules.
+
 `POST /payments/{id}/refund/cancel` lets the assigned facility receptionist cancel a pending refund with a required `reason` (3–1000 trimmed characters). It retains the successful payment, records an audit entry and member notification, and does not restore cancelled subscriptions or bookings. Returns 409 if the refund was already processed.
 
 ## Verified workflow contracts

@@ -14006,6 +14006,39 @@
           }
         }
       }
+    },
+    "/feedbacks/eligibility": {
+      "get": {
+        "summary": "Check member review eligibility after course completion",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "coachId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "classId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review eligibility"
+          }
+        }
+      }
     }
   }
 }
