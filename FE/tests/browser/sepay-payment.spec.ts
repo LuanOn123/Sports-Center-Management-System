@@ -119,6 +119,11 @@ for (const result of ["SUCCESS", "FAILED"] as const) {
         ? "Membership Monthly"
         : "Chưa có gói hiệu lực",
     );
+    expect(await profile.locator(".member-profile-role").evaluate((row) => {
+      const role = row.firstElementChild!.getBoundingClientRect();
+      const plan = row.lastElementChild!.getBoundingClientRect();
+      return Math.abs(role.top - plan.top) < 1 && plan.left >= role.right;
+    })).toBe(true);
   });
 }
 

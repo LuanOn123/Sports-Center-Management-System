@@ -146,8 +146,8 @@ export function FacilityEditor({
           </div>
           <div className="facility-editor-grid">
             <label>
-              <span>
-                Mã cơ sở <span className="facility-required">*</span>
+              <span className="form-field-label">
+                Mã cơ sở{"\u00a0"}<span className="facility-required">*</span>
               </span>
               <input
                 required
@@ -159,8 +159,8 @@ export function FacilityEditor({
               />
             </label>
             <label>
-              <span>
-                Tên cơ sở <span className="facility-required">*</span>
+              <span className="form-field-label">
+                Tên cơ sở{"\u00a0"}<span className="facility-required">*</span>
               </span>
               <input
                 required

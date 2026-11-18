@@ -463,7 +463,7 @@ export function SchemaForm({
               >
                 <span className="form-field-label">
                   {label(k)}
-                  {required && <b className="required"> *</b>}
+                  {required && <b className="required">{"\u00a0"}*</b>}
                 </span>
                 {choices[k] ? (
                   <select

@@ -112,7 +112,7 @@ export function CreateCoachForm({
       >
         <div className="form-grid">
           <label>
-            Họ và tên *
+            <span className="form-field-label">Họ và tên{"\u00a0"}<span className="required">*</span></span>
             <input
               required
               minLength={2}
@@ -123,7 +123,7 @@ export function CreateCoachForm({
           </label>
 
           <label>
-            Email *
+            <span className="form-field-label">Email{"\u00a0"}<span className="required">*</span></span>
             <input
               required
               type="email"
@@ -191,7 +191,7 @@ export function CreateCoachForm({
           style={{ marginTop: "16px" }}
           disabled={createCoach.isPending}
         >
-          <legend>Bộ môn giảng dạy * (Bắt buộc chọn ít nhất 1 môn)</legend>
+          <legend><span className="form-field-label">Bộ môn giảng dạy{"\u00a0"}<span className="required">*</span> (Bắt buộc chọn ít nhất 1 môn)</span></legend>
           {sportsQuery.isPending ? (
             <Loading />
           ) : sportsQuery.error ? (

@@ -234,7 +234,7 @@ export function ClassForm({
         </label>
         <div className="wide class-sport-field">
           <span className="field-title">
-            Các bộ môn <b className="required">*</b>
+            Các bộ môn{"\u00a0"}<b className="required">*</b>
           </span>
           {sports.isPending ? (
             <Loading />
@@ -311,7 +311,7 @@ export function ClassForm({
           )}
         </div>
         <label className="wide">
-          Phòng tập <b className="required">*</b>
+          <span className="form-field-label">Phòng tập{"\u00a0"}<b className="required">*</b></span>
           <select
             required
             aria-label="Phòng tập cho lớp"

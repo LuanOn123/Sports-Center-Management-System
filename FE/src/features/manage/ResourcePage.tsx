@@ -1048,7 +1048,7 @@ function RoomScheduleTransfer({
       ) : (
         <fieldset className="form-grid" disabled={busy}>
           <label>
-            Phòng đích <b className="required">*</b>
+            <span className="form-field-label">Phòng đích{"\u00a0"}<b className="required">*</b></span>
             <select
               value={targetRoomId}
               onChange={(event) => {

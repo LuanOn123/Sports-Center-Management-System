@@ -403,7 +403,7 @@ export function ActivityPlanner({
               </label>
               {sportMode === "existing" ? (
                 <label>
-                  Bộ môn <b className="required">*</b>
+                  <span className="form-field-label">Bộ môn{"\u00a0"}<b className="required">*</b></span>
                   <select
                     value={sportId}
                     onChange={(event) => setSportId(event.target.value)}
@@ -419,7 +419,7 @@ export function ActivityPlanner({
               ) : (
                 <>
                   <label>
-                    Tên bộ môn <b className="required">*</b>
+                    <span className="form-field-label">Tên bộ môn{"\u00a0"}<b className="required">*</b></span>
                     <input
                       value={sportName}
                       minLength={2}
@@ -500,7 +500,7 @@ export function ActivityPlanner({
             </div>
             <div className="form-grid wide">
               <label>
-                Tên lớp <b className="required">*</b>
+                <span className="form-field-label">Tên lớp{"\u00a0"}<b className="required">*</b></span>
                 <input
                   value={className}
                   minLength={2}
@@ -575,7 +575,7 @@ export function ActivityPlanner({
                 </p>
               )}
               <label>
-                HLV chính <b className="required">*</b>
+                <span className="form-field-label">HLV chính{"\u00a0"}<b className="required">*</b></span>
                 <select
                   disabled={!eligibleCoaches.length}
                   value={coachId}
@@ -611,7 +611,7 @@ export function ActivityPlanner({
                 </select>
               </label>
               <label>
-                Phòng tập <b className="required">*</b>
+                <span className="form-field-label">Phòng tập{"\u00a0"}<b className="required">*</b></span>
                 <select
                   value={roomId}
                   onChange={(event) => setRoomId(event.target.value)}
@@ -639,7 +639,7 @@ export function ActivityPlanner({
             </div>
             <div className="form-grid wide">
               <label>
-                Từ ngày <b className="required">*</b>
+                <span className="form-field-label">Từ ngày{"\u00a0"}<b className="required">*</b></span>
                 <input
                   type="date"
                   value={fromDate}
@@ -647,7 +647,7 @@ export function ActivityPlanner({
                 />
               </label>
               <label>
-                Đến ngày <b className="required">*</b>
+                <span className="form-field-label">Đến ngày{"\u00a0"}<b className="required">*</b></span>
                 <input
                   type="date"
                   min={fromDate}
@@ -657,7 +657,7 @@ export function ActivityPlanner({
               </label>
               <div className="wide">
                 <span className="field-label">
-                  Các khung giờ trong mỗi ngày <b className="required">*</b>
+                  Các khung giờ trong mỗi ngày{"\u00a0"}<b className="required">*</b>
                 </span>
                 <div className="slot-list">
                   {slots.map((slot, slotIndex) => (
@@ -736,7 +736,7 @@ export function ActivityPlanner({
               </div>
               <div className="wide">
                 <span className="field-label">
-                  Học vào các thứ <b className="required">*</b>
+                  Học vào các thứ{"\u00a0"}<b className="required">*</b>
                 </span>
                 <div className="weekday-picker">
                   {weekdays.map(([value, text]) => (

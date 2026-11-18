@@ -248,7 +248,7 @@ export function RegisterPage() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#344054", marginBottom: 4 }}>
-                  Số điện thoại *
+                  <span className="form-field-label">Số điện thoại{"\u00a0"}<span className="required">*</span></span>
                 </label>
                 <div style={{ position: "relative" }}>
                   <Phone size={17} color="#98a2b3" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
@@ -357,7 +357,7 @@ export function RegisterPage() {
             <form onSubmit={handleNormalSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#344054", marginBottom: 4 }}>
-                  Họ và tên *
+                  <span className="form-field-label">Họ và tên{"\u00a0"}<span className="required">*</span></span>
                 </label>
                 <div style={{ position: "relative" }}>
                   <UserIcon size={17} color="#98a2b3" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
@@ -374,7 +374,7 @@ export function RegisterPage() {
 
               <div>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#344054", marginBottom: 4 }}>
-                  Email *
+                  <span className="form-field-label">Email{"\u00a0"}<span className="required">*</span></span>
                 </label>
                 <div style={{ position: "relative" }}>
                   <Mail size={17} color="#98a2b3" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
@@ -391,7 +391,7 @@ export function RegisterPage() {
 
               <div>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#344054", marginBottom: 4 }}>
-                  Mật khẩu (tối thiểu 6 ký tự) *
+                  <span className="form-field-label">Mật khẩu (tối thiểu 6 ký tự){"\u00a0"}<span className="required">*</span></span>
                 </label>
                 <div style={{ position: "relative" }}>
                   <Lock size={17} color="#98a2b3" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
@@ -410,7 +410,7 @@ export function RegisterPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
                   <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#344054", marginBottom: 4 }}>
-                    Số điện thoại *
+                    <span className="form-field-label">Số điện thoại{"\u00a0"}<span className="required">*</span></span>
                   </label>
                   <div style={{ position: "relative" }}>
                     <Phone size={17} color="#98a2b3" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />

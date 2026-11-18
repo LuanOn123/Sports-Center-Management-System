@@ -142,7 +142,7 @@ export function CoachProfileForm({
     >
       <fieldset className="form-grid" disabled={busy}>
         <label>
-          Họ và tên *
+          <span className="form-field-label">Họ và tên{"\u00a0"}<span className="required">*</span></span>
           <input
             required
             minLength={2}
@@ -206,7 +206,7 @@ export function CoachProfileForm({
         </label>
       </fieldset>
       <fieldset disabled={busy}>
-        <legend>Bộ môn giảng dạy * (Bắt buộc chọn ít nhất 1 môn)</legend>
+        <legend><span className="form-field-label">Bộ môn giảng dạy{"\u00a0"}<span className="required">*</span> (Bắt buộc chọn ít nhất 1 môn)</span></legend>
         <CoachSportChoices
           sports={sports.data.sports}
           selected={selected}

@@ -75,16 +75,15 @@ export function ProfileMenu({
       >
         <span className="member-profile-name">
           <strong>{user.fullName}</strong>
-          <small>{user.role === "STAFF" ? "Lễ tân" : display(user.role)}</small>
-          {planStatus && (
-            <small
-              id={`${id}-plan`}
-              className="member-profile-plan"
-              title={planStatus}
-            >
-              {planStatus}
-            </small>
-          )}
+          <small className="member-profile-role">
+            <span>{user.role === "STAFF" ? "Lễ tân" : display(user.role)}</span>
+            {planStatus && (
+              <span className="member-profile-plan">
+                <span aria-hidden="true">· </span>
+                <span id={`${id}-plan`} title={planStatus}>{planStatus}</span>
+              </span>
+            )}
+          </small>
         </span>
         <Avatar user={user} interactive={false} />
         <ChevronDown size={14} aria-hidden="true" />
