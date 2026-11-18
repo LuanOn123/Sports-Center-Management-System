@@ -1656,6 +1656,15 @@ test('QR attendance countdown runs from the moment the request was sent and neve
   // Làm mới định kỳ 55 giây như web, nhỏ hơn hạn 90 giây của mã dự phòng
   const c = loadApp('http://localhost/api/v1').load('constants/attendance');
   assert.equal(c.QR_REFRESH_MS, 55_000); assert.ok(c.QR_REFRESH_MS < 90_000);
+  // Mã QR của HLV phải có viền trắng (quiet zone) trên nền trắng: thiếu viền, mép đen dính vào nền tối của app nên
+  // máy hội viên không tìm ra ô định vị. JWT ~280 ký tự ≈ 65 ô/cạnh → viền ≥ 4 ô và mỗi ô ≥ 3px.
+  const modules = 65;
+  const modulePx = (c.QR_CODE_SIZE - 2 * c.QR_CODE_QUIET_ZONE) / modules;
+  assert.ok(modulePx >= 3, `mỗi ô QR ${modulePx.toFixed(2)}px quá nhỏ`);
+  assert.ok(c.QR_CODE_QUIET_ZONE >= 4 * modulePx, 'viền trắng phải rộng ít nhất 4 ô');
+  assert.ok(c.QR_CODE_SIZE <= 280, 'mã QR phải vừa modal trên máy rộng 360px');
+  const modal = stripComments(readSource('components/coach/AttendanceQrModal.tsx'));
+  assert.match(modal, /<QRCode[\s\S]*quietZone=\{QR_CODE_QUIET_ZONE\}[\s\S]*backgroundColor="#FFFFFF"[\s\S]*\/>/);
 });
 
 test('teaching summary matches the web dashboard: cancelled sessions only count in the totals, charts use non-cancelled sessions', () => {
