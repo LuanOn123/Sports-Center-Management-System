@@ -57,15 +57,8 @@
     ],
     "extra": {
       "router": {
-        "origin": false,
-        "asyncRoutes": {
-          "web": true
-        }
-      },
-      "eas": {
-        "projectId": "4da37e6f-0eb6-4446-bf21-99f74a247f01"
+        "origin": false
       }
-    },
-    "owner": "toan07102001"
+    }
   }
 }
