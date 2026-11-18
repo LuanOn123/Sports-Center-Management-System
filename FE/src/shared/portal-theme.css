@@ -718,6 +718,38 @@ body:has(.portal-theme) {
 .portal-theme dialog > .qr-panel {
   margin: 20px 24px;
 }
+/* Mã QR điểm danh (giao diện tối): thẻ mã QR vẫn nền trắng để camera đọc được */
+.portal-theme .qr-credential {
+  background: var(--member-surface-alt);
+  border-color: var(--member-border);
+}
+.portal-theme .qr-credential-scan .qr-code {
+  background: #fff;
+  border-color: #fff;
+}
+.portal-theme .qr-timer {
+  background: var(--member-success-soft);
+  color: var(--member-success);
+  border: 1px solid var(--member-success-border);
+}
+.portal-theme :is(.qr-manual-label, .qr-manual-hint, .qr-manual-footer) {
+  color: var(--member-muted);
+}
+.portal-theme .qr-manual-code span {
+  background: var(--member-surface);
+  border-color: var(--member-accent-border);
+  color: var(--member-accent);
+}
+.portal-theme .qr-manual-meter {
+  background: var(--member-border);
+}
+.portal-theme .qr-manual-meter span {
+  background: var(--member-accent);
+}
+.portal-theme .qr-manual.is-expired .qr-manual-code span {
+  border-color: var(--member-border);
+  color: var(--member-muted);
+}
 .portal-theme .attendance-shortcut {
   bottom: 24px;
   right: 94px;
