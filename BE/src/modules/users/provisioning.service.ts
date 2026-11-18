@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { checkFacilityCoachLimit } from "../facilities/facility-limits.service.js";
+import { setUserFacility } from "./user-facility.service.js";
 import mongoose from "mongoose";
 import { User } from "../../models/User.js";
 import { MemberProfile } from "../../models/MemberProfile.js";
@@ -112,10 +113,6 @@ export async function provisionAccount(
         role: user!.role as any,
         isActive: false,
       };
-      if (facilityId && data.role === "COACH") {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('facility:coach-limit:' || ${facilityId}::text))`;
-        await checkFacilityCoachLimit(facilityId, tx);
-      }
       await tx.user.upsert({
         where: { id: userId },
         create: { id: userId, ...fields },
@@ -167,23 +164,7 @@ export async function provisionAccount(
           update: {},
         });
       }
-      if (facilityId && ["COACH", "RECEPTIONIST"].includes(data.role))
-        await tx.facilityStaff.upsert({
-          where: {
-            userId_facilityId_role: {
-              userId,
-              facilityId,
-              role: data.role as any,
-            },
-          },
-          create: {
-            userId,
-            facilityId,
-            role: data.role as any,
-            isActive: true,
-          },
-          update: { isActive: true },
-        });
+      if (facilityId) await setUserFacility(tx, userId, data.role, facilityId);
     });
     await User.updateOne(
       { _id: userId, provisioningLeaseToken: leaseToken },

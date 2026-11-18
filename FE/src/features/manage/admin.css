@@ -1,6 +1,28 @@
 .admin-workspace {
   gap: 24px;
 }
+.admin-page-facility-filter {
+  margin-bottom: 24px;
+}
+.portal-theme .button.admin-manager-remove {
+  background: #b42332;
+  border-color: #e05260;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px #b4233226;
+}
+.portal-theme .button.admin-manager-remove:hover:not(:disabled) {
+  background: #971d2a;
+  border-color: #f47d88;
+  color: #fff;
+}
+.portal-theme .button.admin-manager-remove:active:not(:disabled) {
+  background: #7f1823;
+}
+.portal-theme .button.admin-manager-remove:focus-visible {
+  outline: 2px solid #ffb4bd;
+  outline-offset: 3px;
+}
 .admin-overview-hero {
   display: flex;
   justify-content: space-between;

@@ -461,6 +461,14 @@ Authentication: [{"BearerAuth":[]}]
 Parameters:
 ```json
 [
+{
+  "in": "query",
+  "name": "facilityId",
+  "schema": {
+    "type": "string"
+  },
+  "description": "Lọc theo cơ sở phân công, hoặc unassigned cho nhân sự chưa phân công."
+},
   {
     "in": "query",
     "name": "role",
@@ -638,6 +646,7 @@ Request body:
     "role"
   ],
   "properties": {
+    "facilityId": {"type":"string","format":"uuid","nullable":true},
     "email": {
       "type": "string"
     },
@@ -947,6 +956,7 @@ Request body:
 {
   "type": "object",
   "properties": {
+    "facilityId": {"type":"string","format":"uuid","nullable":true},
     "fullName": {
       "type": "string",
       "minLength": 2
@@ -20095,6 +20105,10 @@ Responses/status codes:
   }
 }
 ```
+
+## Refund cancellation
+
+`POST /payments/{id}/refund/cancel` lets the assigned facility receptionist cancel a pending refund with a required `reason` (3–1000 trimmed characters). It retains the successful payment, records an audit entry and member notification, and does not restore cancelled subscriptions or bookings. Returns 409 if the refund was already processed.
 
 ## Verified workflow contracts
 Additional operations and missing bodies/parameters are preserved in workflow-contract-overrides.json, reviewed against the backend checkout. See WORKFLOW_ALIGNMENT.md and BACKEND_SYNC_2026-10-04.md.

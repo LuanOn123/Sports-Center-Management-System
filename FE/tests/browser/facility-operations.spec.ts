@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./fixtures";
 import AxeBuilder from "@axe-core/playwright";
-test("admin has a portal and changing facilities switches API context", async ({
+test("admin defaults to all facilities and can narrow the page context", async ({
   page,
 }) => {
   await setup(page, "ADMIN");
@@ -15,13 +15,13 @@ test("admin has a portal and changing facilities switches API context", async ({
     page.getByRole("heading", { name: "Phòng tập", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("combobox", { name: "Cơ sở đang làm việc" }),
-  ).toHaveValue("facility-a");
+    page.getByRole("combobox", { name: "Lọc dữ liệu cơ sở" }),
+  ).toHaveValue("");
   await page
-    .getByRole("combobox", { name: "Cơ sở đang làm việc" })
+    .getByRole("combobox", { name: "Lọc dữ liệu cơ sở" })
     .selectOption("facility-b");
   await expect.poll(() => headers).toContain("facility-b");
-  expect(headers[0]).toBe("facility-a");
+  expect(headers[0]).toBeUndefined();
 });
 test("member can create a scoped support request", async ({ page }) => {
   await setup(page, "MEMBER");

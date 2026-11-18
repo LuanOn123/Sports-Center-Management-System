@@ -987,3 +987,25 @@ body:has(.portal-theme) .toast-info > svg {
     padding: 20px 16px;
   }
 }
+.current-facility {
+  display: grid;
+  gap: 4px;
+  max-width: 240px;
+  min-width: 0;
+  color: var(--text);
+}
+.current-facility-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.current-facility strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .current-facility { max-width: 120px; }
+  .current-facility strong { font-size: 12px; }
+}

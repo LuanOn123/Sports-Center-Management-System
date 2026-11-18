@@ -599,15 +599,17 @@ export function AdminTerms({ role = "ADMIN" }: { role?: "ADMIN" | "MANAGER" } = 
                   >
                     <Clock size={14} /> Xếp lịch
                   </button>
-                  <button
-                    type="button"
-                    className="button"
-                    style={{ flex: 1, fontSize: 12, padding: "6px 8px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}
-                    onClick={() => navigate(isManager ? "/manager/classes" : "/admin/classes")}
-                    title="Phân công HLV cho các lớp học"
-                  >
-                    <UserCheck size={14} /> Gán HLV
-                  </button>
+                  {isManager && (
+                    <button
+                      type="button"
+                      className="button"
+                      style={{ flex: 1, fontSize: 12, padding: "6px 8px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}
+                      onClick={() => navigate("/manager/classes")}
+                      title="Phân công HLV cho các lớp học"
+                    >
+                      <UserCheck size={14} /> Gán HLV
+                    </button>
+                  )}
                 </div>
 
                 {(() => {

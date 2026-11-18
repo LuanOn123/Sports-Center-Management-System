@@ -7,6 +7,48 @@ import { SepayWebhookSchema, UpdatePaymentStatusSchema } from "../../src/modules
 import { updatePaymentStatus } from "../../src/modules/payments/payments.service.js";
 import { getRevenueReport } from "../../src/modules/reports/reports.service.js";
 import { findRefundReceptionist } from "../../src/modules/notifications/notifications.service.js";
+import { cancelPaymentRefund } from "../../src/modules/payments/refunds.service.js";
+import { requestContext } from "../../src/config/request-context.js";
+
+cases("BR-PAY-CANCEL-REFUND", [
+  ["hủy yêu cầu đang chờ, giữ trạng thái tiền và lưu lý do", "SUCCESS", true, "facility-a", "RECEPTIONIST", "Hội viên gửi nhầm yêu cầu", 0],
+  ["không hủy giao dịch đã trả tiền", "REFUNDED", true, "facility-a", "RECEPTIONIST", "Hội viên gửi nhầm yêu cầu", 409],
+  ["không hủy lặp yêu cầu đã xử lý", "SUCCESS", false, "facility-a", "RECEPTIONIST", "Hội viên gửi nhầm yêu cầu", 409],
+  ["không xử lý yêu cầu cơ sở khác", "SUCCESS", true, "facility-b", "RECEPTIONIST", "Hội viên gửi nhầm yêu cầu", 403],
+  ["không cho hội viên tự dùng API của lễ tân", "SUCCESS", true, "facility-a", "MEMBER", "Hội viên gửi nhầm yêu cầu", 403],
+  ["không nhận lý do chỉ có khoảng trắng", "SUCCESS", true, "facility-a", "RECEPTIONIST", "   ", 400],
+] as const, async ([, status, pending, facilityId, role, reason, errorStatus]) => {
+  const original = { id: "payment-a", status, facilityId: "facility-a", refundRequestedAt: pending ? new Date("2026-11-18") : null,
+    refundRequestedAmount: 90000, refundReason: "Lý do gốc", member: { userId: "member-a" } };
+  const writes: string[] = [];
+  const tx = {
+    $executeRaw: async () => 1,
+    payment: {
+      findUnique: async () => original,
+      updateMany: async ({ where, data }: any) => {
+        assert.deepEqual(where, { id: original.id, status: "SUCCESS", refundRequestedAt: original.refundRequestedAt });
+        assert.deepEqual(data, { refundRequestedAt: null, refundRequestedAmount: null, refundReason: null });
+        writes.push("payment"); return { count: 1 };
+      },
+      findUniqueOrThrow: async () => ({ ...original, refundRequestedAt: null }),
+    },
+    auditLog: { create: async ({ data }: any) => {
+      assert.equal(data.reason, reason.trim()); assert.equal(data.action, "cancelRefund");
+      assert.equal(data.before.refundRequestedAmount, 90000); writes.push("audit");
+    } },
+    notification: { create: async ({ data }: any) => {
+      assert.equal(data.userId, "member-a"); assert.equal(data.reason, reason.trim()); writes.push("notification");
+    } },
+  };
+  await withFixture([[prisma, "$transaction", async (callback) => callback(tx)]], async () => {
+    await requestContext.run({ facilityId }, async () => {
+      const run = () => cancelPaymentRefund(original.id, reason, { id: "reception-a", role });
+      if (errorStatus) await assert.rejects(run, (error: any) => error.statusCode === errorStatus);
+      else assert.equal((await run()).status, "SUCCESS");
+    });
+  });
+  assert.deepEqual(writes, errorStatus ? [] : ["payment", "audit", "notification"]);
+});
 
 cases("BR-PAY-REFUND-RECEPTION", [
   ["chọn lễ tân được phân công đúng cơ sở", "facility-a", { id: "reception-a", fullName: "Lễ tân A" }],

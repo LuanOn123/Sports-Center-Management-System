@@ -2,6 +2,7 @@ import { RefreshToken } from "../../models/RefreshToken.js";
 import { requestContext } from "../../config/request-context.js";
 import { effectiveCoachWhere } from "../operations/effective-coaches.js";
 import { provisionAccount } from "./provisioning.service.js";
+import { setUserFacility } from "./user-facility.service.js";
 import { synchronizeUserProjection } from "./user-projection.service.js";
 import { staffAssignmentView } from "../facilities/staff-assignment-view.js";
 import { User } from "../../models/User.js";
@@ -52,6 +53,23 @@ export async function listUsers(query: UserQueryInput) {
 
   const filter: any = {};
   if (query.role) filter.role = query.role;
+  if (query.facilityId) {
+    const assignments = await prisma.facilityStaff.findMany({
+      where: {
+        isActive: true,
+        facility: { isActive: true },
+        ...(query.facilityId === "unassigned" ? {} : { facilityId: query.facilityId }),
+      },
+      select: { userId: true },
+    });
+    filter._id = {
+      [query.facilityId === "unassigned" ? "$nin" : "$in"]: assignments.map((row) => row.userId),
+    };
+    if (query.facilityId === "unassigned") {
+      if (query.role && !["MANAGER", "COACH", "RECEPTIONIST"].includes(query.role)) filter._id = { $in: [] };
+      else filter.role = query.role ?? { $in: ["MANAGER", "COACH", "RECEPTIONIST"] };
+    }
+  }
   if (query.isActive !== undefined) filter.isActive = query.isActive === "true";
   if (query.search) {
     filter.$or = [
@@ -95,10 +113,20 @@ export async function listUsers(query: UserQueryInput) {
 }
 
 export async function createUser(data: CreateUserInput, facilityId?: string) {
+  const targetFacility = facilityId ?? data.facilityId ?? undefined;
+  if (targetFacility) {
+    if (!["MANAGER", "COACH", "RECEPTIONIST"].includes(data.role))
+      throw new AppError("Chỉ phân công cơ sở cho Quản lý, HLV hoặc Lễ tân.", 400);
+    const target = await prisma.facility.findUnique({ where: { id: targetFacility } });
+    if (!target?.isActive) throw new AppError("Cơ sở không tồn tại hoặc đã ngừng hoạt động.", 400);
+    if (data.role === "MANAGER" && await prisma.facilityStaff.findFirst({
+      where: { facilityId: targetFacility, role: "MANAGER", isActive: true },
+    })) throw new AppError("Cơ sở đã có quản lý phụ trách.", 409);
+  }
   const sportIds = [...new Set(data.sportIds ?? [])];
   if (data.role === "COACH" && (!sportIds.length || await prisma.sport.count({ where: { id: { in: sportIds }, isActive: true } }) !== sportIds.length))
     throw new AppError("Vui lòng chọn bộ môn đang hoạt động cho HLV.", 400);
-  const userId = await provisionAccount({ ...data, sportIds }, facilityId);
+  const userId = await provisionAccount({ ...data, sportIds }, targetFacility);
   return buildUserResponse(userId);
 }
 
@@ -162,6 +190,7 @@ async function updateUserInternal(id: string, data: UpdateUserInput, requesterId
   const updateData: any = { ...data };
   if (data.dateOfBirth) updateData.dateOfBirth = new Date(data.dateOfBirth);
   delete updateData.role; // role change handled separately below
+  delete updateData.facilityId;
 
   await User.updateOne({ _id: id }, updateData);
 
@@ -220,6 +249,14 @@ export async function updateUser(id: string, data: UpdateUserInput, requesterId:
   return prisma.$transaction(async tx => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('users:administration'))`;
     if (data.isActive === false || (data.role && data.role !== (await User.findById(id))?.role)) await assertAccountCanDeactivate(id, tx);
+    if (data.facilityId !== undefined) {
+      const account = await User.findById(id);
+      if (!account) throw new AppError("User not found", 404);
+      const role = data.role ?? account.role;
+      if (role !== account.role) throw new AppError("Hãy lưu thay đổi vai trò trước khi chuyển cơ sở.", 409);
+      if (data.isActive === false || !account.isActive) throw new AppError("Chỉ phân công tài khoản đang hoạt động.", 409);
+      await setUserFacility(tx, id, role, data.facilityId);
+    }
     return updateUserInternal(id, data, requesterId);
   });
 }

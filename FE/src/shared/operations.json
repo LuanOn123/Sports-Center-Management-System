@@ -260,6 +260,14 @@
         "schema": {
           "type": "integer"
         }
+      },
+      {
+        "in": "query",
+        "name": "facilityId",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Lọc theo cơ sở phân công, hoặc unassigned cho nhân sự chưa phân công."
       }
     ],
     "body": null,
@@ -325,6 +333,12 @@
         "trainingPreference": {
           "type": "string",
           "description": "Role MEMBER only"
+        },
+        "facilityId": {
+          "type": "string",
+          "format": "uuid",
+          "nullable": true,
+          "description": "Cơ sở phân công cho MANAGER, COACH hoặc RECEPTIONIST. null để gỡ phân công khi chỉnh sửa."
         }
       }
     },
@@ -418,6 +432,12 @@
             "MANAGER",
             "ADMIN"
           ]
+        },
+        "facilityId": {
+          "type": "string",
+          "format": "uuid",
+          "nullable": true,
+          "description": "Cơ sở phân công cho MANAGER, COACH hoặc RECEPTIONIST. null để gỡ phân công khi chỉnh sửa."
         }
       },
       "required": []
@@ -1922,7 +1942,13 @@
         "in": "query",
         "name": "refundPending",
         "description": "When true, returns successful payments with a refund request awaiting processing.",
-        "schema": { "type": "string", "enum": ["true", "false"] }
+        "schema": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ]
+        }
       },
       {
         "in": "query",
@@ -1960,7 +1986,10 @@
         "name": "refundPending",
         "schema": {
           "type": "string",
-          "enum": ["true", "false"]
+          "enum": [
+            "true",
+            "false"
+          ]
         }
       },
       {
@@ -9736,6 +9765,45 @@
     "statusCodes": [
       "200",
       "400",
+      "403",
+      "409"
+    ]
+  },
+  "POST /payments/{id}/refund/cancel": {
+    "path": "/payments/{id}/refund/cancel",
+    "method": "POST",
+    "summary": "Receptionist cancels a pending refund with a required reason",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "required": [
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 1000
+        }
+      }
+    },
+    "statusCodes": [
+      "200",
       "403",
       "409"
     ]

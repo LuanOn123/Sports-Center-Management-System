@@ -31,7 +31,7 @@ import { Policies } from "./Policies";
 import { QuickActions } from "./QuickActions";
 import { HelpPanel } from "./HelpPanel";
 import { ConnectionStatus } from "./ConnectionStatus";
-import { FacilityPicker } from "./FacilityBoundary";
+import { CurrentFacility, FacilityPicker } from "./FacilityBoundary";
 export type NavigationItem = readonly [
   path: string,
   name: string,
@@ -217,7 +217,7 @@ export function PortalLayout({
             <strong>{pageTitle}</strong>
           </div>
           <div className="topbar-actions">
-            <FacilityPicker />
+            {user.role !== "ADMIN" && <CurrentFacility />}
             <HelpPanel role={user.role} base={base} />
             <NotificationBell base={base} role={user.role} />
             {accountMenu ? (
@@ -249,6 +249,12 @@ export function PortalLayout({
           </div>
         </header>
         <main id="main-content" tabIndex={-1}>
+          {user.role === "ADMIN" &&
+            ["rooms", "classes", "schedules", "payments", "audit"].includes(location.pathname.split("/")[2] || "") && (
+              <div className="admin-page-facility-filter">
+                <FacilityPicker label="Lọc dữ liệu cơ sở" accessibleLabel="Lọc dữ liệu cơ sở" />
+              </div>
+            )}
           <ConnectionStatus />
           {location.pathname === `${base}/notifications` ? (
             <Notifications role={user.role} />

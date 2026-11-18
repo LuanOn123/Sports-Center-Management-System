@@ -18,6 +18,7 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
   const [paymentId, setPaymentId] = useState("");
   const [status, setStatus] = useState("");
   const [refund, setRefund] = useState<RecordData | null>(null);
+  const [cancelRefund, setCancelRefund] = useState<RecordData | null>(null);
   const [exception, setException] = useState<RecordData | null>(null);
   const id = String(member?.id || "");
 
@@ -102,6 +103,7 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
       {refund && (
         <RefundConfirmation payment={refund} onClose={() => setRefund(null)} />
       )}
+      {cancelRefund && <RefundCancellation payment={cancelRefund} onClose={() => setCancelRefund(null)} />}
       {exception && (
         <ExceptionRefund
           payment={exception}
@@ -154,6 +156,11 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
                     >
                       Xác nhận hoàn {money(row.refundRequestedAmount || row.amount)}
                     </button>
+                    {role === "RECEPTIONIST" && (
+                      <button type="button" className="button small danger" onClick={() => setCancelRefund(row)}>
+                        Hủy yêu cầu hoàn
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="button small"
@@ -549,6 +556,42 @@ function RefundConfirmation({
               }
             >
               {save.isPending ? "Đang xác nhận…" : "Xác nhận đã trả tiền"}
+            </button>
+          </div>
+        </fieldset>
+      </form>
+    </Modal>
+  );
+}
+
+function RefundCancellation({ payment, onClose }: { payment: RecordData; onClose: () => void }) {
+  const [reason, setReason] = useState("");
+  const cache = useQueryClient();
+  const save = useMutation({
+    mutationFn: () => api("POST /payments/{id}/refund/cancel", {
+      params: { id: String(payment.id) }, body: { reason: reason.trim() },
+    }),
+    onSuccess: async () => { await cache.invalidateQueries(); onClose(); },
+  });
+  return (
+    <Modal title="Hủy yêu cầu hoàn tiền" onClose={onClose} dismissible={!save.isPending}>
+      <form className="manager-config-form" onSubmit={(event) => {
+        event.preventDefault();
+        if (!save.isPending && reason.trim().length >= 3) save.mutate();
+      }}>
+        <p>Hủy yêu cầu hoàn {money(payment.refundRequestedAmount)} cho giao dịch #{String(payment.id)}.
+          Hội viên sẽ nhận thông báo kèm lý do. Gói và lịch học đã hủy sẽ không được khôi phục tự động.</p>
+        <fieldset disabled={save.isPending}>
+          <label>
+            <span className="form-field-label">Lý do hủy yêu cầu hoàn <span className="required">*</span></span>
+            <textarea required minLength={3} maxLength={1000} value={reason}
+              onChange={(event) => setReason(event.target.value)} placeholder="Nhập lý do hủy yêu cầu hoàn tiền" />
+          </label>
+          {save.error && <ErrorState error={save.error} />}
+          <div className="modal-footer">
+            <button type="button" className="button" onClick={onClose}>Quay lại</button>
+            <button type="submit" className="button danger" disabled={save.isPending || reason.trim().length < 3}>
+              {save.isPending ? "Đang hủy…" : "Xác nhận hủy yêu cầu"}
             </button>
           </div>
         </fieldset>

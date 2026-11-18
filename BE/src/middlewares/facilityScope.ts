@@ -9,12 +9,6 @@ export async function checkFacilityScope(
 ) {
   try {
     if (!req.user) throw new AppError("Unauthorized", 401);
-    const path = req.originalUrl?.split("?")[0];
-    // This exact Admin report is global by contract; other resources still require a facility.
-    if (req.method === "GET" && req.user.role === "ADMIN" && req.query.facilityId === undefined &&
-      ["/api/v1/reports/memberships", "/reports/memberships"].includes(path)) {
-      return requestContext.run({ actorId: req.user.id, role: "ADMIN" }, next);
-    }
     if (req.user.role === "MANAGER" || req.user.role === "RECEPTIONIST") {
       const roleName = req.user.role;
       const assignments = await prisma.facilityStaff.findMany({
@@ -53,6 +47,24 @@ export async function checkFacilityScope(
       req.body?.facilityId,
       req.get("X-Facility-Id"),
     ].filter((v) => v !== undefined);
+    if (req.user.role === "ADMIN" && candidates.length === 0) {
+      if (req.method === "GET")
+        return requestContext.run({ actorId: req.user.id, role: "ADMIN" }, next);
+      const parts = (req.originalUrl?.split("?")[0] || "").replace(/^\/api\/v1\//, "").split("/");
+      const [resource, resourceId] = parts;
+      if (["sports", "subjects", "membership-plans", "subscriptions"].includes(resource))
+        return requestContext.run({ actorId: req.user.id, role: "ADMIN" }, next);
+      let storedFacility: string | undefined;
+      if (resourceId) {
+        if (resource === "rooms")
+          storedFacility = (await prisma.room.findUnique({ where: { id: resourceId }, select: { facilityId: true } }))?.facilityId;
+        else if (resource === "classes")
+          storedFacility = (await prisma.class.findUnique({ where: { id: resourceId }, select: { facilityId: true } }))?.facilityId;
+        else if (resource === "payments")
+          storedFacility = (await prisma.payment.findUnique({ where: { id: resourceId }, select: { facilityId: true } }))?.facilityId ?? undefined;
+      }
+      if (storedFacility) candidates.push(storedFacility);
+    }
     if (
       !candidates.length ||
       candidates.some((v) => typeof v !== "string" || !v.trim())
@@ -66,8 +78,7 @@ export async function checkFacilityScope(
     });
     const adminFacilityMaintenance =
       req.user.role === "ADMIN" &&
-      req.params.facilityId &&
-      ["GET", "PUT", "DELETE"].includes(req.method);
+      (req.method === "GET" || req.params.facilityId && ["PUT", "DELETE"].includes(req.method));
     if (!facility || (!facility.isActive && !adminFacilityMaintenance))
       throw new AppError("FORBIDDEN_SCOPE", 403);
     if (req.user.role !== "ADMIN" && req.user.role !== "MEMBER") {
