@@ -205,14 +205,21 @@ async function completeChat(messages: ChatCompletionMessageParam[]) {
   try {
     const chatCompletion = await groq.chat.completions.create({
       messages,
-      model: process.env.GROQ_MODEL || "qwen/qwen3.8-27b",
+      model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
       temperature: 0.5,
-      max_completion_tokens: 1800,
+      max_completion_tokens: Number(process.env.GROQ_MAX_TOKENS) || 800,
     });
     const answer = chatCompletion.choices[0]?.message?.content?.trim();
     if (!answer) throw new Error("Empty completion");
     return answer;
-  } catch {
+  } catch (err: unknown) {
+    console.error("[Groq AI Error]", err);
+    if (err && typeof err === "object" && ("status" in err || "code" in err)) {
+      const errorObj = err as { status?: number; code?: string; message?: string };
+      if (errorObj.status === 429 || errorObj.code === "rate_limit_exceeded") {
+        throw new AppError("Dịch vụ AI đang quá tải lượt yêu cầu (Rate Limit). Vui lòng thử lại sau 1 phút.", 429);
+      }
+    }
     throw new AppError("Dịch vụ AI hiện chưa phản hồi. Vui lòng thử lại sau.", 502);
   }
 }
