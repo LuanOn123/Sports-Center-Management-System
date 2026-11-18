@@ -1,7 +1,7 @@
 import { EquipmentFields, equipmentValues } from "./EquipmentFields";
-import { CreateCoachForm } from "./CreateCoachForm";
+import { CreateCoachForm, type CoachDraft } from "./CreateCoachForm";
 import { classSports } from "../sports";
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Check, LoaderCircle } from "lucide-react";
@@ -11,6 +11,8 @@ import { at, label } from "../config";
 import { ErrorState, Loading } from "../feedback";
 import { allPages } from "../pagedApi";
 import { AreaTypePicker } from "./AreaTypePicker";
+import { UserFacilityField } from "./UserFacilityField";
+import { MemberSearchSelect } from "./MemberSearchSelect";
 import "./form-design.css";
 const lookupPaths: Record<string, string> = {
   sportId: "/sports",
@@ -94,8 +96,10 @@ export function SchemaForm({
   onBusyChange,
   onSuccess,
   onCancel,
+  requestFacilityId,
 }: {
   operation: string;
+  requestFacilityId?: string;
   profileRole?: string;
   params?: Record<string, string>;
   initial?: RecordData;
@@ -114,7 +118,9 @@ export function SchemaForm({
     ...Object.fromEntries(
       Object.entries(schema?.properties || {}).map(([k, s]) => [
         k,
-        k === "areaTypes" && /\/sports(?:\/|$)/.test(operation)
+        k === "facilityId" && /^(POST \/users|PATCH \/users\/\{id\})$/.test(operation)
+          ? String(initial.facilityId ?? at(initial, "facilityAssignments.0.facility.id") ?? "")
+          : k === "areaTypes" && /\/sports(?:\/|$)/.test(operation)
           ? Array.isArray(initial[k])
             ? String(initial[k][0] || "INDOOR")
             : String(initial[k] || "INDOOR")
@@ -154,12 +160,24 @@ export function SchemaForm({
     );
   const change = (k: string, v: unknown) =>
     setValues((prev) => ({ ...prev, [k]: v }));
+  const saveCoachDraft = useCallback((draft: CoachDraft) => {
+    setValues((prev) => ({ ...prev, ...draft }));
+  }, []);
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (busy) return;
     setError(undefined);
     const body: RecordData = {};
     for (const [k, s] of Object.entries(schema!.properties || {})) {
+      if (k === "facilityId" && operation.includes("/users")) {
+        const selected = String(values.facilityId ?? "");
+        const original = String(initial.facilityId ?? at(initial, "facilityAssignments.0.facility.id") ?? "");
+        if (["MANAGER", "COACH", "RECEPTIONIST"].includes(String(values.role)) &&
+          (operation === "POST /users" ? Boolean(selected) : values.role === initial.role && selected !== original)) {
+          body.facilityId = selected || null;
+        }
+        continue;
+      }
       if (k === "timezone" && operation.includes("/facilities")) continue;
       if (
         attendancePolicyLocked &&
@@ -327,7 +345,7 @@ export function SchemaForm({
     setBusy(true);
     onBusyChange?.(true);
     try {
-      await api(operation, { params, body });
+      await api(operation, { params, facilityId: requestFacilityId, body: requestFacilityId ? { ...body, facilityId: requestFacilityId } : body });
       onSuccess();
     } catch (e) {
       setError(e);
@@ -340,7 +358,7 @@ export function SchemaForm({
     return (
       <>
         {!("role" in fixed) && (
-          <label>
+          <label className="create-coach-role">
             Vai trò
             <select
               value="COACH"
@@ -357,6 +375,18 @@ export function SchemaForm({
         )}
         <CreateCoachForm
           system
+          initial={{
+            facilityId: String(values.facilityId ?? ""),
+            fullName: String(values.fullName ?? ""),
+            email: String(values.email ?? ""),
+            password: String(values.password ?? ""),
+            phone: String(values.phone ?? ""),
+            gender: values.gender === "FEMALE" || values.gender === "OTHER" ? values.gender : "MALE",
+            experienceYears: String(values.experienceYears ?? ""),
+            bio: String(values.bio ?? ""),
+            sportIds: Array.isArray(values.sportIds) ? values.sportIds.map(String) : [],
+          }}
+          onDraftChange={saveCoachDraft}
           onClose={onSuccess}
           onCancel={onCancel}
           onBusyChange={(value) => {
@@ -393,7 +423,17 @@ export function SchemaForm({
         </p>
       )}
       <fieldset className="form-grid" disabled={busy}>
+        {["POST /users", "PATCH /users/{id}"].includes(operation) &&
+          ["MANAGER", "COACH", "RECEPTIONIST"].includes(String(values.role)) && (
+            <div>
+              <UserFacilityField value={String(values.facilityId ?? "")} onChange={(next) => change("facilityId", next)} disabled={operation.startsWith("PATCH") && values.role !== initial.role} />
+              {operation.startsWith("PATCH") && values.role !== initial.role && (
+                <p className="field-note">Lưu vai trò mới trước khi thay đổi cơ sở phân công.</p>
+              )}
+            </div>
+          )}
         {Object.entries(schema.properties || {})
+          .filter(([k]) => !(k === "facilityId" && operation.includes("/users")))
           .filter(
             ([k]) => !(k === "timezone" && operation.includes("/facilities")),
           )
@@ -465,7 +505,9 @@ export function SchemaForm({
                   {label(k)}
                   {required && <b className="required">{"\u00a0"}*</b>}
                 </span>
-                {choices[k] ? (
+                {choices[k] && k === "memberId" ? (
+                  <MemberSearchSelect options={choices[k]} value={String(value || "")} required={required} onChange={(next) => change(k, next)} />
+                ) : choices[k] ? (
                   <select
                     aria-invalid={
                       (error instanceof ApiError &&

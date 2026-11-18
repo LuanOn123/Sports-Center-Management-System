@@ -245,7 +245,15 @@ export function localizeApiError(
   let rawMessage = typeof message === "string" ? message : "";
   rawMessage = rawMessage.replace(/^ROOM_CAPABILITY_MISSING:\s*/i, "Phòng chưa đủ dụng cụ bắt buộc: ");
   const detail = errors as
-    { code?: string; conflicts?: unknown[]; uncovered?: unknown[] } | undefined;
+    { code?: string; conflicts?: unknown[]; uncovered?: unknown[]; details?: unknown[] } | undefined;
+  // Đăng ký trọn khóa thất bại: BE chỉ ghi "N điều kiện chưa đạt" ở message, lý do cụ thể nằm trong
+  // errors.details[] (gói tập, kỳ học, hết chỗ, trùng giờ…) — nối vào để màn Lễ tân/hội viên biết phải xử lý gì.
+  if (detail?.code === "COURSE_ENROLLMENT_FAILED" && Array.isArray(detail.details)) {
+    const reasons = detail.details
+      .map((item) => (item as { message?: unknown } | null)?.message)
+      .filter((reason): reason is string => typeof reason === "string" && reason.trim() !== "");
+    if (reasons.length) rawMessage = `${rawMessage.trim()} ${reasons.join(" ")}`;
+  }
   if (detail?.code === "SCHEDULED_SUBSCRIPTION_EXISTS") rawMessage = "Bạn đã có gói chờ kích hoạt. Hãy xử lý gói chờ trước khi mua hoặc gia hạn.";
   if (detail?.code === "REFUND_ALREADY_REQUESTED") rawMessage = "Giao dịch đã có yêu cầu hoàn tiền hoặc vừa đổi trạng thái. Vui lòng tải lại.";
   if (detail?.code === "SCHEDULE_MOVE_IMPACT") {

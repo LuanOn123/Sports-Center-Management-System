@@ -44,6 +44,7 @@ export function CoachChangesPage({
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<ChangeRequest | null>(null);
   const [sessionId, setSessionId] = useState("");
+  const [sessionSearch, setSessionSearch] = useState("");
   const [reason, setReason] = useState("");
   const [coachId, setCoachId] = useState("");
   const [action, setAction] = useState<"APPROVED" | "REJECTED">("APPROVED");
@@ -231,6 +232,10 @@ export function CoachChangesPage({
             <fieldset className="form-grid" disabled={create.isPending}>
               <label className="wide">
                 <span>Buổi học cần đổi HLV</span>
+                <input type="search" aria-label="Tìm buổi học cần đổi HLV"
+                  placeholder="Tìm tên lớp, ngày, giờ hoặc phòng học…"
+                  value={sessionSearch} onChange={(event) => setSessionSearch(event.target.value)}
+                  onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }} />
                 <select
                   required
                   value={sessionId}
@@ -244,7 +249,10 @@ export function CoachChangesPage({
                       ? "Đang tải lịch dạy…"
                       : "Chọn buổi học"}
                   </option>
-                  {sessions.data?.data.map((session) => (
+                  {sessions.data?.data.filter((session) => {
+                    const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase();
+                    return session.id === sessionId || normalize(`${session.class.name} ${when(session.startTime)} ${session.room.name}`).includes(normalize(sessionSearch.trim()));
+                  }).map((session) => (
                     <option key={session.id} value={session.id}>
                       {session.class.name} · {when(session.startTime)}
                     </option>

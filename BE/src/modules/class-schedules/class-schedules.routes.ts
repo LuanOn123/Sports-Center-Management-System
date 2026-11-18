@@ -372,7 +372,7 @@ router.delete(
 router.patch(
   "/:id/complete",
   authenticate,
-  authorizeExact("MANAGER"),
+  authorizeExact("MANAGER", "COACH"),
   validate(ScheduleIdSchema, "params"),
   schedulesController.completeSchedule
 );

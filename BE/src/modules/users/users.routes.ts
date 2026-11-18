@@ -17,6 +17,10 @@ router.use(authenticate, authorize("ADMIN"));
  *     tags: [Users]
  *     parameters:
  *       - in: query
+ *         name: facilityId
+ *         description: Filter by assigned facility UUID, or unassigned for staff awaiting assignment.
+ *         schema: { type: string }
+ *       - in: query
  *         name: role
  *         schema: { type: string, enum: [MEMBER, COACH, RECEPTIONIST, MANAGER, ADMIN] }
  *       - in: query
@@ -49,8 +53,8 @@ router.get("/", validate(UserQuerySchema, "query"), usersController.listUsers);
  *       Với `role = MEMBER`, backend tạo MemberProfile + **auto-provision một MembershipSubscription ACTIVE
  *       với gói FREE** (`maxConcurrentClasses = 0`) trong cùng transaction. COACH/RECEPTIONIST/MANAGER KHÔNG được cấp
  *       subscription. Idempotent theo member: nếu member đã có subscription ACTIVE thì không tạo thêm.
- *       COACH mới không có FacilityStaff; response có assignmentStatus UNASSIGNED và facilityAssignments rỗng.
- *       Manager phân công Coach bằng API facilities/{facilityId}/staff; backend kiểm tra cơ sở theo Manager đăng nhập.
+ *       Admin có thể truyền facilityId để phân công MANAGER, COACH hoặc RECEPTIONIST ngay khi tạo.
+ *       Bỏ trống facilityId để phân công sau. MEMBER và ADMIN là tài khoản toàn hệ thống.
  *     tags: [Users]
  *     requestBody:
  *       required: true
@@ -64,6 +68,7 @@ router.get("/", validate(UserQuerySchema, "query"), usersController.listUsers);
  *               password: { type: string }
  *               fullName: { type: string }
  *               role: { type: string, enum: [MEMBER, COACH, RECEPTIONIST, MANAGER, ADMIN] }
+ *               facilityId: { type: string, format: uuid, nullable: true, description: "Optional staff facility assignment" }
  *               fitnessGoal: { type: string, description: "Role MEMBER only" }
  *               trainingLevel: { type: string, enum: [BEGINNER, INTERMEDIATE, ADVANCED], description: "Role MEMBER only" }
  *               trainingPreference: { type: string, description: "Role MEMBER only" }
@@ -121,6 +126,7 @@ router.get("/:id", usersController.getUserById);
  *               gender: { type: string, enum: [MALE, FEMALE, OTHER] }
  *               dateOfBirth: { type: string }
  *               isActive: { type: boolean }
+ *               facilityId: { type: string, format: uuid, nullable: true, description: "Move staff to an active facility, or null to remove assignment. Rejects occupied manager slots and coaches with active teaching assignments." }
  *               role: { type: string, enum: [MEMBER, COACH, RECEPTIONIST, MANAGER, ADMIN] }
  *     responses:
  *       200: { $ref: "#/components/responses/UserOk" }

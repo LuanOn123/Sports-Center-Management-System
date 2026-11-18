@@ -189,6 +189,27 @@
 .portal-theme .operation-visit-form > button {
   justify-self: start;
 }
+.portal-theme .operation-scan-form {
+  display: grid;
+  gap: 10px;
+}
+.portal-theme .operation-scan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.portal-theme .operation-scan-actions .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.portal-theme .operation-visit-form video {
+  width: min(100%, 420px);
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
+  background: #000;
+  object-fit: cover;
+}
 .portal-theme .operation-feedback {
   color: var(--member-success);
 }

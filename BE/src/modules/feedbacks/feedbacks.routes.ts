@@ -1,11 +1,38 @@
 import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate.js";
-import { authorize } from "../../middlewares/authorize.js";
+import { authorize, authorizeExact } from "../../middlewares/authorize.js";
+import { z } from "zod";
+import { feedbackEligibility } from "./feedbacks.service.js";
+import { sendSuccess } from "../../utils/response.js";
 import { validate } from "../../middlewares/validate.js";
 import { CreateFeedbackSchema, FeedbackQuerySchema } from "./feedbacks.schema.js";
 import * as controller from "./feedbacks.controller.js";
 
 const router = Router();
+/**
+ * @swagger
+ * /feedbacks/eligibility:
+ *   get:
+ *     summary: Check whether a member can review an ended course
+ *     tags: [Feedbacks]
+ *     parameters:
+ *       - in: query
+ *         name: coachId
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: classId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Course review eligibility }
+ */
+router.get("/eligibility", authenticate, authorizeExact("MEMBER"),
+  validate(z.object({ coachId: z.string().min(1), classId: z.string().min(1) }), "query"),
+  async (req, res, next) => {
+    try { sendSuccess(res, await feedbackEligibility(req.user!.id, String(req.query.coachId), String(req.query.classId))); }
+    catch (error) { next(error); }
+  });
 
 /**
  * @swagger
@@ -21,7 +48,7 @@ const router = Router();
  *     summary: Member gửi đánh giá cho HLV
  *     description: |
  *       **Business Rules:**
- *       - Chỉ Member đã từng `BOOKED` hoặc `COMPLETED` ít nhất 1 buổi học cùng HLV mới được đánh giá.
+ *       - Chỉ Member đã tham gia học cùng HLV và khóa học trong kỳ đã kết thúc mới được đánh giá. classId là bắt buộc khi gửi đánh giá.
  *       - Mỗi cặp (member + coach + class) chỉ có **1 feedback** — gửi lại sẽ cập nhật feedback cũ.
  *       - `isAnonymous: true` → tên member sẽ được ẩn khi hiển thị công khai.
  *     tags: [Feedbacks]

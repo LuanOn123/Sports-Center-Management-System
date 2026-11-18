@@ -21,14 +21,48 @@ test("Member assistant sends authenticated personal questions", async ({ page })
   expect(request).toEqual({ auth: "Bearer fixture-token", message: "Lịch tập của tôi hôm nay?" });
 });
 
-test("Retired reception check-in redirects and reception support has no create button", async ({ page }) => {
+test("Reception checks a member in at the front desk and support has no create button", async ({ page }) => {
   await setup(page, "RECEPTIONIST");
   await page.route("**/api/v1/issues", (route) =>
     route.fulfill({ json: { success: true, data: [] } }),
   );
+  await page.route(/\/api\/v1\/members(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: { success: true, data: [{ id: "member-1", userId: "user-1", user: { fullName: "Nguyễn An", email: "an@example.com" } }] },
+    }),
+  );
+  await page.route(/\/api\/v1\/facility-visits(\?.*)?$/, (route) =>
+    route.fulfill({ json: { success: true, data: [] } }),
+  );
+  const checkIns: unknown[] = [];
+  await page.route("**/api/v1/facility-visits/reception-check-in", (route) => {
+    checkIns.push(route.request().postDataJSON());
+    const visit = { id: "visit-1", checkInAt: "2026-11-18T08:00:00.000Z", method: "RECEPTION" };
+    // Lượt thứ hai trong 5 phút: BE trả 200 và không tạo lượt mới
+    return route.fulfill(checkIns.length === 1
+      ? { status: 201, json: { success: true, message: "Checked in successfully", data: visit } }
+      : { status: 200, json: { success: true, message: "Already checked in recently", data: visit } });
+  });
   await page.goto("/receptionist/checkin");
-  await expect(page).toHaveURL(/\/receptionist\/dashboard$/);
-  await expect(page.getByRole("link", { name: "Check-in cơ sở", exact: true })).toHaveCount(0);
+  await expect(page).toHaveURL(/\/receptionist\/checkin$/);
+  await expect(page.getByRole("link", { name: "Check-in cơ sở", exact: true })).toBeVisible();
+  // Máy quét cầm tay gõ nội dung QR (userId trên app hội viên) vào ô đang được chọn rồi nhấn Enter
+  const code = page.getByLabel("Quét hoặc nhập mã hội viên");
+  await expect(code).toBeFocused();
+  await code.fill("  user-1 ");
+  await code.press("Enter");
+  await expect(page.getByText(/Đã ghi nhận lượt vào cửa cho Nguyễn An lúc/)).toBeVisible();
+  await expect(code).toHaveValue("");
+  await expect(code).toBeFocused();
+  await expect(page.getByRole("button", { name: "Quét bằng camera" })).toBeVisible();
+  // Chọn từ danh sách vẫn dùng được; trùng trong 5 phút thì báo rõ, không giả vờ đã ghi lượt mới
+  await page.getByLabel("Hoặc chọn hội viên").selectOption("member-1");
+  await page.getByRole("button", { name: "Check-in vào cơ sở", exact: true }).click();
+  await expect(page.getByText(/Nguyễn An đã check-in lúc .+ không ghi thêm lượt mới/)).toBeVisible();
+  expect(checkIns).toEqual([
+    { memberId: "user-1", method: "RECEPTION" },
+    { memberId: "member-1", method: "RECEPTION" },
+  ]);
   await expect(page.getByRole("link", { name: "Chuyên cần", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Yêu cầu hỗ trợ", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Yêu cầu hỗ trợ", exact: true })).toBeVisible();

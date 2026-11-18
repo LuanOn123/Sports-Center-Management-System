@@ -3,7 +3,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { setup } from "./fixtures";
 
 for (const width of [390, 1440]) {
-  test(`coach card opens profile with all reviews and preserves review context at ${width}px`, async ({
+ for (const finished of [false, true]) {
+  test(`coach profile review after course finished=${finished} at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
@@ -55,6 +56,10 @@ for (const width of [390, 1440]) {
       }),
     );
     let saved: object | null = null;
+    await page.route("**/api/v1/feedbacks/eligibility?*", route => {
+      expect(new URL(route.request().url()).searchParams.get("classId")).toBe("c1");
+      return route.fulfill({ json: { success: true, data: { eligible: finished, message: finished ? "Khóa học đã kết thúc." : "Bạn chỉ có thể đánh giá khi khóa học đã kết thúc." } } });
+    });
     await page.route("**/api/v1/feedbacks/my", (route) =>
       route.fulfill({ json: { success: true, data: [] } }),
     );
@@ -104,6 +109,12 @@ for (const width of [390, 1440]) {
     await expect(profile.getByText("5 năm huấn luyện")).toBeVisible();
     await expect(profile.getByText("Hướng dẫn rất dễ hiểu.")).toBeVisible();
     await expect(profile.getByText("Ẩn danh", { exact: false })).toBeVisible();
+    if (!finished) {
+      await expect(profile.getByText("Bạn chỉ có thể đánh giá khi khóa học đã kết thúc.")).toBeVisible();
+      await expect(profile.getByRole("button", { name: "Viết đánh giá", exact: true })).toHaveCount(0);
+      expect(saved).toBeNull();
+      return;
+    }
     expect(
       (
         await new AxeBuilder({ page })
@@ -134,4 +145,5 @@ for (const width of [390, 1440]) {
     await page.keyboard.press("Escape");
     await expect(card).toBeFocused();
   });
+ }
 }

@@ -7,6 +7,7 @@ import {
   MapPin,
   Pencil,
   UserPlus,
+  UserMinus,
 } from "lucide-react";
 import { api } from "../../shared/api";
 import { Empty, ErrorState, Loading, Modal, SchemaForm } from "../../shared/ui";
@@ -180,12 +181,13 @@ export function AdminFacilities() {
                           Thay quản lý
                         </button>
                         <button
-                          className="text-button danger-text"
+                          className="button small danger admin-manager-remove"
                           onClick={() => {
                             remove.reset();
                             setRemoving({ facility: f, manager: m });
                           }}
                         >
+                          <UserMinus size={16} aria-hidden="true" />
                           Gỡ
                         </button>
                       </div>

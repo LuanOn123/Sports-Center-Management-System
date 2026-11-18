@@ -1,4 +1,6 @@
 import { StatusBadge } from "../../shared/StatusBadge";
+import { UserFacilityField } from "../../shared/forms/UserFacilityField";
+import { useFacilityContext } from "../../shared/FacilityBoundary";
 import { ClassForm } from "./ClassForm";
 import { ScheduleForm } from "./ScheduleForm";
 import { CoachAssignmentForm } from "./CoachAssignmentForm";
@@ -58,6 +60,10 @@ export function ResourcePage({
   userId?: string;
 }) {
   const client = useQueryClient();
+  const facilityScope = useFacilityContext();
+  const globalResource = role === "ADMIN" && ["rooms", "classes", "schedules"].includes(r.slug);
+  const columns: [string, string][] = globalResource ? [...r.columns, ["facilityName", "Cơ sở"]] : r.columns;
+  const [createFacility, setCreateFacility] = useState(getFacilityId());
   const cardView = [
     "rooms",
     "sports",
@@ -126,10 +132,16 @@ export function ResourcePage({
   };
   const q = useQuery({
     queryKey: ["resource", r.slug, requestQuery],
-    queryFn: ({ signal }) =>
-      r.slug === "schedules"
-        ? allPages<RecordData>(listKey, { query: requestQuery, signal })
-        : api<RecordData[]>(listKey, { query: requestQuery, signal, requireAuth }),
+    queryFn: async ({ signal }) => {
+      const result = r.slug === "schedules"
+        ? await allPages<RecordData>(listKey, { query: requestQuery, signal })
+        : await api<RecordData[]>(listKey, { query: requestQuery, signal, requireAuth });
+      if (!globalResource) return result;
+      return { ...result, data: result.data.map((row): RecordData => {
+        const id = String(row.facilityId || at(row, "class.facilityId") || at(row, "room.facilityId") || "");
+        return { ...row, facilityName: String(facilityScope?.facilities.find((facility) => facility.id === id)?.name || at(row, "facility.name") || id || "Chưa xác định") };
+      }) };
+    },
   });
   const scheduleCoachNames = useQuery({
     queryKey: ["schedule-coach-names", getFacilityId()],
@@ -508,7 +520,13 @@ export function ResourcePage({
           </div>
         )}
         <div className="filters">
-          {filters.map((p) => (
+          {r.slug === "users" && role === "ADMIN" && (
+            <UserFacilityField filter value={query.facilityId || ""} onChange={(next) => {
+              setQuery((prev) => ({ ...prev, facilityId: next }));
+              setPage(1);
+            }} />
+          )}
+          {filters.filter((p) => !(r.slug === "users" && p.name === "facilityId")).map((p) => (
             <FilterField
               key={p.name}
               name={p.name}
@@ -545,7 +563,7 @@ export function ResourcePage({
         ) : view === "visual" && cardView ? (
           <ResourceCollection
             rows={q.data.data}
-            columns={r.columns}
+            columns={columns}
             kind={r.slug}
             actions={rowActions}
           />
@@ -572,7 +590,7 @@ export function ResourcePage({
             <table>
               <thead>
                 <tr>
-                  {r.columns.map(([k, title]) => (
+                  {columns.map(([k, title]) => (
                     <th key={k} scope="col">
                       {title}
                     </th>
@@ -583,7 +601,7 @@ export function ResourcePage({
               <tbody>
                 {q.data.data.map((row) => (
                   <tr key={String(row.id)}>
-                    {r.columns.map(([k], i) => (
+                    {columns.map(([k], i) => (
                       <td key={k}>
                         {i === 0 ? (
                           <div className="name-cell">
@@ -728,7 +746,14 @@ export function ResourcePage({
             if (!busy) setModal(null);
           }}
         >
-          {modal.kind === "assignScheduleCoach" && role === "MANAGER" ? (
+          {modal.kind === "create" && globalResource && ["rooms", "classes"].includes(r.slug) && (
+            <div className="confirmation-body">
+              <UserFacilityField label="Cơ sở tạo mới" value={createFacility} onChange={setCreateFacility} />
+            </div>
+          )}
+          {modal.kind === "create" && globalResource && ["rooms", "classes"].includes(r.slug) && !createFacility ? (
+            <p className="confirm-copy">Chọn cơ sở để nhập thông tin {r.title.toLowerCase()} mới.</p>
+          ) : modal.kind === "assignScheduleCoach" && role === "MANAGER" ? (
             <ScheduleCoachForm
               scheduleId={String(modal.row?.id)}
               onSuccess={done}
@@ -737,6 +762,7 @@ export function ResourcePage({
             />
           ) : r.slug === "classes" && ["create", "edit"].includes(modal.kind) ? (
             <ClassForm
+              facilityId={role === "ADMIN" ? String(modal.kind === "edit" ? modal.row?.facilityId || "" : createFacility) : undefined}
               initial={modal.kind === "edit" ? modal.row : {}}
               onSuccess={done}
               onCancel={() => setModal(null)}
@@ -768,6 +794,7 @@ export function ResourcePage({
             />
           ) : ["create", "edit"].includes(modal.kind) ? (
             <SchemaForm
+              requestFacilityId={modal.kind === "create" && globalResource ? createFacility : undefined}
               operation={modal.kind === "create" ? create : update}
               params={{ id: String(modal.row?.id) }}
               initial={

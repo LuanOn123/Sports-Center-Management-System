@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { Empty } from "../../shared/ui";
+import { Empty } from "../../shared/feedback";
 import "./coach-expertise.css";
 
 export type CoachSportOption = {

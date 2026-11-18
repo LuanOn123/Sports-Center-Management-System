@@ -51,6 +51,12 @@
             "MANAGER",
             "ADMIN"
           ]
+        },
+        "facilityId": {
+          "type": "string",
+          "format": "uuid",
+          "nullable": true,
+          "description": "Cơ sở phân công cho MANAGER, COACH hoặc RECEPTIONIST. null để gỡ phân công khi chỉnh sửa."
         }
       },
       "required": []
@@ -132,7 +138,13 @@
         "in": "query",
         "name": "refundPending",
         "description": "When true, returns successful payments with a refund request awaiting processing.",
-        "schema": { "type": "string", "enum": ["true", "false"] }
+        "schema": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ]
+        }
       },
       {
         "in": "query",
@@ -1791,6 +1803,224 @@
       "400",
       "401",
       "500"
+    ]
+  },
+  "GET /users": {
+    "path": "/users",
+    "method": "GET",
+    "summary": "List all users",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "query",
+        "name": "role",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "MEMBER",
+            "COACH",
+            "RECEPTIONIST",
+            "MANAGER",
+            "ADMIN"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "isActive",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "search",
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "page",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "facilityId",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Lọc theo cơ sở phân công, hoặc unassigned cho nhân sự chưa phân công."
+      }
+    ],
+    "body": null,
+    "statusCodes": [
+      "200",
+      "400",
+      "401",
+      "403",
+      "500"
+    ]
+  },
+  "POST /users": {
+    "path": "/users",
+    "method": "POST",
+    "summary": "Create staff, coach, manager or member account (MEMBER creates the member profile too)",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [],
+    "body": {
+      "type": "object",
+      "required": [
+        "email",
+        "password",
+        "fullName",
+        "role"
+      ],
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "MEMBER",
+            "COACH",
+            "RECEPTIONIST",
+            "MANAGER",
+            "ADMIN"
+          ]
+        },
+        "fitnessGoal": {
+          "type": "string",
+          "description": "Role MEMBER only"
+        },
+        "trainingLevel": {
+          "type": "string",
+          "enum": [
+            "BEGINNER",
+            "INTERMEDIATE",
+            "ADVANCED"
+          ],
+          "description": "Role MEMBER only"
+        },
+        "trainingPreference": {
+          "type": "string",
+          "description": "Role MEMBER only"
+        },
+        "facilityId": {
+          "type": "string",
+          "format": "uuid",
+          "nullable": true,
+          "description": "Cơ sở phân công cho MANAGER, COACH hoặc RECEPTIONIST. null để gỡ phân công khi chỉnh sửa."
+        }
+      }
+    },
+    "statusCodes": [
+      "201",
+      "400",
+      "401",
+      "403",
+      "409",
+      "500"
+    ]
+  },
+  "POST /payments/{id}/refund/cancel": {
+    "path": "/payments/{id}/refund/cancel",
+    "method": "POST",
+    "summary": "Receptionist cancels a pending refund with a required reason",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "body": {
+      "type": "object",
+      "required": [
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 1000
+        }
+      }
+    },
+    "statusCodes": [
+      "200",
+      "403",
+      "409"
+    ]
+  },
+  "GET /feedbacks/eligibility": {
+    "path": "/feedbacks/eligibility",
+    "method": "GET",
+    "summary": "Check member review eligibility after course completion",
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "in": "query",
+        "name": "coachId",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "classId",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "statusCodes": [
+      "200",
+      "401",
+      "403"
     ]
   }
 }

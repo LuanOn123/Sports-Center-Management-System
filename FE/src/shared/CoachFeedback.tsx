@@ -9,7 +9,6 @@ export function CoachFeedback({
   classId,
   reviewClassId,
   role,
-  canReview = false,
 }: {
   coachId: string;
   classId?: string;
@@ -46,6 +45,13 @@ export function CoachFeedback({
     queryFn: ({ signal }) => api<RecordData[]>("GET /feedbacks/my", { signal }),
   });
   const contextClassId = reviewClassId ?? classId;
+  const eligibility = useQuery({
+    queryKey: ["feedback-eligibility", coachId, contextClassId],
+    enabled: role === "MEMBER" && Boolean(contextClassId),
+    queryFn: ({ signal }) => api<{ eligible: boolean; message: string }>("GET /feedbacks/eligibility", {
+      query: { coachId, classId: contextClassId! }, signal,
+    }),
+  });
   const own = mine.data?.data.find(
     (f) =>
       f.coachId === coachId &&
@@ -87,7 +93,7 @@ export function CoachFeedback({
   });
   return (
     <section className="workflow-page">
-      <h3>Đánh giá huấn luyện viên</h3>
+      <h3>{role === "MEMBER" ? "Đánh giá huấn luyện viên cuối khóa" : "Đánh giá huấn luyện viên"}</h3>
       {q.isPending ? (
         <Loading />
       ) : q.error ? (
@@ -149,7 +155,11 @@ export function CoachFeedback({
           )}
         </>
       )}
-      {role === "MEMBER" && (canReview || own) && (
+      {role === "MEMBER" && eligibility.error && <ErrorState error={eligibility.error} retry={() => eligibility.refetch()} />}
+      {role === "MEMBER" && !eligibility.data?.data.eligible && <p className="field-note">
+        {eligibility.data?.data.message || "Hội viên đánh giá huấn luyện viên khi kết thúc khóa học."}
+      </p>}
+      {role === "MEMBER" && eligibility.data?.data.eligible && (
         <button
           className="button"
           disabled={mine.isPending || mine.isError}

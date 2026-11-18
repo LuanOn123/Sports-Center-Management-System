@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { sendSuccess } from "../../utils/response.js";
 import { updatePaymentStatus } from "./payments.service.js";
-import { requestPaymentRefund } from "./refunds.service.js";
+import { cancelPaymentRefund, requestPaymentRefund } from "./refunds.service.js";
 import { Router } from "express";
 import { authenticate } from "../../middlewares/authenticate.js";
 import { authorize, authorizeExact } from "../../middlewares/authorize.js";
@@ -10,6 +10,34 @@ import { CreatePaymentSchema, UpdatePaymentStatusSchema, PaymentQuerySchema, Sep
 import * as paymentsController from "./payments.controller.js";
 
 const router = Router();
+/**
+ * @swagger
+ * /payments/{id}/refund/cancel:
+ *   post:
+ *     summary: Receptionist cancels a pending refund with a required reason
+ *     tags: [Payments]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [reason]
+ *             properties:
+ *               reason: { type: string, minLength: 3, maxLength: 1000 }
+ *     responses:
+ *       200: { description: Refund request cancelled }
+ *       403: { description: Receptionist facility access required }
+ *       409: { description: Refund request already processed }
+ */
+router.post("/:id/refund/cancel", authenticate, authorizeExact("RECEPTIONIST"),
+  validate(z.object({ reason: z.string().trim().min(3).max(1000) }).strict()),
+  async (req, res) => { sendSuccess(res, await cancelPaymentRefund(String(req.params.id), req.body.reason, req.user!), "Đã hủy yêu cầu hoàn tiền."); });
 router.use((req, res, next) => {
   if (req.user?.role === "MANAGER") {
     res.status(403).json({ success: false, message: "Manager chỉ được xem báo cáo doanh thu" });

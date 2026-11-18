@@ -49,7 +49,7 @@ export async function deleteSchedule(req: Request, res: Response, next: NextFunc
 }
 export async function completeSchedule(req: Request, res: Response, next: NextFunction) {
   try {
-    const schedule = await schedulesService.completeSchedule(req.params.id as string);
+    const schedule = await schedulesService.completeSchedule(req.params.id as string, req.user);
     sendSuccess(res, schedule, "Schedule marked as completed");
   } catch (err) { next(err); }
 }

@@ -1,10 +1,76 @@
-import { at, cases, DAY, MINUTE, schemaCases } from "./support.js";
+import { at, cases, DAY, MINUTE, schemaCases, withFixture } from "./support.js";
 import assert from "node:assert/strict";
 import { validateResources } from "../../src/modules/operations/scheduling.js";
 import { expandPattern } from "../../src/modules/operations/rules.js";
 import { effectiveCoachIds } from "../../src/modules/operations/effective-coaches.js";
 import { termRegistrationBlocker, withTermStatus } from "../../src/modules/terms/term-status.js";
 import { CreateTermSchema } from "../../src/modules/terms/terms.schema.js";
+import { setUserFacility } from "../../src/modules/users/user-facility.service.js";
+import type { Prisma } from "@prisma/client";
+import { prisma } from "../../src/config/prisma.js";
+import { User } from "../../src/models/User.js";
+import { listUsers } from "../../src/modules/users/users.service.js";
+
+cases("BR-USER-FACILITY-FILTER", [
+  ["danh sách mặc định toàn hệ thống", undefined],
+  ["lọc nhân sự theo cơ sở trước khi phân trang", "facility-a"],
+  ["lọc nhân sự chưa được phân công", "unassigned"],
+] as const, async ([, facilityId]) => {
+  let filter: Record<string, unknown> = {};
+  let assignmentReads = 0;
+  const chain = {
+    skip: () => chain, limit: () => chain, sort: () => chain, lean: async () => [],
+  };
+  await withFixture([
+    [prisma.facilityStaff, "findMany", ({ where }) => {
+      assignmentReads++;
+      assert.equal(where.isActive, true);
+      assert.equal(where.facility.isActive, true);
+      assert.equal(where.facilityId, facilityId === "unassigned" ? undefined : facilityId);
+      return [{ userId: "staff-a" }];
+    }],
+    [User, "countDocuments", (where) => { filter = where; return 0; }],
+    [User, "find", () => chain],
+  ], async () => {
+    await listUsers({ facilityId });
+    assert.equal(assignmentReads, facilityId ? 1 : 0);
+    assert.deepEqual(filter._id, facilityId
+      ? { [facilityId === "unassigned" ? "$nin" : "$in"]: ["staff-a"] }
+      : undefined);
+  });
+});
+
+cases<readonly [string, "MANAGER" | "COACH" | "RECEPTIONIST", string | null, string?]>("BR-USER-FACILITY", [
+  ["chuyển lễ tân và giữ một phân công hoạt động", "RECEPTIONIST", "new"],
+  ["gỡ phân công lễ tân", "RECEPTIONIST", null],
+  ["không thay quản lý đang phụ trách cơ sở đích", "MANAGER", "occupied", "Cơ sở đã có quản lý"],
+  ["không phân công cơ sở ngừng hoạt động", "RECEPTIONIST", "inactive", "ngừng hoạt động"],
+  ["không chuyển HLV còn lớp học", "COACH", "new", "HLV còn phân công"],
+], async ([, role, facilityId, error]) => {
+  const writes: unknown[] = [];
+  const db = {
+    $executeRaw: async () => [],
+    facility: { findUnique: async () => ({ id: facilityId, isActive: facilityId !== "inactive" }) },
+    facilityStaff: {
+      findMany: async () => [{ userId: "staff", facilityId: "old", role, isActive: true }],
+      findFirst: async () => facilityId === "occupied" ? { userId: "other" } : null,
+      updateMany: async (args: unknown) => { writes.push(args); return { count: 1 }; },
+      upsert: async (args: unknown) => { writes.push(args); return {}; },
+    },
+    coachProfile: { findUnique: async () => ({ id: "coach" }) },
+    class: { count: async () => 1 },
+    classSchedule: { count: async () => 0 },
+  };
+  const run = setUserFacility(db as unknown as Prisma.TransactionClient, "staff", role, facilityId);
+  if (error) {
+    await assert.rejects(run, new RegExp(error));
+    assert.equal(writes.length, 0);
+  } else {
+    await run;
+    assert.equal(writes.length, facilityId ? 2 : 1);
+    assert.deepEqual(writes[0], { where: { userId: "staff", isActive: true }, data: { isActive: false } });
+  }
+});
 
 type Resource = {
   classInactive?: boolean; noClass?: boolean; roomInactive?: boolean; noRoom?: boolean;

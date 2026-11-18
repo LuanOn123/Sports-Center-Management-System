@@ -242,6 +242,7 @@ test("sport picker filters rooms and persists capacity and area", async ({
   await page.goto("/admin/classes");
   await page.getByRole("button", { name: "Thêm lớp học" }).click();
   const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Cơ sở tạo mới", { exact: true }).selectOption("facility-a");
   await dialog.getByLabel("Tên lớp học").fill("Yoga thư giãn");
   await dialog.getByText("Chọn bộ môn cho lớp", { exact: true }).click();
   await dialog.getByRole("radio", { name: /Yoga/ }).check();
@@ -254,6 +255,7 @@ test("sport picker filters rooms and persists capacity and area", async ({
     .poll(() => calls.find((c) => c.path === "/classes")?.body)
     .toMatchObject({
       defaultRoomId: "indoor",
+      facilityId: "facility-a",
       areaType: "INDOOR",
       capacity: 20,
       sportIds: ["yoga"],

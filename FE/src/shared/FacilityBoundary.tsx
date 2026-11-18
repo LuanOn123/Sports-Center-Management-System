@@ -27,8 +27,24 @@ const FacilityContext = createContext<{
   facilities: Facility[];
   selected: string;
   busy: boolean;
+  global: boolean;
   change: (id: string) => Promise<void>;
 } | null>(null);
+export function useFacilityContext() {
+  return useContext(FacilityContext);
+}
+export function CurrentFacility() {
+  const context = useFacilityContext();
+  if (!context) return null;
+  const facility = context.facilities.find((item) => item.id === context.selected);
+  if (!facility) return null;
+  return (
+    <div className="current-facility" aria-label={`Cơ sở hiện tại: ${facility.name}`}>
+      <span className="current-facility-label"><Building2 size={14} aria-hidden="true" /> Cơ sở</span>
+      <strong>{facility.name}</strong>
+    </div>
+  );
+}
 export function FacilityPicker({ label = "Cơ sở", accessibleLabel = "Cơ sở đang làm việc" }: { label?: string; accessibleLabel?: string }) {
   const context = useContext(FacilityContext);
   if (!context) return null;
@@ -47,9 +63,10 @@ export function FacilityPicker({ label = "Cơ sở", accessibleLabel = "Cơ sở
         value={context.selected}
         onChange={(e) => void context.change(e.target.value)}
       >
+        {context.global && <option value="">Tất cả cơ sở</option>}
         {context.facilities.map((f) => (
           <option value={f.id} key={f.id}>
-            {f.name}
+            {f.name}{context.global && !f.isActive ? " (ngừng hoạt động)" : ""}
           </option>
         ))}
       </select>
@@ -71,16 +88,19 @@ export function FacilityBoundary({
     subscribeMutations,
     mutationCount,
   );
-  const [selected, setSelected] = useState(getFacilityId());
+  const [selected, setSelected] = useState(admin ? "" : getFacilityId());
+  useEffect(() => {
+    if (admin) selectFacility("");
+  }, [admin]);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [address, setAddress] = useState("");
   const [error, setError] = useState<unknown>();
   const q = useQuery({
     queryKey: ["facilities"],
-    queryFn: ({ signal }) => api<Facility[]>("GET /facilities", { signal }),
+    queryFn: ({ signal }) => api<Facility[]>("GET /facilities", { signal, ...(admin ? { query: { includeInactive: "true" } } : {}) }),
   });
-  const valid = q.data?.data.some((f) => f.id === selected);
+  const valid = admin && !selected || q.data?.data.some((f) => f.id === selected);
   const refetchFacilities = q.refetch;
   // MF-10: nhận tín hiệu 403 FORBIDDEN_SCOPE từ api.ts → refetch danh sách cơ sở NGAY;
   // effect bên dưới sẽ tự chọn cơ sở active đầu tiên khi `valid` thành false.
@@ -93,11 +113,11 @@ export function FacilityBoundary({
   }, [refetchFacilities]);
   useEffect(() => {
     if (q.data && !valid) {
-      const first = q.data.data[0]?.id || "";
+      const first = admin ? "" : q.data.data[0]?.id || "";
       selectFacility(first);
       setSelected(first);
     }
-  }, [q.data, valid]);
+  }, [q.data, valid, admin]);
   async function change(id: string) {
     if (mutationCount()) return;
     await cache.cancelQueries({
@@ -197,6 +217,7 @@ export function FacilityBoundary({
         facilities: q.data.data,
         selected,
         busy: busy > 0 || pendingRequests > 0,
+        global: admin,
         change,
       }}
     >

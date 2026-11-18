@@ -1,0 +1,67 @@
+.portal-theme .create-coach-form {
+  padding: 24px;
+}
+.portal-theme .create-coach-form fieldset {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+}
+.portal-theme .create-coach-form > .field-note {
+  margin: 0 0 24px;
+}
+.create-coach-form .create-coach-sports {
+  margin: 24px 0 0;
+}
+.create-coach-sports legend {
+  margin-bottom: 12px;
+}
+.portal-theme .create-coach-form .coach-sport-option {
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--member-border);
+  border-radius: 10px;
+  background: var(--member-bg);
+  cursor: pointer;
+}
+.create-coach-form .coach-sport-option span {
+  flex: 1;
+  min-width: 0;
+}
+.portal-theme .create-coach-form .coach-sport-option input[type="checkbox"] {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0;
+  padding: 0;
+}
+.create-coach-form .coach-sport-option:has(input:checked) {
+  border-color: var(--member-accent);
+  background: var(--member-accent-soft, #d9ff5212);
+}
+.create-coach-add-sport {
+  margin-top: 16px;
+}
+.create-coach-new-sport {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--member-border);
+  border-radius: 12px;
+}
+.create-coach-new-sport h3,
+.create-coach-new-sport p {
+  margin: 0;
+}
+.portal-theme .create-coach-role {
+  padding: 24px 24px 0;
+}
+@media (max-width: 480px) {
+  .portal-theme .create-coach-form {
+    padding: 16px;
+  }
+  .portal-theme .create-coach-role {
+    padding: 16px 16px 0;
+  }
+}

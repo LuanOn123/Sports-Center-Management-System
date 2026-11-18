@@ -1,6 +1,33 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./fixtures";
 
+test("Reception cancels a pending refund with a required reason and refreshes the queue", async ({ page }) => {
+  await setup(page, "RECEPTIONIST");
+  const requests: unknown[] = [];
+  await page.route(/\/api\/v1\/payments\?/, (route) => route.fulfill({ json: {
+    success: true, data: requests.length ? [] : [{ id: "refund-to-cancel", status: "SUCCESS", refundRequestedAmount: 90000 }],
+  } }));
+  await page.route("**/api/v1/payments/refund-to-cancel/refund/cancel", (route) => {
+    expect(route.request().method()).toBe("POST");
+    requests.push(route.request().postDataJSON());
+    return route.fulfill({ json: { success: true, data: { id: "refund-to-cancel" } } });
+  });
+  await page.goto("/receptionist/payments");
+  await page.getByRole("button", { name: "Hủy yêu cầu hoàn", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("button", { name: "Xác nhận hủy yêu cầu" })).toBeDisabled();
+  await dialog.getByRole("textbox").fill("   ");
+  await expect(dialog.getByRole("button", { name: "Xác nhận hủy yêu cầu" })).toBeDisabled();
+  await dialog.getByRole("button", { name: "Quay lại" }).click();
+  expect(requests).toEqual([]);
+  await page.getByRole("button", { name: "Hủy yêu cầu hoàn", exact: true }).click();
+  await dialog.getByRole("textbox").fill("  Hội viên gửi nhầm yêu cầu  ");
+  await dialog.getByRole("button", { name: "Xác nhận hủy yêu cầu" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByText("Hiện không có yêu cầu hoàn tiền nào đang chờ xử lý.")).toBeVisible();
+  expect(requests).toEqual([{ reason: "Hội viên gửi nhầm yêu cầu" }]);
+});
+
 test("Reception loads the pending refund queue with the documented filter", async ({ page }) => {
   await setup(page, "RECEPTIONIST");
   await page.route(/\/api\/v1\/payments\?/, (route) => {
@@ -16,6 +43,23 @@ test("Reception loads the pending refund queue with the documented filter", asyn
   await page.goto("/receptionist/payments");
   await expect(page.getByText("pending-refund-1", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /Xác nhận hoàn/ })).toBeEnabled();
+});
+
+test("Reception retains the cancellation reason when another user has already processed the refund", async ({ page }) => {
+  await setup(page, "RECEPTIONIST");
+  await page.route(/\/api\/v1\/payments\?/, (route) => route.fulfill({ json: {
+    success: true, data: [{ id: "processed-refund", refundRequestedAmount: 90000 }],
+  } }));
+  await page.route("**/api/v1/payments/processed-refund/refund/cancel", (route) => route.fulfill({
+    status: 409, json: { success: false, message: "Yêu cầu đã được xử lý. Vui lòng tải lại." },
+  }));
+  await page.goto("/receptionist/payments");
+  await page.getByRole("button", { name: "Hủy yêu cầu hoàn", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("textbox").fill("Hội viên gửi nhầm yêu cầu");
+  await dialog.getByRole("button", { name: "Xác nhận hủy yêu cầu" }).click();
+  await expect(dialog.locator("fieldset").getByText("Yêu cầu đã được xử lý. Vui lòng tải lại.")).toBeVisible();
+  await expect(dialog.getByRole("textbox")).toHaveValue("Hội viên gửi nhầm yêu cầu");
 });
 
 for (const hasReceptionist of [true, false]) {

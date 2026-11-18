@@ -783,7 +783,14 @@ export async function deleteSchedule(id: string) {
  * Only allowed after endTime has passed.
  * Auto-transitions all remaining BOOKED enrollments to COMPLETED.
  */
-export async function completeSchedule(id: string) {
+export async function completeSchedule(id: string, actor?: { id: string; role: string }) {
+  async function assertCoachAccess(db: DbClient) {
+    if (actor?.role !== "COACH") return;
+    const coach = await db.coachProfile.findUnique({ where: { userId: actor.id }, select: { id: true } });
+    const assigned = coach && await db.classSchedule.findFirst({ where: { id, ...effectiveCoachWhere(coach.id) }, select: { id: true } });
+    if (!assigned) throw new AppError("Bạn chỉ được hoàn tất buổi dạy được phân công cho mình.", 403);
+  }
+  await assertCoachAccess(prisma);
   const schedule = await prisma.classSchedule.findUnique({
     where: { id },
     include: { class: { include: { sports: true } }, room: true },
@@ -798,8 +805,10 @@ export async function completeSchedule(id: string) {
   const completed = await prisma.$transaction(async (tx) => {
     // A12: lock cùng khoá với booking + CAS trạng thái (không hoàn tất lịch vừa bị hủy).
     await lockSchedule(tx, id);
+    await assertCoachAccess(tx);
     const fresh = await tx.classSchedule.findUnique({ where: { id } });
     if (!fresh) throw new AppError("Schedule not found", 404);
+    if (fresh.endTime > new Date()) throw new AppError("Buổi dạy chưa kết thúc, không thể hoàn tất.", 400);
     if (fresh.status === "CANCELLED") {
       throw new AppError("Cannot complete a cancelled schedule", 400);
     }
