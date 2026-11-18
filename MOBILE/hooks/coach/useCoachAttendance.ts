@@ -13,7 +13,7 @@ import { ATTENDANCE_ROSTER_STATUSES } from '../../constants/attendance';
 import { attendanceNoteForSave } from '../../lib/attendanceNote';
 import { canGenerateAttendanceQr, canTakeAttendance } from '../../lib/businessRules';
 import { filterRoster } from '../../lib/coachRoster';
-import type { Attendance, AttendanceStatus, Enrollment } from '../../lib/types';
+import type { Attendance, AttendanceStatus, Enrollment, EvaluationValues } from '../../lib/types';
 
 export function useCoachAttendance(scheduleId: string | undefined) {
   const queryClient = useQueryClient();
@@ -100,9 +100,9 @@ export function useCoachAttendance(scheduleId: string | undefined) {
       close: () => {
         if (!saveEvaluation.isPending) setEvaluatingMemberId(null);
       },
-      save: (progress: number, description: string | null) => {
+      save: (values: EvaluationValues) => {
         if (!evaluatingMemberId || saveEvaluation.isPending) return;
-        saveEvaluation.mutate({ memberId: evaluatingMemberId, progress, description }, { onSuccess: () => setEvaluatingMemberId(null) });
+        saveEvaluation.mutate({ memberId: evaluatingMemberId, ...values }, { onSuccess: () => setEvaluatingMemberId(null) });
       },
     },
     onRefresh: async () => {

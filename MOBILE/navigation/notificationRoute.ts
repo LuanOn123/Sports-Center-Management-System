@@ -4,11 +4,15 @@
 
 import type { Href } from 'expo-router';
 import { NOTIFICATION_ACTION_TEXT as ACTION } from '../constants/notifications';
+import { refundChatDraft } from '../lib/refund';
 import { ROUTES } from './routes';
 import type { AppNotification, Role } from '../lib/types';
 
+/** Hành động BE gắn vào thông báo "đã có lễ tân phụ trách yêu cầu hoàn tiền của bạn" (web: meta.action === "REFUND_ASSIGNED") */
+const REFUND_ASSIGNED_ACTION = 'REFUND_ASSIGNED';
+
 /** Loại màn đích của một thông báo — quyết định nhãn nút hành động */
-export type NotificationTargetKind = 'chat' | 'schedule' | 'class' | 'plans' | 'attendance' | 'payments' | 'coachChanges' | 'leave';
+export type NotificationTargetKind = 'chat' | 'refundChat' | 'schedule' | 'class' | 'plans' | 'attendance' | 'payments' | 'coachChanges' | 'leave';
 
 export interface NotificationTarget {
   kind: NotificationTargetKind;
@@ -67,12 +71,25 @@ export function resolveNotificationTarget(item: AppNotification, role?: Role): N
     case 'LEAVE_REQUEST_APPROVED':
     case 'LEAVE_REQUEST_REJECTED':
       return role === 'COACH' ? { kind: 'leave', route: ROUTES.coachChanges } : null;
+    // Đã có lễ tân phụ trách yêu cầu hoàn tiền của hội viên → nhắn tin ngay với lễ tân, câu chào soạn sẵn (web: REFUND_ASSIGNED);
+    // thông báo hoàn tiền khác (đã ghi nhận, đã hoàn…) mở màn Thanh toán
+    case 'PAYMENT_REFUNDED': {
+      const receptionistId = metaString(item, 'receptionistUserId');
+      if (role === 'MEMBER' && item.metadata?.action === REFUND_ASSIGNED_ACTION && receptionistId) {
+        const receptionistName = metaString(item, 'receptionistName');
+        const draft = refundChatDraft(receptionistName, metaString(item, 'paymentId') ?? '');
+        return { kind: 'refundChat', route: ROUTES.chatThread(receptionistId, receptionistName, draft) };
+      }
+      return { kind: 'payments', route: ROUTES.payments };
+    }
     case 'PAYMENT_SUCCESS':
     case 'PAYMENT_FAILED':
-    case 'PAYMENT_REFUNDED':
       return { kind: 'payments', route: ROUTES.payments };
-    // Chưa có màn hình xem kế hoạch tập cho Member — chỉ đánh dấu đã đọc.
-    case 'TRAINING_PLAN_ASSIGNED':
+    // Giáo án mới của HLV nằm ở chi tiết lớp (thẻ "Giáo án tập luyện")
+    case 'TRAINING_PLAN_ASSIGNED': {
+      const classId = metaString(item, 'classId');
+      return classId ? { kind: 'class', route: ROUTES.classDetail(classId) } : null;
+    }
     default:
       return null;
   }
@@ -84,6 +101,7 @@ export function resolveNotificationRoute(item: AppNotification, role?: Role): Hr
 
 const LABEL: Record<Exclude<NotificationTargetKind, 'schedule'>, string> = {
   chat: ACTION.chat,
+  refundChat: ACTION.refundChat,
   class: ACTION.class,
   plans: ACTION.plans,
   attendance: ACTION.attendance,

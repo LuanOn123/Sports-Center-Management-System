@@ -29,7 +29,7 @@ export const progressDiff = (previous: number, next: number) => clampProgress(ne
 /** "+15%", "-5%", "0%" */
 export const formatProgressDiff = (diff: number) => (diff > 0 ? `+${diff}%` : `${diff}%`);
 
-/** Lời dặn của HLV: bỏ khoảng trắng thừa, rỗng → null (BE nhận nullable) */
+/** Văn bản HLV nhập khi đánh giá (lời dặn, kết quả buổi tập): bỏ khoảng trắng thừa, rỗng → null (BE nhận nullable) */
 export const evaluationNoteOrNull = (text: string) => text.trim() || null;
 
 /**
@@ -43,5 +43,6 @@ export function evaluationDraft(item: Pick<ScheduleEvaluationItem, 'currentProgr
     progress: clampProgress(evaluation ? evaluation.newProgress : current),
     previousProgress: clampProgress(evaluation ? evaluation.previousProgress : current),
     note: evaluation?.description ?? '',
+    results: evaluation?.results ?? '',
   };
 }

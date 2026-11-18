@@ -4,6 +4,6 @@ import { useLocalSearchParams } from 'expo-router';
 import { ChatThreadView } from '../../components/chat/ChatThreadView';
 
 export default function ChatScreen() {
-  const { userId, name } = useLocalSearchParams<{ userId: string; name?: string }>();
-  return <ChatThreadView userId={userId} name={name} />;
+  const { userId, name, message } = useLocalSearchParams<{ userId: string; name?: string; message?: string }>();
+  return <ChatThreadView userId={userId} name={name} draft={message} />;
 }

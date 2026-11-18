@@ -1,6 +1,7 @@
 // components/coach/EvaluationSheet.tsx
-// HLV chấm tiến độ mục tiêu của một học viên sau buổi dạy kèm lời dặn (web: khối đánh giá trong shared/Attendance.tsx):
-// tiến độ 0–100% chỉnh theo bước 5 (nút −/+ và mốc chọn nhanh), hiện chênh lệch so với lần trước, lời dặn tối đa 1000 ký tự.
+// HLV chấm tiến độ mục tiêu của một học viên sau buổi dạy kèm kết quả từng bài tập và lời dặn (web: khối đánh giá trong shared/Attendance.tsx):
+// tiến độ 0–100% chỉnh theo bước 5 (nút −/+ và mốc chọn nhanh), hiện chênh lệch so với lần trước, kết quả buổi tập tối đa 3000 ký tự,
+// lời dặn tối đa 1000 ký tự.
 
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
@@ -13,10 +14,11 @@ import { ProgressBar } from '../ui/ProgressBar';
 import { ApiError } from '../../lib/api';
 import { Colors } from '../../constants/theme';
 import {
-  DEFAULT_GOAL_LABEL, EVALUATION_NOTE_MAX_LENGTH, GOAL_TEXT as TEXT, PROGRESS_MAX, PROGRESS_MIN, PROGRESS_PRESETS, PROGRESS_STEP,
+  DEFAULT_GOAL_LABEL, EVALUATION_NOTE_MAX_LENGTH, EVALUATION_RESULTS_MAX_LENGTH, GOAL_TEXT as TEXT, PROGRESS_MAX, PROGRESS_MIN, PROGRESS_PRESETS,
+  PROGRESS_STEP,
 } from '../../constants/goals';
 import { evaluationDraft, evaluationNoteOrNull, formatProgressDiff, progressDiff, progressLevel, stepProgress } from '../../lib/goalProgress';
-import type { ScheduleEvaluationItem } from '../../lib/types';
+import type { EvaluationValues, ScheduleEvaluationItem } from '../../lib/types';
 
 interface EvaluationSheetProps {
   visible: boolean;
@@ -25,7 +27,7 @@ interface EvaluationSheetProps {
   item: ScheduleEvaluationItem | undefined;
   isPending: boolean;
   error: unknown;
-  onSave: (progress: number, note: string | null) => void;
+  onSave: (values: EvaluationValues) => void;
   onClose: () => void;
 }
 
@@ -49,6 +51,7 @@ function StepButton({ icon, label, disabled, onPress }: { icon: string; label: s
 export function EvaluationSheet({ visible, learnerName, item, isPending, error, onSave, onClose }: EvaluationSheetProps) {
   const [progress, setProgress] = useState(PROGRESS_MIN);
   const [note, setNote] = useState('');
+  const [results, setResults] = useState('');
   const loaded = Boolean(item);
   const draft = evaluationDraft(item);
 
@@ -57,6 +60,7 @@ export function EvaluationSheet({ visible, learnerName, item, isPending, error, 
     if (!visible) return;
     setProgress(draft.progress);
     setNote(draft.note);
+    setResults(draft.results);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, item?.memberId, loaded]);
 
@@ -78,7 +82,7 @@ export function EvaluationSheet({ visible, learnerName, item, isPending, error, 
             icon="check-circle"
             title={isPending ? TEXT.evaluateSaving : TEXT.evaluateSave}
             loading={isPending}
-            onPress={() => onSave(progress, evaluationNoteOrNull(note))}
+            onPress={() => onSave({ progress, description: evaluationNoteOrNull(note), results: evaluationNoteOrNull(results) })}
           />
         </View>
       }
@@ -116,6 +120,26 @@ export function EvaluationSheet({ visible, learnerName, item, isPending, error, 
           ))}
         </View>
         <GoalProgressLegend />
+      </View>
+
+      <View className="gap-sm">
+        <View className="flex-row items-center gap-1.5">
+          <Icon name="assignment" size={15} color={Colors.text.secondary} />
+          <Text className="text-sm font-bevn-semibold text-text-primary">{TEXT.evaluateResultsLabel}</Text>
+        </View>
+        <TextInput
+          accessibilityLabel={TEXT.evaluateResultsLabel}
+          className="bg-bg-elevated rounded-md p-md text-text-primary text-sm border border-border font-bevn-regular min-h-[88px]"
+          value={results}
+          onChangeText={setResults}
+          maxLength={EVALUATION_RESULTS_MAX_LENGTH}
+          multiline
+          textAlignVertical="top"
+          editable={!isPending}
+          placeholder={TEXT.evaluateResultsPlaceholder}
+          placeholderTextColor={Colors.text.muted}
+        />
+        <Text className="text-xs text-text-muted font-bevn-regular text-right">{results.length}/{EVALUATION_RESULTS_MAX_LENGTH}</Text>
       </View>
 
       <View className="gap-sm">

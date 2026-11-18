@@ -65,6 +65,7 @@ export const NOTIFICATION_TEXT = {
 /** Nhãn nút hành động theo màn đích của thông báo (web: getNotificationCta) */
 export const NOTIFICATION_ACTION_TEXT = {
   chat: 'Mở tin nhắn',
+  refundChat: 'Nhắn tin với lễ tân',
   scheduleMember: 'Xem lịch tập',
   scheduleCoach: 'Xem lịch dạy',
   class: 'Xem lớp học',

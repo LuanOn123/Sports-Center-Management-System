@@ -42,12 +42,12 @@ export function canGenerateAttendanceQr(
   return schedule.status === 'SCHEDULED' && canTakeAttendance(schedule, now);
 }
 
-/** Gói đang cấp quyền: ACTIVE và startDate <= now <= endDate */
+/** Gói đang cấp quyền: ACTIVE và startDate <= now < endDate (đúng thời điểm hết hạn là hết quyền — web: isEffectiveSubscription) */
 export function isEffectiveSubscription(
   s: { status: string; startDate: string; endDate: string },
   now = Date.now(),
 ) {
-  return s.status === 'ACTIVE' && Date.parse(s.startDate) <= now && Date.parse(s.endDate) >= now;
+  return s.status === 'ACTIVE' && Date.parse(s.startDate) <= now && Date.parse(s.endDate) > now;
 }
 
 /** Gói FREE do hệ thống cấp khi tạo tài khoản (tier lưu trên subscription, rồi tới tier của gói) */

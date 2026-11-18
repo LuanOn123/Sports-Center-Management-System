@@ -9,6 +9,7 @@ import { InfoBanner } from '../../shared/InfoBanner';
 import { InfoRow } from '../../shared/InfoRow';
 import { Colors } from '../../../constants/theme';
 import { SEPAY_MOCK_ENABLED, SEPAY_QR_SIZE } from '../../../constants/payment';
+import { SEPAY_REFUNDED_TEXT } from '../../../constants/sepayReview';
 import { formatVnd } from '../../../lib/format';
 import type { SepayCheckout } from '../../../lib/types';
 
@@ -110,7 +111,10 @@ export function SepayCheckoutPanel({
       {phase === 'expired' && (
         <InfoBanner tone="warning" title="Đơn thanh toán đã hết thời gian" message="Bạn có thể tạo đơn mới để nhận mã VietQR còn hiệu lực." />
       )}
-      {phase === 'failed' && (
+      {phase === 'failed' && checkout.status === 'REFUNDED' && (
+        <InfoBanner tone="info" title={SEPAY_REFUNDED_TEXT.title} message={SEPAY_REFUNDED_TEXT.message} />
+      )}
+      {phase === 'failed' && checkout.status !== 'REFUNDED' && (
         <InfoBanner tone="error" title="Thanh toán thất bại" message="Giao dịch không thành công. Vui lòng tạo đơn thanh toán mới." />
       )}
       {pollError && isPending && (

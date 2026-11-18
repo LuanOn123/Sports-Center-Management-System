@@ -13,11 +13,13 @@ import { useCoursePlan } from './useClasses';
 import { useEnrollWholeCourse } from '../member/useEnrollments';
 import { useMyClassGoal } from '../member/useMyClassGoal';
 import { useOwningFacility } from './useOwningFacility';
+import { TRAINING_PLANS_KEY } from './useTrainingPlans';
 import { TERM_STAGE_BLOCKER_CODES } from '../../constants/terms';
 import { enrollSummaryOf } from '../../lib/classPlan';
 import { blockerGuidance, courseFooter } from '../../lib/enrollmentBlockers';
 import { toEnrollOptions, type EnrollFormValues } from '../../lib/enrollOptions';
 import { membershipCoverageNotice, termNotice as describeTerm } from '../../lib/termRegistration';
+import { isAssignedCoach, memberSeesTrainingPlans } from '../../lib/trainingPlans';
 
 export function useClassDetail(id: string) {
   const { user, currentFacility } = useAuth();
@@ -73,9 +75,15 @@ export function useClassDetail(id: string) {
     [isMember, course, registration, termNotice, guidance],
   );
 
+  // Giáo án tập luyện: hội viên chỉ thấy khi đã đăng ký lớp; HLV chỉ thấy lớp mình được phân công (BE từ chối người khác)
+  const trainingPlansVisible = isMember
+    ? memberSeesTrainingPlans(Boolean(goal.data), plan.data?.data.sessions)
+    : isCoach && isAssignedCoach(user?.coachProfile?.id, cls.data?.data);
+
   return {
     isMember,
     isCoach,
+    trainingPlansVisible,
     cls,
     facilityScope,
     plan,
@@ -115,6 +123,8 @@ export function useClassDetail(id: string) {
       void cls.refetch();
       if (isMember) { void plan.refetch(); void goal.refetch(); }
       if (isCoach) void coachSessions.refetch();
+      // Giáo án nằm trong khối riêng (TrainingPlansSection) nên làm mới theo khóa cache của lớp này
+      void queryClient.invalidateQueries({ queryKey: [TRAINING_PLANS_KEY, id] });
     },
   };
 }

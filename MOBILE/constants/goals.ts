@@ -9,6 +9,8 @@ import { Colors } from './theme';
 export const GOAL_MAX_LENGTH = 500;
 /** Lời dặn của HLV trong một lần đánh giá (BE: tối đa 1000 ký tự) */
 export const EVALUATION_NOTE_MAX_LENGTH = 1000;
+/** Kết quả từng bài tập trong buổi mà HLV ghi khi đánh giá (BE: tối đa 3000 ký tự) */
+export const EVALUATION_RESULTS_MAX_LENGTH = 3000;
 /** Ghi chú sức khỏe khi đăng ký lớp (BE: tối đa 1000 ký tự) */
 export const HEALTH_NOTES_MAX_LENGTH = 1000;
 /** Bộ đếm ký tự ghi chú sức khỏe đổi màu cảnh báo từ mốc này (web: 950) */
@@ -75,6 +77,8 @@ export const GOAL_TEXT = {
   logEmpty: 'Chưa có buổi học nào được ghi nhận đánh giá. HLV sẽ đánh giá sự tiến bộ của bạn sau mỗi buổi học kết thúc!',
   coachLabel: 'HLV:',
   coachNote: 'Lời dặn của HLV:',
+  /** Khung "Kết quả buổi tập" trong nhật ký đánh giá (web: ClassDetailPage) */
+  sessionResults: 'Kết quả buổi tập',
   evaluationProgress: (value: number) => `Tiến độ: ${value}%`,
   /** Thẻ ở chi tiết buổi học: đánh giá của HLV cho đúng buổi này */
   sessionEvaluationTitle: 'Đánh giá của HLV cho buổi này',
@@ -84,6 +88,8 @@ export const GOAL_TEXT = {
   evaluateTitle: 'Đánh giá tiến độ',
   studentGoal: 'Mục tiêu học viên:',
   evaluateProgressLabel: 'Đánh giá tiến độ sau buổi dạy:',
+  evaluateResultsLabel: 'Kết quả từng bài tập trong buổi',
+  evaluateResultsPlaceholder: 'Ví dụ: Squat 3 hiệp × 10 lần, chạy 15 phút',
   evaluateNoteLabel: 'Lời dặn / Ghi chú cho học viên:',
   evaluateNotePlaceholder: 'Nhập nhận xét lý do tăng/giảm tiến độ, lời dặn kỹ thuật động tác...',
   evaluateSave: 'Lưu đánh giá',

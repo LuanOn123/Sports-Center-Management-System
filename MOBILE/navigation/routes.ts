@@ -55,7 +55,11 @@ export const ROUTES = {
   payment: (paymentId: string): Href => ({ pathname: '/payment/[paymentId]', params: { paymentId } }),
   invoice: (id: string): Href => ({ pathname: '/invoice/[id]', params: { id } }),
   paymentDetail: (id: string): Href => ({ pathname: '/member/payment-detail/[id]', params: { id } }),
-  chatThread: (userId: string, name?: string): Href => ({ pathname: '/chat/[userId]', params: { userId, ...(name ? { name } : {}) } }),
+  /** Cuộc trò chuyện với một người; `message` = tin soạn sẵn trong ô soạn (web: ?userId=…&message=…, vd. nhắn lễ tân về hoàn tiền) */
+  chatThread: (userId: string, name?: string, message?: string): Href => ({
+    pathname: '/chat/[userId]',
+    params: { userId, ...(name ? { name } : {}), ...(message ? { message } : {}) },
+  }),
   /**
    * Điểm danh MỘT buổi (danh sách học viên): màn con của khu vực coach, đẩy lên trên tabs. KHÔNG trỏ vào tab Điểm danh: chuyển giữa các tab không
    * phải là "đẩy" màn hình nên không có trang trước để vuốt từ trái sang phải quay lại (Lịch dạy → Điểm danh, Trang chủ → Điểm danh…).

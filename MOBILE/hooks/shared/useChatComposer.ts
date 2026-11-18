@@ -10,12 +10,13 @@ import type { User } from '../../lib/types';
 
 type SendMessage = (content: string, user?: User | null, attachment?: DocumentPicker.DocumentPickerAsset) => Promise<unknown>;
 
-export function useChatComposer(send: SendMessage, user: User | null) {
-  const [text, setText] = useState('');
+/** `initialText`: tin soạn sẵn (vd. câu chào lễ tân về hoàn tiền); chỉ điền lúc mở, người dùng sửa hoặc xóa tùy ý */
+export function useChatComposer(send: SendMessage, user: User | null, initialText = '') {
+  const [text, setText] = useState(initialText);
   const [attachment, setAttachment] = useState<DocumentPicker.DocumentPickerAsset>();
   const [sending, setSending] = useState(false);
   // Bản sao đồng bộ để Enter / nút gửi bấm dồn không gửi trùng và luôn đọc đúng nội dung mới nhất
-  const textRef = useRef('');
+  const textRef = useRef(initialText);
   const sendingRef = useRef(false);
 
   const changeText = (value: string) => {
