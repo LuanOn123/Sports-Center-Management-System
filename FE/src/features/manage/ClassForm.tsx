@@ -18,6 +18,7 @@ type Sport = {
   isActive: boolean;
 };
 type Room = {
+  facilityId?: string;
   id: string;
   name: string;
   capacity: number;
@@ -30,8 +31,10 @@ export function ClassForm({
   onSuccess,
   onCancel,
   onBusyChange,
+  facilityId,
 }: {
   initial?: RecordData;
+  facilityId?: string;
   onSuccess: () => void;
   onCancel: () => void;
   onBusyChange?: (busy: boolean) => void;
@@ -67,8 +70,8 @@ export function ClassForm({
     queryFn: ({ signal }) => allPages<Sport>("GET /sports", { signal }),
   });
   const rooms = useQuery({
-    queryKey: ["class-form", "rooms"],
-    queryFn: ({ signal }) => allPages<Room>("GET /rooms", { signal }),
+    queryKey: ["class-form", "rooms", facilityId],
+    queryFn: ({ signal }) => allPages<Room>("GET /rooms", { signal, facilityId }),
   });
   const allSports = sports.data?.data ?? [];
   const selected = allSports.filter((s) => sportIds.includes(s.id));
@@ -89,6 +92,7 @@ export function ClassForm({
     rooms.data?.data.filter(
       (r) =>
         r.isActive &&
+        (!facilityId || !r.facilityId || r.facilityId === facilityId) &&
         allowedAreas.includes(r.areaType) &&
         hasEquipment(
           retainSnapshot && snapshot != null
@@ -128,6 +132,7 @@ export function ClassForm({
         }
       }
       return api(initial.id ? "PATCH /classes/{id}" : "POST /classes", {
+        facilityId,
         params: initial.id ? { id: String(initial.id) } : {},
         body,
       });
@@ -188,6 +193,7 @@ export function ClassForm({
           return;
         }
         const body: RecordData = {
+          ...(!initial.id && facilityId ? { facilityId } : {}),
           name: name.trim(),
           description: description.trim(),
           sportIds,

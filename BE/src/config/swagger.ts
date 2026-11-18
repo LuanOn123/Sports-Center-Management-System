@@ -1402,15 +1402,19 @@ function injectFacilityHeader(spec: any): void {
       if (!HTTP_METHODS.has(method) || !op || typeof op !== "object") continue;
       if (method === "get" && PUBLIC_SCOPE_GET_ROOTS.has(root)) continue;
       if (!Array.isArray(op.parameters)) op.parameters = [];
-      // Đã khai báo sẵn trong JSDoc / addOperations → giữ nguyên.
-      if (op.parameters.some((p: any) => p?.name === "X-Facility-Id")) continue;
+      const adminScope = "ADMIN: GET without facility context reads all facilities. An optional context filters results. New rooms/classes require a destination facility. Updates to existing rooms/classes/payments can resolve context from the stored resource. ";
+      const declared = op.parameters.find((p: any) => p?.name === "X-Facility-Id");
+      if (declared) {
+        declared.description = adminScope + (declared.description || "");
+        continue;
+      }
       const optional = hasFacilityContextElsewhere(op, path);
       op.parameters.push({
         name: "X-Facility-Id",
         in: "header",
         required: false,
         schema: { type: "string" },
-        description: "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: " + (optional
+        description: adminScope + "MANAGER: optional; scope is derived from the sole active DB assignment, and any mismatching context returns 403. Other roles: " + (optional
           ? "Facility context — endpoint này đã nhận facilityId ở path/query/body; header chỉ cần khi không gửi ở đó (nếu có ở nhiều nơi phải TRÙNG nhau → 400 CONFLICTING_FACILITY_CONTEXT)."
           : "Facility context (FACILITY-scope) — endpoint không nhận facilityId ở path/query/body nên BẮT BUỘC header này (thiếu → 400 FACILITY_CONTEXT_REQUIRED)."),
       });

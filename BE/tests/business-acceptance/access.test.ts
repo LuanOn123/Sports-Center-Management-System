@@ -36,7 +36,7 @@ cases("BR-AUTH-ROLE", [
 
 type ScopeSetup = {
   role: string; headers?: string; query?: string; body?: string; path?: string;
-  assignments?: number; active?: boolean; coachAssigned?: boolean; report?: boolean;
+  assignments?: number; active?: boolean; coachAssigned?: boolean; report?: boolean; method?: string;
 };
 cases<readonly [string, ScopeSetup, string | number | null]>("BR-AUTH-FACILITY", [
   ["Manager lấy cơ sở từ phân công khi header trống", { role: "MANAGER" }, "facility-a"],
@@ -49,11 +49,16 @@ cases<readonly [string, ScopeSetup, string | number | null]>("BR-AUTH-FACILITY",
   ["hội viên không thể thao tác ở cơ sở ngừng hoạt động", { role: "MEMBER", headers: "facility-b", active: false }, 403],
   ["Admin không thể dùng context xung đột cho báo cáo scoped", { role: "ADMIN", headers: "facility-a", query: "facility-b" }, 400],
   ["Admin có báo cáo hội viên toàn hệ thống khi không chọn cơ sở", { role: "ADMIN", report: true }, null],
+  ["Admin xem các lớp toàn hệ thống khi không có context", { role: "ADMIN" }, null],
+  ["Admin lọc theo cơ sở đang hoạt động", { role: "ADMIN", headers: "facility-b" }, "facility-b"],
+  ["Admin xem được dữ liệu cơ sở ngừng hoạt động", { role: "ADMIN", headers: "facility-b", active: false }, "facility-b"],
+  ["Admin phải chọn cơ sở khi tạo lớp mới", { role: "ADMIN", method: "POST" }, 400],
+  ["hội viên vẫn cần context cơ sở", { role: "MEMBER" }, 400],
   ["HLV có phân công hoạt động được truy cập cơ sở", { role: "COACH", headers: "facility-a", coachAssigned: true }, "facility-a"],
   ["HLV không có phân công bị chặn khi chọn cơ sở", { role: "COACH", headers: "facility-a", coachAssigned: false }, 403],
 ], async ([, setup, expected]) => {
   const request = {
-    user: { id: "actor", role: setup.role }, method: "GET",
+    user: { id: "actor", role: setup.role }, method: setup.method ?? "GET",
     originalUrl: setup.report ? "/api/v1/reports/memberships" : "/api/v1/classes",
     params: { facilityId: setup.path }, query: { facilityId: setup.query },
     body: { facilityId: setup.body }, get: () => setup.headers,
@@ -85,6 +90,32 @@ cases<readonly [string, ScopeSetup, string | number | null]>("BR-AUTH-FACILITY",
 });
 
 const reset = { email: "member@example.invalid", newPassword: "new-fixture-password", otp: "012345" };
+cases("BR-ADMIN-GLOBAL-UPDATE", ["rooms", "classes", "payments"] as const, async (resource) => {
+  const delegate = resource === "rooms" ? prisma.room : resource === "classes" ? prisma.class : prisma.payment;
+  await withFixture([
+    [delegate, "findUnique", async ({ where }) => {
+      assert.equal(where.id, "resource-a");
+      return { facilityId: "facility-b" };
+    }],
+    [prisma.facility, "findUnique", async ({ where }) => {
+      assert.equal(where.id, "facility-b");
+      return { isActive: true };
+    }],
+  ], async () => {
+    const request = {
+      user: { id: "admin", role: "ADMIN" }, method: "PATCH",
+      originalUrl: `/api/v1/${resource}/resource-a`,
+      params: {}, query: {}, body: {}, get: () => undefined,
+    } as unknown as Request;
+    let called = false;
+    await checkFacilityScope(request, {} as Response, (error) => {
+      assert.equal(error, undefined);
+      called = true;
+      assert.equal(requestContext.getStore()?.facilityId, "facility-b");
+    });
+    assert.equal(called, true);
+  });
+});
 schemaCases("BR-AUTH-OTP", ResetPasswordSchema, [
   ["OTP cho phép số 0 ở đầu", reset, true],
   ["OTP không đủ 6 ký tự không được đổi mật khẩu", { ...reset, otp: "12345" }, false, "otp"],

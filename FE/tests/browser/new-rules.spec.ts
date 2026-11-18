@@ -163,7 +163,7 @@ async function fixture(page: Page, role = "MEMBER") {
         },
       ];
     else if (path === "/attendance/generate-qr")
-      data = { qrToken: "qr-" + calls.length, expiresIn: 60 };
+      data = { qrToken: "qr-" + calls.length, expiresIn: 600, manualCode: "J42DFR", manualCodeExpiresIn: 90 };
     else if (path === "/attendance/scan-qr") data = { status: "PRESENT" };
     else if (path.startsWith("/subscriptions/member/"))
       data = [
@@ -322,6 +322,20 @@ test("coach QR rotates after 55 seconds and stops when hidden", async ({
   await expect(
     page.getByRole("img", { name: "Mã QR điểm danh buổi học" }),
   ).toBeVisible();
+  // Mã dự phòng: mỗi ký tự một ô, có đếm ngược và nút sao chép nằm gọn trong thẻ
+  const manual = page.getByRole("region", { name: "Mã dự phòng" });
+  await expect(manual.locator(".qr-manual-code span")).toHaveCount(6);
+  await expect(manual.getByRole("progressbar")).toBeVisible();
+  await expect(manual.getByRole("button", { name: "Sao chép" })).toBeVisible();
+  await expect(page.getByText(/QR còn hiệu lực/)).toBeVisible();
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    const box = await manual.boundingBox();
+    const code = await manual.locator(".qr-manual-code").boundingBox();
+    expect(code!.x + code!.width).toBeLessThanOrEqual(box!.x + box!.width);
+    await manual.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `artifacts/coach-qr-${width}.png` });
+  }
   await page.clock.fastForward(55000);
   await expect
     .poll(

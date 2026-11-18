@@ -6,6 +6,45 @@ import { lockMemberSubscription, lockPaymentWebhook } from "../../utils/dbLocks.
 import { activateMemberDue, revokeSubscriptionBookings } from "../subscriptions/entitlement.service.js";
 import { findRefundReceptionist, notifyReceptionistsAboutRefund } from "../notifications/notifications.service.js";
 
+/** Cancel only an unpaid refund request. Entitlements cancelled by the request stay cancelled. */
+export async function cancelPaymentRefund(id: string, reason: string, user: { id: string; role: string }) {
+  if (user.role !== "RECEPTIONIST") throw new AppError("Bạn không có quyền hủy yêu cầu hoàn tiền.", 403);
+  const trimmedReason = reason.trim();
+  if (trimmedReason.length < 3 || trimmedReason.length > 1000) {
+    throw new AppError("Lý do hủy phải từ 3 đến 1000 ký tự.", 400);
+  }
+  return prisma.$transaction(async tx => {
+    // The payout confirmation uses this same lock, so only one decision can succeed.
+    await lockPaymentWebhook(tx, id);
+    const payment = await tx.payment.findUnique({ where: { id }, include: { member: true } });
+    if (!payment) throw new AppError("Không tìm thấy giao dịch.", 404);
+    if (!requestContext.getStore()?.facilityId || payment.facilityId !== requestContext.getStore()?.facilityId) {
+      throw new AppError("Bạn chỉ được xử lý yêu cầu hoàn tại cơ sở đang phụ trách.", 403);
+    }
+    if (payment.status !== "SUCCESS" || !payment.refundRequestedAt) {
+      throw new AppError("Yêu cầu đã được xử lý hoặc không còn chờ hoàn tiền. Vui lòng tải lại.", 409);
+    }
+    const changed = await tx.payment.updateMany({
+      where: { id, status: "SUCCESS", refundRequestedAt: payment.refundRequestedAt },
+      data: { refundRequestedAt: null, refundRequestedAmount: null, refundReason: null },
+    });
+    if (changed.count !== 1) throw new AppError("Yêu cầu vừa được xử lý. Vui lòng tải lại.", 409);
+    await tx.auditLog.create({ data: {
+      facilityId: payment.facilityId, actorId: user.id, entity: "Payment", entityId: id,
+      action: "cancelRefund", reason: trimmedReason,
+      before: { refundRequestedAt: payment.refundRequestedAt.toISOString(), refundRequestedAmount: Number(payment.refundRequestedAmount), refundReason: payment.refundReason },
+      after: { status: "SUCCESS", refundRequestedAt: null, refundRequestedAmount: null },
+    } });
+    await tx.notification.create({ data: {
+      userId: payment.member.userId, type: "GENERAL", title: "Yêu cầu hoàn tiền đã bị hủy",
+      body: `Yêu cầu hoàn tiền cho giao dịch #${id} đã bị lễ tân hủy. Lý do: ${trimmedReason}`,
+      reason: trimmedReason,
+      metadata: { action: "REFUND_CANCELLED", paymentId: id, facilityId: payment.facilityId, reason: trimmedReason },
+    } });
+    return tx.payment.findUniqueOrThrow({ where: { id } });
+  });
+}
+
 /** Yêu cầu hoàn tiền từ Member hoặc Admin, hỗ trợ kiểm tra điều kiện gói tập, ghi AuditLog và báo cho Lễ tân cơ sở. */
 export async function requestPaymentRefund(id: string, reason: string, user: { id: string; role: string }) {
   const result = await prisma.$transaction(async tx => {

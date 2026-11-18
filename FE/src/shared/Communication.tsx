@@ -64,7 +64,7 @@ export function getNotificationCta(
   if (type === "CHAT_MESSAGE" && (role === "MEMBER" || role === "RECEPTIONIST") && typeof meta.senderId === "string" && meta.senderId) {
     return { label: "Mở tin nhắn", to: `/${role.toLowerCase()}/chat?${new URLSearchParams({ userId: meta.senderId })}` };
   }
-  if (type.startsWith("COACH_CHANGE_") && ["COACH", "MANAGER", "ADMIN"].includes(role || "")) {
+  if (type.startsWith("COACH_CHANGE_") && ["COACH", "MANAGER"].includes(role || "")) {
     return { label: "Xem yêu cầu đổi HLV", to: `/${role!.toLowerCase()}/coach-changes` };
   }
   if (type.startsWith("LEAVE_REQUEST_")) {

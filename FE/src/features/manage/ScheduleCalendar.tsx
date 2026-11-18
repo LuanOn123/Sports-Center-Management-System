@@ -77,9 +77,10 @@ function ScheduleCard({
       type="button"
       className={`calendar-event ${status}`}
       onClick={() => onSelect(row)}
-      title={`${display(at(row, "class.name"))} · ${time(row.startTime)}–${time(row.endTime)}`}
+      title={`${display(at(row, "class.name"))} · ${time(row.startTime)}–${time(row.endTime)}${row.facilityName ? " · " + row.facilityName : ""}`}
     >
       <strong>{display(at(row, "class.name"))}</strong>
+      {typeof row.facilityName === "string" && <span>{row.facilityName}</span>}
       <span><Clock3 size={12} /> {time(row.startTime)}–{time(row.endTime)}</span>
       {!compact && <span><MapPin size={12} /> {display(at(row, "room.name"))}</span>}
       {!compact && <span><UserRound size={12} /> {String(coachName || "Chưa phân công")}</span>}

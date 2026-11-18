@@ -144,6 +144,122 @@ dialog.modal-with-scroll-body[open] {
   border-radius: 16px;
   border: 1px solid #e1e8e3;
 }
+/* Mã QR + mã dự phòng: hai thẻ cạnh nhau, xuống dòng khi hẹp */
+.qr-credentials {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+.qr-credential {
+  margin: 0;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #dce7df;
+  border-radius: 14px;
+  background: #fff;
+}
+.qr-credential-scan {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 10px;
+}
+.qr-credential-scan .qr-code {
+  padding: 10px;
+  line-height: 0;
+}
+.qr-credential-scan .qr-code svg {
+  width: min(220px, 100%);
+  height: auto;
+}
+.qr-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  background: #eef5f0;
+  color: #2d5a3c;
+}
+.qr-manual {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.qr-manual-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5b6b61;
+}
+.qr-manual-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #5b6b61;
+}
+.qr-manual-code {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: auto;
+}
+.qr-manual-code span {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 5;
+  max-height: 56px;
+  border-radius: 10px;
+  border: 1px solid #dce7df;
+  background: #f7faf8;
+  font: 800 clamp(1.15rem, 4vw, 1.6rem) / 1 ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+.qr-manual-meter {
+  height: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #e6eee8;
+}
+.qr-manual-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #2f8f5b;
+  transition: width 1s linear;
+}
+.qr-manual-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: #5b6b61;
+}
+.qr-manual.is-expired .qr-manual-code span {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+.qr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+:is(.qr-actions, .qr-manual-footer) .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .qr-manual-meter span {
+    transition: none;
+  }
+}
 .qr-panel video {
   width: 100%;
   max-width: 420px;

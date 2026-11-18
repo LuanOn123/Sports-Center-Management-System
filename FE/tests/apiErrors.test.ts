@@ -22,6 +22,23 @@ describe("Vietnamese backend errors", () => {
       if (field === "phone") expect(result.message).not.toContain("Email");
     },
   );
+  it("lists the unmet conditions when a whole-course enrollment fails", () => {
+    const result = localizeApiError(
+      'Không thể đăng ký trọn khóa "Sclimbing": 2 điều kiện chưa đạt.',
+      {
+        code: "COURSE_ENROLLMENT_FAILED",
+        details: [
+          { code: "PREMIUM_REQUIRED", message: "Khóa học Premium yêu cầu gói tập hạng PREMIUM." },
+          { code: "SESSION_FULL", message: "Buổi 20/11/2026 (Phòng A) đã hết chỗ." },
+          { code: "BROKEN" },
+        ],
+      },
+      409,
+    );
+    expect(result.message).toBe(
+      'Không thể đăng ký trọn khóa "Sclimbing": 2 điều kiện chưa đạt. Khóa học Premium yêu cầu gói tập hạng PREMIUM. Buổi 20/11/2026 (Phòng A) đã hết chỗ.',
+    );
+  });
   it("never assumes that an unspecified conflict is an email duplicate", () => {
     const result = localizeApiError(undefined, null, 409);
     expect(result.message).toContain("xung đột");

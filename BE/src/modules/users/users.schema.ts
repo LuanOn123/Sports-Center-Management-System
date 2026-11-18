@@ -9,6 +9,7 @@ export const CreateUserSchema = z.object({
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
   dateOfBirth: dateOfBirth.optional(),
   role: z.enum(["MEMBER", "COACH", "RECEPTIONIST", "MANAGER", "ADMIN"]),
+  facilityId: z.string().uuid().nullable().optional(),
   sportIds: z.array(z.string().trim().min(1)).optional(),
   experienceYears: z.number().int().min(0).optional(),
   bio: z.string().optional(),
@@ -21,6 +22,7 @@ export const CreateUserSchema = z.object({
 });
 
 export const UpdateUserSchema = z.object({
+  facilityId: z.string().uuid().nullable().optional(),
   fullName: z.string().min(2).optional(),
   phone: z.string().regex(/^[0-9+\-() ]*$/, "Phone must not contain special characters").optional(),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
@@ -30,6 +32,7 @@ export const UpdateUserSchema = z.object({
 });
 
 export const UserQuerySchema = z.object({
+  facilityId: z.union([z.string().uuid(), z.literal("unassigned")]).optional(),
   page: z.string().optional(),
   limit: z.string().optional(),
   role: z.enum(["MEMBER", "COACH", "RECEPTIONIST", "MANAGER", "ADMIN"]).optional(),

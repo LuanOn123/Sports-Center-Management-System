@@ -531,6 +531,7 @@ function OperationForm(props: {
             return {
               value: String(m.id),
               label,
+              searchText: `${user.fullName || ""} ${user.phone || ""} ${user.email || ""}`,
             };
           }),
       };

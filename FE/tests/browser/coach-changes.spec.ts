@@ -133,18 +133,19 @@ for (const action of ["APPROVED", "REJECTED"]) {
   });
 }
 
-test("admin follows coach changes without a schedule approval action", async ({
+test("admin redirects removed coordination pages to the dashboard", async ({
   page,
 }) => {
   await setup(page, "ADMIN");
   await page.route("**/api/v1/coach-change-requests", (route) =>
     route.fulfill({ json: { success: true, data: [request] } }),
   );
-  await page.goto("/admin/coach-changes");
-  await expect(
-    page.getByRole("heading", { name: "Yoga buổi sáng" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Xem xét yêu cầu" }),
-  ).toHaveCount(0);
+  for (const slug of ["coach-changes", "leave", "issues", "support"]) {
+    await page.goto(`/admin/${slug}`);
+    await expect(page).toHaveURL(/\/admin\/dashboard$/);
+  }
+  const sidebar = page.locator(".sidebar nav");
+  for (const name of ["Đổi HLV theo buổi", "Nghỉ học & nhân sự", "Yêu cầu hỗ trợ"]) {
+    await expect(sidebar.getByRole("link", { name, exact: true })).toHaveCount(0);
+  }
 });

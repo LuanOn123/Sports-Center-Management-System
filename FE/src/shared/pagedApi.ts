@@ -7,6 +7,7 @@ export async function allPages<T>(
     query?: Record<string, string>;
     params?: Record<string, string>;
     signal?: AbortSignal;
+    facilityId?: string;
   } = {},
 ): Promise<Envelope<T[]>> {
   const rows: T[] = [];

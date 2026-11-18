@@ -53,12 +53,10 @@ export function CoachCard({
 export function CoachProfileDialog({
   assigned,
   classId,
-  canReview,
   onClose,
 }: {
   assigned: CoachInfo;
   classId: string;
-  canReview: boolean;
   onClose: () => void;
 }) {
   const coach = assigned.coach;
@@ -144,14 +142,7 @@ export function CoachProfileDialog({
             coachId={coach.id}
             reviewClassId={classId}
             role="MEMBER"
-            canReview={canReview}
           />
-          {!canReview && (
-            <p className="field-note">
-              Bạn có thể viết đánh giá sau khi đã tham gia ít nhất một buổi của
-              lớp này do huấn luyện viên dạy.
-            </p>
-          )}
         </div>
       </div>
     </Modal>

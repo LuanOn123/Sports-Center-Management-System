@@ -277,16 +277,9 @@ for (const [role, path] of [
           ),
         )
         .toBe(true);
-      await page
-        .getByRole("combobox", { name: "Cơ sở đang làm việc" })
-        .selectOption("facility-b");
-      await expect
-        .poll(() =>
-          calls.some(
-            (c) => c.path === "/reports/revenue" && c.facility === "facility-b",
-          ),
-        )
-        .toBe(true);
+      await expect(page.locator("header.topbar").getByLabel("Cơ sở hiện tại: Cơ sở A")).toBeVisible();
+      await expect(page.locator("header.topbar").getByRole("combobox")).toHaveCount(0);
+      expect(calls.some((c) => c.path === "/reports/revenue" && c.facility === "facility-b")).toBe(false);
       await page.screenshot({
         path: "test-results/manager-analytics.png",
         fullPage: true,
@@ -294,9 +287,9 @@ for (const [role, path] of [
     }
     if (role === "RECEPTIONIST") {
       expect(calls.some((c) => c.path.startsWith("/reports/"))).toBe(false);
-      await expect(page.locator('a[href="/receptionist/checkin"]')).toHaveCount(
-        0,
-      );
+      await expect(
+        page.locator('a[href="/receptionist/checkin"]').first(),
+      ).toBeVisible();
     }
     if (role === "COACH")
       expect(

@@ -146,7 +146,7 @@ export function ManagerUsers({ initialRole }: { initialRole?: "COACH" } = {}) {
           )}
           {!isCoachOnly && (
             <button
-              className="button"
+              className="button primary"
               onClick={() => setShowCreateReceptionist(true)}
             >
               + Tạo Lễ tân

@@ -5,7 +5,7 @@ import { Attendance } from "../../shared/Attendance";
 import { TrainingPlans } from "../../shared/TrainingPlans";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   ArrowRight,
@@ -467,6 +467,18 @@ function SessionDetails({
   const [student, setStudent] = useState<Row | null>(null);
   const [search, setSearch] = useState("");
   const sid = idOf(session);
+  const cache = useQueryClient();
+  const [completed, setCompleted] = useState(session.status === "COMPLETED");
+  const [confirmComplete, setConfirmComplete] = useState(false);
+  const complete = useMutation({
+    mutationFn: () => api("PATCH /class-schedules/{id}/complete", { params: { id: sid } }),
+    onSuccess: async () => {
+      setCompleted(true);
+      setConfirmComplete(false);
+      await cache.invalidateQueries();
+    },
+  });
+  const ended = new Date(String(session.endTime)).getTime() <= Date.now();
   const roster = useQuery({
     queryKey: ["coach", "roster", sid],
     queryFn: ({ signal }) =>
@@ -492,7 +504,7 @@ function SessionDetails({
     >
       <div className="coach-detail">
         <div className="coach-session-summary">
-          <Badge value={session.status} />
+          <Badge value={completed ? "COMPLETED" : session.status} />
           <span>
             {fmt(session.startTime)} · {fmt(session.startTime, true)} –{" "}
             {fmt(session.endTime, true)}
@@ -502,6 +514,20 @@ function SessionDetails({
           </span>
         </div>
         <p>{str(obj(session.class).name)}</p>
+        <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <input type="checkbox" style={{ width: 18, height: 18, flex: "0 0 auto" }}
+            checked={completed || confirmComplete} disabled={completed || !ended || session.status !== "SCHEDULED" || complete.isPending}
+            onChange={(event) => setConfirmComplete(event.target.checked)} />
+          Đã hoàn thành
+        </label>
+        {!ended && <p className="field-note">Chỉ có thể xác nhận sau giờ kết thúc buổi dạy.</p>}
+        {confirmComplete && !completed && <div>
+          <p>Xác nhận đã dạy xong và kiểm tra điểm danh. Học viên chưa được điểm danh sẽ được ghi nhận vắng. Sau khi hoàn tất không thể bỏ tích.</p>
+          <button className="button primary" disabled={complete.isPending} onClick={() => complete.mutate()}>
+            {complete.isPending ? "Đang lưu…" : "Xác nhận hoàn thành"}
+          </button>
+        </div>}
+        {complete.error && <ErrorState error={complete.error} />}
         <h3>Danh sách học viên</h3>
         <p>
           Chọn học viên để xem thông tin cá nhân, mục tiêu và sở thích tập
@@ -526,7 +552,7 @@ function SessionDetails({
             <p>
               {filtered.length} / {booked.length} học viên
             </p>
-            <Attendance schedule={session} roster={booked} role="COACH" />
+            <Attendance schedule={completed ? { ...session, status: "COMPLETED" } : session} roster={booked} role="COACH" />
             <div className="coach-roster">
               {filtered.map((r) => {
                 const member = obj(r.member),
