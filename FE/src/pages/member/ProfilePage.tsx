@@ -285,7 +285,7 @@ export function ProfilePage() {
                       marginBottom: 6,
                     }}
                   >
-                    Họ và tên *
+                    <span className="form-field-label">Họ và tên{"\u00a0"}<span className="required">*</span></span>
                   </label>
                   <input
                     id="member-profile-1"
@@ -575,7 +575,7 @@ export function ProfilePage() {
                 marginBottom: 6,
               }}
             >
-              Mật khẩu hiện tại *
+              <span className="form-field-label">Mật khẩu hiện tại{"\u00a0"}<span className="required">*</span></span>
             </label>
             <input
               id="member-profile-9"
@@ -605,7 +605,7 @@ export function ProfilePage() {
                   marginBottom: 6,
                 }}
               >
-                Mật khẩu mới (tối thiểu 6 ký tự) *
+                <span className="form-field-label">Mật khẩu mới (tối thiểu 6 ký tự){"\u00a0"}<span className="required">*</span></span>
               </label>
               <input
                 id="member-profile-10"
@@ -629,7 +629,7 @@ export function ProfilePage() {
                   marginBottom: 6,
                 }}
               >
-                Xác nhận mật khẩu mới *
+                <span className="form-field-label">Xác nhận mật khẩu mới{"\u00a0"}<span className="required">*</span></span>
               </label>
               <input
                 id="member-profile-11"

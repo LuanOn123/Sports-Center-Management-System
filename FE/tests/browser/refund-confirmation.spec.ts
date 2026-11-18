@@ -20,6 +20,7 @@ test("Reception loads the pending refund queue with the documented filter", asyn
 
 for (const hasReceptionist of [true, false]) {
 test(`member requests a refund with receptionist available: ${hasReceptionist}`, async ({ page }) => {
+  await page.setViewportSize({ width: hasReceptionist ? 1280 : 375, height: 900 });
   await setup(page, "MEMBER");
   const receptionist = { id: "reception-a", fullName: "Lễ tân Mai", role: "RECEPTIONIST" };
   const requests: unknown[] = [];
@@ -86,6 +87,12 @@ test(`member requests a refund with receptionist available: ${hasReceptionist}`,
   const row = page.getByRole("row", { name: /INV-PAID/ });
   const refund = row.getByRole("button", { name: "Yêu cầu hoàn tiền" });
   await expect(refund).toBeVisible();
+  const tops = await row.getByRole("button").evaluateAll(
+    (buttons) => buttons.map((button) => button.getBoundingClientRect().top),
+  );
+  expect(tops).toHaveLength(3);
+  expect(Math.max(...tops) - Math.min(...tops)).toBeLessThan(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await expect(
     page.getByRole("row", { name: /INV-PENDING/ }).getByRole("button", {
       name: "Yêu cầu hoàn tiền",

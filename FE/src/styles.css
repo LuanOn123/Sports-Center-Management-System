@@ -1980,7 +1980,13 @@ dialog::backdrop {
 }
 
 .required {
-  color: #a16f4c;
+  display: inline;
+  color: var(--color-error, #f87171);
+}
+
+.form-field-label {
+  display: inline;
+  line-height: 1.5;
 }
 
 .form-grid label {

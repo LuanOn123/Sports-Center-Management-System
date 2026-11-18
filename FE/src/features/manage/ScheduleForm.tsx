@@ -612,7 +612,7 @@ export function ScheduleForm({
       <fieldset className="form-grid" disabled={busy}>
         {/* Class selector */}
         <label>
-          Lớp học <b className="required">*</b>
+          <span className="form-field-label">Lớp học{"\u00a0"}<b className="required">*</b></span>
           {classesQuery.isPending ? (
             <Loading variant="field" text="Đang tải lớp học…" />
           ) : (
@@ -636,7 +636,7 @@ export function ScheduleForm({
         {mode === "create" && (
           <div className="wide">
             <label>
-              HLV chính phụ trách lớp <b className="required">*</b>
+              <span className="form-field-label">HLV chính phụ trách lớp{"\u00a0"}<b className="required">*</b></span>
               <select
                 aria-label="HLV chính phụ trách lớp"
                 required
@@ -678,7 +678,7 @@ export function ScheduleForm({
         )}
         {/* Room selector */}
         <label>
-          Phòng tập <b className="required">*</b>
+          <span className="form-field-label">Phòng tập{"\u00a0"}<b className="required">*</b></span>
           {roomsQuery.isPending ? (
             <Loading variant="field" text="Đang tải phòng tập…" />
           ) : (
@@ -761,7 +761,7 @@ export function ScheduleForm({
         {!recurringMode && (
           <div className="schedule-date-block wide">
             <label htmlFor="schedule-date-input">
-              Ngày hoạt động <b className="required">*</b>
+              <span className="form-field-label">Ngày hoạt động{"\u00a0"}<b className="required">*</b></span>
             </label>
             <div className="schedule-date-input-wrap">
               <div className="schedule-date-icon-box">
@@ -850,7 +850,7 @@ export function ScheduleForm({
             <div className="recurring-section">
               <div className="recurring-section-header">
                 <strong>
-                  Ngày trong tuần <b className="required">*</b>
+                  <span className="form-field-label">Ngày trong tuần{"\u00a0"}<b className="required">*</b></span>
                 </strong>
                 <small>Chọn các ngày lịch sẽ lặp lại hàng tuần</small>
                 <div className="recurring-weekday-actions">
@@ -914,7 +914,7 @@ export function ScheduleForm({
             <div className="recurring-section">
               <div className="recurring-section-header">
                 <strong>
-                  Khoảng thời gian áp dụng <b className="required">*</b>
+                  <span className="form-field-label">Khoảng thời gian áp dụng{"\u00a0"}<b className="required">*</b></span>
                 </strong>
                 {selectedTerm && (
                   <small>
@@ -1031,7 +1031,7 @@ export function ScheduleForm({
           <div className="schedule-shifts-header">
             <div className="schedule-shifts-title">
               <strong>
-                Ca giờ hoạt động <b className="required">*</b>
+                <span className="form-field-label">Ca giờ hoạt động{"\u00a0"}<b className="required">*</b></span>
               </strong>
               <small>
                 Khung giờ từ 07:00 đến 21:00 · Mỗi ca 2 tiếng (
@@ -1110,7 +1110,7 @@ export function ScheduleForm({
         {!recurringMode && (
           <div className="schedule-time-overview wide">
             <label>
-              Bắt đầu <b className="required">*</b>
+              <span className="form-field-label">Bắt đầu{"\u00a0"}<b className="required">*</b></span>
               <input
                 type="text"
                 readOnly
@@ -1123,7 +1123,7 @@ export function ScheduleForm({
               />
             </label>
             <label>
-              Kết thúc <b className="required">*</b>
+              <span className="form-field-label">Kết thúc{"\u00a0"}<b className="required">*</b></span>
               <input
                 type="text"
                 readOnly

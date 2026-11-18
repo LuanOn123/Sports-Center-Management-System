@@ -9,6 +9,7 @@ import { allPages } from "../../shared/pagedApi";
 import { at, money } from "../../shared/config";
 import { Details, Empty, ErrorState, Loading, Modal } from "../../shared/ui";
 import { InvoiceDialog } from "../../features/reception/payments/PaymentsPage";
+import "./member-payments.css";
 
 type RefundPayment = { id: string; amount: unknown };
 
@@ -60,7 +61,7 @@ export function MemberPaymentsPage() {
             ["total", "Số tiền"],
           ]}
           actions={(r) => (
-            <>
+            <div className="member-invoice-actions">
               <button
                 className="button small"
                 onClick={() => setInvoiceId(String(r.id))}
@@ -91,7 +92,7 @@ export function MemberPaymentsPage() {
                     Yêu cầu hoàn tiền
                   </button>
                 )}
-            </>
+            </div>
           )}
         />
       )}
@@ -209,7 +210,9 @@ function MemberRefundDialog({
           </p>
           <fieldset disabled={mutation.isPending}>
             <label>
-              Lý do yêu cầu hoàn tiền <span style={{ color: "red" }}>*</span>
+              <span className="form-field-label">
+                Lý do yêu cầu hoàn tiền{"\u00a0"}<span className="required">*</span>
+              </span>
               <textarea
                 required
                 minLength={3}

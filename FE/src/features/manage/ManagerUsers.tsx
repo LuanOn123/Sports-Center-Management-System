@@ -603,7 +603,7 @@ function CreateReceptionistModal({
 
         <div className="form-grid">
           <label>
-            Họ và tên *
+            <span className="form-field-label">Họ và tên{"\u00a0"}<span className="required">*</span></span>
             <input
               required
               value={fullName}
@@ -613,7 +613,7 @@ function CreateReceptionistModal({
           </label>
 
           <label>
-            Email *
+            <span className="form-field-label">Email{"\u00a0"}<span className="required">*</span></span>
             <input
               required
               type="email"

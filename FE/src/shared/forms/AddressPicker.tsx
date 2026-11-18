@@ -73,8 +73,8 @@ export function AddressPicker({
           )}
           <div className="facility-editor-grid">
             <label>
-              <span>
-                Tỉnh / Thành phố <span className="required">*</span>
+              <span className="form-field-label">
+                Tỉnh / Thành phố{"\u00a0"}<span className="required">*</span>
               </span>
               <select
                 required
@@ -100,8 +100,8 @@ export function AddressPicker({
               </select>
             </label>
             <label>
-              <span>
-                Phường / Xã / Đặc khu <span className="required">*</span>
+              <span className="form-field-label">
+                Phường / Xã / Đặc khu{"\u00a0"}<span className="required">*</span>
               </span>
               <select
                 required
@@ -126,8 +126,8 @@ export function AddressPicker({
               </select>
             </label>
             <label className="facility-editor-wide">
-              <span>
-                Số nhà, tên đường <span className="required">*</span>
+              <span className="form-field-label">
+                Số nhà, tên đường{"\u00a0"}<span className="required">*</span>
               </span>
               <input
                 required

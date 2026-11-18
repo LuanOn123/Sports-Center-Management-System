@@ -1,0 +1,11 @@
+.member-invoice-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: max-content;
+}
+
+.reception-actions .member-invoice-actions .button {
+  flex: none;
+  white-space: nowrap;
+}

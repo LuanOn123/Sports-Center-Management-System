@@ -135,7 +135,7 @@ function TermForm({
       <fieldset className="form-grid wide" disabled={isPending}>
         {/* Code */}
         <label>
-          Mã kỳ học *
+          <span className="form-field-label">Mã kỳ học{"\u00a0"}<span className="required">*</span></span>
           <div style={{ display: "flex", gap: 8 }}>
             <input
               required
@@ -164,25 +164,25 @@ function TermForm({
         </label>
         {/* Name */}
         <label className="wide">
-          Tên kỳ học *
+          <span className="form-field-label">Tên kỳ học{"\u00a0"}<span className="required">*</span></span>
           <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="VD: Kỳ Thu 2026" />
         </label>
         {/* Term dates */}
         <label>
-          Ngày bắt đầu kỳ *
+          <span className="form-field-label">Ngày bắt đầu kỳ{"\u00a0"}<span className="required">*</span></span>
           <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} />
         </label>
         <label>
-          Ngày kết thúc kỳ *
+          <span className="form-field-label">Ngày kết thúc kỳ{"\u00a0"}<span className="required">*</span></span>
           <input type="date" required value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} />
         </label>
         {/* Registration window */}
         <label>
-          Mở đăng ký từ (giờ Việt Nam) *
+          <span className="form-field-label">Mở đăng ký từ (giờ Việt Nam){"\u00a0"}<span className="required">*</span></span>
           <input type="datetime-local" required value={regStart} onChange={(e) => setRegStart(e.target.value)} />
         </label>
         <label>
-          Đóng đăng ký vào *
+          <span className="form-field-label">Đóng đăng ký vào{"\u00a0"}<span className="required">*</span></span>
           <input type="date" required value={regEnd} min={regStart.slice(0, 10)} onChange={(e) => setRegEnd(e.target.value)} />
         </label>
         {/* Facility assignment */}

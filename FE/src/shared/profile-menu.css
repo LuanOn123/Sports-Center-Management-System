@@ -22,11 +22,20 @@
   gap: 4px;
   text-align: left;
 }
-.member-profile-name small {
+.member-profile-role {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
   color: var(--member-accent, #d3f879);
 }
+.member-profile-role > :first-child {
+  flex-shrink: 0;
+}
 .member-profile-name .member-profile-plan {
-  max-width: clamp(16ch, 17vw, 30ch);
+  min-width: 0;
+  max-width: clamp(12ch, 12vw, 28ch);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

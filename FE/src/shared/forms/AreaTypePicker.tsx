@@ -41,7 +41,7 @@ export function AreaTypePicker({
     <fieldset className="area-type-picker wide">
       <legend>
         {label}
-        {required && <span className="required"> *</span>}
+        {required && <span className="required">{"\u00a0"}*</span>}
       </legend>
       <div className="area-type-options">
         {areaOptions

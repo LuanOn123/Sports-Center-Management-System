@@ -218,7 +218,7 @@ export function AttendancePage() {
             tự động gỡ quyết định.
           </p>
           <label>
-            Lý do khiếu nại <b className="required">*</b>
+            <span className="form-field-label">Lý do khiếu nại{"\u00a0"}<b className="required">*</b></span>
             <textarea
               value={reason}
               minLength={5}
