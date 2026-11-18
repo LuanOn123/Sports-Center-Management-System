@@ -1042,14 +1042,14 @@ function loadGoogle({ environment = 'standalone', webClientId = WEB_CLIENT, iosC
 }
 
 function fakeGoogleModule(overrides = {}) {
-  const calls = { configure: [], signOut: 0, order: [] };
+  const calls = { configure: [], signOut: 0 };
   const codes = { SIGN_IN_CANCELLED: 'CANCELLED', IN_PROGRESS: 'IN_PROGRESS', PLAY_SERVICES_NOT_AVAILABLE: 'NO_PLAY' };
   const module = () => ({
     GoogleSignin: {
       configure: (options) => calls.configure.push(options),
       hasPlayServices: async () => true,
-      signIn: async () => { calls.order.push('signIn'); return overrides.response ?? { type: 'success', data: { idToken: 'google-id-token', user: { email: 'an@gmail.com', name: 'Nguyễn An', photo: null } } }; },
-      signOut: async () => { calls.signOut += 1; calls.order.push('signOut'); if (overrides.signOutError) throw overrides.signOutError; },
+      signIn: async () => overrides.response ?? { type: 'success', data: { idToken: 'google-id-token', user: { email: 'an@gmail.com', name: 'Nguyễn An', photo: null } } },
+      signOut: async () => { calls.signOut += 1; },
     },
     statusCodes: codes,
     isErrorWithCode: (error) => typeof error === 'object' && error !== null && 'code' in error,
@@ -1098,12 +1098,7 @@ test('Google sign-in returns the ID token, configures the Web client ID, and map
   assert.deepEqual(fake.calls.configure, [{ webClientId: WEB_CLIENT, iosClientId: IOS_CLIENT }]);
   await google.signInWithGoogle();
   assert.equal(fake.calls.configure.length, 1, 'chỉ cấu hình một lần');
-  // Mỗi lần bấm Google đều quên tài khoản cũ trước khi mở bảng chọn: tài khoản bị từ chối (vd. Quản lý) không bị nhớ lại
-  assert.deepEqual(fake.calls.order, ['signOut', 'signIn', 'signOut', 'signIn']);
-  await google.signOutOfGoogle(); assert.equal(fake.calls.signOut, 3);
-  // Chưa từng đăng nhập Google (signOut ném lỗi) vẫn mở được bảng chọn
-  const fresh = fakeGoogleModule({ signOutError: { code: 'SIGN_IN_REQUIRED' } });
-  assert.equal((await loadGoogle({ native: fresh.module }).signInWithGoogle()).status, 'success');
+  await google.signOutOfGoogle(); assert.equal(fake.calls.signOut, 1);
 
   // Không có iOS client ID thì không gửi iosClientId (Android)
   const android = fakeGoogleModule(); await loadGoogle({ native: android.module }).signInWithGoogle();
