@@ -55,6 +55,14 @@ export async function signInWithGoogle(): Promise<GoogleSignInOutcome> {
     configured = true;
   }
   await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+  // Quên tài khoản của lần trước rồi mới mở bảng chọn: thư viện nhớ tài khoản đã chọn và signIn() trả lại ngay tài khoản đó
+  // mà không hỏi. Lần trước bị từ chối (vai trò không dùng mobile như Quản lý, email chưa đăng ký rồi bỏ đăng ký, lỗi mạng…)
+  // thì không đăng xuất Google, nên người dùng bị kẹt ở tài khoản cũ, không đổi sang tài khoản Google khác được.
+  try {
+    await GoogleSignin.signOut();
+  } catch {
+    // Chưa từng đăng nhập Google — không có gì để quên
+  }
   const response = await GoogleSignin.signIn();
   if (response.type !== 'success') return { status: 'cancelled' };
 
