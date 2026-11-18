@@ -11,6 +11,7 @@ import { ClassesPage } from "./classes/ClassesPage";
 import { PaymentsPage } from "./payments/PaymentsPage";
 import { resources } from "../manage/config";
 import { ResourcePage } from "../manage/ResourcePage";
+import { FacilityVisits } from "../../shared/FacilityVisits";
 import { ReceptionAttendance } from "./ReceptionAttendance";
 
 const items = [
@@ -20,6 +21,7 @@ const items = [
   ["orders", "Bán gói tại quầy"],
   ["classes", "Đăng ký khóa học"],
   ["schedules", "Lịch lớp học"],
+  ["checkin", "Check-in cơ sở"],
   ["attendance", "Chuyên cần"],
   ["payments", "Thanh toán & hóa đơn"],
   ["support", "Yêu cầu hỗ trợ"],
@@ -62,12 +64,13 @@ export function ReceptionLayout(props: PortalProps) {
           }
         />
         <Route path="/receptionist/payments" element={<PaymentsPage />} />
-
-        {/* Redirects for removed sections */}
+        {/* BR: Receptionist ghi nhận hội viên đến cơ sở (POST /facility-visits/reception-check-in) */}
         <Route
           path="/receptionist/checkin"
-          element={<Navigate replace to="/receptionist/dashboard" />}
+          element={<FacilityVisits staff />}
         />
+
+        {/* Redirects for removed sections */}
         <Route
           path="/receptionist/catalogue"
           element={<Navigate replace to="/receptionist/classes" />}

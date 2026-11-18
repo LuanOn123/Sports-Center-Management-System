@@ -21,14 +21,34 @@ test("Member assistant sends authenticated personal questions", async ({ page })
   expect(request).toEqual({ auth: "Bearer fixture-token", message: "Lịch tập của tôi hôm nay?" });
 });
 
-test("Retired reception check-in redirects and reception support has no create button", async ({ page }) => {
+test("Reception checks a member in at the front desk and support has no create button", async ({ page }) => {
   await setup(page, "RECEPTIONIST");
   await page.route("**/api/v1/issues", (route) =>
     route.fulfill({ json: { success: true, data: [] } }),
   );
+  await page.route(/\/api\/v1\/members(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: { success: true, data: [{ id: "member-1", user: { fullName: "Nguyễn An", email: "an@example.com" } }] },
+    }),
+  );
+  await page.route(/\/api\/v1\/facility-visits(\?.*)?$/, (route) =>
+    route.fulfill({ json: { success: true, data: [] } }),
+  );
+  let checkIn: unknown;
+  await page.route("**/api/v1/facility-visits/reception-check-in", (route) => {
+    checkIn = route.request().postDataJSON();
+    return route.fulfill({
+      status: 201,
+      json: { success: true, data: { id: "visit-1", checkInAt: "2026-11-18T08:00:00.000Z", method: "RECEPTION" } },
+    });
+  });
   await page.goto("/receptionist/checkin");
-  await expect(page).toHaveURL(/\/receptionist\/dashboard$/);
-  await expect(page.getByRole("link", { name: "Check-in cơ sở", exact: true })).toHaveCount(0);
+  await expect(page).toHaveURL(/\/receptionist\/checkin$/);
+  await expect(page.getByRole("link", { name: "Check-in cơ sở", exact: true })).toBeVisible();
+  await page.getByLabel("Hội viên").selectOption("member-1");
+  await page.getByRole("button", { name: "Check-in vào cơ sở", exact: true }).click();
+  await expect(page.getByText(/Đã ghi nhận lượt vào cửa lúc/)).toBeVisible();
+  expect(checkIn).toEqual({ memberId: "member-1", method: "RECEPTION" });
   await expect(page.getByRole("link", { name: "Chuyên cần", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Yêu cầu hỗ trợ", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Yêu cầu hỗ trợ", exact: true })).toBeVisible();
