@@ -6,6 +6,82 @@ import { QRCodeSVG } from "qrcode.react";
 import { api, ApiError, type RecordData } from "./api";
 import { ErrorState, Loading } from "./ui";
 import { QrCameraScanner } from "./QrCameraScanner";
+import { Check, Clock3, Copy, EyeOff, RefreshCw } from "lucide-react";
+
+/** 589 → "9:49"; dưới 1 phút giữ dạng "45 giây" cho dễ đọc */
+export function formatSeconds(total: number) {
+  if (total < 60) return `${total} giây`;
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function ManualCodeCard({
+  code,
+  secondsLeft,
+  totalSeconds,
+}: {
+  code: string;
+  secondsLeft: number;
+  totalSeconds: number;
+}) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
+  // Mã mới thì bỏ trạng thái "Đã sao chép" của mã cũ
+  useEffect(() => setCopied(false), [code]);
+  const expired = !code || secondsLeft <= 0;
+  const percent = totalSeconds > 0
+    ? Math.min(100, Math.max(0, (secondsLeft / totalSeconds) * 100))
+    : 0;
+  return (
+    <section
+      className={`qr-credential qr-manual${expired ? " is-expired" : ""}`}
+      aria-label="Mã dự phòng"
+    >
+      <span className="qr-manual-label">Mã dự phòng</span>
+      <p className="qr-manual-hint">
+        Cho hội viên không quét được QR, nhập trong mục “Nhập mã điểm danh”.
+      </p>
+      <output className="qr-manual-code" aria-live="polite">
+        {(code || "------").split("").map((char, index) => (
+          <span key={index}>{char}</span>
+        ))}
+      </output>
+      <div
+        className="qr-manual-meter"
+        role="progressbar"
+        aria-label="Thời gian còn lại của mã dự phòng"
+        aria-valuemin={0}
+        aria-valuemax={totalSeconds}
+        aria-valuenow={secondsLeft}
+      >
+        <span style={{ width: `${percent}%` }} />
+      </div>
+      <div className="qr-manual-footer">
+        <span>
+          {expired
+            ? "Mã đã hết hạn, bấm “Làm mới QR”."
+            : `Hết hạn sau ${secondsLeft} giây`}
+        </span>
+        <button
+          type="button"
+          className="button small"
+          disabled={expired}
+          onClick={() =>
+            void navigator.clipboard
+              ?.writeText(code)
+              .then(() => setCopied(true))
+          }
+        >
+          {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+          {copied ? "Đã sao chép" : "Sao chép"}
+        </button>
+      </div>
+    </section>
+  );
+}
 
 export function AttendanceQr({
   scheduleId,
@@ -43,10 +119,13 @@ export function AttendanceQr({
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
-  const seconds = Math.max(
-    0,
-    Math.ceil(((q.data?.expiresAt || 0) - now) / 1000),
-  );
+  // `now` chỉ cập nhật mỗi giây nên có thể trễ hơn lúc tạo mã → kẹp lại để không hiện quá hạn thật (10:01, 91 giây)
+  const countdown = (expiresAt: number | undefined, ttlSeconds: number | undefined) =>
+    Math.min(
+      ttlSeconds ?? Infinity,
+      Math.max(0, Math.ceil(((expiresAt || 0) - now) / 1000)),
+    );
+  const seconds = countdown(q.data?.expiresAt, q.data?.expiresIn);
   return (
     <section className="qr-panel">
       <h3>Điểm danh bằng QR</h3>
@@ -76,55 +155,46 @@ export function AttendanceQr({
           ) : q.error ? (
             <ErrorState error={q.error} retry={() => q.refetch()} />
           ) : q.data && seconds > 0 ? (
-            <>
-              <div className="qr-code">
-                <QRCodeSVG
-                  role="img"
-                  aria-label="Mã QR điểm danh buổi học"
-                  value={q.data.qrToken}
-                  size={220}
-                  title="Mã QR điểm danh buổi học"
-                />
-              </div>
-              <p>Còn {seconds} giây</p>
-              <div className="panel" aria-live="polite">
-                <small>MÃ DỰ PHÒNG</small>
-                <p style={{ fontSize: 28, fontWeight: 800, letterSpacing: 6 }}>
-                  {q.data.manualCode || "—"}
-                </p>
-                <p>
-                  Hết hạn sau{" "}
-                  {Math.max(
-                    0,
-                    Math.ceil(
-                      ((q.data.manualCodeExpiresAt || now) - now) / 1000,
-                    ),
-                  )}{" "}
-                  giây
-                </p>
-                <button
-                  className="button small"
-                  disabled={!q.data.manualCode}
-                  onClick={() =>
-                    void navigator.clipboard?.writeText(q.data.manualCode)
-                  }
-                >
-                  Sao chép mã
-                </button>
-              </div>
-            </>
+            <div className="qr-credentials">
+              <figure className="qr-credential qr-credential-scan">
+                <div className="qr-code">
+                  <QRCodeSVG
+                    role="img"
+                    aria-label="Mã QR điểm danh buổi học"
+                    value={q.data.qrToken}
+                    size={220}
+                    marginSize={2}
+                    title="Mã QR điểm danh buổi học"
+                  />
+                </div>
+                <figcaption className="qr-timer">
+                  <Clock3 size={14} aria-hidden="true" />
+                  QR còn hiệu lực {formatSeconds(seconds)}
+                </figcaption>
+              </figure>
+              <ManualCodeCard
+                code={q.data.manualCode}
+                secondsLeft={countdown(
+                  q.data.manualCodeExpiresAt,
+                  q.data.manualCodeExpiresIn,
+                )}
+                totalSeconds={q.data.manualCodeExpiresIn}
+              />
+            </div>
           ) : (
             <p role="status">Mã đã hết hạn. Vui lòng tạo mã mới.</p>
           )}
-          <div className="workflow-actions">
+          <div className="qr-actions">
             <button
-              className="button"
+              className="button primary"
               disabled={q.isFetching}
               onClick={() => void q.refetch()}
             >
-              Làm mới QR
+              <RefreshCw size={16} aria-hidden="true" />
+              {q.isFetching ? "Đang làm mới…" : "Làm mới QR"}
             </button>
             <button className="button" onClick={() => setEnabled(false)}>
+              <EyeOff size={16} aria-hidden="true" />
               Ẩn mã QR
             </button>
           </div>
