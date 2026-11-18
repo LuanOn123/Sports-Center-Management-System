@@ -30,6 +30,7 @@ const groups: NavigationGroup[] = [
     items: [
       ["terms", "Kỳ học", CalendarDays],
       ["users", "Nhân sự cơ sở", Users],
+      ["coaches", "Huấn luyện viên", Users],
       ["rooms", "Phòng tập", Warehouse],
       ["classes", "Lớp học", Trophy],
       ["schedules", "Lịch hoạt động", CalendarDays],
@@ -52,7 +53,6 @@ const groups: NavigationGroup[] = [
   },
 ];
 const redirects: Record<string, string> = {
-  coaches: "users",
   members: "users",
   staff: "users",
   sports: "classes",
@@ -97,6 +97,7 @@ export function ManagerLayout({
         />
         <Route path="/manager/reports" element={<ManagerOverview reports />} />
         <Route path="/manager/audit-logs" element={<AuditLogPage role="MANAGER" />} />
+        <Route path="/manager/coaches" element={<ManagerUsers initialRole="COACH" />} />
         <Route path="/manager/users" element={<ManagerUsers />} />
         <Route
           path="/manager/rooms"
