@@ -2614,3 +2614,40 @@ test('assistant wide tables: one fixed width per column shared by every row, cla
   assert.equal(widths[3], md.TABLE_COLUMN_MAX_WIDTH, 'cột mô tả dài bị kẹp ở MAX rồi xuống dòng');
   assert.match(readSource('components/assistant/AssistantMarkdown.tsx'), /tableColumnWidths\(/);
 });
+
+test('haptics never surface errors: rejected promises (missing native module, e.g. Expo Go) and sync throws are swallowed', async () => {
+  const calls = [];
+  const unavailable = (name) => async () => { calls.push(name); throw new Error(`The method or property Haptic.${name} is not available on android`); };
+  const h = loadApp('http://localhost/api/v1', {
+    'react-native': () => ({ Platform: { OS: 'android' } }),
+    'expo-haptics': () => ({
+      ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
+      NotificationFeedbackType: { Success: 'success', Error: 'error', Warning: 'warning' },
+      impactAsync: unavailable('impactAsync'), selectionAsync: unavailable('selectionAsync'), notificationAsync: unavailable('notificationAsync'),
+    }),
+  }).load('lib/haptics');
+  const unhandled = [];
+  const onUnhandled = (reason) => unhandled.push(reason);
+  process.on('unhandledRejection', onUnhandled);
+  try {
+    for (const kind of ['light', 'medium', 'heavy', 'selection', 'success', 'error', 'warning']) h.Haptic[kind]();
+    h.fireHaptic(() => { throw new Error('sync'); });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.deepEqual(unhandled, [], 'không có lỗi "Uncaught (in promise)"');
+    assert.equal(calls.length, 7, 'trên Android vẫn gọi module rung');
+  } finally {
+    process.off('unhandledRejection', onUnhandled);
+  }
+});
+
+test('payment confirmed: refreshes the same data as the web checkout (membership, invoices, quota, course plan)', () => {
+  const src = readSource('hooks/member/usePayment.ts');
+  const keys = src.match(/PAYMENT_CONFIRMED_REFRESH_KEYS = \[([\s\S]*?)\] as const/)[1];
+  for (const key of ['subscriptions', 'membership-plans-active', 'member-invoices', 'enrollment-quota', 'course-plan']) {
+    assert.match(keys, new RegExp(`'${key}'`), key);
+  }
+  // Các key phải là key mà màn hình mobile thật sự dùng
+  assert.match(readSource('hooks/member/useInvoices.ts'), /queryKey: \['member-invoices'/);
+  assert.match(readSource('hooks/member/useEnrollments.ts'), /queryKey: \['enrollment-quota'\]/);
+  assert.match(readSource('hooks/shared/useClasses.ts'), /queryKey: \['course-plan'/);
+});
