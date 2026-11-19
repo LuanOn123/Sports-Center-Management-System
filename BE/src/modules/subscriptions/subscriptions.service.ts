@@ -7,7 +7,7 @@ import { prisma } from "../../config/prisma.js";
 import { requestContext } from "../../config/request-context.js";
 import { AppError } from "../../middlewares/errorHandler.js";
 import { buildPaginationMeta } from "../../utils/pagination.js";
-import { createNotification, notifyReceptionistsAboutRefund } from "../notifications/notifications.service.js";
+import { createNotification, findRefundReceptionist, notifyReceptionistsAboutRefund } from "../notifications/notifications.service.js";
 import { enqueueNotification, flushNotificationOutbox } from "../notifications/outbox.service.js";
 import { activateSubscriptionForPayment, planAmount } from "./subscription-purchase.service.js";
 import { lockMemberSubscription } from "../../utils/dbLocks.js";
@@ -360,22 +360,48 @@ async function cancelScheduledSubscription(
   });
   await flushNotificationOutbox().catch(() => {});
 
-  if (willRefund && originalPayment) {
-    setImmediate(async () => {
-      try {
+  const facilityId = originalPayment?.facilityId || (sub as any).facilityId;
+  setImmediate(async () => {
+    try {
+      if (willRefund && originalPayment) {
         await notifyReceptionistsAboutRefund({
-          facilityId: originalPayment.facilityId,
+          facilityId,
           paymentId: originalPayment.id,
           memberUserId: sub.member.userId,
           memberName: (sub.member as any).user?.fullName,
           refundAmount,
-          reason: "Hội viên hủy gói tập chờ kích hoạt theo chính sách hoàn tiền 100%",
+          reason: reason || "Hội viên hủy gói tập chờ kích hoạt theo chính sách hoàn tiền 100%",
         });
-      } catch (e) {
-        console.error("Failed to notify receptionists about scheduled refund:", e);
+      } else {
+        const receptionist = await findRefundReceptionist(facilityId);
+        if (receptionist) {
+          const memberName = (sub.member as any).user?.fullName || "Hội viên";
+          const title = "Hội viên hủy gói tập chờ kích hoạt";
+          const body = `Hội viên ${memberName} vừa hủy gói "${sub.plan.name}" (chưa kích hoạt). ${reason ? `Lý do: ${reason}` : ""}`;
+          await createNotification(receptionist.id, "GENERAL", title, body, {
+            metadata: { subscriptionId: sub.id, facilityId, memberUserId: sub.member.userId, action: "SUBSCRIPTION_CANCELLED" },
+          });
+          const { chatService } = await import("../chat/chat.service.js");
+          const chatContent = `[Hủy gói tập] Tôi đã hủy gói "${sub.plan.name}" (chưa kích hoạt). ${reason ? `Lý do: ${reason}` : ""}`;
+          const msg = await chatService.createMessage({
+            senderId: sub.member.userId,
+            receiverId: receptionist.id,
+            content: chatContent,
+          }).catch(() => null);
+          if (msg) {
+            try {
+              const { getIo } = await import("../chat/chat.socket.js");
+              const io = getIo();
+              io.to(receptionist.id).emit("newMessage", msg);
+              io.to(sub.member.userId).emit("newMessage", msg);
+            } catch {}
+          }
+        }
       }
-    });
-  }
+    } catch (e) {
+      console.error("Failed to notify receptionists about scheduled refund:", e);
+    }
+  });
 
   return { subscriptionId: sub.id, status: "CANCELLED", daysLeft: 0, refundAmount, willRefund };
 }
@@ -685,22 +711,49 @@ export async function cancelSubscriptionBySelf(
   });
   await flushNotificationOutbox().catch(() => {});
 
-  if (willRefund && originalPayment) {
-    setImmediate(async () => {
-      try {
+  const facilityId = originalPayment?.facilityId || (sub as any).facilityId;
+  setImmediate(async () => {
+    try {
+      if (willRefund && originalPayment) {
         await notifyReceptionistsAboutRefund({
           facilityId: originalPayment.facilityId,
           paymentId: originalPayment.id,
           memberUserId: userId,
           memberName: (sub.member as any).user?.fullName,
           refundAmount,
-          reason: "Hội viên tự hủy gói tập theo chính sách hoàn tiền",
+          reason: reason || "Hội viên tự hủy gói tập theo chính sách hoàn tiền",
         });
-      } catch (e) {
-        console.error("Failed to notify receptionists about refund:", e);
+      } else {
+        // Hủy gói không hoàn tiền: vẫn gửi thông báo và nhắn tin tới lễ tân phụ trách cơ sở
+        const receptionist = await findRefundReceptionist(facilityId);
+        if (receptionist) {
+          const memberName = (sub.member as any).user?.fullName || "Hội viên";
+          const title = "Hội viên hủy gói tập";
+          const body = `Hội viên ${memberName} vừa hủy gói "${sub.plan.name}". Gói còn ${daysLeft} ngày (không phát sinh hoàn tiền). ${reason ? `Lý do: ${reason}` : ""}`;
+          await createNotification(receptionist.id, "GENERAL", title, body, {
+            metadata: { subscriptionId: sub.id, facilityId, memberUserId: userId, action: "SUBSCRIPTION_CANCELLED" },
+          });
+          const { chatService } = await import("../chat/chat.service.js");
+          const chatContent = `[Hủy gói tập] Tôi đã hủy gói "${sub.plan.name}" (còn ${daysLeft} ngày, không hoàn tiền). ${reason ? `Lý do: ${reason}` : ""}`;
+          const msg = await chatService.createMessage({
+            senderId: userId,
+            receiverId: receptionist.id,
+            content: chatContent,
+          }).catch(() => null);
+          if (msg) {
+            try {
+              const { getIo } = await import("../chat/chat.socket.js");
+              const io = getIo();
+              io.to(receptionist.id).emit("newMessage", msg);
+              io.to(userId).emit("newMessage", msg);
+            } catch {}
+          }
+        }
       }
-    });
-  }
+    } catch (e) {
+      console.error("Failed to notify receptionists about subscription cancellation:", e);
+    }
+  });
 
   return {
     subscriptionId,

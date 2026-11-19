@@ -71,7 +71,7 @@ export function sepayConfig() {
       return Number.isFinite(n) && n >= 0 ? Math.min(Math.floor(n), 86400) : 3600;
     })(),
     /** Khoảng cách tối thiểu (giây) giữa 2 lần đối soát cho CÙNG một đơn — tránh spam API (SePay giới hạn 3 req/s). */
-    reconcileMinSeconds: clamp(Number(process.env.SEPAY_RECONCILE_MIN_SECONDS ?? 5) || 5, 1, 300),
+    reconcileMinSeconds: clamp(Number(process.env.SEPAY_RECONCILE_MIN_SECONDS ?? 3) || 3, 1, 300),
   };
 }
 

@@ -1,4 +1,5 @@
-import { getFacilityId } from "../../shared/facility";
+import { getFacilityId, selectFacility } from "../../shared/facility";
+import { useFacilityContext } from "../../shared/FacilityBoundary";
 import { CancelSubscription } from "../../shared/CancelSubscription";
 import "./membership.css";
 import {
@@ -27,6 +28,14 @@ import {
 
 export function MembershipPage() {
   const { user } = useAuth();
+  const facilityCtx = useFacilityContext();
+  const [checkoutFacilityId, setCheckoutFacilityId] = useState<string>(() => getFacilityId());
+  const [confirmNewPlan, setConfirmNewPlan] = useState<MembershipPlan | null>(null);
+
+  useEffect(() => {
+    if (facilityCtx?.selected) setCheckoutFacilityId(facilityCtx.selected);
+  }, [facilityCtx?.selected]);
+
   const [paymentPlan, setPaymentPlan] = useState<MembershipPlan | null>(null);
   const [transitionPlan, setTransitionPlan] = useState<MembershipPlan | null>(
     null,
@@ -51,14 +60,17 @@ export function MembershipPage() {
     mutationFn: ({
       planId,
       startDate,
+      facilityId,
     }: {
       planId: string;
       startDate?: string;
-    }) => sepayApi.createCheckout(planId, startDate),
+      facilityId?: string;
+    }) => sepayApi.createCheckout(planId, startDate, facilityId),
     onSuccess: (data) => {
       setCheckout(data);
       setCheckoutOpen(true);
       setTransitionPlan(null);
+      setConfirmNewPlan(null);
     },
     onError: (error) => {
       const pending = sepayApi.pendingCheckoutFromError(error);
@@ -66,15 +78,23 @@ export function MembershipPage() {
         setCheckout(pending);
         setCheckoutOpen(true);
         setTransitionPlan(null);
+        setConfirmNewPlan(null);
       }
     },
   });
 
-  const startCheckout = (plan: MembershipPlan, startDate?: string) => {
+  const startCheckout = (plan: MembershipPlan, startDate?: string, chosenFacilityId?: string) => {
+    const targetFacility = chosenFacilityId || checkoutFacilityId || getFacilityId();
+    if (targetFacility && targetFacility !== getFacilityId()) {
+      selectFacility(targetFacility);
+      if (facilityCtx && targetFacility !== facilityCtx.selected) {
+        void facilityCtx.change(targetFacility);
+      }
+    }
     setPaymentPlan(plan);
     setCheckout(null);
     createCheckout.reset();
-    createCheckout.mutate({ planId: plan.id, startDate });
+    createCheckout.mutate({ planId: plan.id, startDate, facilityId: targetFacility });
   };
 
   const closeCheckout = () => {
@@ -773,7 +793,7 @@ export function MembershipPage() {
                             );
                           }
                         } else {
-                          startCheckout(p);
+                          setConfirmNewPlan(p);
                         }
                       }}
                     >
@@ -1179,6 +1199,41 @@ export function MembershipPage() {
               </div>
             )}
 
+            <div style={{ marginTop: 14 }}>
+              <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13 }}>
+                Cơ sở tiếp nhận & phát hành gói:
+              </label>
+              <select
+                value={checkoutFacilityId}
+                onChange={(e) => {
+                  const nextFac = e.target.value;
+                  setCheckoutFacilityId(nextFac);
+                  selectFacility(nextFac);
+                  if (facilityCtx && nextFac !== facilityCtx.selected) {
+                    void facilityCtx.change(nextFac);
+                  }
+                }}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 6,
+                  border: "1px solid var(--member-border, #cbd5e1)",
+                  width: "100%",
+                  background: "var(--member-surface, #fff)",
+                  color: "var(--member-text, #000)",
+                  fontSize: 14,
+                }}
+              >
+                {facilityCtx?.facilities.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+              <small style={{ color: "var(--member-muted, #64748b)", display: "block", marginTop: 4 }}>
+                💡 Gói tập có hiệu lực sử dụng tại tất cả cơ sở trong hệ thống Pulse. Cơ sở được chọn là điểm hỗ trợ dịch vụ và xử lý hoàn tiền nếu có.
+              </small>
+            </div>
+
             {createCheckout.error && (
               <div className="danger-text" style={{ fontSize: 13 }}>
                 {String(createCheckout.error)}
@@ -1223,7 +1278,7 @@ export function MembershipPage() {
                   } else {
                     finalStart = undefined; // Server selects the exact continuation instant.
                   }
-                  startCheckout(transitionPlan, finalStart);
+                  startCheckout(transitionPlan, finalStart, checkoutFacilityId);
                 }}
               >
                 {createCheckout.isPending
@@ -1235,11 +1290,101 @@ export function MembershipPage() {
         </Modal>
       )}
 
+      {confirmNewPlan && (
+        <Modal
+          title="Xác nhận đăng ký gói tập"
+          onClose={() => setConfirmNewPlan(null)}
+          maxWidth={500}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div
+              style={{
+                padding: "12px 16px",
+                background: "var(--member-surface-alt, #f8fafc)",
+                borderRadius: 8,
+                border: "1px solid var(--member-border, #e2e8f0)",
+              }}
+            >
+              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
+                {confirmNewPlan.name}
+              </div>
+              <div style={{ fontSize: 14, color: "var(--member-muted, #64748b)" }}>
+                Giá: <strong style={{ color: "var(--member-success, #16a34a)" }}>{Number(confirmNewPlan.price).toLocaleString("vi-VN")} VND</strong> · Thời hạn: {confirmNewPlan.durationDays} ngày
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13 }}>
+                Cơ sở tiếp nhận & phát hành gói:
+              </label>
+              <select
+                value={checkoutFacilityId}
+                onChange={(e) => {
+                  const nextFac = e.target.value;
+                  setCheckoutFacilityId(nextFac);
+                  selectFacility(nextFac);
+                  if (facilityCtx && nextFac !== facilityCtx.selected) {
+                    void facilityCtx.change(nextFac);
+                  }
+                }}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 6,
+                  border: "1px solid var(--member-border, #cbd5e1)",
+                  width: "100%",
+                  background: "var(--member-surface, #fff)",
+                  color: "var(--member-text, #000)",
+                  fontSize: 14,
+                }}
+              >
+                {facilityCtx?.facilities.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+              <small style={{ color: "var(--member-muted, #64748b)", display: "block", marginTop: 4 }}>
+                💡 Gói tập có hiệu lực sử dụng tại tất cả cơ sở trong hệ thống Pulse. Cơ sở được chọn là điểm hỗ trợ dịch vụ và xử lý hoàn tiền nếu có.
+              </small>
+            </div>
+
+            {createCheckout.error && (
+              <div className="danger-text" style={{ fontSize: 13 }}>
+                {String(createCheckout.error)}
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
+              <button className="button" onClick={() => setConfirmNewPlan(null)}>
+                Hủy
+              </button>
+              <button
+                className="button primary"
+                disabled={createCheckout.isPending}
+                onClick={() => startCheckout(confirmNewPlan, undefined, checkoutFacilityId)}
+              >
+                {createCheckout.isPending ? "Đang tạo mã thanh toán..." : "Tiếp tục tạo VietQR"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       <SepayCheckoutModal
         checkout={checkout}
         open={checkoutOpen}
         onConfirmed={() => sessionStorage.removeItem(storageKey)}
         selectedPlan={paymentPlan}
+        facilityName={
+          checkout?.facilityName ||
+          facilityCtx?.facilities.find(
+            (f) =>
+              f.id ===
+              (checkout?.facilityId ||
+                checkoutFacilityId ||
+                facilityCtx?.selected),
+          )?.name
+        }
         onClose={closeCheckout}
         onCreateNew={() => {
           const plan =

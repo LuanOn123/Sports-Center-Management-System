@@ -45,6 +45,42 @@ export function CurrentFacility() {
     </div>
   );
 }
+export function MemberFacilitySelect() {
+  const context = useFacilityContext();
+  if (!context) return null;
+  return (
+    <div className="current-facility member-facility-picker" title="Chọn cơ sở để xem lịch tập và lớp học">
+      <span className="current-facility-label">
+        <Building2 size={13} aria-hidden="true" />
+        <span>Cơ sở</span>
+      </span>
+      <select
+        aria-label="Chọn cơ sở đang xem"
+        disabled={context.busy}
+        value={context.selected}
+        onChange={(e) => void context.change(e.target.value)}
+        style={{
+          background: "var(--member-surface-alt, #131d20)",
+          color: "var(--member-text, #e2e8f0)",
+          border: "1px solid var(--member-border, #2d3f37)",
+          borderRadius: "8px",
+          padding: "3px 8px",
+          fontSize: "13px",
+          fontWeight: 600,
+          cursor: "pointer",
+          maxWidth: "200px",
+          outline: "none",
+        }}
+      >
+        {context.facilities.map((f) => (
+          <option value={f.id} key={f.id}>
+            {f.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 export function FacilityPicker({ label = "Cơ sở", accessibleLabel = "Cơ sở đang làm việc" }: { label?: string; accessibleLabel?: string }) {
   const context = useContext(FacilityContext);
   if (!context) return null;

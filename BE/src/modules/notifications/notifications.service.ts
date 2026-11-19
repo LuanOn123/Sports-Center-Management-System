@@ -243,6 +243,23 @@ export async function notifyReceptionistsAboutRefund(params: {
         } catch {
           // Socket.io might not be running in tests
         }
+
+        // Tự động gửi tin nhắn 1-1 tới lễ tân phụ trách
+        try {
+          const { chatService } = await import("../chat/chat.service.js");
+          const chatContent = `[Yêu cầu hoàn tiền] Tôi đã gửi yêu cầu hoàn tiền cho giao dịch #${paymentId.slice(0, 8)} (${Number(refundAmount).toLocaleString("vi-VN")}đ). Lý do: ${reason}`;
+          const chatMsg = await chatService.createMessage({
+            senderId: memberUserId,
+            receiverId: primaryReceptionistId,
+            content: chatContent,
+          });
+          const { getIo } = await import("../chat/chat.socket.js");
+          const io = getIo();
+          io.to(primaryReceptionistId).emit("newMessage", chatMsg);
+          io.to(memberUserId).emit("newMessage", chatMsg);
+        } catch (chatError) {
+          console.error("Auto chat message error on refund:", chatError);
+        }
       }
 
       try {

@@ -154,6 +154,8 @@ export interface SepayCheckoutView {
     accountHolder: string;
   };
   plan?: { id: string; name: string; tier: string; durationDays: number };
+  facilityId?: string;
+  facilityName?: string;
   /** A06: trạng thái CẤP QUYỀN (`ACTIVATED` | `REQUIRES_REVIEW`); không có với đơn chưa chốt. */
   activationStatus?: string;
   /** Tiền đã thu nhưng gói CHƯA được cấp → FE phải hiển thị "đang đối soát", KHÔNG báo đã kích hoạt. */
@@ -161,7 +163,10 @@ export interface SepayCheckoutView {
   reviewReason?: string | null;
 }
 
-function buildSepayCheckoutView(payment: Payment, plan: MembershipPlan | null): SepayCheckoutView {
+function buildSepayCheckoutView(
+  payment: Payment & { facility?: { id: string; name: string } | null },
+  plan: MembershipPlan | null
+): SepayCheckoutView {
   const cfg = sepayConfig();
   const checkout = checkoutDetails(payment);
   const orderCode = payment.transactionCode ?? "";
@@ -187,6 +192,8 @@ function buildSepayCheckoutView(payment: Payment, plan: MembershipPlan | null): 
     expiresAt: sepayExpiresAt(payment, cfg.ttlMinutes),
     qrUrl: checkout?.qrUrl ?? buildVietQrUrl({ amount, content: orderCode }),
     transferContent: orderCode,
+    facilityId: payment.facilityId,
+    facilityName: payment.facility?.name,
     bank: {
       id: checkout?.bankId ?? cfg.bankId,
       accountNumber: checkout?.accountNo ?? cfg.accountNo,
@@ -213,7 +220,12 @@ function buildSepayCheckoutView(payment: Payment, plan: MembershipPlan | null): 
  * - 409 `SEPAY_PAYMENT_PENDING`: còn giao dịch PENDING cùng gói chưa quá TTL (trả kèm QR để FE tiếp tục).
  * - 503: chưa cấu hình tài khoản nhận tiền (VIETQR_BANK_ID / VIETQR_ACCOUNT_NO).
  */
-export async function createSepayCheckout(userId: string, planId: string, startDate?: string) {
+export async function createSepayCheckout(
+  userId: string,
+  planId: string,
+  startDate?: string,
+  facilityId?: string,
+) {
   const cfg = sepayConfig();
 
   const canSettle = isSepayWebhookConfigured() || isSepayApiConfigured() ||
@@ -248,7 +260,7 @@ export async function createSepayCheckout(userId: string, planId: string, startD
     try {
       return await prisma.$transaction(async (tx) => {
         await lockMemberSubscription(tx, memberProfile.id);
-        return createPendingSepayOrder(tx, memberProfile.id, plan, cfg, startDate);
+        return createPendingSepayOrder(tx, memberProfile.id, plan, cfg, startDate, facilityId);
       });
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
@@ -266,8 +278,10 @@ async function createPendingSepayOrder(
   plan: MembershipPlan,
   cfg: ReturnType<typeof sepayConfig>,
   startDate?: string,
+  facilityId?: string,
 ) {
   const now = new Date();
+  const chosenFacilityId = facilityId || requestContext.getStore()?.facilityId;
   // Mỗi (member, gói) chỉ có 1 giao dịch SePay đang chờ → tránh chuyển tiền 2 lần cho cùng mục đích.
   const pendingOrder = {
     memberId,
@@ -279,11 +293,24 @@ async function createPendingSepayOrder(
   const allFacilities = { ...requestContext.getStore(), facilityId: undefined };
   const pending = await requestContext.run(allFacilities, () => tx.payment.findFirst({
     where: pendingOrder,
+    include: { facility: { select: { id: true, name: true } } },
     orderBy: { createdAt: "desc" },
   }));
   if (pending) {
     const expiresAt = sepayExpiresAt(pending, cfg.ttlMinutes);
     if (expiresAt.getTime() > now.getTime()) {
+      if (chosenFacilityId && pending.facilityId !== chosenFacilityId) {
+        await tx.payment.update({
+          where: { id: pending.id },
+          data: { facilityId: chosenFacilityId },
+        });
+        pending.facilityId = chosenFacilityId;
+        const fac = await tx.facility.findUnique({
+          where: { id: chosenFacilityId },
+          select: { id: true, name: true },
+        });
+        (pending as any).facility = fac;
+      }
       throw new AppError(
         `Bạn đang có giao dịch chuyển khoản chờ thanh toán cho gói "${plan.name}". ` +
           `Vui lòng hoàn tất hoặc thử lại sau ${Math.max(1, Math.ceil((expiresAt.getTime() - now.getTime()) / 60000))} phút.`,
@@ -306,8 +333,7 @@ async function createPendingSepayOrder(
 
   await activateMemberDue(tx, memberId, now);
   await inspectPlanPurchase(tx, memberId, plan, startDate, now);
-  const facilityId = requestContext.getStore()?.facilityId;
-  if (facilityId) await checkFacilityMemberLimit(facilityId, memberId, tx);
+  if (chosenFacilityId) await checkFacilityMemberLimit(chosenFacilityId, memberId, tx);
   const amount = planAmount(plan);
   const orderCode = buildSepayPaymentCode(cfg);
   const qrUrl = buildVietQrUrl({ amount, content: orderCode });
@@ -318,6 +344,7 @@ async function createPendingSepayOrder(
       amount,
       method: "SEPAY",
       status: "PENDING",
+      facilityId: chosenFacilityId,
       transactionCode: orderCode,
       gateway: SEPAY_GATEWAY,
       note: `Thanh toán online gói ${plan.name} (chuyển khoản VietQR qua SePay)`,
@@ -336,6 +363,7 @@ async function createPendingSepayOrder(
         startDate,
       }),
     },
+    include: { facility: { select: { id: true, name: true } } },
   });
 
   return buildSepayCheckoutView(payment, plan);
@@ -350,18 +378,21 @@ async function createPendingSepayOrder(
  * (webhook không tới được server: localhost, server downtime, hết retry ~33 phút) để đơn
  * chuyển SUCCESS ngay trong lần polling này — lỗi đối soát KHÔNG làm hỏng response.
  */
-export async function getSepayCheckout(userId: string, role: string, paymentId: string) {
+export async function getSepayCheckout(userId: string, role: string, paymentId: string, force?: boolean) {
   if (role === "MEMBER") {
     return requestContext.run(
       { ...requestContext.getStore(), facilityId: undefined },
-      () => loadSepayCheckout(userId, role, paymentId),
+      () => loadSepayCheckout(userId, role, paymentId, force),
     );
   }
-  return loadSepayCheckout(userId, role, paymentId);
+  return loadSepayCheckout(userId, role, paymentId, force);
 }
 
-async function loadSepayCheckout(userId: string, role: string, paymentId: string) {
-  let payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+async function loadSepayCheckout(userId: string, role: string, paymentId: string, force?: boolean) {
+  let payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: { facility: { select: { id: true, name: true } } },
+  });
   if (!payment || payment.gateway !== SEPAY_GATEWAY) {
     throw new AppError("SePay payment not found", 404);
   }
@@ -369,8 +400,14 @@ async function loadSepayCheckout(userId: string, role: string, paymentId: string
 
   if (payment.status === "PENDING" && isSepayApiConfigured()) {
     try {
+      if (force) {
+        lastReconcileAt.delete(payment.id);
+      }
       await reconcileSepayPayment(payment.id);
-      payment = (await prisma.payment.findUnique({ where: { id: payment.id } })) ?? payment;
+      payment = (await prisma.payment.findUnique({
+        where: { id: payment.id },
+        include: { facility: { select: { id: true, name: true } } },
+      })) ?? payment;
     } catch (err) {
       // Đối soát là kênh dự phòng — webhook vẫn là nguồn chính nên không được chặn FE polling.
       console.warn(

@@ -44,6 +44,7 @@ export async function sepayCheckout(req: Request, res: Response, next: NextFunct
       req.user!.id,
       req.body.planId,
       req.body.startDate,
+      req.body.facilityId,
     );
     sendCreated(res, result, "SePay checkout created successfully");
   } catch (err) { next(err); }
@@ -101,7 +102,8 @@ export async function sepayGetCheckout(req: Request, res: Response, next: NextFu
     const result = await sepayPaymentsService.getSepayCheckout(
       req.user!.id,
       req.user!.role,
-      req.params.id as string
+      req.params.id as string,
+      req.query.force === "true"
     );
     sendSuccess(res, result, "SePay checkout retrieved successfully");
   } catch (err) { next(err); }

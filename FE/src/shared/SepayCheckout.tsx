@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, LoaderCircle, RotateCcw } from "lucide-react";
 import { sepayApi } from "../api/sepay.api";
 import { AlertBanner, Modal } from "../components/common";
+import { useFacilityContext } from "./FacilityBoundary";
 import type { MembershipPlan, SepayCheckout } from "../types/member";
 
 const clientEnv = (
@@ -39,6 +40,7 @@ function useCountdown(expiresAt: string) {
 export function SepayCheckoutModal({
   checkout,
   selectedPlan,
+  facilityName: facilityNameProp,
   onClose,
   onCreateNew,
   open = true,
@@ -46,12 +48,20 @@ export function SepayCheckoutModal({
 }: {
   checkout: SepayCheckout | null;
   selectedPlan: MembershipPlan | null;
+  facilityName?: string;
   onClose: () => void;
   onCreateNew: () => void;
   open?: boolean;
   onConfirmed?: () => void;
 }) {
   const queryClient = useQueryClient();
+  const facilityCtx = useFacilityContext();
+  const facilityName =
+    facilityNameProp ||
+    checkout?.facilityName ||
+    facilityCtx?.facilities.find(
+      (f) => f.id === (checkout?.facilityId || facilityCtx.selected),
+    )?.name;
   const [copied, setCopied] = useState(false);
   const countdown = useCountdown(
     checkout?.expiresAt ?? new Date().toISOString(),
@@ -67,7 +77,7 @@ export function SepayCheckoutModal({
     refetchOnReconnect: "always",
     refetchIntervalInBackground: true,
     refetchInterval: (query) =>
-      query.state.data?.status === "PENDING" ? 4000 : false,
+      query.state.data?.status === "PENDING" ? 2500 : false,
   });
   const current = checkout ? (statusQuery.data ?? checkout) : null;
   const requiresReview = Boolean(
@@ -292,6 +302,28 @@ export function SepayCheckoutModal({
               </strong>
             </div>
 
+            {facilityName && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  background: "var(--member-surface-alt, #f8fafc)",
+                  border: "1px solid var(--member-border, #e2e8f0)",
+                  fontSize: 13,
+                }}
+              >
+                <span style={{ color: "var(--member-muted, #64748b)" }}>
+                  Cơ sở tiếp nhận & phát hành:
+                </span>
+                <strong style={{ color: "var(--member-text, #1e293b)" }}>
+                  {facilityName}
+                </strong>
+              </div>
+            )}
+
             {current.status === "PENDING" && !countdown.expired && (
               <div style={{ textAlign: "center" }}>
                 <div
@@ -425,11 +457,19 @@ export function SepayCheckoutModal({
                   className="button"
                   disabled={statusQuery.isFetching}
                   onClick={async () => {
+                    try {
+                      // Gọi API với force=true để ép BE đối soát ngay với SePay
+                      const forced = await sepayApi.getCheckout(checkout.paymentId, true);
+                      if (forced.status === "SUCCESS") {
+                        void statusQuery.refetch();
+                        return;
+                      }
+                    } catch {}
                     const result = await statusQuery.refetch();
                     if (result.data?.status === "PENDING")
                       toast(
                         "info",
-                        `Đơn ${checkout.orderCode} vẫn đang chờ BE xác nhận. Nếu đã chuyển tiền, vui lòng liên hệ trung tâm để đối soát.`,
+                        `Đơn ${checkout.orderCode} vẫn đang chờ hệ thống ngân hàng/SePay ghi nhận. Nếu bạn vừa chuyển khoản, vui lòng đợi 5-10 giây để ngân hàng đồng bộ.`,
                       );
                   }}
                 >

@@ -21,6 +21,7 @@ export const UpdatePaymentStatusSchema = z.object({
 export const SepayCheckoutSchema = z.object({
   planId: z.string().min(1),
   startDate: z.string().optional(),
+  facilityId: z.string().optional(),
 });
 
 /** DEV/DEMO: mô phỏng SePay gửi webhook "đã thu tiền" (chỉ khi SEPAY_MOCK_MODE=true). */

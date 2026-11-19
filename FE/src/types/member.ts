@@ -360,6 +360,8 @@ export interface SepayCheckout {
     accountHolder: string;
   };
   plan?: Pick<MembershipPlan, "id" | "name" | "tier" | "durationDays">;
+  facilityId?: string;
+  facilityName?: string;
   paidAt?: string | null;
   subscriptionId?: string | null;
 }

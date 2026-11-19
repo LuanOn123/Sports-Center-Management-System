@@ -7,15 +7,16 @@ type PendingCheckoutDetails = Partial<SepayCheckout> & {
 };
 
 export const sepayApi = {
-  createCheckout: (planId: string, startDate?: string) =>
+  createCheckout: (planId: string, startDate?: string, facilityId?: string) =>
     apiClient.post<SepayCheckout>("/payments/sepay/checkout", {
       planId,
       ...(startDate ? { startDate } : {}),
+      ...(facilityId ? { facilityId } : {}),
     }),
 
-  getCheckout: (paymentId: string) =>
+  getCheckout: (paymentId: string, force?: boolean) =>
     apiClient.get<SepayCheckout>(
-      `/payments/sepay/${encodeURIComponent(paymentId)}`,
+      `/payments/sepay/${encodeURIComponent(paymentId)}${force ? "?force=true" : ""}`,
     ),
 
   mockConfirm: (paymentId: string) =>
@@ -47,6 +48,8 @@ export const sepayApi = {
       expiresAt: details.expiresAt,
       qrUrl: details.qrUrl,
       transferContent: details.transferContent,
+      facilityId: details.facilityId,
+      facilityName: details.facilityName,
       bank: details.bank,
       plan: details.plan,
       paidAt: details.paidAt,

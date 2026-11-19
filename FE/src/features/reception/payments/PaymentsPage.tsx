@@ -130,12 +130,16 @@ export function PaymentsPage({ role = "RECEPTIONIST" }: { role?: string }) {
             <Empty text="Hiện không có yêu cầu hoàn tiền nào đang chờ xử lý." />
           ) : (
             <Table
-              rows={pendingRefunds.data.data}
+              rows={pendingRefunds.data.data.map((r: any) => ({
+                ...r,
+                memberEmail: r.member?.user?.email || r.member?.user?.fullName || "—",
+                tier: r.subscription?.tier || r.planTierSnapshot || r.subscription?.plan?.tier || "—",
+              }))}
               columns={[
                 ["id", "Mã đơn"],
                 ["refundRequestedAt", "Ngày yêu cầu"],
-                ["member", "Hội viên"],
-                ["subscription", "Gói tập"],
+                ["memberEmail", "Hội viên"],
+                ["tier", "Gói tập"],
                 ["refundRequestedAmount", "Số tiền hoàn"],
                 ["refundReason", "Lý do hoàn"],
               ]}

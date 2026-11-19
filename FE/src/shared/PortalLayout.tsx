@@ -31,7 +31,7 @@ import { Policies } from "./Policies";
 import { QuickActions } from "./QuickActions";
 import { HelpPanel } from "./HelpPanel";
 import { ConnectionStatus } from "./ConnectionStatus";
-import { CurrentFacility, FacilityPicker } from "./FacilityBoundary";
+import { CurrentFacility, FacilityPicker, MemberFacilitySelect } from "./FacilityBoundary";
 export type NavigationItem = readonly [
   path: string,
   name: string,
@@ -217,7 +217,11 @@ export function PortalLayout({
             <strong>{pageTitle}</strong>
           </div>
           <div className="topbar-actions">
-            {user.role !== "ADMIN" && <CurrentFacility />}
+            {user.role === "MEMBER" ? (
+              <MemberFacilitySelect />
+            ) : (
+              user.role !== "ADMIN" && <CurrentFacility />
+            )}
             <HelpPanel role={user.role} base={base} />
             <NotificationBell base={base} role={user.role} />
             {accountMenu ? (
