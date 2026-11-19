@@ -103,8 +103,9 @@ export function CoachHomeView({ user }: { user: User | null }) {
             {later.slice(0, UPCOMING_PREVIEW).map((s) => (
               <Card key={s.id} onPress={() => router.push(ROUTES.scheduleDetail(s.id))}>
                 <View className="flex-row items-center gap-md">
-                  <View className="items-center w-14">
-                    <Text className="text-md font-bevn-bold text-text-primary">{formatTime(s.startTime)}</Text>
+                  {/* Không cố định bề rộng: cột rộng theo chữ để giờ luôn nằm trên một dòng */}
+                  <View className="items-center" style={{ minWidth: 56 }}>
+                    <Text className="text-md font-bevn-bold text-text-primary" numberOfLines={1}>{formatTime(s.startTime)}</Text>
                     <Text className="text-xs text-text-muted font-bevn-regular">{formatWeekdayDate(s.startTime).split(',')[0]}</Text>
                   </View>
                   <View className="flex-1 border-l-2 pl-md" style={{ borderLeftColor: Colors.primary }}>

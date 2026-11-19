@@ -3,13 +3,12 @@
 // Giống web: bỏ HTML, ảnh chỉ còn chữ alt, liên kết chỉ còn chữ hiển thị.
 
 import React, { useMemo } from 'react';
-import { Platform, ScrollView, Text, View, type TextStyle } from 'react-native';
+import { PixelRatio, Platform, ScrollView, Text, View, type TextStyle } from 'react-native';
 import { Colors } from '../../constants/theme';
-import { parseMarkdown, type InlineSpan, type MarkdownBlock } from '../../lib/assistantMarkdown';
+import { parseMarkdown, tableColumnWidths, type InlineSpan, type MarkdownBlock } from '../../lib/assistantMarkdown';
 
 const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
 const WIDE_TABLE_COLUMNS = 3;
-const WIDE_CELL_MIN_WIDTH = 112;
 
 const HEADING_CLASS: Record<1 | 2 | 3, string> = {
   1: 'text-lg font-bevn-bold text-text-primary',
@@ -84,21 +83,23 @@ function Block({ block }: { block: MarkdownBlock }) {
 
     case 'table': {
       const wide = block.header.length > WIDE_TABLE_COLUMNS;
-      const cellStyle = wide ? { minWidth: WIDE_CELL_MIN_WIDTH } : { flex: 1 };
+      // Bảng rộng: mỗi cột một bề rộng cố định dùng chung cho mọi hàng → các cột thẳng hàng; bảng hẹp chia đều
+      const widths = wide ? tableColumnWidths(block.header, block.rows, PixelRatio.getFontScale()) : null;
+      const cellStyle = (c: number) => (widths ? { width: widths[c] } : { flex: 1 });
       const table = (
         <View className="rounded-md border border-border overflow-hidden">
           <View className="flex-row bg-bg-primary">
             {block.header.map((cell, c) => (
-              <View key={c} className="p-sm" style={cellStyle}>
-                <Text selectable className="text-sm font-bevn-bold text-text-primary"><Spans spans={cell} /></Text>
+              <View key={c} className="p-sm justify-center" style={cellStyle(c)}>
+                <Text selectable className="text-sm font-bevn-bold text-text-primary text-left"><Spans spans={cell} /></Text>
               </View>
             ))}
           </View>
           {block.rows.map((row, r) => (
             <View key={r} className="flex-row border-t border-border">
               {row.map((cell, c) => (
-                <View key={c} className="p-sm" style={cellStyle}>
-                  <Text selectable className="text-sm font-bevn-regular text-text-primary"><Spans spans={cell} /></Text>
+                <View key={c} className="p-sm" style={cellStyle(c)}>
+                  <Text selectable className="text-sm font-bevn-regular text-text-primary text-left"><Spans spans={cell} /></Text>
                 </View>
               ))}
             </View>

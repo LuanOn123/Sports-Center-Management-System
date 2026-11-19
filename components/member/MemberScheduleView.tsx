@@ -13,7 +13,8 @@ import { ScheduleEventCard } from '../schedule/ScheduleEventCard';
 import { useScheduleCalendar } from '../../hooks/shared/useScheduleCalendar';
 import { useMyEnrollments } from '../../hooks/member/useEnrollments';
 import { CALENDAR_TEXT } from '../../constants/calendar';
-import { memberCalendarEvents, memberSessionBadge } from '../../lib/memberSchedule';
+import { Colors } from '../../constants/theme';
+import { isSessionPast, memberCalendarEvents, memberSessionBadge } from '../../lib/memberSchedule';
 import { ApiError } from '../../lib/api';
 import { ROUTES } from '../../navigation/routes';
 
@@ -38,14 +39,18 @@ export function MemberScheduleView({ embedded = false }: { embedded?: boolean })
         onRefresh={() => { void enrollments.refetch(); }}
         renderEvent={({ enrollment }) => {
           const schedule = enrollment.schedule!;
+          const badge = memberSessionBadge(enrollment);
           return (
             <ScheduleEventCard
               startTime={schedule.startTime}
               endTime={schedule.endTime}
               title={schedule.class?.name ?? 'Lớp học'}
               room={schedule.room?.name}
-              badge={memberSessionBadge(enrollment)}
+              badge={badge}
               hint="Xem chi tiết →"
+              done={enrollment.status === 'COMPLETED' || isSessionPast(schedule.endTime)}
+              // Buổi hôm nay sắp diễn ra: viền vàng cam cùng màu nhãn "Sắp tới"
+              highlight={badge.color === Colors.status.upcoming ? Colors.status.upcoming : undefined}
               onPress={() => router.push(ROUTES.scheduleDetail(enrollment.scheduleId))}
             />
           );

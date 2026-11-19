@@ -98,8 +98,9 @@ export function MemberHomeView({ user, facilityId }: MemberHomeViewProps) {
             {later.slice(0, UPCOMING_PREVIEW).map((e) => (
               <Card key={e.id} onPress={() => e.schedule && router.push(ROUTES.scheduleDetail(e.schedule.id))}>
                 <View className="flex-row items-center gap-md">
-                  <View className="items-center w-14">
-                    <Text className="text-md font-bevn-bold text-text-primary">{e.schedule ? formatTime(e.schedule.startTime) : '—'}</Text>
+                  {/* Không cố định bề rộng: cột rộng theo chữ để giờ "09:00" luôn nằm trên một dòng (kể cả khi cỡ chữ hệ thống lớn) */}
+                  <View className="items-center" style={{ minWidth: 56 }}>
+                    <Text className="text-md font-bevn-bold text-text-primary" numberOfLines={1}>{e.schedule ? formatTime(e.schedule.startTime) : '—'}</Text>
                     <Text className="text-xs text-text-muted font-bevn-regular">{e.schedule ? formatWeekdayDate(e.schedule.startTime).split(',')[0] : ''}</Text>
                   </View>
                   <View className="flex-1 border-l-2 pl-md" style={{ borderLeftColor: Colors.status.booked }}>

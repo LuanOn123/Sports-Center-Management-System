@@ -379,3 +379,23 @@ export function markdownToPlainText(source: string) {
   }
   return lines.join('\n').trim();
 }
+
+/** Ước lượng bề rộng 1 ký tự (px) ở cỡ chữ text-sm, cộng lề trong ô (p-sm hai bên) */
+const TABLE_CHAR_WIDTH = 9.5;
+const TABLE_CELL_PADDING = 16;
+export const TABLE_COLUMN_MIN_WIDTH = 88;
+export const TABLE_COLUMN_MAX_WIDTH = 260;
+
+/**
+ * Bề rộng cố định cho từng cột của bảng rộng — mọi hàng dùng chung nên các cột thẳng hàng.
+ * Tính theo dòng dài nhất trong cột (ô có thể nhiều dòng do <br>), kẹp trong [MIN, MAX]; ô dài hơn MAX thì xuống dòng.
+ * `fontScale`: cỡ chữ hệ thống (PixelRatio.getFontScale()) — chữ to hơn thì cột rộng theo.
+ */
+export function tableColumnWidths(header: readonly InlineSpan[][], rows: readonly InlineSpan[][][], fontScale = 1): number[] {
+  return header.map((head, c) => {
+    const cells = [head, ...rows.map((row) => row[c] ?? [])];
+    const longest = Math.max(0, ...cells.flatMap((cell) => inlineToPlain(cell).split('\n').map((line) => line.trim().length)));
+    const width = Math.ceil(longest * TABLE_CHAR_WIDTH * fontScale) + TABLE_CELL_PADDING;
+    return Math.min(TABLE_COLUMN_MAX_WIDTH * fontScale, Math.max(TABLE_COLUMN_MIN_WIDTH, width));
+  });
+}
