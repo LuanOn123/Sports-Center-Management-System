@@ -1,7 +1,8 @@
 // components/shared/QrScannerModal.tsx
 // Điểm danh: mở ra bảng chọn "Quét mã QR" / "Nhập mã điểm danh" (cùng 1 Modal — iOS không mở được
 // Modal thứ 2 khi Modal đầu chưa đóng xong). Chỉ xin quyền camera khi người dùng chọn quét QR.
-// - Quét: camera tràn toàn màn hình, khung ngắm 4 góc, nút chuyển sang nhập mã.
+// - Quét: Android dùng trình quét của Google (lib/googleCodeScanner); không có thì camera tràn toàn màn hình,
+//   khung ngắm 4 góc, nút chuyển sang nhập mã.
 // - Nhập mã: ô nhập căn giữa phần màn hình còn thấy phía trên bàn phím.
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -15,6 +16,7 @@ import { Colors, Spacing } from '../../constants/theme';
 import { QR_SCAN_FRAME_HEIGHT_RATIO, QR_SCAN_FRAME_MAX } from '../../constants/attendance';
 import { useKeyboard } from '../../hooks/shared/useKeyboard';
 import { Haptic } from '../../lib/haptics';
+import { googleCodeScannerAvailable, scanQrWithGoogle } from '../../lib/googleCodeScanner';
 
 // Mã dự phòng: đúng 6 ký tự A-HJ-NP-Z2-9 (không dùng 0/O/1/I) — khớp quy tắc BE.
 // Khác với QR token (JWT dài) nên phải gửi đúng field, không thì BE luôn báo sai mã.
@@ -87,8 +89,27 @@ export function QrScannerModal({ visible, onClose, onSubmitCredential, isSubmitt
     onClose();
   };
 
+  // Android: ưu tiên trình quét của Google (lib/googleCodeScanner) — camera tự dựng trong app không đọc được mã
+  // điểm danh dày đặc dù Google Lens đọc được. Máy không có trình quét của Google thì mới mở camera trong app.
+  const googleScanning = useRef(false);
+  const scanWithGoogle = async () => {
+    if (googleScanning.current) return;
+    googleScanning.current = true;
+    try {
+      const outcome = await scanQrWithGoogle();
+      if (outcome.status === 'scanned') handleBarcodeScanned({ data: outcome.data });
+      else if (outcome.status === 'unavailable') setMode('scan');
+    } finally {
+      googleScanning.current = false;
+    }
+  };
+
   const choose = (method: Method) => {
     Haptic.selection();
+    if (method === 'scan' && googleCodeScannerAvailable()) {
+      void scanWithGoogle();
+      return;
+    }
     setMode(method);
   };
 

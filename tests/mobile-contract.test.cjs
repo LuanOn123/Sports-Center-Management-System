@@ -1656,6 +1656,15 @@ test('QR attendance countdown runs from the moment the request was sent and neve
   // Làm mới định kỳ 55 giây như web, nhỏ hơn hạn 90 giây của mã dự phòng
   const c = loadApp('http://localhost/api/v1').load('constants/attendance');
   assert.equal(c.QR_REFRESH_MS, 55_000); assert.ok(c.QR_REFRESH_MS < 90_000);
+  // Mã QR của HLV phải có viền trắng (quiet zone) trên nền trắng: thiếu viền, mép đen dính vào nền tối của app nên
+  // máy hội viên không tìm ra ô định vị. JWT ~280 ký tự ≈ 65 ô/cạnh → viền ≥ 4 ô và mỗi ô ≥ 3px.
+  const modules = 65;
+  const modulePx = (c.QR_CODE_SIZE - 2 * c.QR_CODE_QUIET_ZONE) / modules;
+  assert.ok(modulePx >= 3, `mỗi ô QR ${modulePx.toFixed(2)}px quá nhỏ`);
+  assert.ok(c.QR_CODE_QUIET_ZONE >= 4 * modulePx, 'viền trắng phải rộng ít nhất 4 ô');
+  assert.ok(c.QR_CODE_SIZE <= 280, 'mã QR phải vừa modal trên máy rộng 360px');
+  const modal = stripComments(readSource('components/coach/AttendanceQrModal.tsx'));
+  assert.match(modal, /<QRCode[\s\S]*quietZone=\{QR_CODE_QUIET_ZONE\}[\s\S]*backgroundColor="#FFFFFF"[\s\S]*\/>/);
 });
 
 test('teaching summary matches the web dashboard: cancelled sessions only count in the totals, charts use non-cancelled sessions', () => {
@@ -2526,3 +2535,48 @@ test('session results ("Kết quả buổi tập"): the coach saves them with th
   assert.match(stripComments(readSource('components/classes/ClassGoalCard.tsx')), /Boolean\(entry\.results\)[\s\S]*TEXT\.sessionResults[\s\S]*\{entry\.results\}/);
   assert.match(readSource('components/member/SessionEvaluationCard.tsx'), /<EvaluationRow entry=\{entry\} \/>/);
 }));
+
+test('attendance QR scanning on Android uses the Google code scanner and falls back to the in-app camera', async () => {
+  // Camera tự dựng trong app không đọc được mã điểm danh (JWT dày đặc) dù Google Lens đọc được → dùng trình quét của Google
+  function loadScanner({ os = 'android', available = true, launch, event = 'jwt-from-qr' } = {}) {
+    const calls = { launch: [], removed: 0 };
+    let listener = null;
+    const CameraView = {
+      isModernBarcodeScannerAvailable: available,
+      onModernBarcodeScanned: (fn) => { listener = fn; return { remove: () => { calls.removed += 1; } }; },
+      launchScanner: async (options) => {
+        calls.launch.push(options);
+        if (launch) return launch();
+        if (event) listener({ type: 'qr', data: event });
+      },
+    };
+    const lib = loadApp('http://localhost/api/v1', {
+      'react-native': () => ({ Platform: { OS: os } }),
+      'expo-camera': () => ({ CameraView }),
+    }).load('lib/googleCodeScanner');
+    return { lib, calls };
+  }
+  const ok = loadScanner();
+  assert.equal(ok.lib.googleCodeScannerAvailable(), true);
+  assert.deepEqual(await ok.lib.scanQrWithGoogle(), { status: 'scanned', data: 'jwt-from-qr' });
+  assert.deepEqual(ok.calls.launch, [{ barcodeTypes: ['qr'] }]);
+  assert.equal(ok.calls.removed, 1, 'gỡ listener sau mỗi lần quét');
+  // Người dùng bấm quay lại trong trình quét của Google
+  const cancelled = loadScanner({ launch: async () => { throw new Error('Barcode scanning was cancelled'); } });
+  assert.deepEqual(await cancelled.lib.scanQrWithGoogle(), { status: 'cancelled' });
+  assert.equal(cancelled.calls.removed, 1);
+  // Thiếu Play Services / MLKit → quay về camera trong app
+  const failed = loadScanner({ launch: async () => { throw new Error('Google Play Services is not available on this device.'); } });
+  assert.deepEqual(await failed.lib.scanQrWithGoogle(), { status: 'unavailable' });
+  // iOS, hoặc máy không có trình quét của Google: không mở, dùng camera trong app
+  for (const scanner of [loadScanner({ os: 'ios' }), loadScanner({ available: false })]) {
+    assert.equal(scanner.lib.googleCodeScannerAvailable(), false);
+    assert.deepEqual(await scanner.lib.scanQrWithGoogle(), { status: 'unavailable' });
+    assert.deepEqual(scanner.calls.launch, []);
+  }
+  // Màn quét gọi trình quét của Google khi chọn "Quét mã QR" và gửi kết quả như mã quét từ camera
+  const modal = stripComments(readSource('components/shared/QrScannerModal.tsx'));
+  assert.match(modal, /method === 'scan' && googleCodeScannerAvailable\(\)/);
+  assert.match(modal, /outcome\.status === 'scanned'\) handleBarcodeScanned\(\{ data: outcome\.data \}\)/);
+  assert.match(modal, /outcome\.status === 'unavailable'\) setMode\('scan'\)/);
+});

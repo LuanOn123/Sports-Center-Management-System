@@ -110,8 +110,17 @@ export const COACH_ATTENDANCE_TEXT = {
 /** Làm mới mã mỗi chừng này: mã dự phòng chỉ sống 90 giây (BE) nên phải đổi đều để luôn còn hiệu lực (web: refetchInterval 55000) */
 export const QR_REFRESH_MS = 55_000;
 
-/** Cạnh khung mã QR trên màn hình (px) */
-export const QR_CODE_SIZE = 200;
+/**
+ * Cạnh khung mã QR trên màn hình (px), ĐÃ GỒM viền trắng QR_CODE_QUIET_ZONE. Mã chứa JWT ~280 ký tự nên rất dày
+ * (≈65 ô mỗi cạnh): 256px cho mỗi ô ~3.4px, vẫn vừa modal (máy 360px: 360 − 2×20 lề − 2×20 padding = 280px).
+ */
+export const QR_CODE_SIZE = 256;
+
+/**
+ * Viền trắng quanh mã QR (px, nằm TRONG QR_CODE_SIZE). Chuẩn QR cần vùng sáng ≥ 4 ô quanh mã để camera tìm ra
+ * 3 ô định vị; thiếu viền thì mép đen của mã dính vào nền tối của app và máy hội viên quét mãi không nhận.
+ */
+export const QR_CODE_QUIET_ZONE = 16;
 
 /** Hiện "Đã sao chép" chừng này mili-giây sau khi chép mã dự phòng */
 export const QR_COPIED_MS = 2_000;

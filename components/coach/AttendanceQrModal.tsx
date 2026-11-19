@@ -8,7 +8,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { Icon } from '../shared/Icon';
 import { Button } from '../ui/Button';
 import { Colors } from '../../constants/theme';
-import { QR_CODE_SIZE, QR_TEXT as TEXT } from '../../constants/attendance';
+import { QR_CODE_QUIET_ZONE, QR_CODE_SIZE, QR_TEXT as TEXT } from '../../constants/attendance';
 import { formatCountdown } from '../../lib/format';
 import type { useQrAttendance } from '../../hooks/coach/useQrAttendance';
 
@@ -24,7 +24,13 @@ export function AttendanceQrModal({ qr }: { qr: ReturnType<typeof useQrAttendanc
 
           <View className="items-center justify-center mb-xs" style={{ width: QR_CODE_SIZE, height: QR_CODE_SIZE }}>
             {showQr ? (
-              <QRCode value={qr.token!} size={QR_CODE_SIZE} />
+              <QRCode
+                value={qr.token!}
+                size={QR_CODE_SIZE}
+                quietZone={QR_CODE_QUIET_ZONE}
+                color="#000000"
+                backgroundColor="#FFFFFF"
+              />
             ) : qr.qrExpired ? (
               <Text accessibilityRole="alert" className="text-sm text-status-expired text-center font-bevn-medium">{TEXT.expired}</Text>
             ) : (
