@@ -48,9 +48,14 @@ export async function saveRemoteImageToLibrary(url: string, fileName: string): P
     return 'unavailable';
   }
 
-  // Chỉ xin quyền ghi (không đọc thư viện ảnh)
-  const permission = await MediaLibrary.requestPermissionsAsync(true, ['photo']);
-  if (!permission.granted) return 'denied';
+  // Chỉ xin quyền ghi (không đọc thư viện ảnh). Xin quyền cũng có thể NÉM lỗi (Expo Go trên Android không cho xin quyền
+  // thư viện ảnh, bản cài thiếu module native…) — phải bắt lại, nếu không lỗi văng thẳng lên màn thanh toán
+  try {
+    const permission = await MediaLibrary.requestPermissionsAsync(true, ['photo']);
+    if (!permission.granted) return 'denied';
+  } catch {
+    return 'unavailable';
+  }
 
   try {
     const target = new FileSystem.File(FileSystem.Paths.cache, `${fileName}.png`);

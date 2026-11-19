@@ -30,12 +30,21 @@ export function useChatComposer(send: SendMessage, user: User | null, initialTex
     sendingRef.current = true;
     setSending(true);
     Haptic.medium();
+    // Xóa ô soạn NGAY khi bấm gửi (tin đã hiện lạc quan trong khung chat). Đợi BE trả lời mới xóa thì trên Android
+    // ô nhiều dòng thường giữ nguyên chữ cũ; gửi lỗi thì trả lại nội dung (nếu người dùng chưa gõ gì mới) để gửi lại
+    const sentText = textRef.current;
+    const sentAttachment = attachment;
+    textRef.current = '';
+    setText('');
+    setAttachment(undefined);
     try {
-      await send(trimmed, user, attachment);
-      textRef.current = '';
-      setText('');
-      setAttachment(undefined);
+      await send(trimmed, user, sentAttachment);
     } catch (e) {
+      if (!textRef.current) {
+        textRef.current = sentText;
+        setText(sentText);
+      }
+      setAttachment((current) => current ?? sentAttachment);
       showAlert(CHAT_TEXT.sendFailed, e instanceof Error ? e.message : CHAT_TEXT.retryHint);
     } finally {
       sendingRef.current = false;

@@ -68,6 +68,13 @@ export function useClassesExplore() {
     sports: sportList,
     classes: classes.data?.data ?? [],
     isLoading: classes.isLoading,
+    /**
+     * Đang hiện danh sách của bộ lọc TRƯỚC (placeholderData) trong lúc tải kết quả mới: số lớp lúc này là số cũ —
+     * không được đưa lên nút "Xem N lớp" hay dòng "N lớp học"
+     */
+    isUpdating: classes.isPlaceholderData,
+    /** Đang tải lại danh sách (kéo để làm mới) — để vòng xoay biết khi nào tắt */
+    isRefreshing: classes.isRefetching,
     // Làm mới cả danh sách lớp lẫn lịch học / chỗ trống của từng thẻ
     refresh: () => Promise.all([classes.refetch(), queryClient.invalidateQueries({ queryKey: ['course-plan'] })]),
   };

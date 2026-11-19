@@ -84,14 +84,15 @@ export function ProfileInfoForm({ onFieldFocus, getInputRef }: ProfileInfoFormPr
           />
         </Field>
 
-        <Field label="Giới tính" hint="(không bắt buộc)">
+        {/* Chọn MỘT giới tính như web (ô chọn). BE không xóa được giới tính đã lưu nên không cho bỏ chọn — bấm lại ô đang chọn không đổi gì */}
+        <Field label="Giới tính">
           <Controller
             control={control}
             name="gender"
             render={({ field: { value, onChange } }) => (
               <ChipGroup>
                 {GENDER_OPTIONS.map((o) => (
-                  <FilterChip key={o.value} label={o.label} active={value === o.value} onPress={() => onChange(value === o.value ? undefined : o.value)} />
+                  <FilterChip key={o.value} label={o.label} active={value === o.value} onPress={() => onChange(o.value)} />
                 ))}
               </ChipGroup>
             )}

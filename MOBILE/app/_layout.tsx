@@ -71,6 +71,10 @@ function RootLayoutContent() {
           <Stack.Screen name="chat" />
           <Stack.Screen name="notifications" />
           <Stack.Screen name="assistant" options={{ animation: 'slide_from_bottom' }} />
+          {/* Mở từ menu Tài khoản. Phải nằm trong nhóm có bảo vệ: màn không thuộc nhóm nào là màn expo-router
+              nhảy tới tạm thời khi đăng nhập/đăng xuất làm gỡ nhóm cũ → trang Hướng dẫn hiện chớp lên */}
+          <Stack.Screen name="help" />
+          <Stack.Screen name="policies" />
         </Stack.Protected>
         <Stack.Protected guard={isAuthenticated && user?.role === 'MEMBER'}>
           <Stack.Screen name="membership/plans" />
