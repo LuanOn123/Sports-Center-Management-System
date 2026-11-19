@@ -44,7 +44,7 @@ export function MembershipPage() {
     "immediate",
   );
   const [customStartDate, setCustomStartDate] = useState<string>("");
-  const storageKey = `pulse.pending-checkout.${user?.id}.${getFacilityId()}`;
+  const storageKey = `pulse.pending-checkout.${user?.id}`;
   const [checkout, setCheckout] = useState<SepayCheckout | null>(() => {
     try {
       return JSON.parse(sessionStorage.getItem(storageKey) || "null");
@@ -84,13 +84,7 @@ export function MembershipPage() {
   });
 
   const startCheckout = (plan: MembershipPlan, startDate?: string, chosenFacilityId?: string) => {
-    const targetFacility = chosenFacilityId || checkoutFacilityId || getFacilityId();
-    if (targetFacility && targetFacility !== getFacilityId()) {
-      selectFacility(targetFacility);
-      if (facilityCtx && targetFacility !== facilityCtx.selected) {
-        void facilityCtx.change(targetFacility);
-      }
-    }
+    const targetFacility = chosenFacilityId || checkoutFacilityId || facilityCtx?.selected || getFacilityId();
     setPaymentPlan(plan);
     setCheckout(null);
     createCheckout.reset();
@@ -1205,14 +1199,7 @@ export function MembershipPage() {
               </label>
               <select
                 value={checkoutFacilityId}
-                onChange={(e) => {
-                  const nextFac = e.target.value;
-                  setCheckoutFacilityId(nextFac);
-                  selectFacility(nextFac);
-                  if (facilityCtx && nextFac !== facilityCtx.selected) {
-                    void facilityCtx.change(nextFac);
-                  }
-                }}
+                onChange={(e) => setCheckoutFacilityId(e.target.value)}
                 style={{
                   padding: "8px 12px",
                   borderRadius: 6,
@@ -1319,14 +1306,7 @@ export function MembershipPage() {
               </label>
               <select
                 value={checkoutFacilityId}
-                onChange={(e) => {
-                  const nextFac = e.target.value;
-                  setCheckoutFacilityId(nextFac);
-                  selectFacility(nextFac);
-                  if (facilityCtx && nextFac !== facilityCtx.selected) {
-                    void facilityCtx.change(nextFac);
-                  }
-                }}
+                onChange={(e) => setCheckoutFacilityId(e.target.value)}
                 style={{
                   padding: "8px 12px",
                   borderRadius: 6,
