@@ -200,7 +200,8 @@ export function ChatThreadView({ userId, name, draft }: { userId: string; name?:
         <TextInput
           className="flex-1 bg-bg-elevated rounded-lg px-lg py-sm text-text-primary font-bevn-regular text-sm max-h-[100px] border border-border"
           value={composer.text}
-          editable={!composer.sending}
+          // Không khóa ô khi đang gửi: ô nhiều dòng bị khóa trên Android không cập nhật khi giá trị về rỗng (chữ cũ còn lại);
+          // nút gửi đã tắt trong lúc gửi nên không gửi trùng
           onChangeText={changeText}
           placeholder={TEXT.composerPlaceholder}
           placeholderTextColor={Colors.text.muted}

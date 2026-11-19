@@ -1040,12 +1040,13 @@ const IOS_CLIENT = '2222-ios.apps.googleusercontent.com';
 // và thư viện Google. `registered`: bản đang chạy đã gắn module native RNGoogleSignin (mặc định: có khi test đưa module giả vào).
 // `loads.count` đếm số lần thư viện Google bị nạp: khi module native chưa gắn, require() của thư viện KHÔNG ném lỗi cho try/catch —
 // Metro (guardedLoadModule) báo thẳng là lỗi nghiêm trọng (màn đỏ "Uncaught Error" khi đăng xuất trong Expo Go) — nên không được nạp.
-function loadGoogle({ environment = 'standalone', webClientId = WEB_CLIENT, iosClientId = '', native, registered = native !== undefined, loads = { count: 0 } } = {}) {
+function loadGoogle({ environment = 'standalone', expoGo = false, webClientId = WEB_CLIENT, iosClientId = '', native, registered = native !== undefined, loads = { count: 0 } } = {}) {
   const saved = { web: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID };
   process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID = webClientId; process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID = iosClientId;
   try {
     const stubs = {
       'expo-constants': () => ({ __esModule: true, default: { executionEnvironment: environment }, ExecutionEnvironment: { StoreClient: 'storeClient', Standalone: 'standalone', Bare: 'bare' } }),
+      expo: () => ({ isRunningInExpoGo: () => expoGo }),
       'react-native': () => ({
         Platform: { OS: 'web', select: (values) => values.web || values.default },
         TurboModuleRegistry: { get: (name) => (registered && name === 'RNGoogleSignin' ? {} : null) },
@@ -1090,6 +1091,12 @@ test('Google sign-in explains why it is unavailable instead of crashing: Expo Go
   await assert.doesNotReject(inExpoGo.signOutOfGoogle());
   assert.match(inExpoGo.googleErrorMessage(new Error('Lỗi khác')), /Lỗi khác/);
   assert.equal(expoGo.count, 0, 'Expo Go: không được nạp thư viện Google');
+  // Expo Go SDK 58 (Android) báo executionEnvironment = "bare" — vẫn phải nhận ra là Expo Go, không báo "build lại development build"
+  const bareExpoGo = { count: 0 };
+  const inBareExpoGo = loadGoogle({ environment: 'bare', expoGo: true, loads: bareExpoGo });
+  assert.equal(inBareExpoGo.googleSignInUnavailableReason(), 'expo-go');
+  await assert.rejects(inBareExpoGo.signInWithGoogle(), /Expo Go/);
+  assert.equal(bareExpoGo.count, 0);
   // Thiếu Web client ID → chưa cấu hình
   assert.equal(loadGoogle({ webClientId: '' }).googleSignInUnavailableReason(), 'not-configured');
   // Development build cũ chưa gắn module native Google: registry không có RNGoogleSignin → báo cần build lại và không nạp thư viện
@@ -2068,7 +2075,7 @@ test('Explore has one toolbar row, a filter sheet for both roles and removable c
   assert.match(explore, /<ActiveFilterChips filters=\{explore\.activeFilters\} onRemove=\{explore\.clearFilter\} \/>/);
   assert.ok(explore.indexOf('<ClassSearchBar') < explore.indexOf('<ActiveFilterChips') && explore.indexOf('<ActiveFilterChips') < explore.indexOf('<FlatList'));
   // Một bảng lọc cho cả hội viên và HLV: khu vực + kỳ học chỉ bật cho hội viên, nút chính hiện số lớp, "Xóa bộ lọc" không đụng ô tìm kiếm
-  assert.match(explore, /<ClassFilterSheet\b[\s\S]*?showRegistrationFilters=\{!isCoach\}[\s\S]*?onClear=\{explore\.clearSelectedFilters\}[\s\S]*?resultCount=\{explore\.isLoading \? undefined : classes\.length\}/);
+  assert.match(explore, /<ClassFilterSheet\b[\s\S]*?showRegistrationFilters=\{!isCoach\}[\s\S]*?onClear=\{explore\.clearSelectedFilters\}[\s\S]*?resultCount=\{explore\.isLoading \|\| explore\.isUpdating \? undefined : classes\.length\}/);
   // Không còn hàng chip môn tập / hạng lớp cuộn ngang, ô nhập riêng hay nút "Bộ lọc" đứng riêng trên màn chính
   assert.doesNotMatch(explore, /\b(FilterChip|ChipRow)\b|horizontal|<TextInput|<Pressable/);
   assert.equal((explore.match(/<ClassFilterSheet\b/g) ?? []).length, 1, 'chỉ một bảng lọc, dùng chung cho hai vai trò');
@@ -2650,4 +2657,51 @@ test('payment confirmed: refreshes the same data as the web checkout (membership
   assert.match(readSource('hooks/member/useInvoices.ts'), /queryKey: \['member-invoices'/);
   assert.match(readSource('hooks/member/useEnrollments.ts'), /queryKey: \['enrollment-quota'\]/);
   assert.match(readSource('hooks/shared/useClasses.ts'), /queryKey: \['course-plan'/);
+});
+
+test('gender: registration can be deselected (null → not sent); profile form is single-choice like the web', () => {
+  const reg = loadApp('http://localhost/api/v1').load('lib/memberRegistration');
+  const base = { fullName: 'Nguyễn An', email: 'an@gmail.com', password: 'secret123', confirmPassword: 'secret123', phone: '0901234567', dateOfBirth: '', fitnessGoals: [], fitnessGoalNote: '' };
+  assert.equal(reg.registerSchema.safeParse({ ...base, gender: null }).success, true, 'đã bỏ chọn vẫn hợp lệ');
+  assert.equal('gender' in reg.toRegisterPayload({ ...base, gender: null }), false, 'bỏ chọn thì không gửi giới tính');
+  assert.equal(reg.toRegisterPayload({ ...base, gender: 'FEMALE' }).gender, 'FEMALE');
+  // Bỏ chọn phải đặt null — undefined làm Controller trả lại giá trị mặc định (Nam) nên ô không tắt được
+  const fields = readSource('components/auth/MemberProfileFields.tsx');
+  assert.match(fields, /onChange\(value === o\.value \? null : o\.value\)/);
+  // Thông tin cá nhân: luôn chọn đúng một giá trị (BE không xóa được giới tính đã lưu)
+  const profile = readSource('components/profile/ProfileInfoForm.tsx');
+  assert.match(profile, /GENDER_OPTIONS\.map\(\(o\) => \([\s\S]*?onPress=\{\(\) => onChange\(o\.value\)\}/);
+});
+
+test('saving the payment QR never throws: permission errors (Expo Go / missing native module) become "unavailable"', async () => {
+  const load = (mediaLibrary, fileSystem) => loadApp('http://localhost/api/v1', {
+    'react-native': () => ({ Platform: { OS: 'android' }, Linking: { openURL: async () => {} } }),
+    'expo-media-library': () => mediaLibrary,
+    'expo-file-system': () => fileSystem,
+  }).load('lib/device');
+  const fs = { Paths: { cache: '/cache' }, File: Object.assign(function File() {}, { downloadFileAsync: async () => ({ uri: 'file:///cache/qr.png' }) }) };
+  const throwing = load({ requestPermissionsAsync: async () => { throw new Error('Expo Go cannot request media library permissions on Android'); } }, fs);
+  assert.equal(await throwing.saveRemoteImageToLibrary('https://qr.example/x.png', 'qr'), 'unavailable');
+  const denied = load({ requestPermissionsAsync: async () => ({ granted: false }) }, fs);
+  assert.equal(await denied.saveRemoteImageToLibrary('https://qr.example/x.png', 'qr'), 'denied');
+  const created = [];
+  const ok = load({ requestPermissionsAsync: async () => ({ granted: true }), Asset: { create: async (uri) => created.push(uri) } }, fs);
+  assert.equal(await ok.saveRemoteImageToLibrary('https://qr.example/x.png', 'qr'), 'saved');
+  assert.deepEqual(created, ['file:///cache/qr.png']);
+  const failing = load({ requestPermissionsAsync: async () => ({ granted: true }), Asset: { create: async () => { throw new Error('disk full'); } } }, fs);
+  assert.equal(await failing.saveRemoteImageToLibrary('https://qr.example/x.png', 'qr'), 'failed');
+});
+
+test('chat composer clears the input as soon as a message is sent and restores it if sending fails', () => {
+  const src = readSource('hooks/shared/useChatComposer.ts');
+  const submit = src.slice(src.indexOf('const submit = async'), src.indexOf('const pickAttachment'));
+  assert.ok(submit.indexOf("setText('')") < submit.indexOf('await send('), 'xóa ô soạn trước khi chờ BE');
+  assert.match(submit, /catch \(e\) \{[\s\S]*?setText\(sentText\)/, 'gửi lỗi thì trả lại nội dung');
+  assert.doesNotMatch(readSource('components/chat/ChatThreadView.tsx'), /editable=\{!composer\.sending\}/, 'không khóa ô khi đang gửi');
+});
+
+test('auth-only screens opened from the account menu (Help, Policies) sit inside a protected group so they never flash on login/logout', () => {
+  const layout = readSource('app/_layout.tsx');
+  const authed = layout.match(/<Stack\.Protected guard=\{isAuthenticated\}>([\s\S]*?)<\/Stack\.Protected>/)[1];
+  assert.match(authed, /name="help"/); assert.match(authed, /name="policies"/);
 });

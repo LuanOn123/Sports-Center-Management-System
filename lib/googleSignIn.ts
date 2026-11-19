@@ -12,6 +12,7 @@
 
 import { TurboModuleRegistry } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { isRunningInExpoGo } from 'expo';
 import { GOOGLE_TEXT } from '../constants/auth';
 import { googleIosClientId, googleWebClientId } from './googleSignInConfig';
 import type { GoogleSignInOutcome, GoogleUnavailableReason } from './googleSignInTypes';
@@ -36,9 +37,23 @@ function nativeModule(): GoogleSigninModule | null {
   return loaded ?? null;
 }
 
+/**
+ * Đang chạy trong Expo Go? Expo Go SDK 58 trên Android báo executionEnvironment = "bare" (không phải "storeClient")
+ * nên chỉ so executionEnvironment sẽ nhận nhầm thành "bản cài chưa gắn Google" và hiện sai câu hướng dẫn.
+ * isRunningInExpoGo() của gói expo kiểm tra trực tiếp module của Expo Go.
+ */
+export function isExpoGo() {
+  try {
+    if (isRunningInExpoGo()) return true;
+  } catch {
+    // Bản expo cũ không có hàm này — dựa vào executionEnvironment bên dưới
+  }
+  return Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+}
+
 /** null nếu dùng được; ngược lại là lý do để báo người dùng (nút vẫn hiện, bấm vào sẽ giải thích) */
 export function googleSignInUnavailableReason(): GoogleUnavailableReason | null {
-  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return 'expo-go';
+  if (isExpoGo()) return 'expo-go';
   if (!googleWebClientId) return 'not-configured';
   return nativeModule() ? null : 'native-module-missing';
 }

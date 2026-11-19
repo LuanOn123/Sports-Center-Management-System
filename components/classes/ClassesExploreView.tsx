@@ -18,6 +18,7 @@ import { ClassCard } from './ClassCard';
 import { ClassFilterSheet } from './ClassFilterSheet';
 import { ClassSearchBar } from './ClassSearchBar';
 import { useClassesExplore } from '../../hooks/shared/useClassesExplore';
+import { useUserPullRefresh } from '../../hooks/shared/useUserPullRefresh';
 import { Colors, Spacing } from '../../constants/theme';
 import { Haptic } from '../../lib/haptics';
 import { ROUTES } from '../../navigation/routes';
@@ -29,6 +30,7 @@ export function ClassesExploreView() {
   const [filterOpen, setFilterOpen] = useState(false);
   const explore = useClassesExplore();
   const { isCoach, classes } = explore;
+  const { pulling, onPull } = useUserPullRefresh(explore.isRefreshing, () => { Haptic.light(); void explore.refresh(); });
 
   return (
     <View className="flex-1 bg-bg-primary">
@@ -54,7 +56,7 @@ export function ClassesExploreView() {
       {/* Số kết quả */}
       {!explore.isLoading && (
         <View className="flex-row items-center justify-between px-xl">
-          <Text className="text-sm text-text-secondary font-bevn-medium">{classes.length} lớp học</Text>
+          <Text className="text-sm text-text-secondary font-bevn-medium">{explore.isUpdating ? 'Đang tải…' : `${classes.length} lớp học`}</Text>
           {explore.hasFilters && (
             <TouchableOpacity onPress={() => { Haptic.selection(); explore.clearFilters(); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Text className="text-sm text-primary font-bevn-semibold">Xóa bộ lọc</Text>
@@ -77,7 +79,8 @@ export function ClassesExploreView() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           contentContainerStyle={{ padding: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.xl + (isCoach ? insets.bottom : 0), gap: Spacing.md }}
-          refreshControl={<RefreshControl refreshing={false} onRefresh={() => { Haptic.light(); void explore.refresh(); }} tintColor={Colors.primary} />}
+          // Vòng xoay hiện khi người dùng kéo và tắt khi tải xong (refreshing={false} cố định làm vòng xoay không hiện/không tắt đúng)
+          refreshControl={<RefreshControl refreshing={pulling} onRefresh={onPull} tintColor={Colors.primary} colors={[Colors.primary]} />}
           ListEmptyComponent={
             <View className="items-center mt-[60px]">
               <Icon name="fitness-center" size={48} color={Colors.text.muted} style={{ marginBottom: 12 }} />
@@ -128,7 +131,8 @@ export function ClassesExploreView() {
         currentTermId={explore.currentTermId}
         activeCount={explore.filterCount}
         onClear={explore.clearSelectedFilters}
-        resultCount={explore.isLoading ? undefined : classes.length}
+        // Đang tải kết quả của bộ lọc vừa chọn → chưa có số (nút hiện "Xong"), không hiện số lớp của bộ lọc cũ
+        resultCount={explore.isLoading || explore.isUpdating ? undefined : classes.length}
       />
     </View>
   );

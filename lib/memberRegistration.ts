@@ -18,7 +18,9 @@ const memberProfileShape = {
     const message = vnPhoneError(value, true);
     if (message) ctx.addIssue({ code: 'custom', message });
   }),
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
+  // null = đã bỏ chọn (không gửi giới tính). KHÔNG dùng undefined: Controller của react-hook-form gặp undefined thì
+  // trả lại giá trị mặc định (Nam) nên ô vẫn sáng — không bỏ chọn được
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER']).nullable().optional(),
   dateOfBirth: z.string().optional().superRefine((value, ctx) => {
     const message = memberBirthDateError(value);
     if (message) ctx.addIssue({ code: 'custom', message });

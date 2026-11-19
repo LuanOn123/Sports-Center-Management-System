@@ -59,7 +59,8 @@ export function MemberProfileFields({ scroll }: { scroll: FieldScroll }) {
           render={({ field: { value, onChange } }) => (
             <ChipGroup>
               {GENDER_OPTIONS.map((o) => (
-                <FilterChip key={o.value} label={o.label} active={value === o.value} onPress={() => onChange(value === o.value ? undefined : o.value)} />
+                // Bấm lại ô đang chọn → bỏ chọn (null, xem lib/memberRegistration)
+                <FilterChip key={o.value} label={o.label} active={value === o.value} onPress={() => onChange(value === o.value ? null : o.value)} />
               ))}
             </ChipGroup>
           )}
