@@ -6,3 +6,4 @@ Thumbs.db
 AGENTS/
 agents/
 .agents/
+node_modules
