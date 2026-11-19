@@ -718,6 +718,29 @@ test('member calendar: booked and completed sessions only, past ones labelled', 
   assert.equal(m.memberSessionBadge(upcoming, now).label, 'Đã đặt'); assert.equal(m.memberSessionBadge(past, now).label, 'Đã diễn ra'); assert.equal(m.memberSessionBadge(done, now).label, 'Hoàn thành');
 });
 
+test('member calendar: booked sessions later today are labelled "Sắp tới" in amber, other days stay "Đã đặt"', () => {
+  const m = loadApp('http://localhost/api/v1').load('lib/memberSchedule');
+  const now = Date.parse('2026-11-19T01:00:00Z'); // 08:00 giờ VN, 19/11
+  const enroll = (start, end) => ({ id: 'e', scheduleId: 's', status: 'BOOKED', memberId: 'm', bookedAt: '', createdAt: '', schedule: { id: 's', classId: 'c', roomId: 'r', startTime: start, endTime: end, status: 'SCHEDULED' } });
+  const laterToday = enroll('2026-11-19T04:00:00Z', '2026-11-19T06:00:00Z'); // 11:00–13:00 VN
+  const lateTonight = enroll('2026-11-19T16:00:00Z', '2026-11-19T16:30:00Z'); // 23:00 VN, vẫn hôm nay
+  const inProgress = enroll('2026-11-19T00:00:00Z', '2026-11-19T02:00:00Z'); // 07:00–09:00 VN, đang diễn ra
+  const tomorrow = enroll('2026-11-19T17:30:00Z', '2026-11-19T19:00:00Z'); // 00:30 VN ngày 20/11
+  assert.equal(m.memberSessionBadge(laterToday, now).label, 'Sắp tới');
+  assert.equal(m.memberSessionBadge(lateTonight, now).label, 'Sắp tới');
+  assert.equal(m.memberSessionBadge(inProgress, now).label, 'Đã đặt');
+  assert.equal(m.memberSessionBadge(tomorrow, now).label, 'Đã đặt');
+  assert.notEqual(m.memberSessionBadge(laterToday, now).color, m.memberSessionBadge(tomorrow, now).color);
+});
+
+test('coach schedule: sessions past their end time count as completed, cancelled ones do not', () => {
+  const m = loadApp('http://localhost/api/v1').load('lib/memberSchedule'); const now = Date.parse('2026-10-27T05:00:00Z');
+  assert.equal(m.isCoachSessionDone({ status: 'SCHEDULED', endTime: '2026-10-27T04:00:00Z' }, now), true);
+  assert.equal(m.isCoachSessionDone({ status: 'SCHEDULED', endTime: '2026-10-27T06:00:00Z' }, now), false);
+  assert.equal(m.isCoachSessionDone({ status: 'COMPLETED', endTime: '2026-10-28T06:00:00Z' }, now), true);
+  assert.equal(m.isCoachSessionDone({ status: 'CANCELLED', endTime: '2026-10-20T06:00:00Z' }, now), false);
+});
+
 test('Member and Coach schedules share one calendar frame (no per-role calendar markup)', () => {
   const read = (f) => fs.readFileSync(path.resolve(__dirname, '..', f), 'utf8');
   for (const f of ['components/member/MemberScheduleView.tsx', 'components/coach/CoachScheduleView.tsx']) {
@@ -2579,4 +2602,15 @@ test('attendance QR scanning on Android uses the Google code scanner and falls b
   assert.match(modal, /method === 'scan' && googleCodeScannerAvailable\(\)/);
   assert.match(modal, /outcome\.status === 'scanned'\) handleBarcodeScanned\(\{ data: outcome\.data \}\)/);
   assert.match(modal, /outcome\.status === 'unavailable'\) setMode\('scan'\)/);
+});
+
+test('assistant wide tables: one fixed width per column shared by every row, clamped and line-aware', () => {
+  const md = loadApp('http://localhost/api/v1').load('lib/assistantMarkdown');
+  const [table] = md.parseMarkdown('| Gói | Giá | Thời hạn | Đặc quyền |\n|---|---|---|---|\n| Free | 0 VND | 3650 ngày | Gói mặc định |\n| Premium | 1 000 000 VND | 30 ngày | - Bao gồm tất cả quyền lợi của gói thành viên và nhiều hơn nữa<br>- Ưu tiên |');
+  const widths = md.tableColumnWidths(table.header, table.rows);
+  assert.equal(widths.length, 4);
+  assert.equal(widths[0], md.TABLE_COLUMN_MIN_WIDTH, 'cột ngắn không nhỏ hơn MIN');
+  assert.ok(widths[1] > widths[0], 'cột giá rộng hơn cột tên gói');
+  assert.equal(widths[3], md.TABLE_COLUMN_MAX_WIDTH, 'cột mô tả dài bị kẹp ở MAX rồi xuống dòng');
+  assert.match(readSource('components/assistant/AssistantMarkdown.tsx'), /tableColumnWidths\(/);
 });

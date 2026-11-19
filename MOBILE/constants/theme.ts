@@ -30,6 +30,8 @@ export const Colors = {
     completed: '#64DFB4',
     booked: '#C8B4FF',
     pending: '#F5CB65',
+    /** Buổi trong ngày sắp diễn ra — vàng cam để nổi bật trên lịch */
+    upcoming: '#FFA94D',
     success: '#64DFB4',
     failed: '#FF8D9A',
   },
