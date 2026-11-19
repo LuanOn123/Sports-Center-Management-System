@@ -86,7 +86,7 @@ export function SepayCheckoutModal({
   );
   const announced = useRef("");
   useEffect(() => {
-    if (!current) return;
+    if (!current || !open) return;
     const state = `${current.paymentId}:${current.status}:${requiresReview}`;
     if (
       state === announced.current ||

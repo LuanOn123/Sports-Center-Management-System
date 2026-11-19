@@ -70,8 +70,14 @@ export async function checkFacilityScope(
       candidates.some((v) => typeof v !== "string" || !v.trim())
     )
       throw new AppError("FACILITY_CONTEXT_REQUIRED", 400);
-    if (new Set(candidates).size !== 1)
-      throw new AppError("CONFLICTING_FACILITY_CONTEXT", 400);
+    if (new Set(candidates).size !== 1) {
+      if (req.user.role === "MEMBER" && req.body?.facilityId) {
+        candidates.length = 0;
+        candidates.push(req.body.facilityId);
+      } else {
+        throw new AppError("CONFLICTING_FACILITY_CONTEXT", 400);
+      }
+    }
     const facilityId = candidates[0] as string;
     const facility = await prisma.facility.findUnique({
       where: { id: facilityId },

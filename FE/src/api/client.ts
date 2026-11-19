@@ -44,11 +44,13 @@ export async function request<T>(
         url.pathname.split("/")[i],
       );
   });
+  const parsedBody =
+    typeof options.body === "string" ? JSON.parse(options.body) : undefined;
   const result = await api<unknown>(key, {
     params,
     query: Object.fromEntries(url.searchParams),
-    body:
-      typeof options.body === "string" ? JSON.parse(options.body) : undefined,
+    body: parsedBody,
+    facilityId: (parsedBody as { facilityId?: string } | undefined)?.facilityId,
     signal: options.signal || undefined,
   });
   const collection = (

@@ -47,7 +47,12 @@ export function MembershipPage() {
   const storageKey = `pulse.pending-checkout.${user?.id}`;
   const [checkout, setCheckout] = useState<SepayCheckout | null>(() => {
     try {
-      return JSON.parse(sessionStorage.getItem(storageKey) || "null");
+      const stored = JSON.parse(sessionStorage.getItem(storageKey) || "null");
+      if (stored?.status === "FAILED" || stored?.status === "SUCCESS") {
+        sessionStorage.removeItem(storageKey);
+        return null;
+      }
+      return stored;
     } catch {
       return null;
     }
