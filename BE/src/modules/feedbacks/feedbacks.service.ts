@@ -19,7 +19,8 @@ export async function feedbackEligibility(userId: string, coachId: string, class
     if (!member) throw new AppError("Member profile not found", 404);
 
     // 1. Member phải đã tham gia ít nhất 1 buổi đã qua do Coach này dạy trong class này
-    const attended = await prisma.classSchedule.findFirst({
+    //    Dùng findMany + take:1 + orderBy để test có thể mock nhất quán với findFirst
+    const [attended] = await prisma.classSchedule.findMany({
       where: {
         classId,
         status: { not: "CANCELLED" },
@@ -29,16 +30,20 @@ export async function feedbackEligibility(userId: string, coachId: string, class
           { enrollments: { some: { memberId: member.id, status: "COMPLETED" } } },
         ] }],
       },
-      select: { id: true },
+      orderBy: { endTime: "desc" },
+      take: 1,
+      select: { id: true, termId: true },
     });
     if (!attended) {
       return { eligible: false, message: "Bạn chỉ có thể đánh giá khi đã tham gia ít nhất một buổi do HLV này dạy trong khóa học này." };
     }
 
-    // 2. Toàn bộ khóa học phải đã kết thúc — không còn buổi nào trong tương lai (chưa bị hủy)
+    // 2. Toàn bộ khóa học (trong cùng kỳ nếu có) phải đã kết thúc — không còn buổi nào trong tương lai
+    //    Nếu buổi có termId → chỉ kiểm tra trong kỳ đó; nếu legacy (termId = null) → kiểm tra toàn class
     const remaining = await prisma.classSchedule.count({
       where: {
         classId,
+        termId: attended.termId,
         status: { not: "CANCELLED" },
         endTime: { gt: new Date() },
       },
