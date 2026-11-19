@@ -36,11 +36,22 @@ export interface CheckoutRequest {
   startDate?: string;
 }
 
+/**
+ * Dữ liệu cần tải lại khi đơn thanh toán đã kích hoạt gói — khớp web (SepayCheckout: current-membership, member-invoices,
+ * membership-plans, my-enrollment-quota, course-plan), theo tên query key của mobile; thêm thông báo.
+ */
+export const PAYMENT_CONFIRMED_REFRESH_KEYS = [
+  'subscriptions', // gói hiện tại (web: current-membership)
+  'membership-plans-active',
+  'member-invoices', // hóa đơn mới
+  'enrollment-quota', // hạn mức lớp theo hạng gói mới (web: my-enrollment-quota)
+  'course-plan', // quyền đăng ký khóa học theo gói
+  'notifications',
+  'notifications-unread-count',
+] as const;
+
 function invalidateAfterConfirmed(queryClient: QueryClient) {
-  queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-  queryClient.invalidateQueries({ queryKey: ['membership-plans-active'] });
-  queryClient.invalidateQueries({ queryKey: ['notifications'] });
-  queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] });
+  for (const key of PAYMENT_CONFIRMED_REFRESH_KEYS) void queryClient.invalidateQueries({ queryKey: [key] });
 }
 
 async function savePending(scope: PaymentScope, paymentId: string) {
