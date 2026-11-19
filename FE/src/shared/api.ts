@@ -436,10 +436,7 @@ export async function api<T = RecordData>(
       error.status === 409 &&
       code === "SEPAY_PAYMENT_PENDING"
     ) {
-      toast(
-        "info",
-        "Bạn có đơn đang chờ thanh toán. Đã mở lại mã QR của đơn cũ.",
-      );
+      // Đã mở lại modal QR của đơn đang chờ thanh toán, không hiển thị toast làm phiền người dùng
     } else {
       toast(
         "error",

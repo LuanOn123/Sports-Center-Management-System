@@ -1,6 +1,5 @@
 import { getFacilityId, selectFacility } from "../../shared/facility";
 import { useFacilityContext } from "../../shared/FacilityBoundary";
-import { CancelSubscription } from "../../shared/CancelSubscription";
 import "./membership.css";
 import {
   effectiveSubscription,
@@ -182,9 +181,6 @@ export function MembershipPage() {
           </p>
         </div>
 
-        {activeSub && activeSub.tier !== "FREE" && (
-          <CancelSubscription subscription={activeSub} role="MEMBER" />
-        )}
         <a className="button" href="#membership-plans">
           Xem bảng giá các gói
         </a>
@@ -530,10 +526,6 @@ export function MembershipPage() {
                 </div>
                 <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4 }}>
                   {formatMemberDate(scheduledSub.endDate)}
-                  <CancelSubscription
-                    subscription={scheduledSub}
-                    role="MEMBER"
-                  />
                 </div>
               </div>
             </div>
