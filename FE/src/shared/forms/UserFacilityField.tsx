@@ -9,20 +9,27 @@ export function UserFacilityField({
   filter = false,
   disabled = false,
   label,
+  publicMode = false,
 }: {
   value: string;
   onChange: (value: string) => void;
   filter?: boolean;
   disabled?: boolean;
   label?: string;
+  /** true = không gửi includeInactive, dùng cho trang không cần auth (Register) */
+  publicMode?: boolean;
 }) {
   const labelId = useId();
   const facilities = useQuery({
-    queryKey: ["user-facility-options"],
+    queryKey: ["user-facility-options", publicMode],
     queryFn: ({ signal }) =>
       allPages<{ id: string; name: string; isActive: boolean }>(
         "GET /facilities",
-        { query: { includeInactive: "true" }, signal },
+        {
+          query: publicMode ? {} : { includeInactive: "true" },
+          signal,
+          requireAuth: !publicMode,
+        },
       ),
   });
   return (
@@ -35,7 +42,6 @@ export function UserFacilityField({
         onChange={(event) => onChange(event.target.value)}
       >
         <option value="">{filter ? "Tất cả cơ sở" : label ? "Chọn cơ sở" : "Chưa phân công"}</option>
-        {filter && <option value="unassigned">Nhân sự chưa phân công</option>}
         {facilities.data?.data
           .filter(
             (facility) => filter || facility.isActive || facility.id === value,

@@ -1,6 +1,11 @@
 import type { Page } from "@playwright/test";
 import fs from "node:fs";
-const doc = JSON.parse(fs.readFileSync("docs/openapi.json", "utf8"));
+const openapiPath = fs.existsSync("docs/openapi.json")
+  ? "docs/openapi.json"
+  : fs.existsSync("FE/docs/openapi.json")
+    ? "FE/docs/openapi.json"
+    : new URL("../../docs/openapi.json", import.meta.url);
+const doc = JSON.parse(fs.readFileSync(openapiPath, "utf8"));
 
 export async function mockTurnstile(page: Page, autoVerify = true) {
   const sdk = `

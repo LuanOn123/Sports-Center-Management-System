@@ -32,7 +32,7 @@ export const UpdateUserSchema = z.object({
 });
 
 export const UserQuerySchema = z.object({
-  facilityId: z.union([z.string().uuid(), z.literal("unassigned")]).optional(),
+  facilityId: z.string().uuid().optional(),
   page: z.string().optional(),
   limit: z.string().optional(),
   role: z.enum(["MEMBER", "COACH", "RECEPTIONIST", "MANAGER", "ADMIN"]).optional(),

@@ -97,6 +97,9 @@ app.use(v1, (req, res, next) => {
     ["membership-plans", "sports", "subjects"].includes(root)
   )
     return next();
+  // GET /facilities (list only) là public — trả về cơ sở đang hoạt động
+  if (req.method === "GET" && root === "facilities" && req.path === "/facilities")
+    return next();
   if (
     ![
       "rooms",

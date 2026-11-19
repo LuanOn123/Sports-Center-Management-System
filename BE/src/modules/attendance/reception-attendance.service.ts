@@ -44,7 +44,10 @@ export const monitoringQuerySchema = z.object({
   memberId: z.string().min(1).optional(),
   classId: z.string().min(1).optional(),
   search: z.string().max(100).optional(),
-  status: z.enum(["NORMAL", "WARNING", "VIOLATION"]).optional(),
+  status: z
+    .union([z.enum(["NORMAL", "WARNING", "VIOLATION"]), z.literal("")])
+    .optional()
+    .transform((v) => (v ? (v as "NORMAL" | "WARNING" | "VIOLATION") : undefined)),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -159,7 +162,6 @@ async function loadAttendance(
       where: {
         userId: { in: enrollments.map((e) => e.member.userId) },
         type: "ATTENDANCE_WARNING",
-        metadata: { path: ["facilityId"], equals: facilityId },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -194,7 +196,7 @@ async function loadAttendance(
           scheduleId: e.scheduleId,
           startTime: e.schedule.startTime.toISOString(),
           endTime: e.schedule.endTime.toISOString(),
-          roomName: e.schedule.room.name,
+          roomName: e.schedule.room?.name ?? "Phòng chưa cập nhật",
           state:
             e.schedule.endTime > now
               ? "UPCOMING"
@@ -202,11 +204,14 @@ async function loadAttendance(
           note: record?.note || null,
         };
       });
-    const ownWarnings = warnings.filter(
-      (w) =>
-        (w.metadata as { classId?: string } | null)?.classId ===
-          first.classId && w.userId === first.member.userId,
-    );
+    const ownWarnings = warnings.filter((w) => {
+      const meta = w.metadata as { facilityId?: string; classId?: string } | null;
+      return (
+        w.userId === (first.member?.userId ?? "") &&
+        (!meta?.facilityId || meta.facilityId === facilityId) &&
+        meta?.classId === first.classId
+      );
+    });
     const ownReports = reports.filter((r) => {
       const p = readAttendanceReport(r.description);
       return p?.memberId === first.memberId && p.classId === first.classId;
@@ -214,12 +219,12 @@ async function loadAttendance(
     const report = ownReports[0];
     return {
       memberId: first.memberId,
-      memberUserId: first.member.userId,
-      memberName: first.member.user.fullName,
-      memberEmail: first.member.user.email,
-      memberPhone: first.member.user.phone,
+      memberUserId: first.member?.userId ?? "",
+      memberName: first.member?.user?.fullName ?? "Hội viên",
+      memberEmail: first.member?.user?.email ?? "",
+      memberPhone: first.member?.user?.phone ?? null,
       classId: first.classId,
-      className: first.class.name,
+      className: first.class?.name ?? "Lớp học",
       ...attendanceSummary(sessions),
       sessions,
       warningSent: ownWarnings.length > 0,

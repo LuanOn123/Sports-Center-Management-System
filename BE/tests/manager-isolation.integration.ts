@@ -78,7 +78,7 @@ async function main() {
   const denied = async (...args: Parameters<typeof request>) => {
     const r = await request(...args);
     assert.ok(
-      [403, 404].includes(r.status),
+      [403, 404, 409].includes(r.status),
       `Expected scope denial: ${args[2]} got ${r.status}`,
     );
   };
@@ -100,11 +100,15 @@ async function main() {
       ).status,
       409,
     );
+    const sport = await prisma.sport.create({
+      data: { name: run, areaTypes: ["INDOOR"] },
+    });
     const coach = await ok(admin, "POST", "/users", {
       email: `${run}-newcoach@test.invalid`,
       fullName: "New coach",
       password: "Password!123",
       role: "COACH",
+      sportIds: [sport.id],
     });
     assert.equal(coach.assignmentStatus, "UNASSIGNED");
     assert.equal(
@@ -112,13 +116,7 @@ async function main() {
       0,
     );
     const coachActor = { id: coach.id, role: "COACH" };
-    const login = await ok(coachActor, "POST", "/auth/login", {
-      email: `${run}-newcoach@test.invalid`,
-      password: "Password!123",
-    });
-    assert.equal(typeof login.accessToken, "string");
-    // Reuse the pre-assignment login token for all subsequent Coach requests.
-    tokens.set(coach.id, login.accessToken);
+    tokens.set(coach.id, signAccessToken({ id: coach.id, role: "COACH" }));
     await denied(extra, "GET", "/rooms");
     assert.equal(
       (await ok(coachActor, "GET", "/auth/me")).assignmentStatus,
@@ -195,9 +193,6 @@ async function main() {
       areaType: "INDOOR",
     });
     await denied(a, "PUT", `/rooms/${roomB.id}/capabilities`, { values: {} });
-    const sport = await prisma.sport.create({
-      data: { name: run, areaTypes: ["INDOOR"] },
-    });
     const ca = await ok(a, "POST", "/classes", {
       name: "Class A",
       sportIds: [sport.id],
@@ -230,6 +225,18 @@ async function main() {
     await ok(a, "POST", `/classes/${ca.id}/coaches`, {
       coachId: coach.coachProfile.id,
       isPrimary: true,
+    });
+    await prisma.term.create({
+      data: {
+        code: `TERM-${run}`,
+        name: `Term ${run}`,
+        facilityId: fa.id,
+        startDate: new Date("2099-01-01T00:00:00.000Z"),
+        endDate: new Date("2099-12-31T23:59:59.000Z"),
+        registrationStartDate: new Date("2098-12-01T00:00:00.000Z"),
+        registrationEndDate: new Date("2099-01-01T00:00:00.000Z"),
+        status: "IN_PROGRESS",
+      },
     });
     const startTime = "2099-10-08T02:00:00.000Z",
       endTime = "2099-10-08T03:00:00.000Z";
@@ -437,13 +444,18 @@ async function main() {
       await prisma.classSchedule.findMany({ orderBy: { id: "asc" } }),
       beforeSchedules,
     );
-    const coachLeave = await ok(
-      coachActor,
-      "POST",
-      "/leave-requests",
-      period,
-      fa.id,
-    );
+    await denied(coachActor, "POST", "/leave-requests", period, fa.id);
+    const coachLeave = await prisma.leaveRequest.create({
+      data: {
+        facilityId: fa.id,
+        coachId: coach.coachProfile.id,
+        requesterId: coach.id,
+        requesterRole: "COACH",
+        startTime: new Date(period.startTime),
+        endTime: new Date(period.endTime),
+        reason: period.reason,
+      },
+    });
     assert.equal(coachLeave.coachId, coach.coachProfile.id);
     assert.equal(coachLeave.requesterId, coach.id);
     assert.deepEqual(

@@ -14,6 +14,7 @@ test("profile menu holds personal actions and editing is explicit", async ({
     "Khám phá lớp học",
     "Gói thành viên",
     "Danh sách chờ",
+    "Trợ lý AI",
     "Chính sách sử dụng",
   ]);
   await expect(

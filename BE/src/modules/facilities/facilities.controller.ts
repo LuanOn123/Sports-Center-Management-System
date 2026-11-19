@@ -44,14 +44,14 @@ export async function getFacilities(
 ): Promise<void> {
   let where: any = { isActive: true };
   if (req.user?.role === "ADMIN" && req.query.includeInactive === "true") where = {};
-  if (!["ADMIN", "MEMBER"].includes(req.user?.role || "")) {
+  if (req.user && !["ADMIN", "MEMBER"].includes(req.user.role)) {
     where = {
       isActive: true,
       staffs: {
         some: {
-          userId: req.user?.id,
+          userId: req.user.id,
           isActive: true,
-          role: req.user?.role as any,
+          role: req.user.role as any,
         },
       },
     };

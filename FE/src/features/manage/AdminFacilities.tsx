@@ -10,6 +10,7 @@ import {
   UserMinus,
 } from "lucide-react";
 import { api } from "../../shared/api";
+import { toast } from "../../shared/toast";
 import { Empty, ErrorState, Loading, Modal, SchemaForm } from "../../shared/ui";
 import "./admin.css";
 import { FacilityEditor } from "./FacilityEditor";
@@ -102,6 +103,7 @@ export function AdminFacilities() {
         },
       }),
     onSuccess: () => {
+      toast("success", "Quản lý đã được gỡ thành công.");
       setRemoving(undefined);
       void cache.invalidateQueries();
     },
@@ -110,7 +112,8 @@ export function AdminFacilities() {
   const openAssignment = (facility: Facility, replaced?: Manager) => {
     save.reset();
     setUserId("");
-    setAssignment({ facility, replaced });
+    const targetReplaced = replaced ?? getManagers(facility)[0];
+    setAssignment({ facility, replaced: targetReplaced });
   };
 
   const getManagers = (f: Facility) =>
@@ -174,13 +177,6 @@ export function AdminFacilities() {
                       </div>
                       <div className="workflow-actions">
                         <button
-                          className="button small"
-                          disabled={!f.isActive}
-                          onClick={() => openAssignment(f, m)}
-                        >
-                          Thay quản lý
-                        </button>
-                        <button
                           className="button small danger admin-manager-remove"
                           onClick={() => {
                             remove.reset();
@@ -201,14 +197,25 @@ export function AdminFacilities() {
                   <Pencil size={16} />
                   Chỉnh sửa
                 </button>
-                <button
-                  className="button"
-                  disabled={!f.isActive}
-                  onClick={() => openAssignment(f)}
-                >
-                  <UserPlus size={16} />
-                  Thêm quản lý
-                </button>
+                {getManagers(f).length > 0 ? (
+                  <button
+                    className="button"
+                    disabled={!f.isActive}
+                    onClick={() => openAssignment(f, getManagers(f)[0])}
+                  >
+                    <UserPlus size={16} />
+                    Thay quản lý
+                  </button>
+                ) : (
+                  <button
+                    className="button"
+                    disabled={!f.isActive}
+                    onClick={() => openAssignment(f)}
+                  >
+                    <UserPlus size={16} />
+                    Thêm quản lý
+                  </button>
+                )}
               </div>
             </article>
           ))}
@@ -274,10 +281,11 @@ export function AdminFacilities() {
             </label>
           )}
           <button
-            className="text-button"
+            className="button"
             disabled={save.isPending}
             onClick={() => setCreateUser(true)}
           >
+            <UserPlus size={16} />
             Tạo tài khoản quản lý mới
           </button>
           {save.error && <ErrorState error={save.error} />}

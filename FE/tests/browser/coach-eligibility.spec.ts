@@ -218,12 +218,12 @@ for (const revoke of [false, true]) {
     ]);
     await replacement.selectOption("p1");
     await dialog
-      .getByRole("textbox", { name: "Lý do", exact: true })
+      .getByRole("textbox", { name: /Lý do/ })
       .fill("Đã bố trí HLV cùng bộ môn");
     state.revoked = revoke;
     await dialog.getByRole("button", { name: "Lưu quyết định" }).click();
     if (revoke) {
-      await expect(dialog.getByRole("alert")).toContainText("HLV chỉ được dạy");
+      await expect(dialog.getByRole("alert").first()).toContainText("HLV chỉ được dạy");
       expect(writes).toEqual([]);
     } else {
       await expect.poll(() => writes.length).toBe(1);
@@ -276,7 +276,7 @@ test("manager cannot remove a sport used by an assigned class but can remove an 
     await route.fulfill({ json: { success: true, data } });
   });
   await page.goto("/manager/users");
-  await page.getByRole("button", { name: "Hồ sơ Coach", exact: true }).click();
+  await page.getByRole("button", { name: "Xem hồ sơ", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog
     .getByRole("button", { name: "Bộ môn giảng dạy", exact: true })

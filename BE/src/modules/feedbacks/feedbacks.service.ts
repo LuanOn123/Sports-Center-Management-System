@@ -11,39 +11,51 @@ const feedbackInclude = {
   class: { select: { id: true, name: true } },
 };
 
-/** A course is the class within the term the member actually attended. */
+/** A course is finished when ALL its non-cancelled sessions have ended (endTime <= now). */
 export async function feedbackEligibility(userId: string, coachId: string, classId?: string) {
   if (!classId) return { eligible: false, message: "Vui lòng chọn khóa học đã kết thúc để đánh giá." };
   return requestContext.run({ ...requestContext.getStore(), facilityId: undefined }, async () => {
     const member = await prisma.memberProfile.findUnique({ where: { userId }, select: { id: true } });
     if (!member) throw new AppError("Member profile not found", 404);
-    const learned = await prisma.classSchedule.findMany({
+
+    // 1. Member phải đã tham gia ít nhất 1 buổi đã qua do Coach này dạy trong class này
+    const attended = await prisma.classSchedule.findFirst({
       where: {
-        classId, status: { not: "CANCELLED" }, endTime: { lte: new Date() },
+        classId,
+        status: { not: "CANCELLED" },
+        endTime: { lte: new Date() },
         AND: [effectiveCoachWhere(coachId), { OR: [
           { attendances: { some: { memberId: member.id, status: { in: ["PRESENT", "LATE"] } } } },
           { enrollments: { some: { memberId: member.id, status: "COMPLETED" } } },
         ] }],
       },
-      select: { termId: true },
-      orderBy: { endTime: "desc" },
-      take: 1,
+      select: { id: true },
     });
-    for (const termId of new Set(learned.map((session) => session.termId))) {
-      const remaining = await prisma.classSchedule.count({ where: {
-        classId, termId, status: { not: "CANCELLED" }, endTime: { gt: new Date() },
-      } });
-      if (!remaining) return { eligible: true, message: "Khóa học đã kết thúc. Bạn có thể đánh giá huấn luyện viên." };
+    if (!attended) {
+      return { eligible: false, message: "Bạn chỉ có thể đánh giá khi đã tham gia ít nhất một buổi do HLV này dạy trong khóa học này." };
     }
-    return { eligible: false, message: "Bạn chỉ có thể đánh giá khi khóa học đã kết thúc và đã tham gia buổi học do HLV này dạy." };
+
+    // 2. Toàn bộ khóa học phải đã kết thúc — không còn buổi nào trong tương lai (chưa bị hủy)
+    const remaining = await prisma.classSchedule.count({
+      where: {
+        classId,
+        status: { not: "CANCELLED" },
+        endTime: { gt: new Date() },
+      },
+    });
+    if (remaining > 0) {
+      return { eligible: false, message: "Khóa học chưa kết thúc. Bạn có thể đánh giá sau khi tất cả các buổi học đã hoàn thành." };
+    }
+
+    return { eligible: true, message: "Khóa học đã kết thúc. Bạn có thể đánh giá huấn luyện viên." };
   });
 }
 
 /**
  * Member tạo feedback cho Coach.
  * Business rules:
- *  - Member phải đã tham gia buổi do Coach thực dạy và khóa trong kỳ gần nhất đã học phải kết thúc.
- *  - Nếu truyền classId: buổi đó phải thuộc đúng lớp.
+ *  - Member phải đã tham gia ít nhất 1 buổi do Coach dạy trong khóa học (class).
+ *  - TOÀN BỘ khóa học (class) phải đã kết thúc — không còn buổi nào trong tương lai (chưa bị hủy).
  *  - Mỗi (memberId, coachId, classId) và mỗi (memberId, coachId) feedback chung chỉ 1 bản (gửi lại = sửa).
  */
 export async function createFeedback(data: CreateFeedbackInput, userId: string) {

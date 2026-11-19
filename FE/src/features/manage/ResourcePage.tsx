@@ -61,7 +61,7 @@ export function ResourcePage({
 }) {
   const client = useQueryClient();
   const facilityScope = useFacilityContext();
-  const globalResource = role === "ADMIN" && ["rooms", "classes", "schedules"].includes(r.slug);
+  const globalResource = role === "ADMIN" && ["rooms", "classes", "schedules", "sports"].includes(r.slug);
   const columns: [string, string][] = globalResource ? [...r.columns, ["facilityName", "Cơ sở"]] : r.columns;
   const [createFacility, setCreateFacility] = useState(getFacilityId());
   const cardView = [
@@ -131,11 +131,15 @@ export function ResourcePage({
         : {}),
   };
   const q = useQuery({
-    queryKey: ["resource", r.slug, requestQuery],
+    queryKey: ["resource", r.slug, requestQuery, role === "ADMIN" ? query.facilityId : undefined],
     queryFn: async ({ signal }) => {
+      const facilityOverride =
+        role === "ADMIN" && r.slug !== "users" && query.facilityId
+          ? query.facilityId
+          : undefined;
       const result = r.slug === "schedules"
-        ? await allPages<RecordData>(listKey, { query: requestQuery, signal })
-        : await api<RecordData[]>(listKey, { query: requestQuery, signal, requireAuth });
+        ? await allPages<RecordData>(listKey, { query: requestQuery, signal, facilityId: facilityOverride })
+        : await api<RecordData[]>(listKey, { query: requestQuery, signal, ...(requireAuth ? { requireAuth } : {}), facilityId: facilityOverride });
       if (!globalResource) return result;
       return { ...result, data: result.data.map((row): RecordData => {
         const id = String(row.facilityId || at(row, "class.facilityId") || at(row, "room.facilityId") || "");
@@ -189,7 +193,7 @@ export function ResourcePage({
   const detail = useQuery({
     queryKey: ["detail", r.path, modal?.row?.id],
     queryFn: ({ signal }) =>
-      api(detailKey, { params: { id: String(modal!.row!.id) }, signal, requireAuth }),
+      api(detailKey, { params: { id: String(modal!.row!.id) }, signal, ...(requireAuth ? { requireAuth } : {}) }),
     enabled: Boolean(modal?.kind === "detail" && modal.row?.id),
   });
   function done() {
@@ -520,13 +524,13 @@ export function ResourcePage({
           </div>
         )}
         <div className="filters">
-          {r.slug === "users" && role === "ADMIN" && (
+          {role === "ADMIN" && ["users", "sports", "rooms", "classes", "schedules"].includes(r.slug) && (
             <UserFacilityField filter value={query.facilityId || ""} onChange={(next) => {
               setQuery((prev) => ({ ...prev, facilityId: next }));
               setPage(1);
             }} />
           )}
-          {filters.filter((p) => !(r.slug === "users" && p.name === "facilityId")).map((p) => (
+          {filters.filter((p) => !(["users", "sports", "rooms", "classes", "schedules"].includes(r.slug) && role === "ADMIN" && p.name === "facilityId")).map((p) => (
             <FilterField
               key={p.name}
               name={p.name}

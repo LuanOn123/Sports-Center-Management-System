@@ -10,19 +10,20 @@ dotenv.config({ quiet: true });
 const suite = process.argv[2] || "manager";
 assert.ok(["manager", "reception"].includes(suite), "Unknown isolated suite");
 const name = `scms_verify_manager_${randomBytes(8).toString("hex")}`;
-const pg = new URL(process.env.DATABASE_URL);
+const directPg = new URL(process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL);
+directPg.searchParams.set("schema", name);
+directPg.searchParams.set("connection_limit", "3");
+directPg.searchParams.set("connect_timeout", "15");
 const mongo = new URL(process.env.MONGO_URI);
-pg.searchParams.set("schema", name);
-pg.searchParams.set("connection_limit", "3");
-pg.searchParams.set("connect_timeout", "15");
 mongo.pathname = "/" + name;
 const env = {
   ...process.env,
-  DATABASE_URL: pg.href,
+  DATABASE_URL: directPg.href,
+  DIRECT_DATABASE_URL: directPg.href,
   MONGO_URI: mongo.href,
   NODE_ENV: "test",
 };
-const db = new PrismaClient({ datasources: { db: { url: pg.href } } });
+const db = new PrismaClient({ datasources: { db: { url: directPg.href } } });
 let created = false;
 const baselinePath = `prisma/${name}.prisma`;
 const baseline = readFileSync("prisma/schema.prisma", "utf8")
@@ -55,6 +56,7 @@ try {
     "node_modules/prisma/build/index.js",
     "db",
     "push",
+    "--accept-data-loss",
     "--skip-generate",
     "--schema",
     baselinePath,
@@ -66,7 +68,11 @@ try {
   for (const statement of sql
     .split(";")
     .filter((s) => /CREATE UNIQUE INDEX/.test(s)))
-    await db.$executeRawUnsafe(statement);
+    await db.$executeRawUnsafe(
+      statement
+        .replace(/CREATE UNIQUE INDEX/i, "CREATE UNIQUE INDEX IF NOT EXISTS")
+        .replace(/"FacilityStaff"/g, `"${name}"."FacilityStaff"`),
+    );
   const legacyFacility = await db.facility.create({
     data: { code: "legacy", name: "Migration fixture", address: "Test only" },
   });
@@ -88,14 +94,21 @@ try {
       role: "MEMBER",
     },
   });
-  await db.$executeRaw`INSERT INTO "LeaveRequest" ("id", "facilityId", "coachId", "startTime", "endTime", "reason") VALUES ('legacy-leave', ${legacyFacility.id}, ${legacyCoach.coachProfile.id}, NOW(), NOW() + INTERVAL '1 hour', 'Legacy leave')`;
-  await db.$executeRaw`INSERT INTO "Issue" ("id", "facilityId", "memberId", "title", "description", "updatedAt") VALUES ('legacy-issue', ${legacyFacility.id}, ${legacyMember.id}, 'Legacy issue', 'Retained description', NOW())`;
+  await db.$executeRawUnsafe(`INSERT INTO "${name}"."LeaveRequest" ("id", "facilityId", "coachId", "startTime", "endTime", "reason") VALUES ('legacy-leave', '${legacyFacility.id}', '${legacyCoach.coachProfile.id}', NOW(), NOW() + INTERVAL '1 hour', 'Legacy leave')`);
+  await db.$executeRawUnsafe(`INSERT INTO "${name}"."Issue" ("id", "facilityId", "memberId", "title", "description", "updatedAt") VALUES ('legacy-issue', '${legacyFacility.id}', '${legacyMember.id}', 'Legacy issue', 'Retained description', NOW())`);
   const requesterSql = readFileSync(
     "prisma/migrations/20261009000100_staff_requesters/migration.sql",
     "utf8",
   );
-  for (const statement of requesterSql.split(";").filter((s) => s.trim()))
-    await db.$executeRawUnsafe(statement);
+  for (const statement of requesterSql.split(";").filter((s) => s.trim())) {
+    const s = statement
+      .replace(/CREATE INDEX/i, "CREATE INDEX IF NOT EXISTS")
+      .replace(/"LeaveRequest"/g, `"${name}"."LeaveRequest"`)
+      .replace(/"CoachProfile"/g, `"${name}"."CoachProfile"`)
+      .replace(/"Issue"/g, `"${name}"."Issue"`)
+      .replace(/"UserRole"/g, `"${name}"."UserRole"`);
+    await db.$executeRawUnsafe(s);
+  }
   assert.equal(
     (await db.leaveRequest.findUniqueOrThrow({ where: { id: "legacy-leave" } }))
       .requesterId,

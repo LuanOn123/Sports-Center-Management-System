@@ -7,6 +7,12 @@ import * as Controller from "./facilities.controller.js";
 import { CreateFacilitySchema, UpdateFacilitySchema, AssignStaffSchema, AssignManagerSchema, CreateFacilityCoachSchema, CreateFacilityReceptionistSchema } from "./facilities.schema.js";
 
 const router = Router();
+// Public reads remain available; administrative filters and scoped listings require a verified identity.
+router.use((req, res, next) => {
+  if (req.method === "GET" && req.headers.authorization) return authenticate(req, res, next);
+  next();
+});
+
 router.put("/:facilityId/manager", authenticate, authorize("ADMIN"), checkFacilityScope, validate(AssignManagerSchema), Controller.setFacilityManager);
 
 // Manager / Admin tạo Coach kèm bộ môn tại cơ sở
@@ -29,8 +35,8 @@ router.post(
   Controller.createFacilityReceptionist
 );
 
-// Lấy danh sách facility (Dùng chung, scope lọc theo role)
-router.get("/", authenticate, Controller.getFacilities);
+// Lấy danh sách facility (Public – active only; ADMIN thêm includeInactive=true để xem tất cả)
+router.get("/", Controller.getFacilities);
 
 // Chi tiết facility (Admin, hoặc staff của cơ sở đó)
 router.get(

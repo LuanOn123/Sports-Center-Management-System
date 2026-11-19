@@ -14,7 +14,6 @@ import { listUsers } from "../../src/modules/users/users.service.js";
 cases("BR-USER-FACILITY-FILTER", [
   ["danh sách mặc định toàn hệ thống", undefined],
   ["lọc nhân sự theo cơ sở trước khi phân trang", "facility-a"],
-  ["lọc nhân sự chưa được phân công", "unassigned"],
 ] as const, async ([, facilityId]) => {
   let filter: Record<string, unknown> = {};
   let assignmentReads = 0;
@@ -26,7 +25,7 @@ cases("BR-USER-FACILITY-FILTER", [
       assignmentReads++;
       assert.equal(where.isActive, true);
       assert.equal(where.facility.isActive, true);
-      assert.equal(where.facilityId, facilityId === "unassigned" ? undefined : facilityId);
+      assert.equal(where.facilityId, facilityId);
       return [{ userId: "staff-a" }];
     }],
     [User, "countDocuments", (where) => { filter = where; return 0; }],
@@ -34,9 +33,7 @@ cases("BR-USER-FACILITY-FILTER", [
   ], async () => {
     await listUsers({ facilityId });
     assert.equal(assignmentReads, facilityId ? 1 : 0);
-    assert.deepEqual(filter._id, facilityId
-      ? { [facilityId === "unassigned" ? "$nin" : "$in"]: ["staff-a"] }
-      : undefined);
+    assert.deepEqual(filter._id, facilityId ? { $in: ["staff-a"] } : undefined);
   });
 });
 

@@ -230,13 +230,17 @@ export function CoachChangesPage({
             }}
           >
             <fieldset className="form-grid" disabled={create.isPending}>
-              <label className="wide">
-                <span>Buổi học cần đổi HLV</span>
-                <input type="search" aria-label="Tìm buổi học cần đổi HLV"
+              <div className="wide">
+                <label htmlFor="coach-change-session-select">
+                  <span>Buổi học cần đổi HLV</span>
+                </label>
+                <input type="search" aria-label="Tìm theo tên lớp, ngày hoặc phòng"
                   placeholder="Tìm tên lớp, ngày, giờ hoặc phòng học…"
                   value={sessionSearch} onChange={(event) => setSessionSearch(event.target.value)}
                   onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }} />
                 <select
+                  id="coach-change-session-select"
+                  aria-label="Buổi học cần đổi HLV"
                   required
                   value={sessionId}
                   disabled={
@@ -258,7 +262,7 @@ export function CoachChangesPage({
                     </option>
                   ))}
                 </select>
-              </label>
+              </div>
               {sessions.error && (
                 <div className="wide">
                   <ErrorState
