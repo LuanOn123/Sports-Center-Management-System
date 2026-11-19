@@ -1,7 +1,12 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
 import { mockTurnstile } from "./fixtures";
-const doc = JSON.parse(fs.readFileSync("docs/openapi.json", "utf8"));
+const openapiPath = fs.existsSync("docs/openapi.json")
+  ? "docs/openapi.json"
+  : fs.existsSync("FE/docs/openapi.json")
+    ? "FE/docs/openapi.json"
+    : new URL("../../docs/openapi.json", import.meta.url);
+const doc = JSON.parse(fs.readFileSync(openapiPath, "utf8"));
 // Fixtures exist only inside tests; production never loads Swagger example data.
 async function fixtureApi(page: any, role = "MANAGER") {
   await mockTurnstile(page, true);

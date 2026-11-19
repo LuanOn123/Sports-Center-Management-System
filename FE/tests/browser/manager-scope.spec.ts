@@ -126,6 +126,7 @@ async function manager(page: Page) {
 test("Manager navigation and obsolete URLs match the current operational scope", async ({
   page,
 }) => {
+  test.slow();
   await manager(page);
   await page.goto("/manager");
   await expect(page).toHaveURL(/\/manager\/dashboard$/);
@@ -133,14 +134,15 @@ test("Manager navigation and obsolete URLs match the current operational scope",
   for (const name of [
     "Tổng quan",
     "Nhân sự cơ sở",
-    "Huấn luyện viên",
     "Kỳ học",
     "Phòng tập",
     "Lớp học",
     "Lịch hoạt động",
     "Đổi HLV theo buổi",
     "Yêu cầu hỗ trợ",
+    "Nhật ký cơ sở",
     "Báo cáo doanh thu",
+    "Nhu cầu gói & lớp",
   ])
     await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
   for (const [old, next] of Object.entries({

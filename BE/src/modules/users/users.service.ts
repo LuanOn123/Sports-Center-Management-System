@@ -58,17 +58,11 @@ export async function listUsers(query: UserQueryInput) {
       where: {
         isActive: true,
         facility: { isActive: true },
-        ...(query.facilityId === "unassigned" ? {} : { facilityId: query.facilityId }),
+        facilityId: query.facilityId,
       },
       select: { userId: true },
     });
-    filter._id = {
-      [query.facilityId === "unassigned" ? "$nin" : "$in"]: assignments.map((row) => row.userId),
-    };
-    if (query.facilityId === "unassigned") {
-      if (query.role && !["MANAGER", "COACH", "RECEPTIONIST"].includes(query.role)) filter._id = { $in: [] };
-      else filter.role = query.role ?? { $in: ["MANAGER", "COACH", "RECEPTIONIST"] };
-    }
+    filter._id = { $in: assignments.map((row) => row.userId) };
   }
   if (query.isActive !== undefined) filter.isActive = query.isActive === "true";
   if (query.search) {
@@ -275,3 +269,4 @@ async function assertAccountCanDeactivate(userId: string, tx: any) {
     where: { status: "SCHEDULED", endTime: { gt: new Date() }, ...effectiveCoachWhere(profile.id) } }));
   if (count) throw new AppError("HLV còn lịch giảng dạy. Hãy điều phối người thay trước khi khóa tài khoản.", 409);
 }
+

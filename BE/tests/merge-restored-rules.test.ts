@@ -32,6 +32,8 @@ test("R-06: feedback requires an attended past session of that class taught by t
     const filters: any[] = [];
     stub(prisma.memberProfile, "findUnique", async () => ({ id: "member" }));
     stub(prisma.coachProfile, "findUnique", async () => ({ id: "coach", user: { isActive: true } }));
+    stub(prisma.classSchedule, "findFirst", async () => ({ id: "schedule-1" }));
+    stub(prisma.classSchedule, "count", async () => 0);
     stub(prisma.attendance, "findFirst", async (args: any) => { filters.push(args.where); return null; });
     stub(prisma.enrollment, "findFirst", async (args: any) => { filters.push(args.where); return null; });
     await assert.rejects(() => createFeedback({ coachId: "coach", classId: "advanced", rating: 1 }, "user"),

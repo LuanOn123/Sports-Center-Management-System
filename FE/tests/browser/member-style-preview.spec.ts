@@ -33,7 +33,8 @@ test("member visual review", async ({ page }) => {
       ),
     ).toBe(true);
   }
-  await page.getByRole("button", { name: "Mở điểm danh nhanh" }).click();
+  await page.locator(".pulse-quick-trigger").click();
+  await page.getByRole("button", { name: "Điểm danh", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.screenshot({ path: "test-results/member-style-modal.png" });
   await page.keyboard.press("Escape");

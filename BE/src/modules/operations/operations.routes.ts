@@ -786,10 +786,11 @@ route(
 );
 route("delete", "/issues/:id", [authorize("MEMBER")], async (req) => {
   const issue = await prisma.issue.findFirst({
-    where: { id: id(req), memberId: actor(), status: "OPEN", OR: [{ requesterId: actor() }, { requesterId: null }] },
+    where: { id: id(req), memberId: actor(), status: "OPEN" },
   });
   if (!issue) throw new AppError("Open issue not found", 404);
   if (readAttendanceReport(issue.description)) throw new AppError("Không được xóa báo cáo chuyên cần", 403);
+  if (issue.requesterId && issue.requesterId !== actor()) throw new AppError("Không được xóa yêu cầu này", 403);
   return prisma.issue.delete({ where: { id: issue.id } });
 });
 const cashier = authorizeExact("RECEPTIONIST");

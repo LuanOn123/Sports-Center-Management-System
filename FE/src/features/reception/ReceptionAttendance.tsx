@@ -46,7 +46,12 @@ export function ReceptionAttendance() {
     queryKey: ["reception-attendance", facilityId, query, status, page],
     queryFn: ({ signal }) =>
       api<AttendanceRow[]>("GET /attendance/monitoring", {
-        query: { search: query, status, page: String(page), limit: "20" },
+        query: {
+          ...(query ? { search: query } : {}),
+          ...(status ? { status } : {}),
+          page: String(page),
+          limit: "20",
+        },
         signal,
       }),
   });

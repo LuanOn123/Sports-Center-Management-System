@@ -113,8 +113,8 @@ async function transport(
         ...(body !== undefined && !(body instanceof FormData)
           ? { "Content-Type": "application/json" }
           : {}),
-        ...(authenticated && accessToken
-          ? { Authorization: `Bearer ${accessToken}` }
+        ...(authenticated && (accessToken || sessionStorage.getItem("pulse.access"))
+          ? { Authorization: `Bearer ${accessToken || sessionStorage.getItem("pulse.access")}` }
           : {}),
       },
       ...(body !== undefined
@@ -221,7 +221,7 @@ export async function fetchAttachment(
   if (!url) throw new Error("Tệp cũ không còn khả dụng.");
   const request = () =>
     fetch(url.href, {
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      headers: (accessToken || sessionStorage.getItem("pulse.access")) ? { Authorization: `Bearer ${accessToken || sessionStorage.getItem("pulse.access")}` } : {},
       signal,
       redirect: "error",
       cache: "no-store",
@@ -251,7 +251,12 @@ async function apiRequest<T = RecordData>(
 ): Promise<Envelope<T>> {
   const op = contract[key];
   if (!op) throw new Error("Undocumented operation: " + key);
-  const authenticated = options.requireAuth || op.security.length > 0;
+  // requireAuth: false → luôn unauthenticated (public endpoint, bỏ qua spec)
+  // requireAuth: true  → luôn authenticated
+  // requireAuth: undefined → theo security spec của operation
+  const authenticated =
+    options.requireAuth !== false &&
+    (options.requireAuth === true || op.security.length > 0);
   let path = op.path.replace(/\{(\w+)\}/g, (_, p) => {
     if (!options.params?.[p]) throw new Error("Missing path parameter " + p);
     return encodeURIComponent(options.params[p]);
@@ -350,6 +355,7 @@ export function mutationSuccessMessage(key: string): string {
   };
   const name = names[resource];
   if (key.startsWith("DELETE ")) {
+    if (key.includes("/facilities/") && key.includes("/staff/")) return "";
     if (resource === "class-schedules" || resource === "enrollments")
       return `Đã hủy ${name}.`;
     if (key.includes("/coaches/")) return "Đã gỡ phân công HLV.";
@@ -408,7 +414,7 @@ export async function api<T = RecordData>(
             : /[À-ỹ]/.test(result.message || "")
               ? result.message
               : mutationSuccessMessage(key);
-      toast("success", message);
+      if (message) toast("success", message);
     }
     return result;
   } catch (error) {

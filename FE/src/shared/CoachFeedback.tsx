@@ -157,7 +157,7 @@ export function CoachFeedback({
       )}
       {role === "MEMBER" && eligibility.error && <ErrorState error={eligibility.error} retry={() => eligibility.refetch()} />}
       {role === "MEMBER" && !eligibility.data?.data.eligible && <p className="field-note">
-        {eligibility.data?.data.message || "Hội viên đánh giá huấn luyện viên khi kết thúc khóa học."}
+        {eligibility.data?.data.message || "Chỉ có thể đánh giá sau khi toàn bộ khóa học đã kết thúc."}
       </p>}
       {role === "MEMBER" && eligibility.data?.data.eligible && (
         <button

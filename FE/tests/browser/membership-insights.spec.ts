@@ -59,6 +59,7 @@ test("equipment is only a two-option choice for indoor rooms, and is cleared for
     .getByRole("button", { name: "Thêm phòng tập", exact: true })
     .click();
   const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Cơ sở tạo mới", { exact: true }).selectOption("facility-a");
   await expect(
     dialog.locator(".equipment-options").getByRole("radio"),
   ).toHaveCount(2);

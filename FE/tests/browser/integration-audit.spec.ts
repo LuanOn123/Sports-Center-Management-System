@@ -33,9 +33,9 @@ test("MANAGER edits coach profile using User.id and cannot create accounts", asy
   });
   await page.goto("/manager/coaches");
   await expect(page).toHaveURL(/\/manager\/users$/);
-  await expect(page.getByRole("button", { name: "Hồ sơ Coach", exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Xem hồ sơ", exact: true }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: /Thêm huấn luyện viên/ })).toHaveCount(0);
-  await page.getByRole("button", { name: "Hồ sơ Coach", exact: true }).first().click();
+  await page.getByRole("button", { name: "Xem hồ sơ", exact: true }).first().click();
   await expect(page.getByRole("dialog").getByLabel("Họ và tên")).toHaveValue("Audit Coach");
   await page.getByRole("dialog").getByLabel("Số năm kinh nghiệm").fill("4");
   await page.getByRole("dialog").getByRole("button", { name: /Lưu thay đổi/ }).click();

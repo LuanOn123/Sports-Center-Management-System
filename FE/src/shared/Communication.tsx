@@ -621,7 +621,10 @@ export function FloatingChat({
   useEffect(() => {
     const socket = io(BASE_URL.replace(/\/api\/v1$/, ""), {
       transports: ["websocket", "polling"],
-      auth: (done) => done({ token: getAccessToken() }),
+      auth: (done) =>
+        done({
+          token: getAccessToken() || sessionStorage.getItem("pulse.access") || "",
+        }),
       reconnectionDelay: 800,
       reconnectionDelayMax: 5000,
     });

@@ -93,6 +93,9 @@ async function adminFixture(page: Page) {
     const request = route.request(),
       path = new URL(request.url()).pathname.replace("/api/v1", ""),
       method = request.method();
+    if (path.startsWith("/users") && !request.headers().authorization) {
+      return route.fulfill({ status: 401, json: { success: false, message: "Unauthorized: missing token" } });
+    }
     if (method !== "GET") {
       calls.push({ path, method, body: request.postDataJSON() ?? {} });
       return route.fulfill({ json: { success: true, data: {} } });

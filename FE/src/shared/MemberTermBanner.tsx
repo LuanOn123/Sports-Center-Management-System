@@ -32,8 +32,9 @@ export function MemberTermBanner({
   const start = new Date(term.registrationStartDate);
   const end = new Date(term.registrationEndDate);
   const closed = term.status === "CLOSED";
-  const upcoming = !closed && now < start;
-  const open = !closed && now >= start && now <= end;
+  const planning = term.status === "PLANNING";
+  const upcoming = !closed && !planning && now < start;
+  const open = !closed && !planning && now >= start && now <= end;
   const days = Math.max(
     0,
     Math.ceil((end.getTime() - now.getTime()) / 86400000),
@@ -41,19 +42,23 @@ export function MemberTermBanner({
   const status =
     closed
       ? "Đã kết thúc"
-      : upcoming
-        ? "Sắp mở đăng ký"
-        : open
-          ? "Đang mở đăng ký"
-          : "Đã đóng đăng ký";
+      : planning
+        ? "Đang chuẩn bị"
+        : upcoming
+          ? "Sắp mở đăng ký"
+          : open
+            ? "Đang mở đăng ký"
+            : "Đã đóng đăng ký";
   const description =
     closed
       ? `Kỳ học kết thúc ngày ${fmtDate(term.endDate)}.`
-      : upcoming
-        ? `Dự kiến mở đăng ký từ ${fmtDate(start, true)} đến ${fmtDate(end)}.`
-        : open
-          ? `Đăng ký đến ${fmtDate(end)}${days > 0 ? ` · còn ${days} ngày` : " · hạn đăng ký hôm nay"}. Chọn lớp phù hợp với lịch tập của bạn.`
-          : `Đăng ký đã đóng ngày ${fmtDate(end)}.${term.status === "IN_PROGRESS" ? " Bạn vẫn có thể theo dõi các lớp đã đăng ký." : ""}`;
+      : planning
+        ? `Kỳ học đang được chuẩn bị. Dự kiến mở đăng ký từ ${fmtDate(start, true)}.`
+        : upcoming
+          ? `Dự kiến mở đăng ký từ ${fmtDate(start, true)} đến ${fmtDate(end)}.`
+          : open
+            ? `Đăng ký đến ${fmtDate(end)}${days > 0 ? ` · còn ${days} ngày` : " · hạn đăng ký hôm nay"}. Chọn lớp phù hợp với lịch tập của bạn.`
+            : `Đăng ký đã đóng ngày ${fmtDate(end)}.${term.status === "IN_PROGRESS" ? " Bạn vẫn có thể theo dõi các lớp đã đăng ký." : ""}`;
   const Icon = open
     ? CheckCircle2
     : upcoming
